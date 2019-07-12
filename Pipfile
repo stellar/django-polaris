@@ -5,12 +5,16 @@ verify_ssl = true
 
 [dev-packages]
 pylint = "*"
+pylint-django = "*"
+black = "*"
+pytest = "*"
+pytest-django = "*"
 
 [packages]
 django = "*"
-black = "*"
 django-environ = "*"
 django-model-utils = "*"
+djangorestframework = "*"
 
 [requires]
 python_version = "3.7"
