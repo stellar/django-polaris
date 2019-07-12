@@ -9,6 +9,8 @@ pylint-django = "*"
 black = "*"
 pytest = "*"
 pytest-django = "*"
+pytest-cov = "*"
+python-coveralls = "*"
 
 [packages]
 django = "*"

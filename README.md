@@ -1,5 +1,7 @@
 # Stellar Anchor Server – Example Implementation
 
+[![CircleCI](https://circleci.com/gh/stellar/stellar-anchor-server.svg?style=shield)](https://circleci.com/gh/stellar/stellar-anchor-server) [![Coverage Status](https://coveralls.io/repos/github/stellar/stellar-anchor-server/badge.svg?branch=info-endpoint)](https://coveralls.io/github/stellar/stellar-anchor-server?branch=info-endpoint)
+
 This project is a WIP example implementation of a Stellar anchor server.
 
 Its goal is to provide a community example implementation of [SEP 6](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md) (and related SEPs [9](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0009.md), [10](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.md) and [12](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0012.md)) to make it easier for anchors to integrate with the Stellar network, and enable wallets to seamlessly integrate with said anchor.
