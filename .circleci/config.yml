@@ -33,7 +33,7 @@ jobs: # A basic unit of work in a run
           if [ "$CIRCLE_PR_USERNAME" == "" ]; then
             # Should only run this on non-forked Pull Requests, since Circle CI
             # does not pass along the coveralls token to forked repos.
-            pytest --cov=src && coveralls
+            pipenv run pytest --cov=src && coveralls
           fi
       - store_test_results: # Upload test results for display in Test Summary: https://circleci.com/docs/2.0/collect-test-data/
           path: test-results
