@@ -7,7 +7,7 @@ def _get_expected_response():
     This expected response was adapted from the example SEP-0006 response on
     https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#response-2
     Some changes have been applied, to ensure the data we provide is in a consistent format and
-    in accordance with design decisions from this reference implementaiton:
+    in accordance with design decisions from this reference implementation:
 
     - All deposit / withdrawals from this anchor reference server are authentication_required
     - The "optional" configuration is always explicit, to avoid misinterpretation

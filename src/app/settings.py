@@ -50,7 +50,7 @@ DJANGO_APPS = [
 
 THIRD_PARTY_APPS = ["rest_framework"]
 
-CUSTOM_APPS = ["info"]
+CUSTOM_APPS = ["info", "transaction"]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + CUSTOM_APPS
 
@@ -135,3 +135,8 @@ REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 10,
 }
+
+
+# API Config
+
+DEFAULT_PAGE_SIZE = 10
