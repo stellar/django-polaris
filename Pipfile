@@ -17,6 +17,7 @@ django = "*"
 django-environ = "*"
 django-model-utils = "*"
 djangorestframework = "*"
+stellar-sdk = "*"
 
 [requires]
 python_version = "3.7"

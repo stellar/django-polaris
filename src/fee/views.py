@@ -2,16 +2,12 @@ from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
+from helpers import render_error_response
 from info.models import Asset
 
 
 OPERATION_DEPOSIT = "deposit"
 OPERATION_WITHDRAWAL = "withdraw"
-
-
-def _render_error_response(description: str) -> Response:
-    data = {"error": description}
-    return Response(data, status=status.HTTP_400_BAD_REQUEST)
 
 
 def _op_type_is_valid(asset_code: str, operation: str, op_type: str) -> bool:
@@ -83,12 +79,12 @@ def fee(request):
     # Verify that the asset code exists in our database:
     asset_code = request.GET.get("asset_code")
     if not asset_code or not Asset.objects.filter(name=asset_code).exists():
-        return _render_error_response("invalid 'asset_code'")
+        return render_error_response("invalid 'asset_code'")
 
     # Verify that the requested operation is valid:
     operation = request.GET.get("operation")
     if operation not in (OPERATION_DEPOSIT, OPERATION_WITHDRAWAL):
-        return _render_error_response(
+        return render_error_response(
             f"'operation' should be either '{OPERATION_DEPOSIT}' or '{OPERATION_WITHDRAWAL}'"
         )
 
@@ -97,13 +93,13 @@ def fee(request):
     try:
         amount = float(amount_str)
     except (TypeError, ValueError):
-        return _render_error_response("invalid 'amount'")
+        return render_error_response("invalid 'amount'")
 
     # Validate that the operation, and the specified type (if provided)
     # are applicable to the given asset:
     op_type = request.GET.get("type", "")
     if not _op_type_is_valid(asset_code, operation, op_type):
-        return _render_error_response(
+        return render_error_response(
             f"the specified operation is not available for '{asset_code}'"
         )
 
