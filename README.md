@@ -1,6 +1,6 @@
 # Stellar Anchor Server – Example Implementation
 
-[![CircleCI](https://circleci.com/gh/stellar/stellar-anchor-server.svg?style=shield)](https://circleci.com/gh/stellar/stellar-anchor-server) [![Coverage Status](https://coveralls.io/repos/github/stellar/stellar-anchor-server/badge.svg)](https://coveralls.io/github/stellar/stellar-anchor-server)
+[![CircleCI](https://circleci.com/gh/stellar/stellar-anchor-server.svg?style=shield)](https://circleci.com/gh/stellar/stellar-anchor-server) [![Coverage Status](https://coveralls.io/repos/github/stellar/stellar-anchor-server/badge.svg?branch=master)](https://coveralls.io/github/stellar/stellar-anchor-server?branch=master)
 
 This project is a WIP example implementation of a Stellar anchor server.
 
