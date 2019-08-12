@@ -18,6 +18,9 @@ django-environ = "*"
 django-model-utils = "*"
 djangorestframework = "*"
 stellar-sdk = "*"
+gunicorn = "*"
+whitenoise = "*"
+psycopg2-binary = "*"
 
 [requires]
 python_version = "3.7"
