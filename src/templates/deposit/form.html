@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Interactive Deposit Info Form</title>
+</head>
+
+<body>
+    <form method="post" action="">
+        {% csrf_token %}
+        {% for field in form %}
+            <div class="fieldWrapper">
+                {{ field.errors }}
+                {{ field.label_tag }} {{ field }}
+            </div>
+        {% endfor %}
+        <button type="submit" id="form_submit">Submit</button>
+    </form>
+</body>
+
+</html>

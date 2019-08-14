@@ -50,10 +50,23 @@ def transactions(request):
         "account": "stellar_account",
         "no_older_than": "started_at__gte",
         "kind": "kind",
-        "paging_id": "id__lt",
     }
 
     qset_filter = _compute_qset_filters(request.GET, translation_dict)
+
+    # Since the Transaction IDs are UUIDs, rather than in the chronological
+    # order of their creation, we map the paging ID (if provided) to the
+    # started_at field of a Transaction.
+    paging_id = request.GET.get("paging_id")
+    if paging_id:
+        try:
+            start_transaction = Transaction.objects.get(id=paging_id)
+        except Transaction.DoesNotExist:
+            return Response(
+                {"error": "invalid paging_id"}, status=status.HTTP_400_BAD_REQUEST
+            )
+        qset_filter["started_at__lt"] = start_transaction.started_at
+
     transactions_qset = Transaction.objects.filter(**qset_filter)[:limit]
     serializer = TransactionSerializer(transactions_qset, many=True)
 

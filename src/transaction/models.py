@@ -1,3 +1,5 @@
+import uuid
+
 from django.db import models
 from django.core.validators import MinLengthValidator
 from model_utils import Choices
@@ -21,6 +23,7 @@ class Transaction(models.Model):
     )
     MEMO_TYPES = Choices("text", "id", "hash")
 
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     # Stellar account to watch, and asset that is being transactioned
     # NOTE: these fields should not be publicly exposed
     stellar_account = models.TextField(validators=[MinLengthValidator(1)])
@@ -60,4 +63,4 @@ class Transaction(models.Model):
     )
 
     class Meta:
-        ordering = ("-id",)
+        ordering = ("-started_at",)
