@@ -17,10 +17,10 @@ django = "*"
 django-environ = "*"
 django-model-utils = "*"
 djangorestframework = "*"
-stellar-sdk = "*"
 gunicorn = "*"
 whitenoise = "*"
 psycopg2-binary = "*"
+stellar-sdk = "==1.3.1"
 
 [requires]
 python_version = "3.7"

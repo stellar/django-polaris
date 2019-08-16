@@ -16,6 +16,7 @@ from stellar_base.exceptions import NotValidParamError, StellarAddressInvalidErr
 from helpers import render_error_response
 from info.models import Asset
 from transaction.models import Transaction
+from transaction.serializers import TransactionSerializer
 
 from .forms import DepositForm
 
@@ -64,6 +65,40 @@ def _verify_optional_args(request):
     return None
 
 
+@api_view()
+def confirm_transaction(request):
+    # Validate the provided transaction_id and amount.
+    transaction_id = request.GET.get("transaction_id")
+    if not transaction_id:
+        return render_error_response("no 'transaction_id' provided")
+
+    transaction = Transaction.objects.filter(id=transaction_id).first()
+    if not transaction:
+        return render_error_response(
+            "no transaction with matching 'transaction_id' exists"
+        )
+
+    amount_str = request.GET.get("amount")
+    if not amount_str:
+        return render_error_response("no 'amount' provided")
+    try:
+        amount = float(amount_str)
+    except ValueError:
+        return render_error_response("non-float 'amount' provided")
+
+    if transaction.amount_in != amount:
+        return render_error_response(
+            "incorrect 'amount' value for transaction with given 'transaction_id'"
+        )
+
+    # The external deposit has been completed, so the transaction
+    # status must now be updated to pending_anchor.
+    transaction.status = Transaction.STATUS.pending_anchor
+    transaction.save()
+    serializer = TransactionSerializer(transaction)
+    return Response({"transaction": serializer.data})
+
+
 @api_view(["GET", "POST"])
 def interactive_deposit(request):
     # Validate query parameters: account, asset_code, transaction_id.
@@ -98,14 +133,14 @@ def interactive_deposit(request):
                 id=transaction_id,
                 stellar_account=account,
                 asset=form.asset,
-                kind="deposit",
-                status="pending_external",
+                kind=Transaction.KIND.deposit,
+                status=Transaction.STATUS.pending_external,
                 amount_in=form.cleaned_data["amount"],
             )
             transaction.save()
 
             # TODO: Use the proposed callback approach.
-            return render(request, "deposit/form_success.html")
+            return render(request, "deposit/success.html")
     return render(request, "deposit/form.html", {"form": form})
 
 
