@@ -117,12 +117,12 @@ def test_fee_valid_deposit(client, usd_asset_factory):
     usd_asset_factory()
 
     response = client.get(
-        f"/fee?asset_code=USD&operation=deposit&amount=100.0", follow=True
+        f"/fee?asset_code=USD&operation=deposit&amount=200.0", follow=True
     )
     content = json.loads(response.content)
 
     assert response.status_code == 200
-    assert content == {"fee": 5.0 + ((100.0 + 1.0) / 100) * 100.0}
+    assert content == {"fee": 5.0 + 2.0}
 
 
 @pytest.mark.django_db
@@ -135,9 +135,10 @@ def test_fee_valid_deposit_with_op_type(client, usd_asset_factory):
     content = json.loads(response.content)
 
     assert response.status_code == 200
-    assert content == {"fee": 5.0 + ((100.0 + 1.0) / 100) * 100.0}
+    assert content == {"fee": 6.0}
 
 
+# Fixed: 5.0 Percent = 1
 @pytest.mark.django_db
 def test_fee_valid_withdrawal(client, usd_asset_factory):
     usd_asset_factory()
@@ -148,7 +149,7 @@ def test_fee_valid_withdrawal(client, usd_asset_factory):
     content = json.loads(response.content)
 
     assert response.status_code == 200
-    assert content == {"fee": 5.0 + ((100.0 + 0.0) / 100) * 100.0}
+    assert content == {"fee": 5.0}
 
 
 @pytest.mark.django_db
@@ -162,4 +163,4 @@ def test_fee_valid_withdrawal_with_op_type(client, usd_asset_factory):
     content = json.loads(response.content)
 
     assert response.status_code == 200
-    assert content == {"fee": 5.0 + ((100.0 + 0.0) / 100) * 100.0}
+    assert content == {"fee": 5.0}

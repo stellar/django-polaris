@@ -66,7 +66,7 @@ def _calc_fee(asset_code: str, operation: str, amount: float) -> float:
     # based on operation type in this example implementation, but that can
     # occur in real-life applications.
 
-    return fee_fixed + (100.0 + fee_percent) / 100.0 * amount
+    return fee_fixed + (fee_percent / 100.0) * amount
 
 
 @api_view()
