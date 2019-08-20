@@ -48,7 +48,7 @@ DJANGO_APPS = [
     "django.contrib.staticfiles",
 ]
 
-THIRD_PARTY_APPS = ["rest_framework"]
+THIRD_PARTY_APPS = ["rest_framework", "corsheaders"]
 
 CUSTOM_APPS = ["info", "transaction"]
 
@@ -56,6 +56,7 @@ INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + CUSTOM_APPS
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -170,3 +171,8 @@ LOGGING = {
     },
     "loggers": {"testlogger": {"handlers": ["console"], "level": "INFO"}},
 }
+
+
+# CORS configuration
+
+CORS_ORIGIN_ALLOW_ALL = True
