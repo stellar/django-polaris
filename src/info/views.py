@@ -23,7 +23,7 @@ def _get_asset_deposit_info(asset: Asset):
     if asset.deposit_enabled:
         return {
             "enabled": True,
-            "authentication_required": True,
+            "authentication_required": False,
             "fee_fixed": asset.deposit_fee_fixed,
             "fee_percent": asset.deposit_fee_percent,
             "min_amount": asset.deposit_min_amount,
@@ -52,7 +52,7 @@ def _get_asset_withdrawal_info(asset: Asset):
     if asset.withdrawal_enabled:
         return {
             "enabled": True,
-            "authentication_required": True,
+            "authentication_required": False,
             "fee_fixed": asset.withdrawal_fee_fixed,
             "fee_percent": asset.withdrawal_fee_percent,
             "min_amount": asset.withdrawal_min_amount,
@@ -74,8 +74,8 @@ def info(request):
         "deposit": {},
         "withdraw": {},
         "fee": {"enabled": True, "authentication_required": False},
-        "transactions": {"enabled": True, "authentication_required": True},
-        "transaction": {"enabled": True, "authentication_required": True},
+        "transactions": {"enabled": True, "authentication_required": False},
+        "transaction": {"enabled": True, "authentication_required": False},
     }
 
     for asset in (
