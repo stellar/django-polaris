@@ -7,6 +7,7 @@ from urllib.parse import urlencode
 from django.conf import settings
 from django.shortcuts import render
 from django.urls import reverse
+from django.views.decorators.clickjacking import xframe_options_exempt
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -100,6 +101,7 @@ def confirm_transaction(request):
     return Response({"transaction": serializer.data})
 
 
+@xframe_options_exempt
 @api_view(["GET", "POST"])
 def interactive_deposit(request):
     # Validate query parameters: account, asset_code, transaction_id.
