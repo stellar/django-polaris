@@ -1,24 +1,25 @@
 import base64
 import binascii
+import json
 import uuid
+from urllib.parse import urlencode
 
+from django.conf import settings
 from django.shortcuts import render
 from django.urls import reverse
-
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from urllib.parse import urlencode
-
 from stellar_base.address import Address
 from stellar_base.exceptions import NotValidParamError, StellarAddressInvalidError
 
-from helpers import render_error_response
+from helpers import calc_fee, render_error_response
 from info.models import Asset
 from transaction.models import Transaction
 from transaction.serializers import TransactionSerializer
 
 from .forms import DepositForm
+from deposit.tasks import create_stellar_deposit
 
 
 def _create_transaction_id():
@@ -123,22 +124,25 @@ def interactive_deposit(request):
             return render_error_response(
                 "transaction with matching 'transaction_id' already exists"
             )
-
         form = DepositForm(request.POST)
-        form.asset = Asset.objects.get(name=asset_code)
+        asset = Asset.objects.get(name=asset_code)
+        form.asset = asset
         # If the form is valid, we create a transaction pending external action
         # and render the success page.
         if form.is_valid():
+            amount_in = form.cleaned_data["amount"]
+            amount_fee = calc_fee(asset, settings.OPERATION_DEPOSIT, amount_in)
             transaction = Transaction(
                 id=transaction_id,
                 stellar_account=account,
-                asset=form.asset,
+                asset=asset,
                 kind=Transaction.KIND.deposit,
                 status=Transaction.STATUS.pending_external,
-                amount_in=form.cleaned_data["amount"],
+                amount_in=amount_in,
+                amount_fee=amount_fee,
             )
             transaction.save()
-
+            create_stellar_deposit.delay(transaction.id)
             # TODO: Use the proposed callback approach.
             return render(request, "deposit/success.html")
     return render(request, "deposit/form.html", {"form": form})

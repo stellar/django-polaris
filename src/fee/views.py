@@ -1,13 +1,13 @@
+from django.conf import settings
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from helpers import render_error_response
+from helpers import calc_fee, render_error_response
 from info.models import Asset
 
-
-OPERATION_DEPOSIT = "deposit"
-OPERATION_WITHDRAWAL = "withdraw"
+OPERATION_DEPOSIT = settings.OPERATION_DEPOSIT
+OPERATION_WITHDRAWAL = settings.OPERATION_WITHDRAWAL
 
 
 def _op_type_is_valid(asset_code: str, operation: str, op_type: str) -> bool:
@@ -52,23 +52,6 @@ def _op_type_is_valid(asset_code: str, operation: str, op_type: str) -> bool:
     return False
 
 
-def _calc_fee(asset_code: str, operation: str, amount: float) -> float:
-    asset = Asset.objects.get(name=asset_code)
-    if operation == OPERATION_WITHDRAWAL:
-        fee_percent = asset.withdrawal_fee_percent
-        fee_fixed = asset.withdrawal_fee_fixed
-    elif operation == OPERATION_DEPOSIT:
-        fee_percent = asset.deposit_fee_percent
-        fee_fixed = asset.deposit_fee_fixed
-
-    # Note (Alex C, 2019-07-12):
-    # `op_type` is not used in this context, since there is no fee variation
-    # based on operation type in this example implementation, but that can
-    # occur in real-life applications.
-
-    return fee_fixed + (fee_percent / 100.0) * amount
-
-
 @api_view()
 def fee(request):
     """
@@ -80,6 +63,7 @@ def fee(request):
     asset_code = request.GET.get("asset_code")
     if not asset_code or not Asset.objects.filter(name=asset_code).exists():
         return render_error_response("invalid 'asset_code'")
+    asset = Asset.objects.get(name=asset_code)
 
     # Verify that the requested operation is valid:
     operation = request.GET.get("operation")
@@ -87,7 +71,6 @@ def fee(request):
         return render_error_response(
             f"'operation' should be either '{OPERATION_DEPOSIT}' or '{OPERATION_WITHDRAWAL}'"
         )
-
     # Verify that amount is provided, and that it is parseable into a float:
     amount_str = request.GET.get("amount")
     try:
@@ -103,4 +86,4 @@ def fee(request):
             f"the specified operation is not available for '{asset_code}'"
         )
 
-    return Response({"fee": _calc_fee(asset_code, operation, amount)})
+    return Response({"fee": calc_fee(asset, operation, amount)})

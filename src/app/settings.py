@@ -37,6 +37,12 @@ DEBUG = env.bool("DJANGO_DEBUG", False)
 
 ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=[])
 
+STELLAR_ACCOUNT_ADDRESS = env("STELLAR_ACCOUNT_ADDRESS")
+STELLAR_ACCOUNT_SEED = env("STELLAR_ACCOUNT_SEED")
+REDIS_URL = env("REDIS_URL", default=None)
+OPERATION_DEPOSIT = "deposit"
+OPERATION_WITHDRAWAL = "withdraw"
+ACCOUNT_STARTING_BALANCE = str(2.01)
 
 # Application definition
 DJANGO_APPS = [
@@ -172,7 +178,12 @@ LOGGING = {
     "loggers": {"testlogger": {"handlers": ["console"], "level": "INFO"}},
 }
 
-
 # CORS configuration
-
 CORS_ORIGIN_ALLOW_ALL = True
+
+# Celery config
+CELERY_BROKER_URL = REDIS_URL
+CELERY_RESULT_BACKEND = REDIS_URL
+CELERY_ACCEPT_CONTENT = ["application/json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"

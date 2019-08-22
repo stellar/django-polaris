@@ -13,7 +13,10 @@ You can check the project's roadmap [here](https://github.com/stellar/stellar-an
 This project was built using Pipenv.
 
 1. Install pipenv: `$ brew install pipenv` (on macOS)
+1. Install redis: `$ brew install redis` (on macOS)
 1. Inside the repo's root, install the project's dependencies: `$ pipenv install`
 1. You'll need a `.env` file (or the equivalent env vars defined). We provide a sample one, which you can copy and modify: `$ cp .env.example .env`
 1. Run the database migrations: `$ pipenv run python src/manage.py migrate`
+1. Run the redis server in the background: `$ redis-server --daemonize yes`
+1. Run celery: `$ pipenv run celery worker --app app --beat --workdir src -l info`
 1. Run the project: `$ pipenv run python src/manage.py runserver`
