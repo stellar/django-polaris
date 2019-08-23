@@ -5,6 +5,7 @@ import uuid
 from deposit.tasks import (
     check_trustlines,
     create_stellar_deposit,
+    SUCCESS_XDR,
     TRUSTLINE_FAILURE_XDR,
 )
 from deposit.forms import DepositForm
@@ -15,6 +16,8 @@ from stellar_base.address import Address
 from stellar_base.builder import Builder
 from stellar_base.exceptions import HorizonError
 from unittest.mock import patch
+
+HORIZON_SUCCESS_RESPONSE = {"result_xdr": SUCCESS_XDR, "hash": "test_stellar_id"}
 
 
 @pytest.mark.django_db
@@ -203,7 +206,7 @@ def test_deposit_confirm_incorrect_amount(client, acc1_usd_deposit_transaction_f
 @patch("stellar_base.horizon.Horizon.base_fee", return_value=100)
 @patch("stellar_base.builder.Builder.get_sequence", return_value=1)
 @patch("stellar_base.address.Address.get", return_value=True)
-@patch("stellar_base.builder.Builder.submit", return_value=True)
+@patch("stellar_base.builder.Builder.submit", return_value=HORIZON_SUCCESS_RESPONSE)
 @patch("deposit.tasks.create_stellar_deposit.delay", side_effect=create_stellar_deposit)
 def test_deposit_confirm_success(
     mock_delay,
@@ -226,6 +229,39 @@ def test_deposit_confirm_success(
     assert transaction
     assert transaction["status"] == "pending_anchor"
     assert float(transaction["amount_in"]) == amount
+    assert int(transaction["status_eta"]) == 5
+
+
+@pytest.mark.django_db
+@patch("stellar_base.horizon.Horizon.base_fee", return_value=100)
+@patch("stellar_base.builder.Builder.get_sequence", return_value=1)
+@patch("stellar_base.address.Address.get", return_value=True)
+@patch("stellar_base.builder.Builder.submit", return_value=HORIZON_SUCCESS_RESPONSE)
+@patch("deposit.tasks.create_stellar_deposit.delay", side_effect=create_stellar_deposit)
+def test_deposit_confirm_external_id(
+    mock_delay,
+    mock_submit,
+    mock_get,
+    mock_get_sequence,
+    mock_base_fee,
+    client,
+    acc1_usd_deposit_transaction_factory,
+):
+    d = acc1_usd_deposit_transaction_factory()
+    amount = d.amount_in
+    external_id = "foo"
+    response = client.get(
+        f"/deposit/confirm_transaction?amount={amount}&transaction_id={d.id}&external_transaction_id={external_id}",
+        follow=True,
+    )
+    assert response.status_code == 200
+    content = json.loads(response.content)
+    transaction = content["transaction"]
+    assert transaction
+    assert transaction["status"] == "pending_anchor"
+    assert float(transaction["amount_in"]) == amount
+    assert int(transaction["status_eta"]) == 5
+    assert transaction["external_transaction_id"] == external_id
 
 
 @pytest.mark.django_db
@@ -256,7 +292,7 @@ def test_deposit_stellar_no_trustline(
     "stellar_base.address.Address.get",
     side_effect=HorizonError(msg="get failed", status_code=404),
 )
-@patch("stellar_base.builder.Builder.submit", return_value=True)
+@patch("stellar_base.builder.Builder.submit", return_value=HORIZON_SUCCESS_RESPONSE)
 def test_deposit_stellar_no_account(
     mock_submit,
     mock_get,
@@ -274,7 +310,7 @@ def test_deposit_stellar_no_account(
 @patch("stellar_base.horizon.Horizon.base_fee", return_value=100)
 @patch("stellar_base.builder.Builder.get_sequence", return_value=1)
 @patch("stellar_base.address.Address.get", return_value=True)
-@patch("stellar_base.builder.Builder.submit", return_value=True)
+@patch("stellar_base.builder.Builder.submit", return_value=HORIZON_SUCCESS_RESPONSE)
 def test_deposit_stellar_success(
     mock_submit,
     mock_get,
@@ -292,7 +328,7 @@ def test_deposit_stellar_success(
 @patch("stellar_base.horizon.Horizon.base_fee", return_value=100)
 @patch("stellar_base.builder.Builder.get_sequence", return_value=1)
 @patch("stellar_base.address.Address.get", return_value=True)
-@patch("stellar_base.builder.Builder.submit", return_value=True)
+@patch("stellar_base.builder.Builder.submit", return_value=HORIZON_SUCCESS_RESPONSE)
 @patch("deposit.tasks.create_stellar_deposit.delay", side_effect=create_stellar_deposit)
 def test_deposit_interactive_confirm_success(
     mock_delay,
@@ -348,7 +384,7 @@ def test_deposit_interactive_confirm_success(
 @patch("stellar_base.horizon.Horizon.base_fee", return_value=100)
 @patch("stellar_base.builder.Builder.get_sequence", return_value=1)
 @patch("stellar_base.address.Address.get", return_value=True)
-@patch("stellar_base.builder.Builder.submit", return_value=True)
+@patch("stellar_base.builder.Builder.submit", return_value=HORIZON_SUCCESS_RESPONSE)
 @patch(
     "stellar_base.horizon.Horizon.account",
     return_value={"balances": [{"asset_code": "USD"}]},
@@ -448,8 +484,9 @@ def test_deposit_check_trustlines_horizon(
 
     print("Check trustlines, try three. Status should be completed.")
     check_trustlines()
+    completed_transaction = Transaction.objects.get(id=transaction_id)
+    assert completed_transaction.status == Transaction.STATUS.completed
     assert (
-        Transaction.objects.get(id=transaction_id).status
-        == Transaction.STATUS.completed
+        completed_transaction.stellar_transaction_id == HORIZON_SUCCESS_RESPONSE["hash"]
     )
 

@@ -14,12 +14,14 @@ from app.celery import app
 from transaction.models import Transaction
 
 TRUSTLINE_FAILURE_XDR = "AAAAAAAAAGT/////AAAAAQAAAAAAAAAB////+gAAAAA="
+SUCCESS_XDR = "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA="
 
 
 @app.task
 def create_stellar_deposit(transaction_id):
     transaction = Transaction.objects.get(id=transaction_id)
-    # Assume transaction has valid stellar_account, amount_in, asset.name
+    # We can assume transaction has valid stellar_account, amount_in, and asset
+    # because this task is only called after those parameters are validated.
     stellar_account = transaction.stellar_account
     payment_amount = transaction.amount_in - transaction.amount_fee
     asset = transaction.asset.name
@@ -31,24 +33,25 @@ def create_stellar_deposit(transaction_id):
     address = Address(stellar_account)
     try:
         address.get()
-    except HorizonError as e:
+    except HorizonError as address_exc:
         # 404 code corresponds to Resource Missing.
-        if e.status_code == 404:
-            starting_balance = settings.ACCOUNT_STARTING_BALANCE
-            builder = Builder(secret=settings.STELLAR_ACCOUNT_SEED)
-            builder.append_create_account_op(
-                destination=stellar_account,
-                starting_balance=starting_balance,
-                source=settings.STELLAR_ACCOUNT_ADDRESS,
-            )
-            builder.sign()
-            try:
-                builder.submit()
-            except HorizonError as exception:
-                raise exception
-            transaction.status = Transaction.STATUS.pending_trust
-            transaction.save()
+        if address_exc.status_code != 404:
             return
+        starting_balance = settings.ACCOUNT_STARTING_BALANCE
+        builder = Builder(secret=settings.STELLAR_ACCOUNT_SEED)
+        builder.append_create_account_op(
+            destination=stellar_account,
+            starting_balance=starting_balance,
+            source=settings.STELLAR_ACCOUNT_ADDRESS,
+        )
+        builder.sign()
+        try:
+            builder.submit()
+        except HorizonError:
+            return
+        transaction.status = Transaction.STATUS.pending_trust
+        transaction.save()
+        return
 
     # If the account does exist, deposit the desired amount of the given
     # asset via a Stellar payment. If that payment succeeds, we update the
@@ -63,17 +66,24 @@ def create_stellar_deposit(transaction_id):
     )
     builder.sign()
     try:
-        builder.submit()
+        response = builder.submit()
+    # Functional errors at this stage are Horizon errors.
     except HorizonError as exception:
-        if TRUSTLINE_FAILURE_XDR in exception.message:
-            transaction.status = Transaction.STATUS.pending_trust
-            transaction.save()
+        if TRUSTLINE_FAILURE_XDR not in exception.message:
+            return
+        transaction.status = Transaction.STATUS.pending_trust
+        transaction.save()
         return
 
-    # If we reach here, the Stellar payment succeeded, so we
+    # If this condition is met, the Stellar payment succeeded, so we
     # can mark the transaction as completed.
+    if response["result_xdr"] != SUCCESS_XDR:
+        return
+
+    transaction.stellar_transaction_id = response["hash"]
     transaction.status = Transaction.STATUS.completed
     transaction.completed_at = now()
+    transaction.status_eta = 0  # No more status change.
     transaction.amount_out = payment_amount
     transaction.save()
 

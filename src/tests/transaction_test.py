@@ -41,7 +41,7 @@ def test_transaction_id_filter_and_format(
     assert isinstance(wt["id"], str)
     assert wt["kind"] == "withdrawal"
     assert wt["status"] == "completed"
-    assert wt["status_eta"] is None
+    assert wt["status_eta"] == 3600
     assert wt["amount_in"] == "500.0"
     assert wt["amount_out"] == "495.0"
     assert wt["amount_fee"] == "3.0"

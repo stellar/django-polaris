@@ -113,7 +113,7 @@ def test_transactions_content(
     assert wt["id"] == str(w.id)
     assert wt["kind"] == w.kind
     assert wt["status"] == w.status
-    assert wt["status_eta"] is None
+    assert wt["status_eta"] == 3600
     assert wt["amount_in"] == str(w.amount_in)
     assert wt["amount_out"] == str(w.amount_out)
     assert wt["amount_fee"] == str(float(w.amount_fee))

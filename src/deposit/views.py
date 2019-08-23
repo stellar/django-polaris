@@ -93,9 +93,13 @@ def confirm_transaction(request):
             "incorrect 'amount' value for transaction with given 'transaction_id'"
         )
 
+    external_transaction_id = request.GET.get("external_transaction_id")
+
     # The external deposit has been completed, so the transaction
     # status must now be updated to pending_anchor.
     transaction.status = Transaction.STATUS.pending_anchor
+    transaction.status_eta = 5  # Ledger close time.
+    transaction.external_transaction_id = external_transaction_id
     transaction.save()
     serializer = TransactionSerializer(transaction)
 
