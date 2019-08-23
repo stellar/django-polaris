@@ -68,7 +68,7 @@ def create_stellar_deposit(transaction_id):
         if TRUSTLINE_FAILURE_XDR in exception.message:
             transaction.status = Transaction.STATUS.pending_trust
             transaction.save()
-            return
+        return
 
     # If we reach here, the Stellar payment succeeded, so we
     # can mark the transaction as completed.

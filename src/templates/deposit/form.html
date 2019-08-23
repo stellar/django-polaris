@@ -1,21 +1,45 @@
-<!DOCTYPE html>
-<html>
+{% extends "deposit/base.html" %}
 
-<head>
-    <title>Interactive Deposit Info Form</title>
-</head>
+{% block "title" %}
+<title>Interactive Deposit Info Form</title>
+{% endblock %}
 
-<body>
-    <form method="post" action="">
-        {% csrf_token %}
-        {% for field in form %}
-            <div class="fieldWrapper">
-                {{ field.errors }}
-                {{ field.label_tag }} {{ field }}
-            </div>
+
+{% block "content" %}
+<section class="section">
+  <p>
+    This is the interactive deposit flow. Please enter the amount you would like to deposit.
+  </p>
+  <br />
+  <form method="post" action="">
+    {% csrf_token %}
+
+    {% for field in form %}
+    <div class="field">
+      <label class="label">{{ field.label }}</label>
+      <div class="control has-icons-left">
+        {{ field }}
+        <span class="icon is-small is-left">
+          <i class="fas fa-dollar-sign"></i>
+        </span>
+      </div>
+
+      {% if field.errors %}
+      <p class="help is-danger">
+        {% for error in field.errors %}
+        {{ error }}
         {% endfor %}
-        <button type="submit" id="form_submit">Submit</button>
-    </form>
-</body>
+      </p>
+      {% endif %}
 
-</html>
+    </div>
+    {% endfor %}
+
+    <div class="field">
+      <div class="control">
+        <button class="button is-link" type="submit">Submit</button>
+      </div>
+    </div>
+  </form>
+</section>
+{% endblock %}

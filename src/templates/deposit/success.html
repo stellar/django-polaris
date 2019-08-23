@@ -1,12 +1,36 @@
-<!DOCTYPE html>
-<html>
+{% extends "deposit/base.html" %}
 
-<head>
-    <title>Success</title>
-</head>
+{% block "title" %}
+<title>Successful Deposit!</title>
+{% endblock %}
 
-<body>
-    <p>Success! You may now close this window.</p>
-</body>
 
-</html>
+{% block "content" %}
+<section class="section">
+  <p>
+    Success! You may now close this window. A postMessage has also been
+    published to either window.opener or window.parent.
+  </p>
+
+  <script>
+    function postTransactionCallback() {
+      var targetWindow, transaction;
+
+      if (window.opener != void 0) {
+        targetWindow = window.opener;
+      } else if (window.parent != void 0) {
+        targetWindow = window.parent;
+      } else {
+        return;
+      }
+
+      // NOTE: make sure to keep the single quotes on the following line
+      // as this will be rendered as a serialized JSON by Django.
+      transaction = JSON.parse('{{ tx_json|safe }}');
+      targetWindow.postMessage(transaction, "*");
+    }
+
+    postTransactionCallback();
+  </script>
+</section>
+{% endblock %}

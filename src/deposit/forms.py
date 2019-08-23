@@ -6,6 +6,7 @@ class DepositForm(forms.Form):
     amount = forms.FloatField(
         help_text="Enter the amount to deposit, as a two decimal places float.",
         min_value=0,
+        widget=forms.NumberInput(attrs={"class": "input"}),
     )
     asset = None
 
