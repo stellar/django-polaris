@@ -143,7 +143,7 @@ def test_deposit_invalid_hash_memo(client, acc1_usd_deposit_transaction_factory)
     assert content == {"error": "'memo' does not match memo_type' hash"}
 
 
-def test_confirm_no_txid(client):
+def test_deposit_confirm_no_txid(client):
     response = client.get(f"/deposit/confirm_transaction?amount=0", follow=True)
     content = json.loads(response.content)
     assert response.status_code == 400
@@ -151,7 +151,7 @@ def test_confirm_no_txid(client):
 
 
 @pytest.mark.django_db
-def test_confirm_invalid_txid(client):
+def test_deposit_confirm_invalid_txid(client):
     incorrect_transaction_id = uuid.uuid4()
     response = client.get(
         f"/deposit/confirm_transaction?amount=0&transaction_id={incorrect_transaction_id}",
@@ -163,7 +163,7 @@ def test_confirm_invalid_txid(client):
 
 
 @pytest.mark.django_db
-def test_confirm_no_amount(client, acc1_usd_deposit_transaction_factory):
+def test_deposit_confirm_no_amount(client, acc1_usd_deposit_transaction_factory):
     d = acc1_usd_deposit_transaction_factory()
     response = client.get(
         f"/deposit/confirm_transaction?transaction_id={d.id}", follow=True
@@ -174,7 +174,7 @@ def test_confirm_no_amount(client, acc1_usd_deposit_transaction_factory):
 
 
 @pytest.mark.django_db
-def test_confirm_invalid_amount(client, acc1_usd_deposit_transaction_factory):
+def test_deposit_confirm_invalid_amount(client, acc1_usd_deposit_transaction_factory):
     d = acc1_usd_deposit_transaction_factory()
     response = client.get(
         f"/deposit/confirm_transaction?transaction_id={d.id}&amount=foo", follow=True
@@ -185,7 +185,7 @@ def test_confirm_invalid_amount(client, acc1_usd_deposit_transaction_factory):
 
 
 @pytest.mark.django_db
-def test_confirm_incorrect_amount(client, acc1_usd_deposit_transaction_factory):
+def test_deposit_confirm_incorrect_amount(client, acc1_usd_deposit_transaction_factory):
     d = acc1_usd_deposit_transaction_factory()
     incorrect_amount = d.amount_in + 1
     response = client.get(
@@ -200,7 +200,20 @@ def test_confirm_incorrect_amount(client, acc1_usd_deposit_transaction_factory):
 
 
 @pytest.mark.django_db
-def test_confirm_success(client, acc1_usd_deposit_transaction_factory):
+@patch("stellar_base.horizon.Horizon.base_fee", return_value=100)
+@patch("stellar_base.builder.Builder.get_sequence", return_value=1)
+@patch("stellar_base.address.Address.get", return_value=True)
+@patch("stellar_base.builder.Builder.submit", return_value=True)
+@patch("deposit.tasks.create_stellar_deposit.delay", side_effect=create_stellar_deposit)
+def test_deposit_confirm_success(
+    mock_delay,
+    mock_submit,
+    mock_get,
+    mock_get_sequence,
+    mock_base_fee,
+    client,
+    acc1_usd_deposit_transaction_factory,
+):
     d = acc1_usd_deposit_transaction_factory()
     amount = d.amount_in
     response = client.get(
@@ -223,7 +236,7 @@ def test_confirm_success(client, acc1_usd_deposit_transaction_factory):
     "stellar_base.builder.Builder.submit",
     side_effect=HorizonError(msg=TRUSTLINE_FAILURE_XDR, status_code=400),
 )
-def test_async_deposit_no_trustline(
+def test_deposit_stellar_no_trustline(
     mock_submit,
     mock_get,
     mock_sequence,
@@ -244,7 +257,7 @@ def test_async_deposit_no_trustline(
     side_effect=HorizonError(msg="get failed", status_code=404),
 )
 @patch("stellar_base.builder.Builder.submit", return_value=True)
-def test_async_deposit_no_account(
+def test_deposit_stellar_no_account(
     mock_submit,
     mock_get,
     mock_sequence,
@@ -262,7 +275,7 @@ def test_async_deposit_no_account(
 @patch("stellar_base.builder.Builder.get_sequence", return_value=1)
 @patch("stellar_base.address.Address.get", return_value=True)
 @patch("stellar_base.builder.Builder.submit", return_value=True)
-def test_async_deposit_success(
+def test_deposit_stellar_success(
     mock_submit,
     mock_get,
     mock_sequence,
@@ -281,7 +294,7 @@ def test_async_deposit_success(
 @patch("stellar_base.address.Address.get", return_value=True)
 @patch("stellar_base.builder.Builder.submit", return_value=True)
 @patch("deposit.tasks.create_stellar_deposit.delay", side_effect=create_stellar_deposit)
-def test_interactive_success(
+def test_deposit_interactive_confirm_success(
     mock_delay,
     mock_submit,
     mock_get,
@@ -300,8 +313,31 @@ def test_interactive_success(
 
     transaction_id = content["id"]
     url = content["url"]
-    response = client.post(url, {"amount": 20})
+    amount = 20
+    response = client.post(url, {"amount": amount})
     assert response.status_code == 200
+    assert (
+        Transaction.objects.get(id=transaction_id).status
+        == Transaction.STATUS.pending_external
+    )
+
+    response = client.get(
+        f"/deposit/confirm_transaction?amount={amount}&transaction_id={transaction_id}",
+        follow=True,
+    )
+    assert response.status_code == 200
+    content = json.loads(response.content)
+    transaction = content["transaction"]
+    assert transaction
+
+    # The transaction in the response was serialized before the Stellar transaction
+    # to ensure deterministic behavior in testing. Thus, the response will contain
+    # a transaction with status `pending_anchor`.
+    assert transaction["status"] == Transaction.STATUS.pending_anchor
+    assert float(transaction["amount_in"]) == amount
+
+    # Since we have mocked the `create_deposit` function to success, the
+    # transaction itself should be stored with status `completed`.
     assert (
         Transaction.objects.get(id=transaction_id).status
         == Transaction.STATUS.completed
@@ -317,7 +353,7 @@ def test_interactive_success(
     "stellar_base.horizon.Horizon.account",
     return_value={"balances": [{"asset_code": "USD"}]},
 )
-def test_check_trustlines(
+def test_deposit_check_trustlines_success(
     mock_account,
     mock_submit,
     mock_get,
@@ -337,7 +373,7 @@ def test_check_trustlines(
 @pytest.mark.django_db
 @pytest.mark.skip
 @patch("deposit.tasks.create_stellar_deposit.delay", side_effect=create_stellar_deposit)
-def test_check_trustlines_horizon(
+def test_deposit_check_trustlines_horizon(
     mock_delay, client, acc1_usd_deposit_transaction_factory
 ):
     # Initiate a transaction with a new Stellar account.
@@ -356,17 +392,33 @@ def test_check_trustlines_horizon(
     assert content["type"] == "interactive_customer_info_needed"
 
     # Complete the interactive deposit. The transaction should be set
-    # to pending_trust, as we have not actually created and funded the
-    # generated Stellar account.
+    # to pending_external, since external confirmation has not happened.
     print("Completing interactive deposit.")
     transaction_id = content["id"]
     url = content["url"]
-    response = client.post(url, {"amount": 20})
+    amount = 20
+    response = client.post(url, {"amount": amount})
     assert response.status_code == 200
     assert (
         Transaction.objects.get(id=transaction_id).status
-        == Transaction.STATUS.pending_trust
+        == Transaction.STATUS.pending_external
     )
+
+    # As a result of this external confirmation, the transaction should
+    # be `pending_trust`. This will trigger a synchronous call to
+    # `create_stellar_deposit`, which will register the account on testnet.
+    # Since the account will not have a trustline, the status will still
+    # be `pending_trust`.
+    response = client.get(
+        f"/deposit/confirm_transaction?amount={amount}&transaction_id={transaction_id}",
+        follow=True,
+    )
+    assert response.status_code == 200
+    content = json.loads(response.content)
+    transaction = content["transaction"]
+    assert transaction
+    assert transaction["status"] == Transaction.STATUS.pending_anchor
+    assert float(transaction["amount_in"]) == amount
 
     # The Stellar account has not been registered, so
     # this should not change the status of the Transaction.

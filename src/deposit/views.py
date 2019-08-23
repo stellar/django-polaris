@@ -98,6 +98,9 @@ def confirm_transaction(request):
     transaction.status = Transaction.STATUS.pending_anchor
     transaction.save()
     serializer = TransactionSerializer(transaction)
+
+    # Asynchronously launch the deposit Stellar transaction.
+    create_stellar_deposit.delay(transaction.id)
     return Response({"transaction": serializer.data})
 
 
@@ -144,7 +147,6 @@ def interactive_deposit(request):
                 amount_fee=amount_fee,
             )
             transaction.save()
-            create_stellar_deposit.delay(transaction.id)
             # TODO: Use the proposed callback approach.
             return render(request, "deposit/success.html")
     return render(request, "deposit/form.html", {"form": form})
