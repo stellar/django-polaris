@@ -1,5 +1,4 @@
-import json
-
+"""This module defines the asynchronous tasks needed for deposits, run via Celery."""
 from celery.task.schedules import crontab
 from celery.decorators import periodic_task
 from django.conf import settings
@@ -7,7 +6,6 @@ from django.utils.timezone import now
 from stellar_base.address import Address
 from stellar_base.builder import Builder
 from stellar_base.exceptions import HorizonError
-from stellar_base.horizon import horizon_testnet
 from stellar_base.horizon import Horizon
 
 from app.celery import app
@@ -19,6 +17,7 @@ SUCCESS_XDR = "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA="
 
 @app.task
 def create_stellar_deposit(transaction_id):
+    """Create and submit the Stellar transaction for the deposit."""
     transaction = Transaction.objects.get(id=transaction_id)
     # We can assume transaction has valid stellar_account, amount_in, and asset
     # because this task is only called after those parameters are validated.
@@ -90,6 +89,10 @@ def create_stellar_deposit(transaction_id):
 
 @periodic_task(run_every=(crontab(minute="*/1")), ignore_result=True)
 def check_trustlines():
+    """
+    Create Stellar transaction for deposit transactions marked as pending trust, if a
+    trustline has been created.
+    """
     transactions = Transaction.objects.filter(status=Transaction.STATUS.pending_trust)
     for transaction in transactions:
         account = Horizon().account(transaction.stellar_account)

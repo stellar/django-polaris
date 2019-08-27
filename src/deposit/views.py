@@ -1,3 +1,10 @@
+"""
+This module implements the logic for the `/deposit` endpoint. This lets a user
+initiate a deposit of some asset into their Stellar account.
+
+Note that before the Stellar transaction is submitted, an external agent must
+confirm that the first step of the deposit successfully completed.
+"""
 import base64
 import binascii
 import json
@@ -19,11 +26,12 @@ from info.models import Asset
 from transaction.models import Transaction
 from transaction.serializers import TransactionSerializer
 
-from .forms import DepositForm
 from deposit.tasks import create_stellar_deposit
+from .forms import DepositForm
 
 
 def _create_transaction_id():
+    """Creates a unique UUID for a Transaction, via checking existing entries."""
     while True:
         transaction_id = uuid.uuid4()
         if not Transaction.objects.filter(id=transaction_id).exists():
@@ -32,6 +40,7 @@ def _create_transaction_id():
 
 
 def _construct_interactive_url(request, transaction_id):
+    """Constructs the URL for the `/deposit/interactive_deposit` page."""
     qparams = urlencode(
         {
             "asset_code": request.GET.get("asset_code"),
@@ -48,6 +57,7 @@ def _construct_interactive_url(request, transaction_id):
 # so we should not need to validate these parameters. Alternately, we can
 # pass these to the pop-up.
 def _verify_optional_args(request):
+    """Verify the optional arguments to `GET /deposit`."""
     memo_type = request.GET.get("memo_type")
     if memo_type and memo_type not in ("text", "id", "hash"):
         return render_error_response("invalid 'memo_type'")
@@ -69,6 +79,16 @@ def _verify_optional_args(request):
 
 @api_view()
 def confirm_transaction(request):
+    """
+    `GET /deposit/confirm_transaction` is used by an external agent to confirm
+    that they have processed the transaction. This triggers submission of the
+    corresponding Stellar transaction.
+
+    Note that this endpoint is not part of the SEP 6 workflow, it is merely
+    a mechanism for confirming the external transaction for demonstration purposes.
+    If reusing this technique in a real-life scenario, add a strictly secure
+    authentication system.
+    """
     # Validate the provided transaction_id and amount.
     transaction_id = request.GET.get("transaction_id")
     if not transaction_id:
@@ -111,6 +131,11 @@ def confirm_transaction(request):
 @xframe_options_exempt
 @api_view(["GET", "POST"])
 def interactive_deposit(request):
+    """
+    `GET /deposit/interactive_deposit` opens a form used to input information
+    about the deposit. This creates a corresponding transaction in our
+    database, pending processing by the external agent.
+    """
     # Validate query parameters: account, asset_code, transaction_id.
     account = request.GET.get("account")
     if not account:
@@ -160,12 +185,18 @@ def interactive_deposit(request):
 
 @api_view()
 def deposit(request):
+    """
+    `GET /deposit` initiates the deposit and returns an interactive
+    deposit form to the user.
+    """
     asset_code = request.GET.get("asset_code")
     stellar_account = request.GET.get("account")
 
     # Verify that the request is valid.
     if not all([asset_code, stellar_account]):
-        return render_error_response("asset_code and account are required parameters")
+        return render_error_response(
+            "`asset_code` and `account` are required parameters"
+        )
 
     # Verify that the asset code exists in our database, with deposit enabled.
     asset = Asset.objects.filter(name=asset_code).first()
@@ -173,7 +204,7 @@ def deposit(request):
         return render_error_response(f"invalid operation for asset {asset_code}")
 
     try:
-        address = Address(address=stellar_account)
+        Address(address=stellar_account)
     except (StellarAddressInvalidError, NotValidParamError):
         return render_error_response("invalid 'account'")
 
@@ -181,8 +212,6 @@ def deposit(request):
     verify_optional_args = _verify_optional_args(request)
     if verify_optional_args:
         return verify_optional_args
-
-    # TODO: Check if the provided Stellar account exists, and if not, create it.
 
     # Construct interactive deposit pop-up URL.
     transaction_id = _create_transaction_id()

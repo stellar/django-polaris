@@ -1,8 +1,10 @@
+"""This module defines forms used in the deposit view."""
 from django import forms
-from django.core.exceptions import ValidationError
 
 
 class DepositForm(forms.Form):
+    """This form accepts the amount to deposit from the user."""
+
     amount = forms.FloatField(
         help_text="Enter the amount to deposit, as a two decimal places float.",
         min_value=0,
@@ -11,6 +13,7 @@ class DepositForm(forms.Form):
     asset = None
 
     def clean_amount(self):
+        """Validate the provided amount of an asset."""
         amount = round(self.cleaned_data["amount"], 2)
         if self.asset:
             if amount < self.asset.deposit_min_amount:

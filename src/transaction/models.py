@@ -1,3 +1,4 @@
+"""This module defines the models for the transaction app."""
 import uuid
 
 from django.db import models
@@ -6,6 +7,11 @@ from model_utils import Choices
 
 
 class Transaction(models.Model):
+    """
+    This defines a Transaction, as described in the SEP-6 `transaction` endpoint.
+    See: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#transactions
+    """
+
     KIND = Choices("deposit", "withdrawal")
     STATUS = Choices(
         "completed",

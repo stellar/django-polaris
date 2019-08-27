@@ -1,3 +1,4 @@
+"""This module defines the logic for the `/info` endpoint."""
 import json
 from rest_framework.decorators import api_view
 from rest_framework.response import Response

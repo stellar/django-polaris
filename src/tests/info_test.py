@@ -1,3 +1,4 @@
+"""This module tests the `/info` endpoint."""
 import json
 import pytest
 

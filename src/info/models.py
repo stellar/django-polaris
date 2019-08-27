@@ -1,9 +1,15 @@
+"""This module defines the models for the info app."""
 from django.core.validators import MinLengthValidator
 from django.db import models
 from model_utils.models import TimeStampedModel
 
 
 class Asset(TimeStampedModel):
+    """
+    This defines an Asset, as described in the SEP-6 `info` endpoint.
+    See: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#info
+    """
+
     name = models.TextField(unique=True, validators=[MinLengthValidator(1)])
 
     # Deposit-related info
@@ -27,11 +33,21 @@ class Asset(TimeStampedModel):
 
 
 class WithdrawalType(TimeStampedModel):
+    """
+    This defines a type of withdrawal, as serialized in the SEP 6 `info` endpoint.
+    See: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#info
+    """
+
     name = models.TextField(blank=False, validators=[MinLengthValidator(1)])
     fields = models.ManyToManyField("info.InfoField")
 
 
 class InfoField(TimeStampedModel):
+    """
+    This defines a field within a deposit for an asset, as serialized in the SEP 6 `info` endpoint.
+    See: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#info
+    """
+
     name = models.TextField(blank=False, validators=[MinLengthValidator(1)])
     description = models.TextField()
     optional = models.BooleanField(null=False, default=False)

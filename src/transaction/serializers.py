@@ -1,9 +1,12 @@
+"""This module defines a serializer for the transaction model."""
 from rest_framework import serializers
 
 from .models import Transaction
 
 
 class TransactionSerializer(serializers.ModelSerializer):
+    """Defines the custom serializer for a transaction."""
+
     id = serializers.CharField()
     amount_in = serializers.CharField()
     amount_out = serializers.CharField()
@@ -33,4 +36,3 @@ class TransactionSerializer(serializers.ModelSerializer):
             "withdraw_memo",
             "withdraw_memo_type",
         ]
-

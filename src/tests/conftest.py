@@ -1,3 +1,7 @@
+"""
+This module sets up the test configuration. It defines fixtures needed to test various Django
+models, such as the transactions and assets.
+"""
 import pytest
 
 from django.utils import timezone
@@ -8,11 +12,13 @@ STELLAR_ACCOUNT_1 = "GBCTKB22TYTLXHDWVENZGWMJWJ5YK2GTSF7LHAGMTSNAGLLSZVXRGXEW"
 STELLAR_ACCOUNT_2 = "GAB4FHP66SOQ4L22WQGW7BQCHGWRFWXQ6MWBZV2YRVTXSK3QPNFOTM3T"
 
 
-@pytest.fixture(scope="session")
-def usd_asset_factory():
+@pytest.fixture(scope="session", name="usd_asset_factory")
+def fixture_usd_asset_factory():
+    """Factory method fixture to populate the test database with a USD asset."""
+
     def create_usd_asset():
         """
-        Populates a set of test assets that compose the example /info response, according
+        Creates a test USD asset that composes the example /info response, according
         to https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#response-2
         """
         usd_asset = Asset.objects.create(
@@ -70,7 +76,10 @@ def usd_asset_factory():
 
         withdrawal_cash_dest_field = InfoField.objects.create(
             name="dest",
-            description="your email address. Your cashout PIN will be sent here. If not provided, your account's default email will be used",
+            description=(
+                "your email address. Your cashout PIN will be sent here. "
+                "If not provided, your account's default email will be used"
+            ),
             optional=True,
         )
         cash_wtype = WithdrawalType.objects.create(name="cash")
@@ -85,9 +94,15 @@ def usd_asset_factory():
     return create_usd_asset
 
 
-@pytest.fixture(scope="session")
-def eth_asset_factory():
+@pytest.fixture(scope="session", name="eth_asset_factory")
+def fixture_eth_asset_factory():
+    """Factory method fixture to populate the test database with an ETH asset."""
+
     def create_eth_asset():
+        """
+        Creates a test ETH asset that composes the example /info response, according
+        to https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#response-2
+        """
         eth_asset, _ = Asset.objects.get_or_create(
             name="ETH",
             # Deposit Info
@@ -111,6 +126,8 @@ def eth_asset_factory():
 
 @pytest.fixture(scope="session")
 def acc1_usd_deposit_transaction_factory(usd_asset_factory):
+    """Factory method fixture to populate the test database with a USD deposit transaction."""
+
     def create_deposit_transaction():
         usd_asset = usd_asset_factory()
 
@@ -120,7 +137,9 @@ def acc1_usd_deposit_transaction_factory(usd_asset_factory):
             kind=Transaction.KIND.deposit,
             status=Transaction.STATUS.pending_external,
             status_eta=3600,
-            external_transaction_id="2dd16cb409513026fbe7defc0c6f826c2d2c65c3da993f747d09bf7dafd31093",
+            external_transaction_id=(
+                "2dd16cb409513026fbe7defc0c6f826c2d2c65c3da993f747d09bf7dafd31093"
+            ),
             amount_in=18.34,
             amount_out=18.24,
             amount_fee=0.1,
@@ -131,6 +150,10 @@ def acc1_usd_deposit_transaction_factory(usd_asset_factory):
 
 @pytest.fixture(scope="session")
 def acc2_eth_withdrawal_transaction_factory(eth_asset_factory):
+    """
+    Factory method fixture to populate the test database with a ETH withdrawal transaction.
+    """
+
     def create_withdrawal_transaction():
         eth_asset = eth_asset_factory()
 
@@ -143,8 +166,12 @@ def acc2_eth_withdrawal_transaction_factory(eth_asset_factory):
             amount_out=495.0,
             amount_fee=3,
             completed_at=timezone.now(),
-            stellar_transaction_id="17a670bc424ff5ce3b386dbfaae9990b66a2a37b4fbe51547e8794962a3f9e6a",
-            external_transaction_id="2dd16cb409513026fbe7defc0c6f826c2d2c65c3da993f747d09bf7dafd31094",
+            stellar_transaction_id=(
+                "17a670bc424ff5ce3b386dbfaae9990b66a2a37b4fbe51547e8794962a3f9e6a"
+            ),
+            external_transaction_id=(
+                "2dd16cb409513026fbe7defc0c6f826c2d2c65c3da993f747d09bf7dafd31094"
+            ),
             withdraw_anchor_account="1xb914",
             withdraw_memo="Deposit for Mr. John Doe (id: 1001)",
             withdraw_memo_type=Transaction.MEMO_TYPES.text,
@@ -155,6 +182,10 @@ def acc2_eth_withdrawal_transaction_factory(eth_asset_factory):
 
 @pytest.fixture(scope="session")
 def acc2_eth_deposit_transaction_factory(eth_asset_factory):
+    """
+    Factory method fixture to populate the test database with an ETH deposit transaction.
+    """
+
     def create_deposit_transaction():
         eth_asset = eth_asset_factory()
 
@@ -166,7 +197,9 @@ def acc2_eth_deposit_transaction_factory(eth_asset_factory):
             amount_in=200.0,
             amount_out=195.0,
             amount_fee=5.0,
-            external_transaction_id="fab370bc424ff5ce3b386dbfaae9990b66a2a37b4fbe51547e8794962a3f9fdf",
+            external_transaction_id=(
+                "fab370bc424ff5ce3b386dbfaae9990b66a2a37b4fbe51547e8794962a3f9fdf"
+            ),
             deposit_memo="86dbfaae9990b66a2a37b4",
             deposit_memo_type=Transaction.MEMO_TYPES.hash,
         )
