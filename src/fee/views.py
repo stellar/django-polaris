@@ -12,41 +12,10 @@ OPERATION_WITHDRAWAL = settings.OPERATION_WITHDRAWAL
 
 def _op_type_is_valid(asset_code: str, operation: str, op_type: str) -> bool:
     asset = Asset.objects.get(name=asset_code)
-    if all(
-        [
-            operation == OPERATION_WITHDRAWAL,
-            asset.withdrawal_enabled,
-            any(
-                [
-                    op_type and asset.withdrawal_types.filter(name=op_type).exists(),
-                    not op_type,
-                ]
-            ),
-        ]
-    ):
-        # There is an operation matching the op_type specified, so type is valid,
-        # OR op_type is not specified so we're good to go since asset withdrawal
-        # is enabled.
+    if all([operation == OPERATION_WITHDRAWAL, asset.withdrawal_enabled, not op_type]):
         return True
 
-    if all(
-        [
-            operation == OPERATION_DEPOSIT,
-            asset.deposit_enabled,
-            any(
-                (
-                    op_type
-                    and asset.deposit_fields.filter(
-                        name="type", choices__icontains=f'"{op_type}"'
-                    ).exists(),
-                    not op_type,
-                )
-            ),
-        ]
-    ):
-        # There is an operation matching the op_type specified, so type is valid,
-        # OR op_type is not specified so we're good to go since asset deposit
-        # is enabled.
+    if all([operation == OPERATION_DEPOSIT, asset.deposit_enabled, not op_type]):
         return True
 
     return False

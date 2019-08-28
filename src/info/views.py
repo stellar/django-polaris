@@ -3,21 +3,7 @@ import json
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from .models import Asset, WithdrawalType
-
-
-def _get_asset_deposit_extra_fields(asset: Asset):
-    fields_dict = {}
-    fields = asset.deposit_fields.all()
-    for field in fields:
-        fields_dict[field.name] = {
-            "description": field.description,
-            "optional": field.optional,
-        }
-
-        if field.choices:
-            fields_dict[field.name]["choices"] = json.loads(field.choices)
-    return fields_dict
+from .models import Asset
 
 
 def _get_asset_deposit_info(asset: Asset):
@@ -29,24 +15,9 @@ def _get_asset_deposit_info(asset: Asset):
             "fee_percent": asset.deposit_fee_percent,
             "min_amount": asset.deposit_min_amount,
             "max_amount": asset.deposit_max_amount,
-            "fields": _get_asset_deposit_extra_fields(asset),
         }
 
     return {"enabled": False}
-
-
-def _get_asset_withdrawal_type_fields(wtype: WithdrawalType):
-    return {
-        field.name: {"description": field.description, "optional": field.optional}
-        for field in wtype.fields.all()
-    }
-
-
-def _get_asset_withdrawal_types(asset: Asset):
-    return {
-        wtype.name: {"fields": _get_asset_withdrawal_type_fields(wtype)}
-        for wtype in asset.withdrawal_types.all()
-    }
 
 
 def _get_asset_withdrawal_info(asset: Asset):
@@ -58,7 +29,6 @@ def _get_asset_withdrawal_info(asset: Asset):
             "fee_percent": asset.withdrawal_fee_percent,
             "min_amount": asset.withdrawal_min_amount,
             "max_amount": asset.withdrawal_max_amount,
-            "types": _get_asset_withdrawal_types(asset),
         }
 
     return {"enabled": False}
