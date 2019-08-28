@@ -11,6 +11,10 @@ class TransactionSerializer(serializers.ModelSerializer):
     amount_in = serializers.CharField()
     amount_out = serializers.CharField()
     amount_fee = serializers.CharField()
+    more_info_url = serializers.SerializerMethodField()
+
+    def get_more_info_url(self, transaction_instance):
+        return self.context.get("more_info_url")
 
     class Meta:
         model = Transaction
@@ -35,4 +39,5 @@ class TransactionSerializer(serializers.ModelSerializer):
             "withdraw_anchor_account",
             "withdraw_memo",
             "withdraw_memo_type",
+            "more_info_url",
         ]

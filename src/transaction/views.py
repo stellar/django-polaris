@@ -1,10 +1,16 @@
 """This module defines the logic for the `/transaction` endpoint."""
+import json
+from urllib.parse import urlencode
+
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
 
 from django.conf import settings
+from django.shortcuts import render
+from django.urls import reverse
 
+from helpers import render_error_response
 from .models import Transaction
 from .serializers import TransactionSerializer
 
@@ -26,6 +32,63 @@ def _compute_qset_filters(req_params, translation_dict):
         translation_dict[rp]: req_params[rp]
         for rp in filter(lambda i: i in translation_dict, req_params.keys())
     }
+
+
+def _get_transaction_from_request(request):
+    translation_dict = {
+        "id": "id",
+        "stellar_transaction_id": "stellar_transaction_id",
+        "external_transaction_id": "external_transaction_id",
+    }
+
+    qset_filter = _compute_qset_filters(request.GET, translation_dict)
+    if not qset_filter:
+        raise AttributeError(
+            "at least one of id, stellar_transaction_id, or external_transaction_id must be provided"
+        )
+    try:
+        return Transaction.objects.get(**qset_filter)
+    except Transaction.DoesNotExist as exc:
+        raise exc
+
+
+def _construct_more_info_url(request):
+    qparams_dict = {}
+    transaction_id = request.GET.get("id")
+    if transaction_id:
+        qparams_dict["id"] = transaction_id
+    stellar_transaction_id = request.GET.get("stellar_transaction_id")
+    if stellar_transaction_id:
+        qparams_dict["stellar_transaction_id"] = stellar_transaction_id
+    external_transaction_id = request.GET.get("external_transaction_id")
+    if external_transaction_id:
+        qparams_dict["external_transaction_id"] = external_transaction_id
+
+    qparams = urlencode(qparams_dict)
+    path = reverse("more_info")
+    path_params = f"{path}?{qparams}"
+    return request.build_absolute_uri(path_params)
+
+
+@api_view()
+def more_info(request):
+    """
+    Popup to display more information about a specific transaction.
+    See table: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#4-customer-information-status
+    """
+    try:
+        request_transaction = _get_transaction_from_request(request)
+    except AttributeError as exc:
+        return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+    except Transaction.DoesNotExist:
+        return Response(
+            {"error": "transaction not found"}, status=status.HTTP_404_NOT_FOUND
+        )
+    data = {
+        "amount": request_transaction.amount_in,
+        "asset": request_transaction.asset.name,
+    }
+    return render(request, "transaction/more_info.html", context={"data": data})
 
 
 @api_view()
@@ -69,7 +132,11 @@ def transactions(request):
         qset_filter["started_at__lt"] = start_transaction.started_at
 
     transactions_qset = Transaction.objects.filter(**qset_filter)[:limit]
-    serializer = TransactionSerializer(transactions_qset, many=True)
+    serializer = TransactionSerializer(
+        transactions_qset,
+        many=True,
+        context={"more_info_url": _construct_more_info_url(request)},
+    )
 
     return Response({"transactions": serializer.data})
 
@@ -81,26 +148,16 @@ def transaction(request):
     See: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#single-historical-transaction
     """
 
-    translation_dict = {
-        "id": "id",
-        "stellar_transaction_id": "stellar_transaction_id",
-        "external_transaction_id": "external_transaction_id",
-    }
-
-    qset_filter = _compute_qset_filters(request.GET, translation_dict)
-    if not qset_filter:
-        return Response(
-            {
-                "error": "at least one of id, stellar_transaction_id, or external_transaction_id must be provided"
-            },
-            status=status.HTTP_400_BAD_REQUEST,
-        )
-
-    transaction_qset = Transaction.objects.filter(**qset_filter).first()
-    if not transaction_qset:
+    try:
+        request_transaction = _get_transaction_from_request(request)
+    except AttributeError as exc:
+        return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+    except Transaction.DoesNotExist:
         return Response(
             {"error": "transaction not found"}, status=status.HTTP_404_NOT_FOUND
         )
-
-    serializer = TransactionSerializer(transaction_qset)
+    serializer = TransactionSerializer(
+        request_transaction,
+        context={"more_info_url": _construct_more_info_url(request)},
+    )
     return Response({"transaction": serializer.data})

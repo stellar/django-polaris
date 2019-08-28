@@ -14,6 +14,7 @@ from urllib.parse import urlencode
 from django.conf import settings
 from django.shortcuts import render
 from django.urls import reverse
+from django.utils.timezone import now
 from django.views.decorators.clickjacking import xframe_options_exempt
 from rest_framework import status
 from rest_framework.decorators import api_view
@@ -174,6 +175,7 @@ def interactive_deposit(request):
                 status=Transaction.STATUS.pending_external,
                 amount_in=amount_in,
                 amount_fee=amount_fee,
+                to_address=account,
             )
             transaction.save()
 
