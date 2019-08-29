@@ -14,15 +14,15 @@ class Asset(TimeStampedModel):
 
     # Deposit-related info
     deposit_enabled = models.BooleanField(null=False, default=True)
-    deposit_fee_fixed = models.FloatField()
-    deposit_fee_percent = models.FloatField()
-    deposit_min_amount = models.FloatField()
-    deposit_max_amount = models.FloatField()
+    deposit_fee_fixed = models.FloatField(default=1.0, blank=True)
+    deposit_fee_percent = models.FloatField(default=0.01, blank=True)
+    deposit_min_amount = models.FloatField(default=10.0, blank=True)
+    deposit_max_amount = models.FloatField(default=10000.0, blank=True)
 
     # Withdrawal-related info
     withdrawal_enabled = models.BooleanField(null=False, default=True)
-    withdrawal_fee_fixed = models.FloatField()
-    withdrawal_fee_percent = models.FloatField()
-    withdrawal_min_amount = models.FloatField()
-    withdrawal_max_amount = models.FloatField()
+    withdrawal_fee_fixed = models.FloatField(default=1.0, blank=True)
+    withdrawal_fee_percent = models.FloatField(default=0.01, blank=True)
+    withdrawal_min_amount = models.FloatField(default=10.0, blank=True)
+    withdrawal_max_amount = models.FloatField(default=10000.0, blank=True)
 

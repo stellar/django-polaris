@@ -3,4 +3,12 @@ from django.contrib import admin
 from .models import Asset
 
 
-admin.site.register(Asset)
+class AssetAdmin(admin.ModelAdmin):
+    """
+    This defines the admin view of an Asset.
+    """
+
+    list_display = "name", "deposit_enabled", "withdrawal_enabled"
+
+
+admin.site.register(Asset, AssetAdmin)

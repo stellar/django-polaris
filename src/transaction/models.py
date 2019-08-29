@@ -1,8 +1,9 @@
 """This module defines the models for the transaction app."""
 import uuid
 
-from django.db import models
+from django.contrib import admin
 from django.core.validators import MinLengthValidator
+from django.db import models
 from model_utils import Choices
 
 
@@ -67,6 +68,9 @@ class Transaction(models.Model):
     withdraw_memo_type = models.CharField(
         choices=MEMO_TYPES, default=MEMO_TYPES.text, max_length=10
     )
+
+    def asset_name(self):
+        return self.asset.name
 
     class Meta:
         ordering = ("-started_at",)
