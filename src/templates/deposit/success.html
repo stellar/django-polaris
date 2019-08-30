@@ -11,8 +11,9 @@
     Success! You may now close this window. A postMessage has also been
     published to either window.opener or window.parent.
   </p>
+  <a class="btn btn-primary" id="externalButton" onclick="submitExternal()">Admin: Confirm external transaction.</a>
 
-  <script>
+  <script type="text/javascript">
     function postTransactionCallback() {
       var targetWindow, transaction;
 
@@ -30,7 +31,36 @@
       targetWindow.postMessage(transaction, "*");
     }
 
-    postTransactionCallback();
+    function submitExternal() {
+      var transaction, amount, queryMap, transactionId, xhr, xhrUrl;
+
+      // Get amount from the transaction JSON.
+      transaction = JSON.parse('{{ tx_json|safe }}');
+      amount = transaction["transaction"]["amount_in"];
+
+      // Get transaction ID from query parameters.
+      queryMap = decodeURI(window.location.search)
+        .replace('?', '')
+        .split('&')
+        .map(param => param.split('='))
+        .reduce((values, [key, value]) => {
+          values[key] = value
+          return values
+        }, {});
+      transactionId = queryMap["transaction_id"];
+
+      // Send XHR to confirm transaction.
+      xhr = new XMLHttpRequest();
+      xhrUrl = '/deposit/confirm_transaction?transaction_id=' + transactionId + '&amount=' + amount;
+      xhr.open('get', xhrUrl, true);
+      xhr.onload = function () {
+        if (this.status >= 200 && this.status < 400) {
+          postTransactionCallback();
+        }
+      };
+      xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded; charset=UTF-8');
+      xhr.send();
+    }
   </script>
 </section>
 {% endblock %}
