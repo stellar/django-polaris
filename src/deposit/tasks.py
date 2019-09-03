@@ -29,7 +29,12 @@ def create_stellar_deposit(transaction_id):
     # the account with at least enough XLM for the minimum
     # reserve and a trust line (recommended 2.01 XLM), update
     # the transaction in our internal database, and return.
-    address = Address(stellar_account)
+
+    address = Address(
+        stellar_account,
+        network=settings.STELLAR_NETWORK,
+        horizon_uri=settings.HORIZON_URI,
+    )
     try:
         address.get()
     except HorizonError as address_exc:
@@ -37,7 +42,11 @@ def create_stellar_deposit(transaction_id):
         if address_exc.status_code != 404:
             return
         starting_balance = settings.ACCOUNT_STARTING_BALANCE
-        builder = Builder(secret=settings.STELLAR_ACCOUNT_SEED)
+        builder = Builder(
+            secret=settings.STELLAR_ACCOUNT_SEED,
+            horizon_uri=settings.HORIZON_URI,
+            network=settings.STELLAR_NETWORK,
+        )
         builder.append_create_account_op(
             destination=stellar_account,
             starting_balance=starting_balance,
@@ -56,7 +65,12 @@ def create_stellar_deposit(transaction_id):
     # asset via a Stellar payment. If that payment succeeds, we update the
     # transaction to completed at the current time. If it fails due to a
     # trustline error, we update the database accordingly. Else, we do not update.
-    builder = Builder(secret=settings.STELLAR_ACCOUNT_SEED)
+
+    builder = Builder(
+        secret=settings.STELLAR_ACCOUNT_SEED,
+        horizon_uri=settings.HORIZON_URI,
+        network=settings.STELLAR_NETWORK,
+    )
     builder.append_payment_op(
         destination=stellar_account,
         asset_code=asset,
@@ -95,7 +109,9 @@ def check_trustlines():
     """
     transactions = Transaction.objects.filter(status=Transaction.STATUS.pending_trust)
     for transaction in transactions:
-        account = Horizon().account(transaction.stellar_account)
+        account = Horizon(horizon_uri=settings.HORIZON_URI).account(
+            transaction.stellar_account
+        )
         try:
             balances = account["balances"]
         except KeyError:

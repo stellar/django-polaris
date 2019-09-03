@@ -39,6 +39,8 @@ ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=[])
 
 STELLAR_ACCOUNT_ADDRESS = env("STELLAR_ACCOUNT_ADDRESS")
 STELLAR_ACCOUNT_SEED = env("STELLAR_ACCOUNT_SEED")
+STELLAR_NETWORK = env("STELLAR_NETWORK", default="TESTNET")
+HORIZON_URI = env("HORIZON_URI", default="https://horizon-testnet.stellar.org/")
 REDIS_URL = env("REDIS_URL", default=None)
 OPERATION_DEPOSIT = "deposit"
 OPERATION_WITHDRAWAL = "withdraw"

@@ -549,9 +549,11 @@ def test_deposit_check_trustlines_horizon(
     asset_code = deposit.asset.name
     asset_issuer = settings.STELLAR_ACCOUNT_ADDRESS
     Asset(code=asset_code, issuer=asset_issuer)
-    builder = Builder(secret=keypair.seed()).append_change_trust_op(
-        asset_code, asset_issuer
-    )
+    builder = Builder(
+        secret=keypair.seed(),
+        horizon_uri=settings.HORIZON_URI,
+        network=settings.STELLAR_NETWORK,
+    ).append_change_trust_op(asset_code, asset_issuer)
     builder.sign()
     response = builder.submit()
     assert response["result_xdr"] == "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAAGAAAAAAAAAAA="

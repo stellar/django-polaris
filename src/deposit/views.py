@@ -206,7 +206,11 @@ def deposit(request):
         return render_error_response(f"invalid operation for asset {asset_code}")
 
     try:
-        Address(address=stellar_account)
+        Address(
+            address=stellar_account,
+            network=settings.STELLAR_NETWORK,
+            horizon_uri=settings.HORIZON_URI,
+        )
     except (StellarAddressInvalidError, NotValidParamError):
         return render_error_response("invalid 'account'")
 
