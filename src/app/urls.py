@@ -22,4 +22,5 @@ urlpatterns = [
     path("fee/", include("fee.urls")),
     path("", include("transaction.urls")),
     path("deposit/", include("deposit.urls")),
+    path(".well-known/", include("stellartoml.urls")),
 ]
