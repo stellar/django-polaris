@@ -9,6 +9,7 @@ from rest_framework import status
 from django.conf import settings
 from django.shortcuts import render
 from django.urls import reverse
+from django.views.decorators.clickjacking import xframe_options_exempt
 
 from helpers import render_error_response
 from .models import Transaction
@@ -70,6 +71,7 @@ def _construct_more_info_url(request):
     return request.build_absolute_uri(path_params)
 
 
+@xframe_options_exempt
 @api_view()
 def more_info(request):
     """
