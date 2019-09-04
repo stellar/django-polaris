@@ -16,7 +16,8 @@ This project was built using Pipenv.
 1. Install redis: `$ brew install redis` (on macOS)
 1. Inside the repo's root, install the project's dependencies: `$ pipenv install`
 1. You'll need a `.env` file (or the equivalent env vars defined). We provide a sample one, which you can copy and modify: `$ cp .env.example .env`
-1. Modify the Stellar account in `.env` as detailed below.
+1. Modify the Stellar account in `.env` as below.
+1. Set up the admin user: `$ pipenv run python src/manage.py createsuperuser`. Provide a username, email, and password of your choice.
 1. Run the database migrations: `$ pipenv run python src/manage.py migrate`
 1. Run the redis server in the background: `$ redis-server --daemonize yes`
 1. Run celery: `$ pipenv run celery worker --app app --beat --workdir src -l info`
@@ -32,3 +33,9 @@ In your virtual environment `.env`, create a minimally funded Stellar account an
 1. Open your virtual environment file, `stellar-anchor-server/.env`.
 1. Set `STELLAR_ACCOUNT_ADDRESS` to the value of `Public Key` that you just funded.
 1. Set `STELLAR_ACCOUNT_SEED` to the value of `Secret Key` from the Keypair Generator.
+
+## Using the admin panel
+Through Django's admin panel, you can create assets, monitor transaction status, and do other administrative tasks.
+The above instructions for "Running the project locally" include the creation of an administrative user.
+Once the project is running locally, navigate to `https://localhost:8000/admin` in a browser. Enter the username and password you set for the superuser above. You should then see the admin panel.
+To create an asset, click `+ Add` in the `Assets` row of the `INFO` table. You can then edit the fields of an asset (its name, deposit values, withdrawal values) and save it.
