@@ -98,6 +98,36 @@ def acc1_usd_deposit_transaction_factory(usd_asset_factory):
 
 
 @pytest.fixture(scope="session")
+def acc1_usd_withdrawal_transaction_factory(usd_asset_factory):
+    """Factory method fixture to populate the test database with a USD withdrawal transaction."""
+
+    def create_withdrawal_transaction():
+        usd_asset = usd_asset_factory()
+
+        return Transaction.objects.create(
+            stellar_account=STELLAR_ACCOUNT_1,
+            asset=usd_asset,
+            kind=Transaction.KIND.withdrawal,
+            status=Transaction.STATUS.completed,
+            amount_in=500.0,
+            amount_out=495.0,
+            amount_fee=3,
+            completed_at=timezone.now(),
+            stellar_transaction_id=(
+                "17a670bc424ff5ce3b386dbfaae9990b66a2a37b4fbe51547e8794962a3f9e6b"
+            ),
+            external_transaction_id=(
+                "2dd16cb409513026fbe7defc0c6f826c2d2c65c3da993f747d09bf7dafd31093"
+            ),
+            withdraw_anchor_account="1xb914",
+            withdraw_memo="Deposit for Mr. John Doe (id: 1001)",
+            withdraw_memo_type=Transaction.MEMO_TYPES.text,
+        )
+
+    return create_withdrawal_transaction
+
+
+@pytest.fixture(scope="session")
 def acc2_eth_withdrawal_transaction_factory(eth_asset_factory):
     """
     Factory method fixture to populate the test database with a ETH withdrawal transaction.

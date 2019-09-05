@@ -98,6 +98,7 @@ def test_fee_invalid_operation_type_withdraw(client, usd_asset_factory):
 def test_fee_withdraw_disabled(client, eth_asset_factory):
     """Fails if the withdraw `operation` is not enabled for the `asset_code`."""
     eth_asset_factory()
+
     response = client.get(
         f"/fee?asset_code=ETH&operation=withdraw&amount=100.0", follow=True
     )

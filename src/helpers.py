@@ -1,9 +1,12 @@
 """This module defines helpers for various endpoints."""
+import uuid
+
 from django.conf import settings
 from rest_framework import status
 from rest_framework.response import Response
 
 from info.models import Asset
+from transaction.models import Transaction
 
 
 def calc_fee(asset: Asset, operation: str, amount: float) -> float:
@@ -26,3 +29,12 @@ def render_error_response(description: str) -> Response:
     """Renders an error response in Django."""
     data = {"error": description}
     return Response(data, status=status.HTTP_400_BAD_REQUEST)
+
+
+def create_transaction_id():
+    """Creates a unique UUID for a Transaction, via checking existing entries."""
+    while True:
+        transaction_id = uuid.uuid4()
+        if not Transaction.objects.filter(id=transaction_id).exists():
+            break
+    return transaction_id

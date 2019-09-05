@@ -22,7 +22,7 @@ from rest_framework.response import Response
 from stellar_base.address import Address
 from stellar_base.exceptions import NotValidParamError, StellarAddressInvalidError
 
-from helpers import calc_fee, render_error_response
+from helpers import calc_fee, render_error_response, create_transaction_id
 from info.models import Asset
 from transaction.models import Transaction
 from transaction.serializers import TransactionSerializer
@@ -31,17 +31,9 @@ from deposit.tasks import create_stellar_deposit
 from .forms import DepositForm
 
 
-def _create_transaction_id():
-    """Creates a unique UUID for a Transaction, via checking existing entries."""
-    while True:
-        transaction_id = uuid.uuid4()
-        if not Transaction.objects.filter(id=transaction_id).exists():
-            break
-    return transaction_id
-
-
 def _construct_interactive_url(request, transaction_id):
-    """Constructs the URL for the `/deposit/interactive_deposit` page."""
+    """Constructs the URL for the deposit application for deposit info.
+    This is located at `/deposit/interactive_deposit`."""
     qparams = urlencode(
         {
             "asset_code": request.GET.get("asset_code"),
@@ -234,7 +226,7 @@ def deposit(request):
         return verify_optional_args
 
     # Construct interactive deposit pop-up URL.
-    transaction_id = _create_transaction_id()
+    transaction_id = create_transaction_id()
     url = _construct_interactive_url(request, transaction_id)
     return Response(
         {"type": "interactive_customer_info_needed", "url": url, "id": transaction_id},
