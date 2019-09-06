@@ -54,8 +54,6 @@ def interactive_withdraw(request):
 
     # POST: The user submitted a form with the withdrawal info.
     else:
-        print("GOT A POST REQUEST")
-        print(f"Transaction id: {transaction_id}")
         if Transaction.objects.filter(id=transaction_id).exists():
             return render_error_response(
                 "transaction with matching 'transaction_id' already exists"
@@ -69,9 +67,15 @@ def interactive_withdraw(request):
         if form.is_valid():
             amount_in = form.cleaned_data["amount"]
             amount_fee = calc_fee(asset, settings.OPERATION_WITHDRAWAL, amount_in)
-            # We copy the UUID to satisfy length requirements of the memo.
+
+            # We use the transaction ID as a memo on the Stellar transaction for the
+            # payment in the withdrawal. This lets us identify that as uniquely
+            # corresponding to this `Transaction` in the database. But a UUID4 is a 32
+            # character hex string, while the Stellar HashMemo requires a 64 character
+            # hex-encoded (32 byte) string. So, we zero-pad the ID to create an
+            # appropriately sized string for the `HashMemo`.
             transaction_id_hex = uuid.UUID(transaction_id).hex
-            withdraw_memo = "0" * len(transaction_id_hex) + transaction_id_hex
+            withdraw_memo = "0" * (64 - len(transaction_id_hex)) + transaction_id_hex
             transaction = Transaction(
                 id=transaction_id,
                 stellar_account=settings.STELLAR_ACCOUNT_ADDRESS,
