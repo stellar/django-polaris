@@ -1,4 +1,4 @@
-{% extends "deposit/base.html" %}
+{% extends "base.html" %}
 
 {% block "title" %}
 <title>Successful Deposit!</title>
@@ -30,6 +30,8 @@
       transaction = JSON.parse('{{ tx_json|safe }}');
       targetWindow.postMessage(transaction, "*");
     }
+
+    postTransactionCallback();
 
     function submitExternal() {
       var transaction, amount, queryMap, transactionId, xhr, xhrUrl;

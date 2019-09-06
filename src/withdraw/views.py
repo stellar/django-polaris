@@ -2,17 +2,24 @@
 This module implements the logic for the `/withdraw` endpoint. This lets a user
 withdraw some asset from their Stellar account into a non Stellar based asset.
 """
+import json
 import uuid
 from urllib.parse import urlencode
 
+from django.conf import settings
+from django.shortcuts import render
 from django.urls import reverse
+from django.views.decorators.clickjacking import xframe_options_exempt
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
+from stellar_base.memo import HashMemo
 
-from helpers import render_error_response, create_transaction_id
+from helpers import render_error_response, create_transaction_id, calc_fee
 from info.models import Asset
 from transaction.models import Transaction
+from transaction.serializers import TransactionSerializer
+from .forms import WithdrawForm
 
 
 def _construct_interactive_url(request, transaction_id):
@@ -26,10 +33,65 @@ def _construct_interactive_url(request, transaction_id):
     return request.build_absolute_uri(url_params)
 
 
-@api_view()
+@xframe_options_exempt
+@api_view(["GET", "POST"])
 def interactive_withdraw(request):
-    # TODO: Fill in interactive withdrawal view.
-    return Response()
+    """
+    `GET /withdraw/interactive_withdraw` opens a form used to input information about
+    the withdrawal. This creates a corresponding transaction in our database.
+    """
+    transaction_id = request.GET.get("transaction_id")
+    if not transaction_id:
+        return render_error_response("no 'transaction_id' provided")
+
+    asset_code = request.GET.get("asset_code")
+    if not asset_code or not Asset.objects.filter(name=asset_code).exists():
+        return render_error_response("invalid 'asset_code'")
+
+    # GET: The server needs to display the form for the user to input withdrawal information.
+    if request.method == "GET":
+        form = WithdrawForm()
+
+    # POST: The user submitted a form with the withdrawal info.
+    else:
+        print("GOT A POST REQUEST")
+        print(f"Transaction id: {transaction_id}")
+        if Transaction.objects.filter(id=transaction_id).exists():
+            return render_error_response(
+                "transaction with matching 'transaction_id' already exists"
+            )
+        form = WithdrawForm(request.POST)
+        asset = Asset.objects.get(name=asset_code)
+        form.asset = asset
+
+        # If the form is valid, we create a transaction pending user action
+        # and render the success page.
+        if form.is_valid():
+            amount_in = form.cleaned_data["amount"]
+            amount_fee = calc_fee(asset, settings.OPERATION_WITHDRAWAL, amount_in)
+            # We copy the UUID to satisfy length requirements of the memo.
+            transaction_id_hex = uuid.UUID(transaction_id).hex
+            withdraw_memo = "0" * len(transaction_id_hex) + transaction_id_hex
+            transaction = Transaction(
+                id=transaction_id,
+                stellar_account=settings.STELLAR_ACCOUNT_ADDRESS,
+                asset=asset,
+                kind=Transaction.KIND.withdrawal,
+                status=Transaction.STATUS.pending_user_transfer_start,
+                amount_in=amount_in,
+                amount_fee=amount_fee,
+                withdraw_anchor_account=settings.STELLAR_ACCOUNT_ADDRESS,
+                withdraw_memo=withdraw_memo,
+                withdraw_memo_type=Transaction.MEMO_TYPES.hash,
+            )
+            transaction.save()
+
+            serializer = TransactionSerializer(transaction)
+            tx_json = json.dumps({"transaction": serializer.data})
+            return render(
+                request, "withdraw/success.html", context={"tx_json": tx_json}
+            )
+    return render(request, "withdraw/form.html", {"form": form})
 
 
 @api_view()
