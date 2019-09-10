@@ -87,9 +87,15 @@ def more_info(request):
             {"error": "transaction not found"}, status=status.HTTP_404_NOT_FOUND
         )
     data = {
+        "id": request_transaction.id,
+        "kind": request_transaction.kind.capitalize(),
+        "status": request_transaction.status,
         "amount": request_transaction.amount_in,
         "asset": request_transaction.asset.name,
+        "started_at": request_transaction.started_at,
     }
+    completed_at = request_transaction.completed_at
+    data["completed_at"] = completed_at if completed_at else "TBD"
     return render(request, "transaction/more_info.html", context={"data": data})
 
 

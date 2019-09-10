@@ -7,8 +7,10 @@
 {% block "content" %}
 <section class="section">
     <p>
-        Please deposit <strong>{{ data.amount }}</strong> of asset <strong>{{ data.asset }}</strong> to account 22093486
-        in the Bank of SEP 6.
+        <strong>{{ data.kind }}</strong> transaction with ID <strong>{{ data.id }}</strong>, amount
+        <strong>{{data.amount}}</strong> of asset <strong>{{data.asset}}</strong> has status
+        <strong>{{ data.status }}</strong>. It started at {{ data.started_at }} and completed at
+        {{ data.completed_at }}.
     </p>
 </section>
 {% endblock %}

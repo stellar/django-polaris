@@ -1,4 +1,5 @@
 """This module defines helpers for various endpoints."""
+import codecs
 import uuid
 
 from django.conf import settings
@@ -38,3 +39,11 @@ def create_transaction_id():
         if not Transaction.objects.filter(id=transaction_id).exists():
             break
     return transaction_id
+
+
+def format_memo_horizon(memo):
+    """
+    Formats a hex memo, as in the Transaction model, to match
+    the base64 Horizon response.
+    """
+    return (codecs.encode(codecs.decode(memo, "hex"), "base64").decode("utf-8")).strip()

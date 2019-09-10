@@ -13,13 +13,13 @@ from django.views.decorators.clickjacking import xframe_options_exempt
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from stellar_base.memo import HashMemo
 
 from helpers import render_error_response, create_transaction_id, calc_fee
 from info.models import Asset
 from transaction.models import Transaction
 from transaction.serializers import TransactionSerializer
 from .forms import WithdrawForm
+from .tasks import watch_stellar_withdraw
 
 
 def _construct_interactive_url(request, transaction_id):
@@ -92,6 +92,7 @@ def interactive_withdraw(request):
 
             serializer = TransactionSerializer(transaction)
             tx_json = json.dumps({"transaction": serializer.data})
+            watch_stellar_withdraw.delay(withdraw_memo)
             return render(
                 request, "withdraw/success.html", context={"tx_json": tx_json}
             )
