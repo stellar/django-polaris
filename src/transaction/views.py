@@ -95,7 +95,11 @@ def more_info(request):
     return render(
         request,
         "transaction/more_info.html",
-        context={"tx_json": tx_json, "asset_code": request_transaction.asset.name},
+        context={
+            "tx_json": tx_json,
+            "transaction": request_transaction,
+            "asset_code": request_transaction.asset.name,
+        },
     )
 
 

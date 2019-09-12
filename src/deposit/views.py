@@ -190,7 +190,11 @@ def interactive_deposit(request):
             return render(
                 request,
                 "transaction/more_info.html",
-                context={"tx_json": tx_json, "asset_code": transaction.asset.name},
+                context={
+                    "tx_json": tx_json,
+                    "transaction": transaction,
+                    "asset_code": transaction.asset.name,
+                },
             )
     return render(request, "deposit/form.html", {"form": form})
 

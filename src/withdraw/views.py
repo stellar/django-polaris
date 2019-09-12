@@ -108,7 +108,11 @@ def interactive_withdraw(request):
             return render(
                 request,
                 "transaction/more_info.html",
-                context={"tx_json": tx_json, "asset_code": transaction.asset.name},
+                context={
+                    "tx_json": tx_json,
+                    "transaction": transaction,
+                    "asset_code": asset_code,
+                },
             )
     return render(request, "withdraw/form.html", {"form": form})
 
