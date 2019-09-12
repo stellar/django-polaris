@@ -103,25 +103,17 @@ def acc1_usd_withdrawal_transaction_factory(usd_asset_factory):
 
     def create_withdrawal_transaction():
         usd_asset = usd_asset_factory()
-
         return Transaction.objects.create(
+            id="80ea73ea-01d3-411a-8d9c-ea22999eef9e",
             stellar_account=STELLAR_ACCOUNT_1,
             asset=usd_asset,
             kind=Transaction.KIND.withdrawal,
-            status=Transaction.STATUS.completed,
-            amount_in=500.0,
-            amount_out=495.0,
-            amount_fee=3,
+            status=Transaction.STATUS.pending_user_transfer_start,
+            amount_in=50.0,
             completed_at=timezone.now(),
-            stellar_transaction_id=(
-                "17a670bc424ff5ce3b386dbfaae9990b66a2a37b4fbe51547e8794962a3f9e6b"
-            ),
-            external_transaction_id=(
-                "2dd16cb409513026fbe7defc0c6f826c2d2c65c3da993f747d09bf7dafd31093"
-            ),
-            withdraw_anchor_account="1xb914",
-            withdraw_memo="Deposit for Mr. John Doe (id: 1001)",
-            withdraw_memo_type=Transaction.MEMO_TYPES.text,
+            stellar_transaction_id="c5e8ada72c0e3c248ac7e1ec0ec97e204c06c295113eedbe632020cd6dc29ff8",
+            withdraw_memo="0000000000000000000000000000000080ea73ea01d3411a8d9cea22999eef9e",
+            withdraw_memo_type=Transaction.MEMO_TYPES.hash,
         )
 
     return create_withdrawal_transaction

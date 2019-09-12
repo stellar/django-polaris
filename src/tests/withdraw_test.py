@@ -209,7 +209,9 @@ def test_withdraw_interactive_failure_incorrect_memo(
 
 @pytest.mark.django_db
 @patch("withdraw.tasks.get_transactions")
-@patch("withdraw.tasks.watch_stellar_withdraw.delay", return_value=None)
+@patch(
+    "withdraw.tasks.watch_stellar_withdraw.delay", return_value=watch_stellar_withdraw
+)
 def test_withdraw_interactive_success_transaction_unsuccessful(
     mock_watch, mock_transactions, client, acc1_usd_withdrawal_transaction_factory
 ):
@@ -227,7 +229,7 @@ def test_withdraw_interactive_success_transaction_unsuccessful(
     transaction_id = content["id"]
     url = content["url"]
     response = client.post(
-        url, {"amount": 20, "bank_account": "123456", "bank": "Bank"}
+        url, {"amount": 50, "bank_account": "123456", "bank": "Bank"}
     )
     assert response.status_code == 200
     transaction = Transaction.objects.get(id=transaction_id)
@@ -239,6 +241,8 @@ def test_withdraw_interactive_success_transaction_unsuccessful(
             "memo_type": "hash",
             "memo": format_memo_horizon(withdraw_memo),
             "successful": False,
+            "id": "c5e8ada72c0e3c248ac7e1ec0ec97e204c06c295113eedbe632020cd6dc29ff8",
+            "envelope_xdr": "AAAAAEU1B1qeJrucdqkbk1mJsnuFaNORfrOAzJyaAy1yzW8TAAAAZAAE2s4AAAABAAAAAAAAAAMAAAAAAAAAAAAAAAAAAAAAgOpz6gHTQRqNnOoimZ7vngAAAAEAAAAAAAAAAQAAAAChQqr7VnYYYH3yq6stKahwdp+8bpL5jMo0TqiIchejqQAAAAFVU0QAAAAAAKFCqvtWdhhgffKrqy0pqHB2n7xukvmMyjROqIhyF6OpAAAAAB3NZQAAAAAAAAAAAA==",
         }
     ]
     watch_stellar_withdraw(withdraw_memo)
@@ -250,7 +254,9 @@ def test_withdraw_interactive_success_transaction_unsuccessful(
 
 @pytest.mark.django_db
 @patch("withdraw.tasks.get_transactions")
-@patch("withdraw.tasks.watch_stellar_withdraw.delay", return_value=None)
+@patch(
+    "withdraw.tasks.watch_stellar_withdraw.delay", return_value=watch_stellar_withdraw
+)
 def test_withdraw_interactive_success_transaction_successful(
     mock_watch, mock_transactions, client, acc1_usd_withdrawal_transaction_factory
 ):
@@ -268,7 +274,7 @@ def test_withdraw_interactive_success_transaction_successful(
     transaction_id = content["id"]
     url = content["url"]
     response = client.post(
-        url, {"amount": 20, "bank_account": "123456", "bank": "Bank"}
+        url, {"amount": 50, "bank_account": "123456", "bank": "Bank"}
     )
     assert response.status_code == 200
     transaction = Transaction.objects.get(id=transaction_id)
@@ -280,6 +286,8 @@ def test_withdraw_interactive_success_transaction_successful(
             "memo_type": "hash",
             "memo": format_memo_horizon(withdraw_memo),
             "successful": True,
+            "id": "c5e8ada72c0e3c248ac7e1ec0ec97e204c06c295113eedbe632020cd6dc29ff8",
+            "envelope_xdr": "AAAAAEU1B1qeJrucdqkbk1mJsnuFaNORfrOAzJyaAy1yzW8TAAAAZAAE2s4AAAABAAAAAAAAAAMAAAAAAAAAAAAAAAAAAAAAgOpz6gHTQRqNnOoimZ7vngAAAAEAAAAAAAAAAQAAAAChQqr7VnYYYH3yq6stKahwdp+8bpL5jMo0TqiIchejqQAAAAFVU0QAAAAAAKFCqvtWdhhgffKrqy0pqHB2n7xukvmMyjROqIhyF6OpAAAAAB3NZQAAAAAAAAAAAA==",
         }
     ]
     watch_stellar_withdraw(withdraw_memo)
