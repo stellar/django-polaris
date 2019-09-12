@@ -19,10 +19,23 @@ SUCCESS_XDR = "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA="
 def create_stellar_deposit(transaction_id):
     """Create and submit the Stellar transaction for the deposit."""
     transaction = Transaction.objects.get(id=transaction_id)
+
+    # We check the Transaction status to avoid double submission of a Stellar
+    # transaction. The Transaction can be either `pending_anchor` if the task
+    # is called from `GET deposit/confirm_transaction` or `pending_trust` if called
+    # from the `check_trustlines()`.
+    if transaction.status not in [
+        Transaction.STATUS.pending_anchor,
+        Transaction.STATUS.pending_trust,
+    ]:
+        return
+    transaction.status = Transaction.STATUS.pending_stellar
+    transaction.save()
+
     # We can assume transaction has valid stellar_account, amount_in, and asset
     # because this task is only called after those parameters are validated.
     stellar_account = transaction.stellar_account
-    payment_amount = transaction.amount_in - transaction.amount_fee
+    payment_amount = round(transaction.amount_in - transaction.amount_fee, 7)
     asset = transaction.asset.name
 
     # If the given Stellar account does not exist, create

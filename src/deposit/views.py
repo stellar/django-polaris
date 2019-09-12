@@ -175,7 +175,7 @@ def interactive_deposit(request):
                 stellar_account=account,
                 asset=asset,
                 kind=Transaction.KIND.deposit,
-                status=Transaction.STATUS.pending_external,
+                status=Transaction.STATUS.pending_user_transfer_start,
                 amount_in=amount_in,
                 amount_fee=amount_fee,
                 to_address=account,
@@ -187,7 +187,11 @@ def interactive_deposit(request):
                 context={"more_info_url": _construct_more_info_url(request)},
             )
             tx_json = json.dumps({"transaction": serializer.data})
-            return render(request, "deposit/success.html", context={"tx_json": tx_json})
+            return render(
+                request,
+                "transaction/more_info.html",
+                context={"tx_json": tx_json, "asset_code": transaction.asset.name},
+            )
     return render(request, "deposit/form.html", {"form": form})
 
 

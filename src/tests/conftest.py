@@ -84,7 +84,7 @@ def acc1_usd_deposit_transaction_factory(usd_asset_factory):
             stellar_account=STELLAR_ACCOUNT_1,
             asset=usd_asset,
             kind=Transaction.KIND.deposit,
-            status=Transaction.STATUS.pending_external,
+            status=Transaction.STATUS.pending_user_transfer_start,
             status_eta=3600,
             external_transaction_id=(
                 "2dd16cb409513026fbe7defc0c6f826c2d2c65c3da993f747d09bf7dafd31093"
@@ -172,7 +172,7 @@ def acc2_eth_deposit_transaction_factory(eth_asset_factory):
             stellar_account=STELLAR_ACCOUNT_2,
             asset=eth_asset,
             kind=Transaction.KIND.deposit,
-            status=Transaction.STATUS.pending_external,
+            status=Transaction.STATUS.pending_user_transfer_start,
             amount_in=200.0,
             amount_out=195.0,
             amount_fee=5.0,

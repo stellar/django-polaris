@@ -33,6 +33,15 @@ def _construct_interactive_url(request, transaction_id):
     return request.build_absolute_uri(url_params)
 
 
+def _construct_more_info_url(request):
+    """Constructs the more info URL for a withdraw."""
+    qparams_dict = {"id": request.GET.get("transaction_id")}
+    qparams = urlencode(qparams_dict)
+    path = reverse("more_info")
+    path_params = f"{path}?{qparams}"
+    return request.build_absolute_uri(path_params)
+
+
 @xframe_options_exempt
 @api_view(["GET", "POST"])
 def interactive_withdraw(request):
@@ -90,11 +99,16 @@ def interactive_withdraw(request):
             )
             transaction.save()
 
-            serializer = TransactionSerializer(transaction)
+            serializer = TransactionSerializer(
+                transaction,
+                context={"more_info_url": _construct_more_info_url(request)},
+            )
             tx_json = json.dumps({"transaction": serializer.data})
             watch_stellar_withdraw.delay(withdraw_memo)
             return render(
-                request, "withdraw/success.html", context={"tx_json": tx_json}
+                request,
+                "transaction/more_info.html",
+                context={"tx_json": tx_json, "asset_code": transaction.asset.name},
             )
     return render(request, "withdraw/form.html", {"form": form})
 

@@ -2,6 +2,8 @@
 import json
 import pytest
 
+from transaction.models import Transaction
+
 
 @pytest.mark.django_db
 def test_transaction_requires_param(
@@ -92,7 +94,7 @@ def test_transaction_stellar_filter(
 
     withdrawal_transaction = content.get("transaction")
     assert withdrawal_transaction["kind"] == "withdrawal"
-    assert withdrawal_transaction["status"] == "completed"
+    assert withdrawal_transaction["status"] == Transaction.STATUS.completed
 
 
 @pytest.mark.django_db
@@ -115,7 +117,10 @@ def test_transaction_external_filter(
 
     withdrawal_transaction = content.get("transaction")
     assert withdrawal_transaction["kind"] == "deposit"
-    assert withdrawal_transaction["status"] == "pending_external"
+    assert (
+        withdrawal_transaction["status"]
+        == Transaction.STATUS.pending_user_transfer_start
+    )
 
 
 @pytest.mark.django_db
@@ -145,7 +150,7 @@ def test_transaction_multiple_filters(
     # Verifying the withdrawal transaction data:
     assert isinstance(withdrawal_transaction["id"], str)
     assert withdrawal_transaction["kind"] == "withdrawal"
-    assert withdrawal_transaction["status"] == "completed"
+    assert withdrawal_transaction["status"] == Transaction.STATUS.completed
 
 
 @pytest.mark.django_db

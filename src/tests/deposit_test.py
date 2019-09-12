@@ -248,7 +248,7 @@ def test_deposit_confirm_success(
     content = json.loads(response.content)
     transaction = content["transaction"]
     assert transaction
-    assert transaction["status"] == "pending_anchor"
+    assert transaction["status"] == Transaction.STATUS.pending_anchor
     assert float(transaction["amount_in"]) == amount
     assert int(transaction["status_eta"]) == 5
 
@@ -284,7 +284,7 @@ def test_deposit_confirm_external_id(
     content = json.loads(response.content)
     transaction = content["transaction"]
     assert transaction
-    assert transaction["status"] == "pending_anchor"
+    assert transaction["status"] == Transaction.STATUS.pending_anchor
     assert float(transaction["amount_in"]) == amount
     assert int(transaction["status_eta"]) == 5
     assert transaction["external_transaction_id"] == external_id
@@ -313,6 +313,8 @@ def test_deposit_stellar_no_trustline(
     """
     del mock_submit, mock_get, mock_sequence, mock_fee, client
     deposit = acc1_usd_deposit_transaction_factory()
+    deposit.status = Transaction.STATUS.pending_anchor
+    deposit.save()
     create_stellar_deposit(deposit.id)
     assert (
         Transaction.objects.get(id=deposit.id).status
@@ -346,6 +348,8 @@ def test_deposit_stellar_no_account(
     """
     del mock_submit, mock_get, mock_sequence, mock_fee, client
     deposit = acc1_usd_deposit_transaction_factory()
+    deposit.status = Transaction.STATUS.pending_anchor
+    deposit.save()
     create_stellar_deposit(deposit.id)
     assert (
         Transaction.objects.get(id=deposit.id).status
@@ -374,6 +378,8 @@ def test_deposit_stellar_success(
     """
     del mock_submit, mock_get, mock_sequence, mock_fee, client
     deposit = acc1_usd_deposit_transaction_factory()
+    deposit.status = Transaction.STATUS.pending_anchor
+    deposit.save()
     create_stellar_deposit(deposit.id)
     assert Transaction.objects.get(id=deposit.id).status == Transaction.STATUS.completed
 
@@ -413,7 +419,7 @@ def test_deposit_interactive_confirm_success(
     assert response.status_code == 200
     assert (
         Transaction.objects.get(id=transaction_id).status
-        == Transaction.STATUS.pending_external
+        == Transaction.STATUS.pending_user_transfer_start
     )
 
     response = client.get(
@@ -501,7 +507,7 @@ def test_deposit_check_trustlines_horizon(
     assert content["type"] == "interactive_customer_info_needed"
 
     # Complete the interactive deposit. The transaction should be set
-    # to pending_external, since external confirmation has not happened.
+    # to pending_user_transfer_start, since wallet-side confirmation has not happened.
     print("Completing interactive deposit.")
     transaction_id = content["id"]
     url = content["url"]
@@ -510,7 +516,7 @@ def test_deposit_check_trustlines_horizon(
     assert response.status_code == 200
     assert (
         Transaction.objects.get(id=transaction_id).status
-        == Transaction.STATUS.pending_external
+        == Transaction.STATUS.pending_user_transfer_start
     )
 
     # As a result of this external confirmation, the transaction should

@@ -6,11 +6,86 @@
 
 {% block "content" %}
 <section class="section">
-    <p>
-        <strong>{{ data.kind }}</strong> transaction with ID <strong>{{ data.id }}</strong>, amount
-        <strong>{{data.amount}}</strong> of asset <strong>{{data.asset}}</strong> has status
-        <strong>{{ data.status }}</strong>. It started at {{ data.started_at }} and completed at
-        {{ data.completed_at }}.
-    </p>
+    <p id="message">More info about the transaction requires JavaScript.</p>
+    <div id="externalButton"></div>
+
+    <script type="text/javascript">
+        var tx_json = JSON.parse('{{ tx_json|safe }}');
+        var transaction = tx_json["transaction"];
+
+        document.getElementById("message").innerHTML = createMessage(transaction);
+        postTransactionCallback();
+        createExternalButton();
+
+        // Create the more info message for a transaction.
+        function createMessage(transaction) {
+            var kind, uppercase_kind, completed_at, asset_code, message;
+            kind = transaction["kind"];
+            uppercase_kind = kind.charAt(0).toUpperCase() + kind.slice(1);
+            completed_at = transaction["completed_at"];
+            if (!completed_at) {
+                completed_at = "TBD";
+            }
+            asset_code = '{{ asset_code|safe }}';
+            if (!asset_code) {
+                asset_code = "N/A";
+            }
+
+            message = "<strong>" + uppercase_kind + "</strong> transaction with ID <strong>";
+            message += transaction["id"] + "</strong>, amount<strong> " + transaction["amount_in"] + "</strong> ";
+            message += "of asset <strong>" + asset_code + "</strong> has status ";
+            message += "<strong>" + transaction["status"] + "</strong>. It started at ";
+            message += transaction["started_at"] + " and completed at " + completed_at + ".";
+            return message;
+        }
+
+        // Callback function to post the serialized transaction to the wallet.
+        function postTransactionCallback() {
+            var targetWindow;
+
+            if (window.opener != void 0) {
+                targetWindow = window.opener;
+            } else if (window.parent != void 0) {
+                targetWindow = window.parent;
+            } else {
+                return;
+            }
+
+            // NOTE: make sure to keep the single quotes on the following line
+            // as this will be rendered as a serialized JSON by Django.
+            targetWindow.postMessage(tx_json, "*");
+        }
+
+        // If the transaction is an uncompleted deposit, render a confirmation
+        // button for administrative use, thus completing the deposit flow.
+        function createExternalButton() {
+            var button, content;
+            button = document.getElementById("externalButton");
+            content = "";
+            if (transaction["kind"] == "deposit" && transaction["status"] != "completed") {
+                content = '<button type="button" class="btn btn - primary"'
+                content += 'onclick="this.disabled=true; submitExternal();">Admin: Confirm external transaction.</button>';
+            }
+            button.insertAdjacentHTML('afterbegin', content);
+        }
+
+        // Confirm an uncompleted deposit transaction.
+        function submitExternal() {
+            var transactionId, amount, xhr;
+            transactionId = transaction["id"];
+            amount = transaction["amount_in"];
+            xhr = new XMLHttpRequest();
+            xhrUrl = '/deposit/confirm_transaction?transaction_id=' + transactionId + '&amount=' + amount;
+            xhr.open('get', xhrUrl, true);
+            xhr.onload = function () {
+                if (this.status >= 200 && this.status < 400) {
+                    postTransactionCallback();
+                }
+            }
+            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded; charset=UTF-8');
+            xhr.send();
+            document.location.reload(true);
+        }
+    </script>
 </section>
 {% endblock %}
