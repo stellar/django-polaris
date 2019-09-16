@@ -4,5 +4,5 @@ from .views import withdraw, interactive_withdraw
 
 urlpatterns = [
     path("", withdraw),
-    path("interactive_withdraw/", interactive_withdraw, name="interactive_withdraw"),
+    path("/interactive_withdraw", interactive_withdraw, name="interactive_withdraw"),
 ]

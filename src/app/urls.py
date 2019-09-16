@@ -17,11 +17,11 @@ from django.contrib import admin
 from django.urls import path, include
 
 urlpatterns = [
-    path("admin/", admin.site.urls),
-    path("info/", include("info.urls")),
-    path("fee/", include("fee.urls")),
+    path("admin", admin.site.urls),
+    path("info", include("info.urls")),
+    path("fee", include("fee.urls")),
     path("", include("transaction.urls")),
-    path("deposit/", include("deposit.urls")),
-    path(".well-known/", include("stellartoml.urls")),
-    path("withdraw/", include("withdraw.urls")),
+    path("deposit", include("deposit.urls")),
+    path(".well-known", include("stellartoml.urls")),
+    path("withdraw", include("withdraw.urls")),
 ]

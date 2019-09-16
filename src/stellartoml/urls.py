@@ -2,4 +2,4 @@
 from django.urls import path
 from .views import generate_toml
 
-urlpatterns = [path("stellar.toml", generate_toml)]
+urlpatterns = [path("/stellar.toml", generate_toml)]

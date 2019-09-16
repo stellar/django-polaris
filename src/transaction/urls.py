@@ -3,7 +3,7 @@ from django.urls import path
 from .views import more_info, transaction, transactions
 
 urlpatterns = [
-    path("transaction/", transaction),
-    path("transactions/", transactions),
-    path("transaction/more_info/", more_info, name="more_info"),
+    path("transaction", transaction),
+    path("transactions", transactions),
+    path("transaction/more_info", more_info, name="more_info"),
 ]
