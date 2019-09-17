@@ -12,9 +12,12 @@
         <strong>{{ transaction.status }}</strong>. It started at {{transaction.started_at}} and completed at
         {{transaction.completed_at}}
     </p>
-    {% if transaction.kind == "deposit" and transaction.status != "completed" %}
+    {% if transaction.status != "completed" %}
+    {% if transaction.kind == "deposit" %}
     <button type="button" class="btn btn - primary" onclick="submitExternal()">Admin: Confirm external
         transaction.</button>
+    {% endif %}
+    <button type="button" class="btn btn - primary" onclick="location.reload(true);">Refresh transaction data.</button>
     {% endif %}
 
     <script type="text/javascript">
