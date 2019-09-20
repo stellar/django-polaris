@@ -1,10 +1,13 @@
 """This module defines helpers for various endpoints."""
 import codecs
+import time
 import uuid
 
 from django.conf import settings
+import jwt
 from rest_framework import status
 from rest_framework.response import Response
+
 
 from info.models import Asset
 from transaction.models import Transaction
@@ -47,3 +50,56 @@ def format_memo_horizon(memo):
     the base64 Horizon response.
     """
     return (codecs.encode(codecs.decode(memo, "hex"), "base64").decode("utf-8")).strip()
+
+
+def check_auth(request, needs_auth, func):
+    """
+    Check SEP 10 authentication in a request if needed.
+    Else call the original view function.
+    """
+    if needs_auth:
+        jwt_error_str = validate_jwt_request(request)
+        if jwt_error_str:
+            return render_error_response(jwt_error_str)
+    return func(request)
+
+
+def validate_sep10_token(needs_auth=True):
+    """Decorator to validate the SEP 10 token in a request."""
+
+    def decorator(view):
+        def wrapper(request, *args, **kwargs):
+            return check_auth(request, needs_auth, view)
+
+        return wrapper
+
+    return decorator
+
+
+def validate_jwt_request(request):
+    """
+    Validate the JSON web token in a request.
+    Return the appropriate error string, or empty string if valid.
+    """
+    # While the SEP 6 spec calls the authorization header "Authorization", the middleware
+    # renames this as "HTTP_AUTHORIZATION". We check this header for the JWT.
+    jwt_header = request.META.get("HTTP_AUTHORIZATION")
+    if not jwt_header:
+        return "JWT must be passed as 'Authorization' header"
+    if "Bearer" not in jwt_header:
+        return "'Authorization' header must be formatted as 'Bearer <token>'"
+    encoded_jwt = jwt_header.split(" ")[1]
+    if not encoded_jwt:
+        return "'jwt' is required"
+
+    # Validate the JWT contents.
+    jwt_dict = jwt.decode(encoded_jwt, settings.SERVER_JWT_KEY, algorithms=["HS256"])
+    if jwt_dict["iss"] != request.build_absolute_uri("/auth"):
+        return "'jwt' has incorrect 'issuer'"
+    if jwt_dict["sub"] != settings.STELLAR_ACCOUNT_ADDRESS:
+        return "'jwt' has incorrect 'subject'"
+    current_time = time.time()
+    if current_time < jwt_dict["iat"] or current_time > jwt_dict["exp"]:
+        return "'jwt' is no longer valid"
+    # TODO: Investigate if we can validate the JTI, a hex-encoded transaction hash.
+    return ""

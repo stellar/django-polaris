@@ -8,7 +8,6 @@ confirm that the first step of the deposit successfully completed.
 import base64
 import binascii
 import json
-import uuid
 from urllib.parse import urlencode
 
 from django.conf import settings
@@ -22,7 +21,13 @@ from rest_framework.response import Response
 from stellar_base.address import Address
 from stellar_base.exceptions import NotValidParamError, StellarAddressInvalidError
 
-from helpers import calc_fee, render_error_response, create_transaction_id
+from helpers import (
+    calc_fee,
+    render_error_response,
+    create_transaction_id,
+    validate_jwt_request,
+    validate_sep10_token,
+)
 from info.models import Asset
 from transaction.models import Transaction
 from transaction.serializers import TransactionSerializer
@@ -199,6 +204,7 @@ def interactive_deposit(request):
     return render(request, "deposit/form.html", {"form": form})
 
 
+@validate_sep10_token(settings.DEPOSIT_AUTH_REQUIRED)
 @api_view()
 def deposit(request):
     """

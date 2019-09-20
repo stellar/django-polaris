@@ -3,8 +3,8 @@ This module sets up the test configuration. It defines fixtures needed to test v
 models, such as the transactions and assets.
 """
 import pytest
-
 from django.utils import timezone
+
 from info.models import Asset
 from transaction.models import Transaction
 

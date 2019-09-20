@@ -1,5 +1,6 @@
 """This module defines the logic for the `/info` endpoint."""
 import json
+from django.conf import settings
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
@@ -10,7 +11,7 @@ def _get_asset_deposit_info(asset: Asset):
     if asset.deposit_enabled:
         return {
             "enabled": True,
-            "authentication_required": False,
+            "authentication_required": settings.DEPOSIT_AUTH_REQUIRED,
             "fee_fixed": asset.deposit_fee_fixed,
             "fee_percent": asset.deposit_fee_percent,
             "min_amount": asset.deposit_min_amount,
@@ -24,7 +25,7 @@ def _get_asset_withdrawal_info(asset: Asset):
     if asset.withdrawal_enabled:
         return {
             "enabled": True,
-            "authentication_required": False,
+            "authentication_required": settings.WITHDRAW_AUTH_REQUIRED,
             "fee_fixed": asset.withdrawal_fee_fixed,
             "fee_percent": asset.withdrawal_fee_percent,
             "min_amount": asset.withdrawal_min_amount,
@@ -44,9 +45,15 @@ def info(request):
     info_data = {
         "deposit": {},
         "withdraw": {},
-        "fee": {"enabled": True, "authentication_required": False},
-        "transactions": {"enabled": True, "authentication_required": False},
-        "transaction": {"enabled": True, "authentication_required": False},
+        "fee": {"enabled": True, "authentication_required": settings.FEE_AUTH_REQUIRED},
+        "transactions": {
+            "enabled": True,
+            "authentication_required": settings.TRANSACTIONS_AUTH_REQUIRED,
+        },
+        "transaction": {
+            "enabled": True,
+            "authentication_required": settings.TRANSACTION_AUTH_REQUIRED,
+        },
     }
 
     for asset in (

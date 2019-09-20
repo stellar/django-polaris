@@ -3,7 +3,7 @@ import json
 import pytest
 
 
-def _get_expected_response():
+def _get_expected_response(settings):
     """
     This expected response was adapted from the example SEP-0006 response on
     https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#response-2
@@ -18,45 +18,45 @@ def _get_expected_response():
     - min_amount and max_amount are mandatorily informed
     """
 
-    return """
-    {
-        "deposit": {
-            "USD": {
+    return f"""
+    {{
+        "deposit": {{
+            "USD": {{
                 "enabled": true,
-                "authentication_required": false,
+                "authentication_required": {str(settings.DEPOSIT_AUTH_REQUIRED).lower()},
                 "fee_fixed": 5.0,
                 "fee_percent": 1.0,
                 "min_amount": 0.1,
                 "max_amount": 1000.0
-            },
-            "ETH": {
+            }},
+            "ETH": {{
                 "enabled": true,
-                "authentication_required": false,
+                "authentication_required": {str(settings.DEPOSIT_AUTH_REQUIRED).lower()},
                 "fee_fixed": 0.002,
                 "fee_percent": 0.0,
                 "max_amount": 10000000.0,
                 "min_amount": 0.0
-            }
-        },
-        "withdraw": {
-            "USD": {
+            }}
+        }},
+        "withdraw": {{
+            "USD": {{
                 "enabled": true,
-                "authentication_required": false,
+                "authentication_required": {str(settings.WITHDRAW_AUTH_REQUIRED).lower()},
                 "fee_fixed": 5.0,
                 "fee_percent": 0.0,
                 "min_amount": 0.1,
                 "max_amount": 1000.0
-            },
-            "ETH": {"enabled": false}
-        },
-        "fee": {"enabled": true, "authentication_required": false},
-        "transactions": {"enabled": true, "authentication_required": false},
-        "transaction": {"enabled": true, "authentication_required": false}
-    }"""
+            }},
+            "ETH": {{"enabled": false}}
+        }},
+        "fee": {{"enabled": true, "authentication_required": {str(settings.FEE_AUTH_REQUIRED).lower()}}},
+        "transactions": {{"enabled": true, "authentication_required": {str(settings.TRANSACTIONS_AUTH_REQUIRED).lower()}}},
+        "transaction": {{"enabled": true, "authentication_required": {str(settings.TRANSACTION_AUTH_REQUIRED).lower()}}}
+    }}"""
 
 
 @pytest.mark.django_db
-def test_info_endpoint(client, usd_asset_factory, eth_asset_factory):
+def test_info_endpoint(client, settings, usd_asset_factory, eth_asset_factory):
     """
     Ensures the /info endpoint provides data in the expected format, according to
     SEP 6: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md
@@ -64,9 +64,15 @@ def test_info_endpoint(client, usd_asset_factory, eth_asset_factory):
     usd_asset_factory()
     eth_asset_factory()
 
+    # Enable authentication on all endpoints, since it is undone in other tests.
+    settings.DEPOSIT_AUTH_REQUIRED = True
+    settings.WITHDRAW_AUTH_REQUIRED = True
+    settings.FEE_AUTH_REQUIRED = True
+    settings.TRANSACTIONS_AUTH_REQUIRED = True
+    settings.TRANSACTION_AUTH_REQUIRED = True
+
     response = client.get(f"/info", follow=True)
     content = json.loads(response.content)
-    expected_response = json.loads(_get_expected_response())
-
+    expected_response = json.loads(_get_expected_response(settings))
     assert content == expected_response
     assert response.status_code == 200

@@ -1,17 +1,22 @@
 """This module tests the `/withdraw` endpoint."""
-import codecs
 import json
 from unittest.mock import patch
 import pytest
+from stellar_base.keypair import Keypair
+from stellar_base.transaction_envelope import TransactionEnvelope
 
 from helpers import format_memo_horizon
 from transaction.models import Transaction
 from withdraw.tasks import watch_stellar_withdraw
 
+from .helpers import mock_check_auth_success, mock_render_error_response
+
 
 @pytest.mark.django_db
-def test_withdraw_success(client, acc1_usd_withdrawal_transaction_factory):
+@patch("helpers.check_auth", side_effect=mock_check_auth_success)
+def test_withdraw_success(mock_check, client, acc1_usd_withdrawal_transaction_factory):
     """`GET /withdraw` succeeds with no optional arguments."""
+    del mock_check
     acc1_usd_withdrawal_transaction_factory()
     response = client.get(f"/withdraw?asset_code=USD", follow=True)
     content = json.loads(response.content)
@@ -20,8 +25,12 @@ def test_withdraw_success(client, acc1_usd_withdrawal_transaction_factory):
 
 
 @pytest.mark.django_db
-def test_withdraw_invalid_asset(client, acc1_usd_withdrawal_transaction_factory):
+@patch("helpers.check_auth", side_effect=mock_check_auth_success)
+def test_withdraw_invalid_asset(
+    mock_check, client, acc1_usd_withdrawal_transaction_factory
+):
     """`GET /withdraw` fails with an invalid asset argument."""
+    del mock_check
     acc1_usd_withdrawal_transaction_factory()
     response = client.get(f"/withdraw?asset_code=ETH", follow=True)
     content = json.loads(response.content)
@@ -30,8 +39,10 @@ def test_withdraw_invalid_asset(client, acc1_usd_withdrawal_transaction_factory)
 
 
 @pytest.mark.django_db
-def test_withdraw_no_asset(client):
+@patch("helpers.check_auth", side_effect=mock_check_auth_success)
+def test_withdraw_no_asset(mock_check, client):
     """`GET /withdraw fails with no asset argument."""
+    del mock_check
     response = client.get(f"/withdraw", follow=True)
     content = json.loads(response.content)
     assert response.status_code == 400
@@ -39,10 +50,14 @@ def test_withdraw_no_asset(client):
 
 
 @pytest.mark.django_db
-def test_withdraw_interactive_no_txid(client, acc1_usd_withdrawal_transaction_factory):
+@patch("helpers.check_auth", side_effect=mock_check_auth_success)
+def test_withdraw_interactive_no_txid(
+    mock_check, client, acc1_usd_withdrawal_transaction_factory
+):
     """
     `GET /withdraw/interactive_withdraw` fails with no transaction_id.
     """
+    del mock_check
     acc1_usd_withdrawal_transaction_factory()
     response = client.get(f"/withdraw/interactive_withdraw?", follow=True)
     content = json.loads(response.content)
@@ -51,10 +66,14 @@ def test_withdraw_interactive_no_txid(client, acc1_usd_withdrawal_transaction_fa
 
 
 @pytest.mark.django_db
-def test_withdraw_interactive_no_asset(client, acc1_usd_withdrawal_transaction_factory):
+@patch("helpers.check_auth", side_effect=mock_check_auth_success)
+def test_withdraw_interactive_no_asset(
+    mock_check, client, acc1_usd_withdrawal_transaction_factory
+):
     """
     `GET /withdraw/interactive_withdraw` fails with no asset_code.
     """
+    del mock_check
     acc1_usd_withdrawal_transaction_factory()
     response = client.get(
         f"/withdraw/interactive_withdraw?transaction_id=2", follow=True
@@ -65,12 +84,14 @@ def test_withdraw_interactive_no_asset(client, acc1_usd_withdrawal_transaction_f
 
 
 @pytest.mark.django_db
+@patch("helpers.check_auth", side_effect=mock_check_auth_success)
 def test_withdraw_interactive_invalid_asset(
-    client, acc1_usd_withdrawal_transaction_factory
+    mock_check, client, acc1_usd_withdrawal_transaction_factory
 ):
     """
     `GET /withdraw/interactive_withdraw` fails with invalid asset_code.
     """
+    del mock_check
     acc1_usd_withdrawal_transaction_factory()
     response = client.get(
         f"/withdraw/interactive_withdraw?transaction_id=2&asset_code=ETH", follow=True
@@ -89,13 +110,18 @@ def test_withdraw_interactive_invalid_asset(
 @patch(
     "withdraw.tasks.watch_stellar_withdraw.delay", side_effect=watch_stellar_withdraw
 )
+@patch("helpers.check_auth", side_effect=mock_check_auth_success)
 def test_withdraw_interactive_failure_no_memotype(
-    mock_watch, mock_transactions, client, acc1_usd_withdrawal_transaction_factory
+    mock_check,
+    mock_watch,
+    mock_transactions,
+    client,
+    acc1_usd_withdrawal_transaction_factory,
 ):
     """
     `GET /withdraw/interactive_withdraw` fails with no `memo_type` in Horizon response.
     """
-    del mock_watch, mock_transactions
+    del mock_check, mock_watch, mock_transactions
     acc1_usd_withdrawal_transaction_factory()
     response = client.get(f"/withdraw?asset_code=USD", follow=True)
     content = json.loads(response.content)
@@ -119,13 +145,18 @@ def test_withdraw_interactive_failure_no_memotype(
 @patch(
     "withdraw.tasks.watch_stellar_withdraw.delay", side_effect=watch_stellar_withdraw
 )
+@patch("helpers.check_auth", side_effect=mock_check_auth_success)
 def test_withdraw_interactive_failure_incorrect_memotype(
-    mock_watch, mock_transactions, client, acc1_usd_withdrawal_transaction_factory
+    mock_check,
+    mock_watch,
+    mock_transactions,
+    client,
+    acc1_usd_withdrawal_transaction_factory,
 ):
     """
     `GET /withdraw/interactive_withdraw` fails with incorrect `memo_type` in Horizon response.
     """
-    del mock_watch, mock_transactions
+    del mock_check, mock_watch, mock_transactions
     acc1_usd_withdrawal_transaction_factory()
     response = client.get(f"/withdraw?asset_code=USD", follow=True)
     content = json.loads(response.content)
@@ -149,13 +180,18 @@ def test_withdraw_interactive_failure_incorrect_memotype(
 @patch(
     "withdraw.tasks.watch_stellar_withdraw.delay", side_effect=watch_stellar_withdraw
 )
+@patch("helpers.check_auth", side_effect=mock_check_auth_success)
 def test_withdraw_interactive_failure_no_memo(
-    mock_watch, mock_transactions, client, acc1_usd_withdrawal_transaction_factory
+    mock_check,
+    mock_watch,
+    mock_transactions,
+    client,
+    acc1_usd_withdrawal_transaction_factory,
 ):
     """
     `GET /withdraw/interactive_withdraw` fails with no `memo` in Horizon response.
     """
-    del mock_watch, mock_transactions
+    del mock_check, mock_watch, mock_transactions
     acc1_usd_withdrawal_transaction_factory()
     response = client.get(f"/withdraw?asset_code=USD", follow=True)
     content = json.loads(response.content)
@@ -182,13 +218,18 @@ def test_withdraw_interactive_failure_no_memo(
 @patch(
     "withdraw.tasks.watch_stellar_withdraw.delay", side_effect=watch_stellar_withdraw
 )
+@patch("helpers.check_auth", side_effect=mock_check_auth_success)
 def test_withdraw_interactive_failure_incorrect_memo(
-    mock_watch, mock_transactions, client, acc1_usd_withdrawal_transaction_factory
+    mock_check,
+    mock_watch,
+    mock_transactions,
+    client,
+    acc1_usd_withdrawal_transaction_factory,
 ):
     """
     `GET /withdraw/interactive_withdraw` fails with incorrect `memo` in Horizon response.
     """
-    del mock_watch, mock_transactions
+    del mock_check, mock_watch, mock_transactions
     acc1_usd_withdrawal_transaction_factory()
     response = client.get(f"/withdraw?asset_code=USD", follow=True)
     content = json.loads(response.content)
@@ -212,14 +253,19 @@ def test_withdraw_interactive_failure_incorrect_memo(
 @patch(
     "withdraw.tasks.watch_stellar_withdraw.delay", return_value=watch_stellar_withdraw
 )
+@patch("helpers.check_auth", side_effect=mock_check_auth_success)
 def test_withdraw_interactive_success_transaction_unsuccessful(
-    mock_watch, mock_transactions, client, acc1_usd_withdrawal_transaction_factory
+    mock_check,
+    mock_watch,
+    mock_transactions,
+    client,
+    acc1_usd_withdrawal_transaction_factory,
 ):
     """
     `GET /withdraw/interactive_withdraw` changes transaction to `pending_stellar`
     with unsuccessful transaction.
     """
-    del mock_watch
+    del mock_check, mock_watch
     acc1_usd_withdrawal_transaction_factory()
     response = client.get(f"/withdraw?asset_code=USD", follow=True)
     content = json.loads(response.content)
@@ -257,14 +303,19 @@ def test_withdraw_interactive_success_transaction_unsuccessful(
 @patch(
     "withdraw.tasks.watch_stellar_withdraw.delay", return_value=watch_stellar_withdraw
 )
+@patch("helpers.check_auth", side_effect=mock_check_auth_success)
 def test_withdraw_interactive_success_transaction_successful(
-    mock_watch, mock_transactions, client, acc1_usd_withdrawal_transaction_factory
+    mock_check,
+    mock_watch,
+    mock_transactions,
+    client,
+    acc1_usd_withdrawal_transaction_factory,
 ):
     """
     `GET /withdraw/interactive_withdraw` changes transaction to `completed`
     with successful transaction.
     """
-    del mock_watch
+    del mock_check, mock_watch
     acc1_usd_withdrawal_transaction_factory()
     response = client.get(f"/withdraw?asset_code=USD", follow=True)
     content = json.loads(response.content)
@@ -294,3 +345,50 @@ def test_withdraw_interactive_success_transaction_successful(
     transaction = Transaction.objects.get(id=transaction_id)
     assert transaction.status == Transaction.STATUS.completed
     assert transaction.completed_at
+
+
+@pytest.mark.django_db
+def test_withdraw_authenticated_success(
+    client, acc1_usd_withdrawal_transaction_factory
+):
+    """`GET /withdraw` succeeds with the SEP 10 authentication flow."""
+    client_address = "GDKFNRUATPH4BSZGVFDRBIGZ5QAFILVFRIRYNSQ4UO7V2ZQAPRNL73RI"
+    client_seed = "SDKWSBERDHP3SXW5A3LXSI7FWMMO5H7HG33KNYBKWH2HYOXJG2DXQHQY"
+    acc1_usd_withdrawal_transaction_factory()
+
+    # SEP 10.
+    response = client.get(f"/auth?account={client_address}", follow=True)
+    content = json.loads(response.content)
+
+    envelope_xdr = content["transaction"]
+    envelope_object = TransactionEnvelope.from_xdr(envelope_xdr)
+    client_signing_key = Keypair.from_seed(client_seed)
+    envelope_object.sign(client_signing_key)
+    client_signed_envelope_xdr = envelope_object.xdr().decode("ascii")
+
+    response = client.post(
+        "/auth",
+        data={"transaction": client_signed_envelope_xdr},
+        content_type="application/json",
+    )
+    content = json.loads(response.content)
+    encoded_jwt = content["token"]
+    assert encoded_jwt
+
+    header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
+    response = client.get(f"/withdraw?asset_code=USD", follow=True, **header)
+    content = json.loads(response.content)
+    assert response.status_code == 403
+    assert content["type"] == "interactive_customer_info_needed"
+
+
+@pytest.mark.django_db
+@patch("helpers.render_error_response", side_effect=mock_render_error_response)
+def test_withdraw_no_jwt(mock_render, client, acc1_usd_withdrawal_transaction_factory):
+    """`GET /withdraw` fails if a required JWT isn't provided."""
+    del mock_render
+    acc1_usd_withdrawal_transaction_factory()
+    response = client.get(f"/withdraw?asset_code=USD", follow=True)
+    content = json.loads(response.content)
+    assert response.status_code == 400
+    assert content == {"error": "JWT must be passed as 'Authorization' header"}

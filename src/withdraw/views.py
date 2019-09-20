@@ -14,7 +14,12 @@ from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from helpers import render_error_response, create_transaction_id, calc_fee
+from helpers import (
+    render_error_response,
+    create_transaction_id,
+    calc_fee,
+    validate_sep10_token,
+)
 from info.models import Asset
 from transaction.models import Transaction
 from transaction.serializers import TransactionSerializer
@@ -117,6 +122,7 @@ def interactive_withdraw(request):
     return render(request, "withdraw/form.html", {"form": form})
 
 
+@validate_sep10_token(settings.WITHDRAW_AUTH_REQUIRED)
 @api_view()
 def withdraw(request):
     """

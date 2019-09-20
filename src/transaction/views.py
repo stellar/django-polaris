@@ -11,7 +11,7 @@ from django.shortcuts import render
 from django.urls import reverse
 from django.views.decorators.clickjacking import xframe_options_exempt
 
-from helpers import render_error_response
+from helpers import render_error_response, validate_sep10_token, validate_jwt_request
 from .models import Transaction
 from .serializers import TransactionSerializer
 
@@ -103,13 +103,13 @@ def more_info(request):
     )
 
 
+@validate_sep10_token(settings.TRANSACTIONS_AUTH_REQUIRED)
 @api_view()
 def transactions(request):
     """
     Definition of the /transactions endpoint, in accordance with SEP-0006.
     See: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#transaction-history
     """
-
     try:
         limit = _validate_limit(request.GET.get("limit"))
     except ValueError:
@@ -153,13 +153,13 @@ def transactions(request):
     return Response({"transactions": serializer.data})
 
 
+@validate_sep10_token(settings.TRANSACTION_AUTH_REQUIRED)
 @api_view()
 def transaction(request):
     """
     Definition of the /transaction endpoint, in accordance with SEP-0006.
     See: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#single-historical-transaction
     """
-
     try:
         request_transaction = _get_transaction_from_request(request)
     except AttributeError as exc:

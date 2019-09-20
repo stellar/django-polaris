@@ -20,6 +20,7 @@ def generate_toml(request):
 
     # Globals.
     toml_dict["TRANSFER_SERVER"] = request.build_absolute_uri("/")
+    toml_dict["WEB_AUTH_ENDPOINT"] = request.build_absolute_uri("/auth")
     toml_dict["ACCOUNTS"] = [settings.STELLAR_ACCOUNT_ADDRESS]
     toml_dict["VERSION"] = "0.1.0"
 

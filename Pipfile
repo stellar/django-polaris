@@ -13,7 +13,7 @@ pytest-cov = "*"
 coveralls = "*"
 
 [packages]
-django = "*"
+django = "==2.2.4"
 django-environ = "*"
 django-model-utils = "*"
 djangorestframework = "*"
@@ -25,6 +25,7 @@ celery = "*"
 redis = "*"
 django-cors-headers = "*"
 toml = "*"
+pyjwt = "*"
 
 [requires]
 python_version = "3.7"

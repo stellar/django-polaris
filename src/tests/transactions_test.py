@@ -1,12 +1,19 @@
 """This module tests the `/transactions` endpoint."""
+from unittest.mock import patch
 import json
 import urllib
+from stellar_base.keypair import Keypair
+from stellar_base.transaction_envelope import TransactionEnvelope
 import pytest
+
+from .helpers import mock_check_auth_success, mock_render_error_response
 
 
 @pytest.mark.django_db
-def test_required_fields(client, acc2_eth_withdrawal_transaction_factory):
+@patch("helpers.check_auth", side_effect=mock_check_auth_success)
+def test_required_fields(mock_check, client, acc2_eth_withdrawal_transaction_factory):
     """Fails without required parameters."""
+    del mock_check
     acc2_eth_withdrawal_transaction_factory()
 
     response = client.get(f"/transactions", follow=True)
@@ -17,8 +24,10 @@ def test_required_fields(client, acc2_eth_withdrawal_transaction_factory):
 
 
 @pytest.mark.django_db
-def test_required_account(client, acc2_eth_withdrawal_transaction_factory):
+@patch("helpers.check_auth", side_effect=mock_check_auth_success)
+def test_required_account(mock_check, client, acc2_eth_withdrawal_transaction_factory):
     """Fails without `account` parameter."""
+    del mock_check
     withdrawal = acc2_eth_withdrawal_transaction_factory()
 
     response = client.get(
@@ -31,8 +40,12 @@ def test_required_account(client, acc2_eth_withdrawal_transaction_factory):
 
 
 @pytest.mark.django_db
-def test_required_asset_code(client, acc2_eth_withdrawal_transaction_factory):
+@patch("helpers.check_auth", side_effect=mock_check_auth_success)
+def test_required_asset_code(
+    mock_check, client, acc2_eth_withdrawal_transaction_factory
+):
     """Fails without `asset_code` parameter."""
+    del mock_check
     withdrawal = acc2_eth_withdrawal_transaction_factory()
 
     response = client.get(
@@ -45,12 +58,15 @@ def test_required_asset_code(client, acc2_eth_withdrawal_transaction_factory):
 
 
 @pytest.mark.django_db
+@patch("helpers.check_auth", side_effect=mock_check_auth_success)
 def test_transactions_format(
+    mock_check,
     client,
     acc2_eth_withdrawal_transaction_factory,
     acc2_eth_deposit_transaction_factory,
 ):
     """Response has correct length and status code."""
+    del mock_check
     withdrawal = acc2_eth_withdrawal_transaction_factory()
     acc2_eth_deposit_transaction_factory()
 
@@ -65,12 +81,15 @@ def test_transactions_format(
 
 
 @pytest.mark.django_db
+@patch("helpers.check_auth", side_effect=mock_check_auth_success)
 def test_transactions_order(
+    mock_check,
     client,
     acc2_eth_withdrawal_transaction_factory,
     acc2_eth_deposit_transaction_factory,
 ):
     """Transactions are serialized in expected order."""
+    del mock_check
     acc2_eth_deposit_transaction_factory()  # older transaction
     withdrawal = acc2_eth_withdrawal_transaction_factory()  # newer transaction
 
@@ -89,7 +108,9 @@ def test_transactions_order(
 
 
 @pytest.mark.django_db
+@patch("helpers.check_auth", side_effect=mock_check_auth_success)
 def test_transactions_content(
+    mock_check,
     client,
     acc2_eth_deposit_transaction_factory,
     acc2_eth_withdrawal_transaction_factory,
@@ -103,6 +124,7 @@ def test_transactions_content(
     - amounts are floats, so values like "500" are displayed as "500.0"
     - nullable fields are displayed, but with a null value
     """
+    del mock_check
     deposit = acc2_eth_deposit_transaction_factory()
     withdrawal = acc2_eth_withdrawal_transaction_factory()
 
@@ -187,12 +209,15 @@ def test_transactions_content(
 
 
 @pytest.mark.django_db
+@patch("helpers.check_auth", side_effect=mock_check_auth_success)
 def test_paging_id(
+    mock_check,
     client,
     acc2_eth_deposit_transaction_factory,
     acc2_eth_withdrawal_transaction_factory,
 ):
     """Only return transactions chronologically after a `paging_id`, if provided."""
+    del mock_check
     acc2_eth_deposit_transaction_factory()
     withdrawal = acc2_eth_withdrawal_transaction_factory()
 
@@ -213,12 +238,15 @@ def test_paging_id(
 
 
 @pytest.mark.django_db
+@patch("helpers.check_auth", side_effect=mock_check_auth_success)
 def test_kind_filter(
+    mock_check,
     client,
     acc2_eth_deposit_transaction_factory,
     acc2_eth_withdrawal_transaction_factory,
 ):
     """Valid `kind` succeeds."""
+    del mock_check
     acc2_eth_deposit_transaction_factory()
     withdrawal = acc2_eth_withdrawal_transaction_factory()
 
@@ -239,12 +267,15 @@ def test_kind_filter(
 
 
 @pytest.mark.django_db
+@patch("helpers.check_auth", side_effect=mock_check_auth_success)
 def test_kind_filter_no_500(
+    mock_check,
     client,
     acc2_eth_deposit_transaction_factory,
     acc2_eth_withdrawal_transaction_factory,
 ):
     """Invalid `kind` fails gracefully."""
+    del mock_check
     acc2_eth_deposit_transaction_factory()
     withdrawal = acc2_eth_withdrawal_transaction_factory()
 
@@ -263,12 +294,15 @@ def test_kind_filter_no_500(
 
 
 @pytest.mark.django_db
+@patch("helpers.check_auth", side_effect=mock_check_auth_success)
 def test_limit(
+    mock_check,
     client,
     acc2_eth_deposit_transaction_factory,
     acc2_eth_withdrawal_transaction_factory,
 ):
     """Valid `limit` succeeds."""
+    del mock_check
     acc2_eth_deposit_transaction_factory()
     withdrawal = acc2_eth_withdrawal_transaction_factory()  # newest
 
@@ -286,12 +320,15 @@ def test_limit(
 
 
 @pytest.mark.django_db
+@patch("helpers.check_auth", side_effect=mock_check_auth_success)
 def test_invalid_limit(
+    mock_check,
     client,
     acc2_eth_deposit_transaction_factory,
     acc2_eth_withdrawal_transaction_factory,
 ):
     """Non-integer `limit` fails."""
+    del mock_check
     acc2_eth_deposit_transaction_factory()
     withdrawal = acc2_eth_withdrawal_transaction_factory()  # newest
 
@@ -309,12 +346,15 @@ def test_invalid_limit(
 
 
 @pytest.mark.django_db
+@patch("helpers.check_auth", side_effect=mock_check_auth_success)
 def test_negative_limit(
+    mock_check,
     client,
     acc2_eth_deposit_transaction_factory,
     acc2_eth_withdrawal_transaction_factory,
 ):
     """Negative `limit` fails."""
+    del mock_check
     acc2_eth_deposit_transaction_factory()
     withdrawal = acc2_eth_withdrawal_transaction_factory()  # newest
 
@@ -332,12 +372,15 @@ def test_negative_limit(
 
 
 @pytest.mark.django_db
+@patch("helpers.check_auth", side_effect=mock_check_auth_success)
 def test_no_older_than_filter(
+    mock_check,
     client,
     acc2_eth_deposit_transaction_factory,
     acc2_eth_withdrawal_transaction_factory,
 ):
     """Valid `no_older_than` succeeds."""
+    del mock_check
     withdrawal_transaction = (
         acc2_eth_withdrawal_transaction_factory()
     )  # older transaction
@@ -357,3 +400,73 @@ def test_no_older_than_filter(
     assert response.status_code == 200
     assert len(content.get("transactions")) == 1
     assert content.get("transactions")[0]["kind"] == "deposit"
+
+
+@pytest.mark.django_db
+@patch("helpers.render_error_response", side_effect=mock_render_error_response)
+def test_transactions_authenticated_success(
+    mock_render,
+    client,
+    acc2_eth_withdrawal_transaction_factory,
+    acc2_eth_deposit_transaction_factory,
+):
+    """
+    Response has correct length and status code, if the SEP 10 authentication
+    token is required.
+    """
+    del mock_render
+    client_address = "GDKFNRUATPH4BSZGVFDRBIGZ5QAFILVFRIRYNSQ4UO7V2ZQAPRNL73RI"
+    client_seed = "SDKWSBERDHP3SXW5A3LXSI7FWMMO5H7HG33KNYBKWH2HYOXJG2DXQHQY"
+    withdrawal = acc2_eth_withdrawal_transaction_factory()
+    withdrawal.stellar_address = client_address
+    withdrawal.save()
+    acc2_eth_deposit_transaction_factory()
+
+    # SEP 10.
+    response = client.get(f"/auth?account={client_address}", follow=True)
+    content = json.loads(response.content)
+    envelope_xdr = content["transaction"]
+    envelope_object = TransactionEnvelope.from_xdr(envelope_xdr)
+    client_signing_key = Keypair.from_seed(client_seed)
+    envelope_object.sign(client_signing_key)
+    client_signed_envelope_xdr = envelope_object.xdr().decode("ascii")
+
+    response = client.post(
+        "/auth",
+        data={"transaction": client_signed_envelope_xdr},
+        content_type="application/json",
+    )
+    content = json.loads(response.content)
+    encoded_jwt = content["token"]
+    assert encoded_jwt
+
+    # For testing, we make the key `HTTP_AUTHORIZATION`. This is the value that
+    # we expect due to the middleware.
+    header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
+
+    response = client.get(
+        f"/transactions?asset_code={withdrawal.asset.name}&account={withdrawal.stellar_account}",
+        follow=True,
+        **header,
+    )
+    content = json.loads(response.content)
+
+    assert len(content.get("transactions")) == 2
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
+@patch("helpers.render_error_response", side_effect=mock_render_error_response)
+def test_transactions_no_jwt(
+    mock_render, client, acc2_eth_withdrawal_transaction_factory
+):
+    """`GET /transactions` fails if a required JWT is not provided."""
+    del mock_render
+    withdrawal = acc2_eth_withdrawal_transaction_factory()
+    response = client.get(
+        f"/transactions?asset_code={withdrawal.asset.name}&account={withdrawal.stellar_account}",
+        follow=True,
+    )
+    content = json.loads(response.content)
+    assert response.status_code == 400
+    assert content == {"error": "JWT must be passed as 'Authorization' header"}
