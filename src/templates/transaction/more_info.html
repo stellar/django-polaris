@@ -38,8 +38,20 @@
                 return;
             }
 
-            // NOTE: make sure to keep the single quotes on the following line
-            // as this will be rendered as a serialized JSON by Django.
+            // Anchors should send a JSON with the the entire transaction object, serialized by
+            // the server, in a transaction property (i.e., the value for the "transaction" key).
+            // The transaction object should not be hand-constructed at this point.
+            // The reference client expects the following fields in the transaction: id, status,
+            // withdraw_anchor_account, withdraw_memo, withdraw_memo_type, amount_in.
+            //
+            // In other terms, the message should have the following structure:
+            // tx_json = {
+            //     "transaction": {
+            //         "id": "fake-transaction-id",
+            //         "status": "completed"
+            //         etc.
+            //     }
+            // }
             targetWindow.postMessage(tx_json, "*");
         }
 
