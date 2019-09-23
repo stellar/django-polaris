@@ -14,7 +14,7 @@
     </p>
     {% if transaction.status != "completed" %}
     {% if transaction.kind == "deposit" %}
-    <button type="button" class="btn btn - primary" onclick="submitExternal()">Admin: Confirm external
+    <button type="button" class="btn btn - primary" onclick="return submitExternal()">Admin: Confirm external
         transaction.</button>
     {% endif %}
     <button type="button" class="btn btn - primary" onclick="location.reload(true);">Refresh transaction data.</button>
@@ -70,7 +70,7 @@
             }
             xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded; charset=UTF-8');
             xhr.send();
-            document.location.reload(true);
+            return false;
         }
     </script>
 </section>
