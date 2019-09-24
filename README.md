@@ -12,9 +12,15 @@ Additionally, we want to enable wallets to seamlessly integrate with said anchor
 
 You can check the project's roadmap [here](https://github.com/stellar/stellar-anchor-server/milestones).
 
-## Running the project locally
+## Running the project locally with Docker
+The project can be run via Docker Compose. We recommend this approach for easier use.
+1. Install Docker Compose following the appropriate instructions [here](https://docs.docker.com/compose/install/)
+1. Build the Docker image, from the root directory: `docker-compose build`
+1. Run the Docker image, from the root directory: `docker-compose up`
 
-This project was built using Pipenv.
+## Running the project locally without Docker
+
+This project was built using Pipenv. If you do not want to install Docker, here is another route, involving individually installing components.
 
 1. Install pipenv: `$ brew install pipenv` (on macOS)
 1. Install redis: `$ brew install redis` (on macOS)
