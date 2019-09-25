@@ -1,10 +1,6 @@
-version: '3'
+version: "3"
 
 services:
-  db:
-    image: postgres:9.6.5
-    volumes:
-    - postgres_data:/var/lib/postgresql/data/
   redis:
     image: "redis:alpine"
     ports:
@@ -16,26 +12,15 @@ services:
     ports:
       - "8000:8000"
     depends_on:
-      - db
       - redis
+    command: >
+      sh -c "pipenv run python src/manage.py migrate
+      && pipenv run python src/manage.py runserver 0.0.0.0:8000"
   celery:
     build: .
-    working_dir: /code/src
-    command: pipenv run celery -A app worker -l info
+    command: pipenv run celery worker --app app --beat --workdir src -l info
     volumes:
       - .:/code/
     depends_on:
-      - db
       - redis
-  celery-beat:
-    build: .
-    working_dir: /code/src
-    command: pipenv run celery -A app beat -l info
-    volumes:
-      - .:/code/
-    depends_on:
-      - db
-      - redis
-
-volumes:
-  postgres_data:
+      - web

@@ -16,6 +16,7 @@ You can check the project's roadmap [here](https://github.com/stellar/stellar-an
 The project can be run via Docker Compose. We recommend this approach for easier use.
 1. Install Docker Compose following the appropriate instructions [here](https://docs.docker.com/compose/install/)
 1. Build the Docker image, from the root directory: `docker-compose build`
+1. Set up the Django admin user, from the root directory: `docker-compose run web pipenv run python src/manage.py createsuperuser`
 1. Run the Docker image, from the root directory: `docker-compose up`
 
 ## Running the project locally without Docker

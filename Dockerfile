@@ -17,8 +17,4 @@ RUN pip install pipenv
 RUN pipenv update
 RUN pipenv install
 
-# Expose the ports for Redis and the server.
-EXPOSE 6379
-EXPOSE 8000
-
 CMD ["pipenv", "run", "python", "src/manage.py", "runserver", "0.0.0.0:8000"]
