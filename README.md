@@ -15,6 +15,9 @@ You can check the project's roadmap [here](https://github.com/stellar/stellar-an
 ## Running the project locally with Docker
 The project can be run via Docker Compose. We recommend this approach for easier use.
 1. Install Docker Compose following the appropriate instructions [here](https://docs.docker.com/compose/install/)
+1. You'll need a `.env` file (or the equivalent env vars defined). We provide a sample one, which you can copy and modify: `$ cp .env.example .env`
+1. Modify the Stellar account in `.env` as below.
+1. Modify the `SERVER_JWT_KEY` to a more secure phrase, to allow for more secure SEP-10 authentication.
 1. Build the Docker image, from the root directory: `docker-compose build`
 1. Set up the Django admin user, from the root directory: `docker-compose run web pipenv run python src/manage.py createsuperuser`
 1. Run the Docker image, from the root directory: `docker-compose up`
@@ -28,6 +31,7 @@ This project was built using Pipenv. If you do not want to install Docker, here 
 1. Inside the repo's root, install the project's dependencies: `$ pipenv install`
 1. You'll need a `.env` file (or the equivalent env vars defined). We provide a sample one, which you can copy and modify: `$ cp .env.example .env`
 1. Modify the Stellar account in `.env` as below.
+1. Modify the `SERVER_JWT_KEY` to a more secure phrase, to allow for more secure SEP-10 authentication.
 1. Run the database migrations: `$ pipenv run python src/manage.py migrate`
 1. Set up the admin user: `$ pipenv run python src/manage.py createsuperuser`. Provide a username, email, and password of your choice.
 1. Run the redis server in the background: `$ redis-server --daemonize yes`
