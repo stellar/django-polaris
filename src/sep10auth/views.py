@@ -17,6 +17,7 @@ from django.http import JsonResponse
 from rest_framework import status
 from rest_framework.decorators import api_view
 from stellar_base.builder import Builder
+from stellar_base.exceptions import BadSignatureError
 from stellar_base.keypair import Keypair
 from stellar_base.network import NETWORKS
 from stellar_base.stellarxdr import Xdr
@@ -103,7 +104,14 @@ def _validate_envelope_xdr(envelope_xdr):
     Validate the provided TransactionEnvelope XDR (base64 string). Return the
     appropriate error if it fails, else the empty string.
     """
-    envelope_object = TransactionEnvelope.from_xdr(envelope_xdr)
+    # We load the TransactionEnvelope from the XDR to get the tx and signatures.
+    # We then generate a new TransactionEnvelope object with the desired network.
+    envelope_object_from_xdr = TransactionEnvelope.from_xdr(envelope_xdr)
+    envelope_object = TransactionEnvelope(
+        envelope_object_from_xdr.tx,
+        signatures=envelope_object_from_xdr.signatures,
+        network_id=settings.STELLAR_NETWORK,
+    )
     transaction_object = envelope_object.tx
 
     if str(transaction_object.source.decode()) != settings.STELLAR_ACCOUNT_ADDRESS:
@@ -130,7 +138,7 @@ def _validate_envelope_xdr(envelope_xdr):
     server_public_keypair = Keypair.from_address(settings.STELLAR_ACCOUNT_ADDRESS)
     try:
         server_public_keypair.verify(transaction_hash, server_signature.signature)
-    except ed25519.BadSignatureException:
+    except BadSignatureError:
         return "invalid server signature"
 
     client_signature = signatures[1]
@@ -138,7 +146,7 @@ def _validate_envelope_xdr(envelope_xdr):
     client_public_keypair = Keypair.from_address(client_account)
     try:
         client_public_keypair.verify(transaction_hash, client_signature.signature)
-    except ed25519.BadSignatureError:
+    except BadSignatureError:
         return "invalid client signature"
     return ""
 

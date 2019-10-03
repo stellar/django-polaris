@@ -5,7 +5,7 @@ from django.conf import settings
 from django.utils.timezone import now
 from stellar_base.address import Address
 from stellar_base.builder import Builder
-from stellar_base.exceptions import HorizonError
+from stellar_base.exceptions import HorizonError, StellarError
 from stellar_base.horizon import Horizon
 
 from app.celery import app
@@ -121,14 +121,16 @@ def check_trustlines():
     trustline has been created.
     """
     transactions = Transaction.objects.filter(status=Transaction.STATUS.pending_trust)
+    horizon = Horizon(horizon_uri=settings.HORIZON_URI)
     for transaction in transactions:
-        account = Horizon(horizon_uri=settings.HORIZON_URI).account(
-            transaction.stellar_account
-        )
+        try:
+            account = horizon.account(transaction.stellar_account)
+        except (StellarError, HorizonError) as exc:
+            continue
         try:
             balances = account["balances"]
         except KeyError:
-            return
+            continue
         for balance in balances:
             try:
                 asset_code = balance["asset_code"]
