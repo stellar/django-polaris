@@ -19,6 +19,7 @@ The project can be run via Docker Compose. We recommend this approach for easier
 1. Modify the Stellar account in `.env` as below.
 1. Modify the `SERVER_JWT_KEY` to a more secure phrase, to allow for more secure SEP-10 authentication.
 1. Build the Docker image, from the root directory: `docker-compose build`
+1. Run the database migrations, from the root directory: `docker-compose run web pipenv run python src/manage.py migrate`
 1. Set up the Django admin user, from the root directory: `docker-compose run web pipenv run python src/manage.py createsuperuser`
 1. Run the Docker image, from the root directory: `docker-compose up`
 
