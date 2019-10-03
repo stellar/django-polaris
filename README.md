@@ -36,6 +36,7 @@ This project was built using Pipenv. If you do not want to install Docker, here 
 1. Set up the admin user: `$ pipenv run python src/manage.py createsuperuser`. Provide a username, email, and password of your choice.
 1. Run the redis server in the background: `$ redis-server --daemonize yes`
 1. Run celery: `$ pipenv run celery worker --app app --beat --workdir src -l info`
+1. Run a script to stream withdrawal transactions from Horizon: `$ pipenv run python src/manage.py watch_transactions`
 1. Run the project: `$ pipenv run python src/manage.py runserver`
 
 ## Creating a Stellar account

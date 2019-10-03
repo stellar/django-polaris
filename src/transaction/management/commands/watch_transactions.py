@@ -1,26 +1,18 @@
-"""This module defines the asynchronous tasks needed for withdraws, run via Celery."""
+"""This module defines custom management commands for the app admin."""
 from django.conf import settings
 from django.utils.timezone import now
+from django.core.management.base import BaseCommand, CommandError
 from stellar_base.address import Address
+from stellar_base.horizon import HorizonError
 from stellar_base.stellarxdr import Xdr
 from stellar_base.transaction_envelope import TransactionEnvelope
-from app.celery import app
 
 from helpers import format_memo_horizon
 from transaction.models import Transaction
 
 
-@app.task
-def watch_stellar_withdraw(withdraw_memo):
-    """Watch for the withdrawal transaction over the Stellar network."""
-    transaction_data = get_transactions()
-    for transaction in transaction_data:
-        if process_withdrawal(transaction, withdraw_memo):
-            break
-
-
-def get_transactions():
-    """Get transactions for a Stellar address. Decomposed for easier testing."""
+def stream_transactions():
+    """Stream transactions for the server Stellar address. Decomposed for easier testing."""
     address = Address(
         address=settings.STELLAR_ACCOUNT_ADDRESS, horizon_uri=settings.HORIZON_URI
     )
@@ -42,9 +34,9 @@ def _check_payment_op(operation, want_asset, want_amount):
     return True
 
 
-def process_withdrawal(response, withdraw_memo):
+def process_withdrawal(response, transaction):
     """
-    Check if an individual Stellar transaction matches our desired withdrawal memo.
+    Check if a Stellar transaction's memo matches the ID of a database transaction.
     """
     # Validate the Horizon response.
     try:
@@ -62,13 +54,7 @@ def process_withdrawal(response, withdraw_memo):
     # The memo on the response will be base 64 string, due to XDR, while
     # the memo parameter is base 16. Thus, we convert the parameter
     # from hex to base 64, and then to a string without trailing whitespace.
-    if response_memo != format_memo_horizon(withdraw_memo):
-        return False
-
-    # Confirm that the transaction has a matching payment operation, with destination,
-    # amount, and asset type in the response matching those values in the database.
-    transaction = Transaction.objects.filter(withdraw_memo=withdraw_memo).first()
-    if not transaction:
+    if response_memo != format_memo_horizon(transaction.withdraw_memo):
         return False
 
     horizon_tx = TransactionEnvelope.from_xdr(envelope_xdr).tx
@@ -98,5 +84,23 @@ def process_withdrawal(response, withdraw_memo):
     return True
 
 
-if __name__ == "__main__":
-    app.worker_main()
+class Command(BaseCommand):
+    """
+    Custom command to monitor Stellar transactions to the anchor account.
+    It also updates the transactions in the database.
+    """
+
+    help = "Watches for Stellar transactions to the anchor account using Horizon"
+
+    def handle(self, *args, **options):
+        try:
+            transaction_responses = stream_transactions()
+        except HorizonError as exc:
+            raise CommandError(exc.message)
+        for response in transaction_responses:
+            pending_withdrawal_transactions = Transaction.objects.filter(
+                status=Transaction.STATUS.pending_user_transfer_start
+            ).filter(kind=Transaction.KIND.withdrawal)
+            for withdrawal_transaction in pending_withdrawal_transactions:
+                if process_withdrawal(response, withdrawal_transaction):
+                    break

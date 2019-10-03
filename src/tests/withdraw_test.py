@@ -6,8 +6,8 @@ from stellar_base.keypair import Keypair
 from stellar_base.transaction_envelope import TransactionEnvelope
 
 from helpers import format_memo_horizon
+from transaction.management.commands.watch_transactions import process_withdrawal
 from transaction.models import Transaction
-from withdraw.tasks import watch_stellar_withdraw
 
 from .helpers import mock_check_auth_success, mock_render_error_response
 
@@ -106,22 +106,18 @@ def test_withdraw_interactive_invalid_asset(
 
 
 @pytest.mark.django_db
-@patch("withdraw.tasks.get_transactions", return_value=[{}])
 @patch(
-    "withdraw.tasks.watch_stellar_withdraw.delay", side_effect=watch_stellar_withdraw
+    "transaction.management.commands.watch_transactions.stream_transactions",
+    return_value=[{}],
 )
 @patch("helpers.check_auth", side_effect=mock_check_auth_success)
 def test_withdraw_interactive_failure_no_memotype(
-    mock_check,
-    mock_watch,
-    mock_transactions,
-    client,
-    acc1_usd_withdrawal_transaction_factory,
+    mock_check, mock_transactions, client, acc1_usd_withdrawal_transaction_factory
 ):
     """
     `GET /withdraw/interactive_withdraw` fails with no `memo_type` in Horizon response.
     """
-    del mock_check, mock_watch, mock_transactions
+    del mock_check, mock_transactions
     acc1_usd_withdrawal_transaction_factory()
     response = client.get(f"/withdraw?asset_code=USD", follow=True)
     content = json.loads(response.content)
@@ -141,22 +137,18 @@ def test_withdraw_interactive_failure_no_memotype(
 
 
 @pytest.mark.django_db
-@patch("withdraw.tasks.get_transactions", return_value=[{"memo_type": "not_hash"}])
 @patch(
-    "withdraw.tasks.watch_stellar_withdraw.delay", side_effect=watch_stellar_withdraw
+    "transaction.management.commands.watch_transactions.stream_transactions",
+    return_value=[{"memo_type": "not_hash"}],
 )
 @patch("helpers.check_auth", side_effect=mock_check_auth_success)
 def test_withdraw_interactive_failure_incorrect_memotype(
-    mock_check,
-    mock_watch,
-    mock_transactions,
-    client,
-    acc1_usd_withdrawal_transaction_factory,
+    mock_check, mock_transactions, client, acc1_usd_withdrawal_transaction_factory
 ):
     """
     `GET /withdraw/interactive_withdraw` fails with incorrect `memo_type` in Horizon response.
     """
-    del mock_check, mock_watch, mock_transactions
+    del mock_check, mock_transactions
     acc1_usd_withdrawal_transaction_factory()
     response = client.get(f"/withdraw?asset_code=USD", follow=True)
     content = json.loads(response.content)
@@ -176,22 +168,18 @@ def test_withdraw_interactive_failure_incorrect_memotype(
 
 
 @pytest.mark.django_db
-@patch("withdraw.tasks.get_transactions", return_value=[{"memo_type": "hash"}])
 @patch(
-    "withdraw.tasks.watch_stellar_withdraw.delay", side_effect=watch_stellar_withdraw
+    "transaction.management.commands.watch_transactions.stream_transactions",
+    return_value=[{"memo_type": "hash"}],
 )
 @patch("helpers.check_auth", side_effect=mock_check_auth_success)
 def test_withdraw_interactive_failure_no_memo(
-    mock_check,
-    mock_watch,
-    mock_transactions,
-    client,
-    acc1_usd_withdrawal_transaction_factory,
+    mock_check, mock_transactions, client, acc1_usd_withdrawal_transaction_factory
 ):
     """
     `GET /withdraw/interactive_withdraw` fails with no `memo` in Horizon response.
     """
-    del mock_check, mock_watch, mock_transactions
+    del mock_check, mock_transactions
     acc1_usd_withdrawal_transaction_factory()
     response = client.get(f"/withdraw?asset_code=USD", follow=True)
     content = json.loads(response.content)
@@ -212,24 +200,17 @@ def test_withdraw_interactive_failure_no_memo(
 
 @pytest.mark.django_db
 @patch(
-    "withdraw.tasks.get_transactions",
+    "transaction.management.commands.watch_transactions.stream_transactions",
     return_value=[{"memo_type": "hash", "memo": "wrong_memo"}],
-)
-@patch(
-    "withdraw.tasks.watch_stellar_withdraw.delay", side_effect=watch_stellar_withdraw
 )
 @patch("helpers.check_auth", side_effect=mock_check_auth_success)
 def test_withdraw_interactive_failure_incorrect_memo(
-    mock_check,
-    mock_watch,
-    mock_transactions,
-    client,
-    acc1_usd_withdrawal_transaction_factory,
+    mock_check, mock_transactions, client, acc1_usd_withdrawal_transaction_factory
 ):
     """
     `GET /withdraw/interactive_withdraw` fails with incorrect `memo` in Horizon response.
     """
-    del mock_check, mock_watch, mock_transactions
+    del mock_check, mock_transactions
     acc1_usd_withdrawal_transaction_factory()
     response = client.get(f"/withdraw?asset_code=USD", follow=True)
     content = json.loads(response.content)
@@ -249,23 +230,15 @@ def test_withdraw_interactive_failure_incorrect_memo(
 
 
 @pytest.mark.django_db
-@patch("withdraw.tasks.get_transactions")
-@patch(
-    "withdraw.tasks.watch_stellar_withdraw.delay", return_value=watch_stellar_withdraw
-)
 @patch("helpers.check_auth", side_effect=mock_check_auth_success)
 def test_withdraw_interactive_success_transaction_unsuccessful(
-    mock_check,
-    mock_watch,
-    mock_transactions,
-    client,
-    acc1_usd_withdrawal_transaction_factory,
+    mock_check, client, acc1_usd_withdrawal_transaction_factory
 ):
     """
     `GET /withdraw/interactive_withdraw` changes transaction to `pending_stellar`
     with unsuccessful transaction.
     """
-    del mock_check, mock_watch
+    del mock_check
     acc1_usd_withdrawal_transaction_factory()
     response = client.get(f"/withdraw?asset_code=USD", follow=True)
     content = json.loads(response.content)
@@ -282,16 +255,14 @@ def test_withdraw_interactive_success_transaction_unsuccessful(
     assert transaction.status == Transaction.STATUS.pending_user_transfer_start
 
     withdraw_memo = transaction.withdraw_memo
-    mock_transactions.return_value = [
-        {
-            "memo_type": "hash",
-            "memo": format_memo_horizon(withdraw_memo),
-            "successful": False,
-            "id": "c5e8ada72c0e3c248ac7e1ec0ec97e204c06c295113eedbe632020cd6dc29ff8",
-            "envelope_xdr": "AAAAAEU1B1qeJrucdqkbk1mJsnuFaNORfrOAzJyaAy1yzW8TAAAAZAAE2s4AAAABAAAAAAAAAAMAAAAAAAAAAAAAAAAAAAAAgOpz6gHTQRqNnOoimZ7vngAAAAEAAAAAAAAAAQAAAAChQqr7VnYYYH3yq6stKahwdp+8bpL5jMo0TqiIchejqQAAAAFVU0QAAAAAAKFCqvtWdhhgffKrqy0pqHB2n7xukvmMyjROqIhyF6OpAAAAAB3NZQAAAAAAAAAAAA==",
-        }
-    ]
-    watch_stellar_withdraw(withdraw_memo)
+    mock_response = {
+        "memo_type": "hash",
+        "memo": format_memo_horizon(withdraw_memo),
+        "successful": False,
+        "id": "c5e8ada72c0e3c248ac7e1ec0ec97e204c06c295113eedbe632020cd6dc29ff8",
+        "envelope_xdr": "AAAAAEU1B1qeJrucdqkbk1mJsnuFaNORfrOAzJyaAy1yzW8TAAAAZAAE2s4AAAABAAAAAAAAAAMAAAAAAAAAAAAAAAAAAAAAgOpz6gHTQRqNnOoimZ7vngAAAAEAAAAAAAAAAQAAAAChQqr7VnYYYH3yq6stKahwdp+8bpL5jMo0TqiIchejqQAAAAFVU0QAAAAAAKFCqvtWdhhgffKrqy0pqHB2n7xukvmMyjROqIhyF6OpAAAAAB3NZQAAAAAAAAAAAA==",
+    }
+    process_withdrawal(mock_response, transaction)
     assert (
         Transaction.objects.get(id=transaction_id).status
         == Transaction.STATUS.pending_stellar
@@ -299,23 +270,15 @@ def test_withdraw_interactive_success_transaction_unsuccessful(
 
 
 @pytest.mark.django_db
-@patch("withdraw.tasks.get_transactions")
-@patch(
-    "withdraw.tasks.watch_stellar_withdraw.delay", return_value=watch_stellar_withdraw
-)
 @patch("helpers.check_auth", side_effect=mock_check_auth_success)
 def test_withdraw_interactive_success_transaction_successful(
-    mock_check,
-    mock_watch,
-    mock_transactions,
-    client,
-    acc1_usd_withdrawal_transaction_factory,
+    mock_check, client, acc1_usd_withdrawal_transaction_factory
 ):
     """
     `GET /withdraw/interactive_withdraw` changes transaction to `completed`
     with successful transaction.
     """
-    del mock_check, mock_watch
+    del mock_check
     acc1_usd_withdrawal_transaction_factory()
     response = client.get(f"/withdraw?asset_code=USD", follow=True)
     content = json.loads(response.content)
@@ -332,17 +295,15 @@ def test_withdraw_interactive_success_transaction_successful(
     assert transaction.status == Transaction.STATUS.pending_user_transfer_start
 
     withdraw_memo = transaction.withdraw_memo
-    mock_transactions.return_value = [
-        {
-            "memo_type": "hash",
-            "memo": format_memo_horizon(withdraw_memo),
-            "successful": True,
-            "id": "c5e8ada72c0e3c248ac7e1ec0ec97e204c06c295113eedbe632020cd6dc29ff8",
-            "envelope_xdr": "AAAAAEU1B1qeJrucdqkbk1mJsnuFaNORfrOAzJyaAy1yzW8TAAAAZAAE2s4AAAABAAAAAAAAAAMAAAAAAAAAAAAAAAAAAAAAgOpz6gHTQRqNnOoimZ7vngAAAAEAAAAAAAAAAQAAAAChQqr7VnYYYH3yq6stKahwdp+8bpL5jMo0TqiIchejqQAAAAFVU0QAAAAAAKFCqvtWdhhgffKrqy0pqHB2n7xukvmMyjROqIhyF6OpAAAAAB3NZQAAAAAAAAAAAA==",
-        }
-    ]
-    watch_stellar_withdraw(withdraw_memo)
-    transaction = Transaction.objects.get(id=transaction_id)
+    mock_response = {
+        "memo_type": "hash",
+        "memo": format_memo_horizon(withdraw_memo),
+        "successful": True,
+        "id": "c5e8ada72c0e3c248ac7e1ec0ec97e204c06c295113eedbe632020cd6dc29ff8",
+        "envelope_xdr": "AAAAAEU1B1qeJrucdqkbk1mJsnuFaNORfrOAzJyaAy1yzW8TAAAAZAAE2s4AAAABAAAAAAAAAAMAAAAAAAAAAAAAAAAAAAAAgOpz6gHTQRqNnOoimZ7vngAAAAEAAAAAAAAAAQAAAAChQqr7VnYYYH3yq6stKahwdp+8bpL5jMo0TqiIchejqQAAAAFVU0QAAAAAAKFCqvtWdhhgffKrqy0pqHB2n7xukvmMyjROqIhyF6OpAAAAAB3NZQAAAAAAAAAAAA==",
+    }
+    process_withdrawal(mock_response, transaction)
+
     assert transaction.status == Transaction.STATUS.completed
     assert transaction.completed_at
 

@@ -24,7 +24,6 @@ from info.models import Asset
 from transaction.models import Transaction
 from transaction.serializers import TransactionSerializer
 from .forms import WithdrawForm
-from .tasks import watch_stellar_withdraw
 
 
 def _construct_interactive_url(request, transaction_id):
@@ -109,7 +108,6 @@ def interactive_withdraw(request):
                 context={"more_info_url": _construct_more_info_url(request)},
             )
             tx_json = json.dumps({"transaction": serializer.data})
-            watch_stellar_withdraw.delay(withdraw_memo)
             return render(
                 request,
                 "transaction/more_info.html",

@@ -5,7 +5,7 @@ services:
     image: "redis:alpine"
     ports:
       - "6379:6379"
-  web:
+  server:
     build: .
     volumes:
       - .:/code/
@@ -16,6 +16,14 @@ services:
     command: >
       sh -c "pipenv run python src/manage.py migrate
       && pipenv run python src/manage.py runserver 0.0.0.0:8000"
+  watch_transactions:
+    build: .
+    volumes: 
+      - .:/code/
+    depends_on:
+      - redis
+    command: >
+      sh -c "pipenv run python src/manage.py watch_transactions"
   celery:
     build: .
     command: pipenv run celery worker --app app --beat --workdir src -l info
@@ -23,4 +31,4 @@ services:
       - .:/code/
     depends_on:
       - redis
-      - web
+      - server
