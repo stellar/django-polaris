@@ -81,7 +81,7 @@ def validate_jwt_request(request):
     Validate the JSON web token in a request.
     Return the appropriate error string, or empty string if valid.
     """
-    # While the SEP 6 spec calls the authorization header "Authorization", the middleware
+    # While the SEP 24 spec calls the authorization header "Authorization", django middleware
     # renames this as "HTTP_AUTHORIZATION". We check this header for the JWT.
     jwt_header = request.META.get("HTTP_AUTHORIZATION")
     if not jwt_header:

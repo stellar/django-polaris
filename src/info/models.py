@@ -6,8 +6,8 @@ from model_utils.models import TimeStampedModel
 
 class Asset(TimeStampedModel):
     """
-    This defines an Asset, as described in the SEP-6 `info` endpoint.
-    See: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#info
+    This defines an Asset, as described in the SEP-24 `info` endpoint.
+    See: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md#info
     """
 
     name = models.TextField(unique=True, validators=[MinLengthValidator(1)])

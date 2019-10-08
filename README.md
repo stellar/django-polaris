@@ -6,7 +6,7 @@ IMPORTANT DISCLAIMER: This code should not be used in production without a thoro
 
 This project is a WIP example implementation of a Stellar anchor server. 
 
-Its goal is to provide a community example implementation of [SEP 6](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md) (and the related SEP [10](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.md)). We hope to make it easier for anchors to integrate with the Stellar network, as they can refer to this sample implementation in their own development. Note that this implementation itself should not be utilized directly (i.e., forked) for handling real amounts of real money.
+Its goal is to provide a community example implementation of [SEP 24](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md) (and the related SEP [10](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.md)). We hope to make it easier for anchors to integrate with the Stellar network, as they can refer to this sample implementation in their own development. Note that this implementation itself should not be utilized directly (i.e., forked) for handling real amounts of real money.
 
 Additionally, we want to enable wallets to seamlessly integrate with said anchor. This implementation will provide a reference server for wallets to implement their end of the above SEPs without having to collaborate with an anchor.
 

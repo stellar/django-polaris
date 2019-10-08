@@ -38,8 +38,8 @@ def _get_asset_withdrawal_info(asset: Asset):
 @api_view()
 def info(request):
     """
-    Definition of the /info endpoint, in accordance with SEP-0006.
-    See: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#info
+    Definition of the /info endpoint, in accordance with SEP-0024.
+    See: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md#info
     """
 
     info_data = {

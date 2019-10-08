@@ -9,8 +9,8 @@ from model_utils import Choices
 
 class Transaction(models.Model):
     """
-    This defines a Transaction, as described in the SEP-6 `transaction` endpoint.
-    See: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#transactions
+    This defines a Transaction, as described in the SEP-24 `transaction` endpoint.
+    See: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md#transactions
     """
 
     KIND = Choices("deposit", "withdrawal")
@@ -50,7 +50,6 @@ class Transaction(models.Model):
     started_at = models.DateTimeField(auto_now_add=True)
     completed_at = models.DateTimeField(null=True)
 
-    # New fields introduced in SEP-0006 v3:
     from_address = models.TextField(
         null=True, blank=True
     )  # Using from_address since `from` is a reserved keyword

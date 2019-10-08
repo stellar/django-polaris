@@ -27,7 +27,7 @@ def generate_toml(request):
     toml_dict["DOCUMENTATION"] = {
         "ORG_NAME": "Stellar Development Foundation",
         "ORG_URL": "https://stellar.org",
-        "ORG_DESCRIPTION": "SEP 6 reference server.",
+        "ORG_DESCRIPTION": "SEP 24 reference server.",
         "ORG_KEYBASE": "stellar.public",
         "ORG_TWITTER": "StellarOrg",
         "ORG_GITHUB": "stellar",

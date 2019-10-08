@@ -91,7 +91,7 @@ def confirm_transaction(request):
     that they have processed the transaction. This triggers submission of the
     corresponding Stellar transaction.
 
-    Note that this endpoint is not part of the SEP 6 workflow, it is merely
+    Note that this endpoint is not part of the SEP 24 workflow, it is merely
     a mechanism for confirming the external transaction for demonstration purposes.
     If reusing this technique in a real-life scenario, add a strictly secure
     authentication system.

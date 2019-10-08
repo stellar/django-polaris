@@ -24,7 +24,7 @@ from stellar_base.stellarxdr import Xdr
 from stellar_base.transaction_envelope import TransactionEnvelope
 
 MIME_URLENCODE, MIME_JSON = "application/x-www-form-urlencoded", "application/json"
-ANCHOR_NAME = "SEP 6 Reference"
+ANCHOR_NAME = "SEP 24 Reference"
 
 
 def _challenge_transaction(client_account):
@@ -202,8 +202,7 @@ def auth(request):
     """
     `GET /auth` can be used to get an invalid challenge Stellar transaction. The client
     can then sign it using their private key and hit `POST /auth` to receive a JSON web
-    token. That token can be used to authenticate calls to the other SEP 6 endpoints, as
-    per the anchor's specified requirements per-endpoint and asset.
+    token. That token can be used to authenticate calls to the other SEP 24 endpoints.
     """
     if request.method == "POST":
         return _post_auth(request)

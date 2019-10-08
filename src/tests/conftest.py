@@ -19,7 +19,7 @@ def fixture_usd_asset_factory():
     def create_usd_asset():
         """
         Creates a test USD asset that composes the example /info response, according
-        to https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#response-2
+        to https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md#response-2
         """
         usd_asset = Asset.objects.create(
             name="USD",
@@ -50,7 +50,7 @@ def fixture_eth_asset_factory():
     def create_eth_asset():
         """
         Creates a test ETH asset that composes the example /info response, according
-        to https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#response-2
+        to https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md#response-2
         """
         eth_asset, _ = Asset.objects.get_or_create(
             name="ETH",

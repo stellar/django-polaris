@@ -5,15 +5,15 @@ import pytest
 
 def _get_expected_response(settings):
     """
-    This expected response was adapted from the example SEP-0006 response on
-    https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#response-2
+    This expected response was adapted from the example SEP-0024 response on
+    https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md#response-2
     Some changes have been applied, to ensure the data we provide is in a consistent format and
     in accordance with design decisions from this reference implementation:
 
     - All deposit / withdrawals from this anchor reference server are authentication_required
     - The "optional" configuration is always explicit, to avoid misinterpretation
     - The "authentication_required" configuration is always explicit, to avoid misinterpretation
-    - All SEP6 endpoints are enabled=true
+    - All SEP24 endpoints are enabled=true
     - All floating numbers are displayed with at least one decimal
     - min_amount and max_amount are mandatorily informed
     """
@@ -59,7 +59,7 @@ def _get_expected_response(settings):
 def test_info_endpoint(client, settings, usd_asset_factory, eth_asset_factory):
     """
     Ensures the /info endpoint provides data in the expected format, according to
-    SEP 6: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md
+    SEP 24: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md
     """
     usd_asset_factory()
     eth_asset_factory()

@@ -25,8 +25,8 @@ def _op_type_is_valid(asset_code: str, operation: str, op_type: str) -> bool:
 @api_view()
 def fee(request):
     """
-    Definition of the /fee endpoint, in accordance with SEP-0006.
-    See: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#fee
+    Definition of the /fee endpoint, in accordance with SEP-0024.
+    See: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md#fee
     """
     # Verify that the asset code exists in our database:
     asset_code = request.GET.get("asset_code")

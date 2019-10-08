@@ -76,7 +76,7 @@ def _construct_more_info_url(request):
 def more_info(request):
     """
     Popup to display more information about a specific transaction.
-    See table: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#4-customer-information-status
+    See table: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md#4-customer-information-status
     """
     try:
         request_transaction = _get_transaction_from_request(request)
@@ -107,8 +107,8 @@ def more_info(request):
 @api_view()
 def transactions(request):
     """
-    Definition of the /transactions endpoint, in accordance with SEP-0006.
-    See: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#transaction-history
+    Definition of the /transactions endpoint, in accordance with SEP-0024.
+    See: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md#transaction-history
     """
     try:
         limit = _validate_limit(request.GET.get("limit"))
@@ -157,8 +157,8 @@ def transactions(request):
 @api_view()
 def transaction(request):
     """
-    Definition of the /transaction endpoint, in accordance with SEP-0006.
-    See: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#single-historical-transaction
+    Definition of the /transaction endpoint, in accordance with SEP-0024.
+    See: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md#single-historical-transaction
     """
     try:
         request_transaction = _get_transaction_from_request(request)
