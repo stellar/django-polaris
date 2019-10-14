@@ -34,7 +34,7 @@ def generate_toml(request):
     }
 
     toml_dict["CURRENCIES"] = [
-        {"code": asset.name, "issuer": settings.STELLAR_ACCOUNT_ADDRESS}
+        {"code": asset.name, "issuer": settings.STELLAR_ASSET_ISSUER}
         for asset in Asset.objects.all().iterator()
     ]
 

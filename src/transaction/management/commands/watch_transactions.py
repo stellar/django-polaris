@@ -26,8 +26,8 @@ def _check_payment_op(operation, want_asset, want_amount):
         return False
     if str(operation.asset.code) != want_asset:
         return False
-    # TODO: Handle assets not issued by the anchor address.
-    if str(operation.asset.issuer) != settings.STELLAR_ACCOUNT_ADDRESS:
+    # TODO: Handle multiple possible asset issuance accounts
+    if str(operation.asset.issuer) != settings.STELLAR_ASSET_ISSUER:
         return False
     if float(operation.amount) != want_amount:
         return False

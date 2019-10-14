@@ -87,7 +87,7 @@ def create_stellar_deposit(transaction_id):
     builder.append_payment_op(
         destination=stellar_account,
         asset_code=asset,
-        asset_issuer=settings.STELLAR_ACCOUNT_ADDRESS,
+        asset_issuer=settings.STELLAR_ASSET_ISSUER,
         amount=str(payment_amount),
     )
     builder.sign()
