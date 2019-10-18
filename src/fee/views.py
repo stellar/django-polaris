@@ -21,7 +21,7 @@ def _op_type_is_valid(asset_code: str, operation: str, op_type: str) -> bool:
     return False
 
 
-@validate_sep10_token(settings.FEE_AUTH_REQUIRED)
+@validate_sep10_token()
 @api_view()
 def fee(request):
     """

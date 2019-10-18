@@ -204,7 +204,7 @@ def interactive_deposit(request):
     return render(request, "deposit/form.html", {"form": form})
 
 
-@validate_sep10_token(settings.DEPOSIT_AUTH_REQUIRED)
+@validate_sep10_token()
 @api_view()
 def deposit(request):
     """

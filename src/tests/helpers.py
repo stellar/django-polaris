@@ -2,7 +2,7 @@
 from django.http import JsonResponse
 
 
-def mock_check_auth_success(request, needs_auth, func):
+def mock_check_auth_success(request, func):
     """Mocks `helpers.check_auth`, for success."""
     return func(request)
 

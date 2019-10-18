@@ -616,7 +616,6 @@ def test_deposit_authenticated_success(client, acc1_usd_deposit_transaction_fact
     """`GET /deposit` succeeds with the SEP 10 authentication flow."""
     client_address = "GDKFNRUATPH4BSZGVFDRBIGZ5QAFILVFRIRYNSQ4UO7V2ZQAPRNL73RI"
     client_seed = "SDKWSBERDHP3SXW5A3LXSI7FWMMO5H7HG33KNYBKWH2HYOXJG2DXQHQY"
-    settings.DEPOSIT_AUTH_REQUIRED = True
     deposit = acc1_usd_deposit_transaction_factory()
 
     # SEP 10.

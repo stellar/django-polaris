@@ -103,7 +103,7 @@ def more_info(request):
     )
 
 
-@validate_sep10_token(settings.TRANSACTIONS_AUTH_REQUIRED)
+@validate_sep10_token()
 @api_view()
 def transactions(request):
     """
@@ -153,7 +153,7 @@ def transactions(request):
     return Response({"transactions": serializer.data})
 
 
-@validate_sep10_token(settings.TRANSACTION_AUTH_REQUIRED)
+@validate_sep10_token()
 @api_view()
 def transaction(request):
     """

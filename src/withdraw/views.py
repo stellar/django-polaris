@@ -120,7 +120,7 @@ def interactive_withdraw(request):
     return render(request, "withdraw/form.html", {"form": form})
 
 
-@validate_sep10_token(settings.WITHDRAW_AUTH_REQUIRED)
+@validate_sep10_token()
 @api_view()
 def withdraw(request):
     """
