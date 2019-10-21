@@ -31,7 +31,7 @@ If you are planning to run this in production, you need to follow the following 
 1. Now, run [this script](https://github.com/msfeldstein/create-stellar-token), using the issuer seed and distribution seed of the accounts just created. You can decide the name of your asset and amount to issue. This will issue an asset and send some amount of that asset to the distribution account.
 1. Finally, modify the `SERVER_JWT_KEY` to a more secure phrase for more secure SEP-10 authentication. 
 
-Note that the above steps are aimed at creating an environment plugged into the Stellar test network ("testnet"), rather than the public Stellar network ("mainnet"). If you want to run this application on the main network, you will also need to change the value of `STELLAR_NETWORK` in `.env` to `PUBLIC`, and the `HORIZON_URI` to a public testnet URL (e.g., `https://horizon.stellar.org`).
+Note that the above steps are aimed at creating an environment plugged into the Stellar test network ("testnet"), rather than the public Stellar network ("mainnet"). If you want to run this application on the main network, you will also need to change the value of `STELLAR_NETWORK` in `.env` to `PUBLIC`, and the `HORIZON_URI` to a URL of a Horizon running on the public network (e.g., `https://horizon.stellar.org`).
 
 ## Running the project locally with Docker
 The project can be run via Docker Compose. We recommend this approach for easier use.
