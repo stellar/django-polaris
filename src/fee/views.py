@@ -11,7 +11,7 @@ OPERATION_WITHDRAWAL = settings.OPERATION_WITHDRAWAL
 
 
 def _op_type_is_valid(asset_code: str, operation: str, op_type: str) -> bool:
-    asset = Asset.objects.get(name=asset_code)
+    asset = Asset.objects.get(code=asset_code)
     if all([operation == OPERATION_WITHDRAWAL, asset.withdrawal_enabled, not op_type]):
         return True
 
@@ -30,9 +30,9 @@ def fee(request):
     """
     # Verify that the asset code exists in our database:
     asset_code = request.GET.get("asset_code")
-    if not asset_code or not Asset.objects.filter(name=asset_code).exists():
+    if not asset_code or not Asset.objects.filter(code=asset_code).exists():
         return render_error_response("invalid 'asset_code'")
-    asset = Asset.objects.get(name=asset_code)
+    asset = Asset.objects.get(code=asset_code)
 
     # Verify that the requested operation is valid:
     operation = request.GET.get("operation")

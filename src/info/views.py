@@ -53,7 +53,7 @@ def info(request):
         .prefetch_related("deposit_fields", "withdrawal_types")
         .iterator()
     ):
-        info_data["deposit"][asset.name] = _get_asset_deposit_info(asset)
-        info_data["withdraw"][asset.name] = _get_asset_withdrawal_info(asset)
+        info_data["deposit"][asset.code] = _get_asset_deposit_info(asset)
+        info_data["withdraw"][asset.code] = _get_asset_withdrawal_info(asset)
 
     return Response(info_data)

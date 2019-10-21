@@ -42,7 +42,7 @@ def test_auth_get_account(client):
     server_signature = signatures[0]
 
     tx_hash = envelope_object.hash_meta()
-    server_public_key = Keypair.from_address(settings.STELLAR_ACCOUNT_ADDRESS)
+    server_public_key = Keypair.from_address(settings.STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS)
     server_public_key.verify(tx_hash, server_signature.signature)
 
 

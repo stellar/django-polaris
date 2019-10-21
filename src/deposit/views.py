@@ -151,7 +151,7 @@ def interactive_deposit(request):
         return render_error_response("no 'account' provided")
 
     asset_code = request.GET.get("asset_code")
-    if not asset_code or not Asset.objects.filter(name=asset_code).exists():
+    if not asset_code or not Asset.objects.filter(code=asset_code).exists():
         return render_error_response("invalid 'asset_code'")
 
     transaction_id = request.GET.get("transaction_id")
@@ -168,7 +168,7 @@ def interactive_deposit(request):
                 "transaction with matching 'transaction_id' already exists"
             )
         form = DepositForm(request.POST)
-        asset = Asset.objects.get(name=asset_code)
+        asset = Asset.objects.get(code=asset_code)
         form.asset = asset
         # If the form is valid, we create a transaction pending external action
         # and render the success page.
@@ -198,7 +198,7 @@ def interactive_deposit(request):
                 context={
                     "tx_json": tx_json,
                     "transaction": transaction,
-                    "asset_code": transaction.asset.name,
+                    "asset_code": transaction.asset.code,
                 },
             )
     return render(request, "deposit/form.html", {"form": form})
@@ -221,7 +221,7 @@ def deposit(request):
         )
 
     # Verify that the asset code exists in our database, with deposit enabled.
-    asset = Asset.objects.filter(name=asset_code).first()
+    asset = Asset.objects.filter(code=asset_code).first()
     if not asset or not asset.deposit_enabled:
         return render_error_response(f"invalid operation for asset {asset_code}")
 

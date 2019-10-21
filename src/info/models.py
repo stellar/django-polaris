@@ -1,4 +1,5 @@
 """This module defines the models for the info app."""
+from django.conf import settings
 from django.core.validators import MinLengthValidator
 from django.db import models
 from model_utils.models import TimeStampedModel
@@ -10,7 +11,10 @@ class Asset(TimeStampedModel):
     See: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md#info
     """
 
-    name = models.TextField(unique=True, validators=[MinLengthValidator(1)])
+    code = models.TextField(validators=[MinLengthValidator(1)], default="USD")
+    issuer = models.TextField(
+        validators=[MinLengthValidator(56)], default=settings.STELLAR_ISSUER_ACCOUNT_ADDRESS
+    )
 
     # Deposit-related info
     deposit_enabled = models.BooleanField(null=False, default=True)

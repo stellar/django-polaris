@@ -95,7 +95,7 @@ def validate_jwt_request(request):
     jwt_dict = jwt.decode(encoded_jwt, settings.SERVER_JWT_KEY, algorithms=["HS256"])
     if jwt_dict["iss"] != request.build_absolute_uri("/auth"):
         return "'jwt' has incorrect 'issuer'"
-    if jwt_dict["sub"] != settings.STELLAR_ACCOUNT_ADDRESS:
+    if jwt_dict["sub"] != settings.STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS:
         return "'jwt' has incorrect 'subject'"
     current_time = time.time()
     if current_time < jwt_dict["iat"] or current_time > jwt_dict["exp"]:

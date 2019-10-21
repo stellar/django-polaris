@@ -14,7 +14,7 @@ from transaction.models import Transaction
 def stream_transactions():
     """Stream transactions for the server Stellar address. Decomposed for easier testing."""
     address = Address(
-        address=settings.STELLAR_ACCOUNT_ADDRESS, horizon_uri=settings.HORIZON_URI
+        address=settings.STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS, horizon_uri=settings.HORIZON_URI
     )
     return address.transactions(cursor="now", sse=True)
 
@@ -22,12 +22,12 @@ def stream_transactions():
 def _check_payment_op(operation, want_asset, want_amount):
     if operation.type_code() != Xdr.const.PAYMENT:
         return False
-    if str(operation.destination) != settings.STELLAR_ACCOUNT_ADDRESS:
+    if str(operation.destination) != settings.STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS:
         return False
     if str(operation.asset.code) != want_asset:
         return False
     # TODO: Handle multiple possible asset issuance accounts
-    if str(operation.asset.issuer) != settings.STELLAR_ASSET_ISSUER:
+    if str(operation.asset.issuer) != settings.STELLAR_ISSUER_ACCOUNT_ADDRESS:
         return False
     if float(operation.amount) != want_amount:
         return False
@@ -60,7 +60,7 @@ def process_withdrawal(response, transaction):
     horizon_tx = TransactionEnvelope.from_xdr(envelope_xdr).tx
     found_matching_payment_op = False
     for operation in horizon_tx.operations:
-        if _check_payment_op(operation, transaction.asset.name, transaction.amount_in):
+        if _check_payment_op(operation, transaction.asset.code, transaction.amount_in):
             found_matching_payment_op = True
             break
 
@@ -103,4 +103,8 @@ class Command(BaseCommand):
             ).filter(kind=Transaction.KIND.withdrawal)
             for withdrawal_transaction in pending_withdrawal_transactions:
                 if process_withdrawal(response, withdrawal_transaction):
+                    envelope_xdr = response["envelope_xdr"]
+                    print(
+                        f"successfully processed withdrawal for response with xdr {envelope_xdr}"
+                    )
                     break

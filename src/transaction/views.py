@@ -98,7 +98,7 @@ def more_info(request):
         context={
             "tx_json": tx_json,
             "transaction": request_transaction,
-            "asset_code": request_transaction.asset.name,
+            "asset_code": request_transaction.asset.code,
         },
     )
 
@@ -122,7 +122,7 @@ def transactions(request):
         )
 
     translation_dict = {
-        "asset_code": "asset__name",
+        "asset_code": "asset__code",
         "account": "stellar_account",
         "no_older_than": "started_at__gte",
         "kind": "kind",

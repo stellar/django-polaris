@@ -1,4 +1,6 @@
 """This module defines the asynchronous tasks needed for deposits, run via Celery."""
+import logging
+
 from celery.task.schedules import crontab
 from celery.decorators import periodic_task
 from django.conf import settings
@@ -14,6 +16,8 @@ from transaction.models import Transaction
 TRUSTLINE_FAILURE_XDR = "AAAAAAAAAGT/////AAAAAQAAAAAAAAAB////+gAAAAA="
 SUCCESS_XDR = "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA="
 
+logger = logging.getLogger(__name__)
+
 
 @app.task
 def create_stellar_deposit(transaction_id):
@@ -28,6 +32,10 @@ def create_stellar_deposit(transaction_id):
         Transaction.STATUS.pending_anchor,
         Transaction.STATUS.pending_trust,
     ]:
+        logger.debug(
+            "unexpected transaction status %s at top of create_stellar_deposit",
+            transaction.status,
+        )
         return
     transaction.status = Transaction.STATUS.pending_stellar
     transaction.save()
@@ -36,7 +44,7 @@ def create_stellar_deposit(transaction_id):
     # because this task is only called after those parameters are validated.
     stellar_account = transaction.stellar_account
     payment_amount = round(transaction.amount_in - transaction.amount_fee, 7)
-    asset = transaction.asset.name
+    asset = transaction.asset.code
 
     # If the given Stellar account does not exist, create
     # the account with at least enough XLM for the minimum
@@ -53,22 +61,29 @@ def create_stellar_deposit(transaction_id):
     except HorizonError as address_exc:
         # 404 code corresponds to Resource Missing.
         if address_exc.status_code != 404:
+            logger.debug(
+                "error with message %s when loading stellar account",
+                address_exc.message,
+            )
             return
         starting_balance = settings.ACCOUNT_STARTING_BALANCE
         builder = Builder(
-            secret=settings.STELLAR_ACCOUNT_SEED,
+            secret=settings.STELLAR_DISTRIBUTION_ACCOUNT_SEED,
             horizon_uri=settings.HORIZON_URI,
             network=settings.STELLAR_NETWORK,
         )
         builder.append_create_account_op(
             destination=stellar_account,
             starting_balance=starting_balance,
-            source=settings.STELLAR_ACCOUNT_ADDRESS,
+            source=settings.STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS,
         )
         builder.sign()
         try:
             builder.submit()
-        except HorizonError:
+        except HorizonError as submit_exc:
+            logger.debug(
+                f"error with message {submit_exc.message} when submitting create account to horizon"
+            )
             return
         transaction.status = Transaction.STATUS.pending_trust
         transaction.save()
@@ -80,14 +95,14 @@ def create_stellar_deposit(transaction_id):
     # trustline error, we update the database accordingly. Else, we do not update.
 
     builder = Builder(
-        secret=settings.STELLAR_ACCOUNT_SEED,
+        secret=settings.STELLAR_DISTRIBUTION_ACCOUNT_SEED,
         horizon_uri=settings.HORIZON_URI,
         network=settings.STELLAR_NETWORK,
     )
     builder.append_payment_op(
         destination=stellar_account,
         asset_code=asset,
-        asset_issuer=settings.STELLAR_ASSET_ISSUER,
+        asset_issuer=settings.STELLAR_ISSUER_ACCOUNT_ADDRESS,
         amount=str(payment_amount),
     )
     builder.sign()
@@ -96,7 +111,12 @@ def create_stellar_deposit(transaction_id):
     # Functional errors at this stage are Horizon errors.
     except HorizonError as exception:
         if TRUSTLINE_FAILURE_XDR not in exception.message:
+            logger.debug(
+                "error with message %s when submitting payment to horizon, non-trustline failure",
+                exception.message,
+            )
             return
+        logger.debug("trustline error when submitting transaction to horizon")
         transaction.status = Transaction.STATUS.pending_trust
         transaction.save()
         return
@@ -104,6 +124,7 @@ def create_stellar_deposit(transaction_id):
     # If this condition is met, the Stellar payment succeeded, so we
     # can mark the transaction as completed.
     if response["result_xdr"] != SUCCESS_XDR:
+        logger.debug("payment stellar transaction failed when submitted to horizon")
         return
 
     transaction.stellar_transaction_id = response["hash"]
@@ -126,17 +147,20 @@ def check_trustlines():
         try:
             account = horizon.account(transaction.stellar_account)
         except (StellarError, HorizonError) as exc:
+            logger.debug("could not load account using provided horizon URI")
             continue
         try:
             balances = account["balances"]
         except KeyError:
+            logger.debug("horizon account response had no balances")
             continue
         for balance in balances:
             try:
                 asset_code = balance["asset_code"]
             except KeyError:
+                logger.debug("horizon balances had no asset_code")
                 continue
-            if asset_code == transaction.asset.name:
+            if asset_code == transaction.asset.code:
                 create_stellar_deposit(transaction.id)
 
 

@@ -18,10 +18,10 @@ class DepositForm(forms.Form):
         if self.asset:
             if amount < self.asset.deposit_min_amount:
                 raise forms.ValidationError(
-                    f"Amount is below minimum for asset {self.asset.name}"
+                    f"Amount is below minimum for asset {self.asset.code}"
                 )
             elif amount > self.asset.deposit_max_amount:
                 raise forms.ValidationError(
-                    f"Amount is above maximum for asset {self.asset.name}"
+                    f"Amount is above maximum for asset {self.asset.code}"
                 )
         return amount

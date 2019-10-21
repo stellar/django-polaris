@@ -260,7 +260,7 @@ def test_withdraw_interactive_success_transaction_unsuccessful(
         "memo": format_memo_horizon(withdraw_memo),
         "successful": False,
         "id": "c5e8ada72c0e3c248ac7e1ec0ec97e204c06c295113eedbe632020cd6dc29ff8",
-        "envelope_xdr": "AAAAAEU1B1qeJrucdqkbk1mJsnuFaNORfrOAzJyaAy1yzW8TAAAAZAAE2s4AAAABAAAAAAAAAAMAAAAAAAAAAAAAAAAAAAAAgOpz6gHTQRqNnOoimZ7vngAAAAEAAAAAAAAAAQAAAAChQqr7VnYYYH3yq6stKahwdp+8bpL5jMo0TqiIchejqQAAAAFVU0QAAAAAAKFCqvtWdhhgffKrqy0pqHB2n7xukvmMyjROqIhyF6OpAAAAAB3NZQAAAAAAAAAAAA==",
+        "envelope_xdr": "AAAAAEU1B1qeJrucdqkbk1mJsnuFaNORfrOAzJyaAy1yzW8TAAAAZAAE2s4AAAABAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAAoUKq+1Z2GGB98qurLSmocHafvG6S+YzKNE6oiHIXo6kAAAABVVNEAAAAAACnUE2lfwuFZ+G+dkc+qiL0MwxB0CoR0au324j+JC9exQAAAAAdzWUAAAAAAAAAAAA=",
     }
     process_withdrawal(mock_response, transaction)
     assert (
@@ -300,7 +300,7 @@ def test_withdraw_interactive_success_transaction_successful(
         "memo": format_memo_horizon(withdraw_memo),
         "successful": True,
         "id": "c5e8ada72c0e3c248ac7e1ec0ec97e204c06c295113eedbe632020cd6dc29ff8",
-        "envelope_xdr": "AAAAAEU1B1qeJrucdqkbk1mJsnuFaNORfrOAzJyaAy1yzW8TAAAAZAAE2s4AAAABAAAAAAAAAAMAAAAAAAAAAAAAAAAAAAAAgOpz6gHTQRqNnOoimZ7vngAAAAEAAAAAAAAAAQAAAAChQqr7VnYYYH3yq6stKahwdp+8bpL5jMo0TqiIchejqQAAAAFVU0QAAAAAAKFCqvtWdhhgffKrqy0pqHB2n7xukvmMyjROqIhyF6OpAAAAAB3NZQAAAAAAAAAAAA==",
+        "envelope_xdr": "AAAAAEU1B1qeJrucdqkbk1mJsnuFaNORfrOAzJyaAy1yzW8TAAAAZAAE2s4AAAABAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAAoUKq+1Z2GGB98qurLSmocHafvG6S+YzKNE6oiHIXo6kAAAABVVNEAAAAAACnUE2lfwuFZ+G+dkc+qiL0MwxB0CoR0au324j+JC9exQAAAAAdzWUAAAAAAAAAAAA=",
     }
     process_withdrawal(mock_response, transaction)
 

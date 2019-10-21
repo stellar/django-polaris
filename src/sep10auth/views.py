@@ -34,12 +34,12 @@ def _challenge_transaction(client_account):
     Returns the XDR encoding of that transaction.
     """
     builder = Builder.challenge_tx(
-        server_secret=settings.STELLAR_ACCOUNT_SEED,
+        server_secret=settings.STELLAR_DISTRIBUTION_ACCOUNT_SEED,
         client_account_id=client_account,
         archor_name=ANCHOR_NAME,
         network=settings.STELLAR_NETWORK,
     )
-    builder.sign(secret=settings.STELLAR_ACCOUNT_SEED)
+    builder.sign(secret=settings.STELLAR_DISTRIBUTION_ACCOUNT_SEED)
     envelope_xdr = builder.gen_xdr()
     return envelope_xdr.decode("ascii")
 
@@ -114,7 +114,7 @@ def _validate_envelope_xdr(envelope_xdr):
     )
     transaction_object = envelope_object.tx
 
-    if str(transaction_object.source.decode()) != settings.STELLAR_ACCOUNT_ADDRESS:
+    if str(transaction_object.source.decode()) != settings.STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS:
         return "incorrect source account"
     if transaction_object.sequence != 0:
         return "incorrect sequence"
@@ -135,7 +135,7 @@ def _validate_envelope_xdr(envelope_xdr):
 
     transaction_hash = envelope_object.hash_meta()
     server_signature = signatures[0]
-    server_public_keypair = Keypair.from_address(settings.STELLAR_ACCOUNT_ADDRESS)
+    server_public_keypair = Keypair.from_address(settings.STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS)
     try:
         server_public_keypair.verify(transaction_hash, server_signature.signature)
     except BadSignatureError:
@@ -163,7 +163,7 @@ def _generate_jwt(request, envelope_xdr):
     ).decode()
     jwt_dict = {
         "iss": request.build_absolute_uri("/auth"),
-        "sub": settings.STELLAR_ACCOUNT_ADDRESS,
+        "sub": settings.STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS,
         "iat": issued_at,
         "exp": issued_at + 24 * 60 * 60,
         "jti": hash_hex,

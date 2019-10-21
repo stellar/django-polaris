@@ -31,7 +31,7 @@ def test_required_account(mock_check, client, acc2_eth_withdrawal_transaction_fa
     withdrawal = acc2_eth_withdrawal_transaction_factory()
 
     response = client.get(
-        f"/transactions?asset_code={withdrawal.asset.name}", follow=True
+        f"/transactions?asset_code={withdrawal.asset.code}", follow=True
     )
 
     content = json.loads(response.content)
@@ -71,7 +71,7 @@ def test_transactions_format(
     acc2_eth_deposit_transaction_factory()
 
     response = client.get(
-        f"/transactions?asset_code={withdrawal.asset.name}&account={withdrawal.stellar_account}",
+        f"/transactions?asset_code={withdrawal.asset.code}&account={withdrawal.stellar_account}",
         follow=True,
     )
     content = json.loads(response.content)
@@ -94,7 +94,7 @@ def test_transactions_order(
     withdrawal = acc2_eth_withdrawal_transaction_factory()  # newer transaction
 
     response = client.get(
-        f"/transactions?asset_code={withdrawal.asset.name}&account={withdrawal.stellar_account}",
+        f"/transactions?asset_code={withdrawal.asset.code}&account={withdrawal.stellar_account}",
         follow=True,
     )
     content = json.loads(response.content)
@@ -133,7 +133,7 @@ def test_transactions_content(
     w_completed_at = withdrawal.completed_at.isoformat().replace("+00:00", "Z")
 
     response = client.get(
-        f"/transactions?asset_code={withdrawal.asset.name}&account={withdrawal.stellar_account}",
+        f"/transactions?asset_code={withdrawal.asset.code}&account={withdrawal.stellar_account}",
         follow=True,
     )
     content = json.loads(response.content)
@@ -223,7 +223,7 @@ def test_paging_id(
 
     response = client.get(
         (
-            f"/transactions?asset_code={withdrawal.asset.name}"
+            f"/transactions?asset_code={withdrawal.asset.code}"
             f"&account={withdrawal.stellar_account}"
             f"&paging_id={withdrawal.id}"
         ),
@@ -252,7 +252,7 @@ def test_kind_filter(
 
     response = client.get(
         (
-            f"/transactions?asset_code={withdrawal.asset.name}"
+            f"/transactions?asset_code={withdrawal.asset.code}"
             f"&account={withdrawal.stellar_account}"
             f"&kind=deposit"
         ),
@@ -281,7 +281,7 @@ def test_kind_filter_no_500(
 
     response = client.get(
         (
-            f"/transactions?asset_code={withdrawal.asset.name}"
+            f"/transactions?asset_code={withdrawal.asset.code}"
             f"&account={withdrawal.stellar_account}&kind=somethingelse"
         ),
         follow=True,
@@ -307,7 +307,7 @@ def test_limit(
     withdrawal = acc2_eth_withdrawal_transaction_factory()  # newest
 
     response = client.get(
-        f"/transactions?asset_code={withdrawal.asset.name}"
+        f"/transactions?asset_code={withdrawal.asset.code}"
         f"&account={withdrawal.stellar_account}&limit=1",
         follow=True,
     )
@@ -334,7 +334,7 @@ def test_invalid_limit(
 
     response = client.get(
         (
-            f"/transactions?asset_code={withdrawal.asset.name}"
+            f"/transactions?asset_code={withdrawal.asset.code}"
             f"&account={withdrawal.stellar_account}&limit=string"
         ),
         follow=True,
@@ -360,7 +360,7 @@ def test_negative_limit(
 
     response = client.get(
         (
-            f"/transactions?asset_code={withdrawal.asset.name}"
+            f"/transactions?asset_code={withdrawal.asset.code}"
             f"&account={withdrawal.stellar_account}&limit=-1"
         ),
         follow=True,
@@ -389,7 +389,7 @@ def test_no_older_than_filter(
     urlencoded_datetime = urllib.parse.quote(deposit_transaction.started_at.isoformat())
     response = client.get(
         (
-            f"/transactions?asset_code={withdrawal_transaction.asset.name}"
+            f"/transactions?asset_code={withdrawal_transaction.asset.code}"
             f"&account={withdrawal_transaction.stellar_account}"
             f"&no_older_than={urlencoded_datetime}"
         ),
@@ -445,7 +445,7 @@ def test_transactions_authenticated_success(
     header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
 
     response = client.get(
-        f"/transactions?asset_code={withdrawal.asset.name}&account={withdrawal.stellar_account}",
+        f"/transactions?asset_code={withdrawal.asset.code}&account={withdrawal.stellar_account}",
         follow=True,
         **header,
     )
@@ -464,7 +464,7 @@ def test_transactions_no_jwt(
     del mock_render
     withdrawal = acc2_eth_withdrawal_transaction_factory()
     response = client.get(
-        f"/transactions?asset_code={withdrawal.asset.name}&account={withdrawal.stellar_account}",
+        f"/transactions?asset_code={withdrawal.asset.code}&account={withdrawal.stellar_account}",
         follow=True,
     )
     content = json.loads(response.content)

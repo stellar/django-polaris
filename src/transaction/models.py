@@ -69,7 +69,7 @@ class Transaction(models.Model):
     )
 
     def asset_name(self):
-        return self.asset.name
+        return self.asset.code + ":" + self.asset.issuer
 
     class Meta:
         ordering = ("-started_at",)

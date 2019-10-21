@@ -58,7 +58,7 @@ def interactive_withdraw(request):
         return render_error_response("no 'transaction_id' provided")
 
     asset_code = request.GET.get("asset_code")
-    if not asset_code or not Asset.objects.filter(name=asset_code).exists():
+    if not asset_code or not Asset.objects.filter(code=asset_code).exists():
         return render_error_response("invalid 'asset_code'")
 
     # GET: The server needs to display the form for the user to input withdrawal information.
@@ -72,7 +72,7 @@ def interactive_withdraw(request):
                 "transaction with matching 'transaction_id' already exists"
             )
         form = WithdrawForm(request.POST)
-        asset = Asset.objects.get(name=asset_code)
+        asset = Asset.objects.get(code=asset_code)
         form.asset = asset
 
         # If the form is valid, we create a transaction pending user action
@@ -91,13 +91,13 @@ def interactive_withdraw(request):
             withdraw_memo = "0" * (64 - len(transaction_id_hex)) + transaction_id_hex
             transaction = Transaction(
                 id=transaction_id,
-                stellar_account=settings.STELLAR_ACCOUNT_ADDRESS,
+                stellar_account=settings.STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS,
                 asset=asset,
                 kind=Transaction.KIND.withdrawal,
                 status=Transaction.STATUS.pending_user_transfer_start,
                 amount_in=amount_in,
                 amount_fee=amount_fee,
-                withdraw_anchor_account=settings.STELLAR_ACCOUNT_ADDRESS,
+                withdraw_anchor_account=settings.STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS,
                 withdraw_memo=withdraw_memo,
                 withdraw_memo_type=Transaction.MEMO_TYPES.hash,
             )
@@ -134,7 +134,7 @@ def withdraw(request):
     # TODO: Verify optional arguments.
 
     # Verify that the asset code exists in our database, with withdraw enabled.
-    asset = Asset.objects.filter(name=asset_code).first()
+    asset = Asset.objects.filter(code=asset_code).first()
     if not asset or not asset.withdrawal_enabled:
         return render_error_response(f"invalid operation for asset {asset_code}")
 

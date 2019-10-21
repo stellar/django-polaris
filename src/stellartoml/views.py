@@ -10,7 +10,6 @@ import toml
 from django.http.response import HttpResponse
 from django.conf import settings
 from rest_framework.decorators import api_view
-
 from info.models import Asset
 
 
@@ -21,7 +20,7 @@ def generate_toml(request):
     # Globals.
     toml_dict["TRANSFER_SERVER"] = request.build_absolute_uri("/")
     toml_dict["WEB_AUTH_ENDPOINT"] = request.build_absolute_uri("/auth")
-    toml_dict["ACCOUNTS"] = [settings.STELLAR_ACCOUNT_ADDRESS]
+    toml_dict["ACCOUNTS"] = [settings.STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS]
     toml_dict["VERSION"] = "0.1.0"
 
     toml_dict["DOCUMENTATION"] = {
@@ -34,7 +33,7 @@ def generate_toml(request):
     }
 
     toml_dict["CURRENCIES"] = [
-        {"code": asset.name, "issuer": settings.STELLAR_ASSET_ISSUER}
+        {"code": asset.code, "issuer": settings.STELLAR_ISSUER_ACCOUNT_ADDRESS}
         for asset in Asset.objects.all().iterator()
     ]
 
