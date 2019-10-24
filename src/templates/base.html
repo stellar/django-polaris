@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html>
   <head>
@@ -12,6 +13,7 @@
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.7.5/css/bulma.min.css"
     />
+    <link rel="stylesheet" href="{% static "base.css" %}" />
     <script
       defer
       src="https://use.fontawesome.com/releases/v5.3.1/js/all.js"
@@ -19,22 +21,15 @@
   </head>
   <body>
     {% block "header" %}
-    <nav class="navbar is-black" role="navigation" aria-label="main navigation">
+    <nav class="navbar" role="navigation" aria-label="main navigation">
       <div class="navbar-brand">
         <a class="navbar-item" href="#">
-          Stellar Anchor Server
+          Loanly Bay Leaf Bank Corp
         </a>
       </div>
     </nav>
-    {% endblock %} {% block "content" %}
-    <section class="section">
-      <div class="container">
-        <h1 class="title">
-          Hello World
-        </h1>
-        <p class="subtitle">My first website with <strong>Bulma</strong>!</p>
-      </div>
-    </section>
+    {% endblock %}
+    {% block "content" %}
     {% endblock %}
   </body>
 </html>

@@ -5,19 +5,69 @@
 {% endblock %}
 
 {% block "content" %}
-<section class="section">
-    <p id="message">
-        Transaction of kind <strong>{{ transaction.kind }}</strong> with ID <strong>{{ transaction.id }}</strong>,
-        amount <strong>{{transaction.amount_in}}</strong> of asset <strong>{{ asset_code }}</strong> has status
-        <strong>{{ transaction.status }}</strong>. It started at {{transaction.started_at}} and completed at
-        {{transaction.completed_at}}
-    </p>
+<section class="section receipt">
+    <div class="field">
+        <label>
+            kind
+        </label>
+        <div class="field-value">
+            {{ transaction.kind }}
+        </div>
+    </div>
+    
+    <div class="field">
+        <label>
+            id
+        </label>
+        <div class="field-value">
+            {{ transaction.id }}
+        </div>
+    </div>
+
+    <div class="field">
+        <label>
+            amount
+        </label>
+        <div class="field-value">
+            {{ transaction.amount_in }}
+        </div>
+    </div>
+
+    <div class="field">
+        <label>
+            status
+        </label>
+        <div class="field-value">
+            {{ transaction.status }}
+        </div>
+    </div>
+
+    <div class="field">
+        <label>
+            start
+        </label>
+        <div class="field-value">
+            {{ transaction.started_at }}
+        </div>
+    </div>
+
+    <div class="field">
+        <label>
+            completed
+        </label>
+        <div class="field-value">
+            {{ transaction.completed_at }}
+        </div>
+    </div>
     {% if transaction.status != "completed" %}
-    {% if transaction.kind == "deposit" %}
-    <button type="button" class="btn btn - primary" onclick="return submitExternal()">Admin: Confirm external
-        transaction.</button>
-    {% endif %}
-    <button type="button" class="btn btn - primary" onclick="location.reload(true);">Refresh transaction data.</button>
+    <div class="at-bottom button-row">
+        {% if transaction.kind == "deposit" %}
+            <button type="button" class="button-main" onclick="return submitExternal()">Admin: Confirm external transaction.</button>
+
+        {% endif %}
+        <div class="spacer"></div>
+        <button type="button" class="button-secondary refresh-icon" onclick="location.reload(true);"></button>
+    </div>
     {% endif %}
 
     <script type="text/javascript">

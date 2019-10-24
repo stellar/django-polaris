@@ -1,0 +1,82 @@
+body, html {
+  height: 100%;
+  overflow: hidden;
+}
+.navbar {
+  background: #0abf53;
+  height: 108px;
+  background-image: url("leaf-bg.svg");
+  background-repeat: no-repeat;
+}
+
+.navbar-item {
+  margin-top: 62px;
+  color: white;
+}
+
+button[type="submit"] {
+  width: 100%;
+  height: 44px;
+  border-radius: 2px;
+  background-color: #0abf53;
+  color: white;
+}
+
+input[type=text], input[type=number] {
+  height: 44px;
+  width: 100%;
+  border-radius: 2px;
+}
+
+.control .icon {
+  margin-top: 4px;
+}
+
+.at-bottom {
+  position: absolute;
+  bottom: 32px;
+  width: calc(100% - 3rem);
+}
+
+.receipt label {
+  font-variant: small-caps;
+  font-weight: bold;
+}
+
+.receipt .field-value {
+  text-transform: capitalize;
+}
+
+.button-row {
+  display: flex;
+  flex-direction: row;
+  gap: 8px 8px;
+}
+
+.button-row button {
+  display: block;
+  height: 44px;
+  font-size: 14px;
+  color: white;
+  border: 0;
+  border-radius: 2px;;
+}
+
+.button-row .spacer {
+  width: 8px;
+}
+
+.button-row .button-main {
+  flex-grow: 1;
+  background-color: #490be3;
+}
+
+.button-row .button-secondary {
+  flex-grow: 0;
+  width: 44px;
+  background-color: #0abf53;
+}
+
+.refresh-icon {
+  background: url("icon-refresh.svg") center center no-repeat;
+}
