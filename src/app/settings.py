@@ -13,6 +13,8 @@ https://docs.djangoproject.com/en/2.2/ref/settings/
 import os
 import environ
 
+from stellar_base.keypair import Keypair
+
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 REPO_DIR = os.path.dirname(BASE_DIR)
@@ -37,8 +39,10 @@ DEBUG = env.bool("DJANGO_DEBUG", False)
 
 ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=[])
 
-STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS = env("STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS")
 STELLAR_DISTRIBUTION_ACCOUNT_SEED = env("STELLAR_DISTRIBUTION_ACCOUNT_SEED")
+STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS = (
+    Keypair.from_seed(STELLAR_DISTRIBUTION_ACCOUNT_SEED).address().decode("utf-8")
+)
 STELLAR_ISSUER_ACCOUNT_ADDRESS = env("STELLAR_ISSUER_ACCOUNT_ADDRESS")
 STELLAR_NETWORK = env("STELLAR_NETWORK", default="TESTNET")
 HORIZON_URI = env("HORIZON_URI", default="https://horizon-testnet.stellar.org/")
