@@ -29,7 +29,13 @@
       </div>
     </nav>
     {% endblock %}
-    {% block "content" %}
-    {% endblock %}
+    <div class="main-content">
+      {% block "content" %}
+      {% endblock %}
+    </div>
+    <div class="bottom-section">
+      {% block "footer" %}
+      {% endblock %}
+    </div>
   </body>
 </html>

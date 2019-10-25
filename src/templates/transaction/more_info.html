@@ -59,17 +59,7 @@
             {{ transaction.completed_at }}
         </div>
     </div>
-    {% if transaction.status != "completed" %}
-    <div class="at-bottom button-row">
-        {% if transaction.kind == "deposit" %}
-            <button type="button" class="button-main" onclick="return submitExternal()">Admin: Confirm external transaction.</button>
-
-        {% endif %}
-        <div class="spacer"></div>
-        <button type="button" class="button-secondary refresh-icon" onclick="location.reload(true);"></button>
-    </div>
-    {% endif %}
-
+    
     <script type="text/javascript">
         var tx_json = JSON.parse('{{ tx_json|safe }}');
         var transaction = tx_json["transaction"];
@@ -124,4 +114,17 @@
         }
     </script>
 </section>
+{% endblock %}
+
+{% block "footer" %}
+{% if transaction.status != "completed" %}
+    <div class="at-bottom button-row">
+        {% if transaction.kind == "deposit" %}
+            <button type="button" class="button-main" onclick="return submitExternal()">Admin: Confirm external transaction.</button>
+
+        {% endif %}
+        <div class="spacer"></div>
+        <button type="button" class="button-secondary refresh-icon" onclick="location.reload(true);"></button>
+    </div>
+{% endif %}
 {% endblock %}
