@@ -24,7 +24,6 @@ If you are planning to run this in production, you need to follow the following 
 1. Fund the account: copy-paste the value of the Public Key (G...) into the Friendbot input box.
 1. Click "Get test network lumens." You have now funded a Stellar account! 
 1. Open your virtual environment file, `stellar-anchor-server/.env`.
-1. Set `STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS` to the value of `Public Key` that you just funded.
 1. Set `STELLAR_DISTRIBUTION_ACCOUNT_SEED` to the value of `Secret Key` from the Keypair Generator.
 1. Go back to the account creator, and create and fund another Stellar account. This is the issuer account.
 1. Set `STELLAR_ISSUER_ACCOUNT_ADDRESS` to the value of `Public Key` that you just funded.
