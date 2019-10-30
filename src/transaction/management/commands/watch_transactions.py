@@ -16,6 +16,11 @@ def stream_transactions():
     address = Address(
         address=settings.STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS, horizon_uri=settings.HORIZON_URI
     )
+    # Ensure the distribution account actually exists
+    try:
+        address.get()
+    except HorizonError as exc:
+        raise RuntimeError("Stellar distribution account does not exist in horizon")
     return address.transactions(cursor="now", sse=True)
 
 
@@ -93,10 +98,7 @@ class Command(BaseCommand):
     help = "Watches for Stellar transactions to the anchor account using Horizon"
 
     def handle(self, *args, **options):
-        try:
-            transaction_responses = stream_transactions()
-        except HorizonError as exc:
-            raise CommandError(exc.message)
+        transaction_responses = stream_transactions()
         for response in transaction_responses:
             pending_withdrawal_transactions = Transaction.objects.filter(
                 status=Transaction.STATUS.pending_user_transfer_start
