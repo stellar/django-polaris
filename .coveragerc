@@ -5,5 +5,4 @@ omit =
   *settings*,
   *tests/*,
   *urls.py,
-  src/manage.py
-  src/app/wsgi.py
+  polaris/manage.py
