@@ -1,0 +1,6 @@
+include LICENSE
+include README.md
+include Pipfile
+include .env.example
+recursive-include polaris/polaris/templates *
+recursive-include polaris/polaris/static *

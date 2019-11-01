@@ -28,6 +28,7 @@ share/python-wheels/
 MANIFEST
 *.DS_Store
 .vscode
+.idea
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -92,12 +93,6 @@ ipython_config.py
 #   install all needed dependencies.
 #Pipfile.lock
 
-# celery beat schedule file
-celerybeat-schedule
-
-# celery pid
-src/celerybeat.pid
-
 # SageMath parsed files
 *.sage.py
 
@@ -127,6 +122,3 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
-
-# Django static files
-src/staticfiles
