@@ -1,10 +1,12 @@
 """This module tests the `/transactions` endpoint."""
-from unittest.mock import patch
 import json
 import urllib
-from stellar_base.keypair import Keypair
-from stellar_base.transaction_envelope import TransactionEnvelope
+from unittest.mock import patch
+
 import pytest
+from django.conf import settings
+from stellar_sdk.keypair import Keypair
+from stellar_sdk.transaction_envelope import TransactionEnvelope
 
 from .helpers import mock_check_auth_success, mock_render_error_response
 
@@ -426,10 +428,10 @@ def test_transactions_authenticated_success(
     response = client.get(f"/auth?account={client_address}", follow=True)
     content = json.loads(response.content)
     envelope_xdr = content["transaction"]
-    envelope_object = TransactionEnvelope.from_xdr(envelope_xdr)
-    client_signing_key = Keypair.from_seed(client_seed)
+    envelope_object = TransactionEnvelope.from_xdr(envelope_xdr, network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE)
+    client_signing_key = Keypair.from_secret(client_seed)
     envelope_object.sign(client_signing_key)
-    client_signed_envelope_xdr = envelope_object.xdr().decode("ascii")
+    client_signed_envelope_xdr = envelope_object.to_xdr()
 
     response = client.post(
         "/auth",

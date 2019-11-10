@@ -1,11 +1,12 @@
 """This module tests the `/withdraw` endpoint."""
 import json
 from unittest.mock import patch
-import pytest
-from stellar_base.keypair import Keypair
-from stellar_base.transaction_envelope import TransactionEnvelope
 
+import pytest
+from django.conf import settings
 from helpers import format_memo_horizon
+from stellar_sdk.keypair import Keypair
+from stellar_sdk.transaction_envelope import TransactionEnvelope
 from transaction.management.commands.watch_transactions import process_withdrawal
 from transaction.models import Transaction
 
@@ -322,10 +323,10 @@ def test_withdraw_authenticated_success(
     content = json.loads(response.content)
 
     envelope_xdr = content["transaction"]
-    envelope_object = TransactionEnvelope.from_xdr(envelope_xdr)
-    client_signing_key = Keypair.from_seed(client_seed)
+    envelope_object = TransactionEnvelope.from_xdr(envelope_xdr, network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE)
+    client_signing_key = Keypair.from_secret(client_seed)
     envelope_object.sign(client_signing_key)
-    client_signed_envelope_xdr = envelope_object.xdr().decode("ascii")
+    client_signed_envelope_xdr = envelope_object.to_xdr()
 
     response = client.post(
         "/auth",

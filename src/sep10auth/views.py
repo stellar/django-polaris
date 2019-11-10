@@ -10,18 +10,14 @@ import json
 import time
 import jwt
 
-
-import ed25519
 from django.conf import settings
 from django.http import JsonResponse
 from rest_framework import status
 from rest_framework.decorators import api_view
-from stellar_base.builder import Builder
-from stellar_base.exceptions import BadSignatureError
-from stellar_base.keypair import Keypair
-from stellar_base.network import NETWORKS
-from stellar_base.stellarxdr import Xdr
-from stellar_base.transaction_envelope import TransactionEnvelope
+
+from stellar_sdk.transaction_envelope import TransactionEnvelope
+from stellar_sdk.sep.stellar_web_authentication import build_challenge_transaction, verify_challenge_transaction
+from stellar_sdk.sep.exceptions import InvalidSep10ChallengeError
 
 MIME_URLENCODE, MIME_JSON = "application/x-www-form-urlencoded", "application/json"
 ANCHOR_NAME = "SEP 24 Reference"
@@ -33,24 +29,11 @@ def _challenge_transaction(client_account):
     This is used in `GET <auth>`, as per SEP 10.
     Returns the XDR encoding of that transaction.
     """
-    builder = Builder.challenge_tx(
-        server_secret=settings.STELLAR_DISTRIBUTION_ACCOUNT_SEED,
-        client_account_id=client_account,
-        archor_name=ANCHOR_NAME,
-        network=settings.STELLAR_NETWORK,
-    )
-    builder.sign(secret=settings.STELLAR_DISTRIBUTION_ACCOUNT_SEED)
-    envelope_xdr = builder.gen_xdr()
-    return envelope_xdr.decode("ascii")
-
-
-def _get_network_passphrase():
-    """Get the passphrase for the configured Stellar network."""
-    try:
-        passphrase = NETWORKS[settings.STELLAR_NETWORK]
-    except KeyError:
-        passphrase = NETWORKS["TESTNET"]
-    return passphrase
+    challenge_tx_xdr = build_challenge_transaction(server_secret=settings.STELLAR_DISTRIBUTION_ACCOUNT_SEED,
+                                                   client_account_id=client_account,
+                                                   anchor_name=ANCHOR_NAME,
+                                                   network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE)
+    return challenge_tx_xdr
 
 
 def _get_transaction_urlencode(body):
@@ -104,50 +87,12 @@ def _validate_envelope_xdr(envelope_xdr):
     Validate the provided TransactionEnvelope XDR (base64 string). Return the
     appropriate error if it fails, else the empty string.
     """
-    # We load the TransactionEnvelope from the XDR to get the tx and signatures.
-    # We then generate a new TransactionEnvelope object with the desired network.
-    envelope_object_from_xdr = TransactionEnvelope.from_xdr(envelope_xdr)
-    envelope_object = TransactionEnvelope(
-        envelope_object_from_xdr.tx,
-        signatures=envelope_object_from_xdr.signatures,
-        network_id=settings.STELLAR_NETWORK,
-    )
-    transaction_object = envelope_object.tx
-
-    if str(transaction_object.source.decode()) != settings.STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS:
-        return "incorrect source account"
-    if transaction_object.sequence != 0:
-        return "incorrect sequence"
-    if len(transaction_object.operations) != 1:
-        return "incorrect number of operations"
-
-    manage_data_op = transaction_object.operations[0]
-    if manage_data_op.type_code() != Xdr.const.MANAGE_DATA:
-        return "incorrect operation type"
-    if manage_data_op.data_name != ANCHOR_NAME + " auth":
-        return "incorrect data key in managedata"
-    if len(manage_data_op.data_value) != 64:
-        return "invalid data value in managedata"
-
-    signatures = envelope_object.signatures
-    if len(signatures) != 2:
-        return "incorrect number of signatures"
-
-    transaction_hash = envelope_object.hash_meta()
-    server_signature = signatures[0]
-    server_public_keypair = Keypair.from_address(settings.STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS)
     try:
-        server_public_keypair.verify(transaction_hash, server_signature.signature)
-    except BadSignatureError:
-        return "invalid server signature"
-
-    client_signature = signatures[1]
-    client_account = manage_data_op.source
-    client_public_keypair = Keypair.from_address(client_account)
-    try:
-        client_public_keypair.verify(transaction_hash, client_signature.signature)
-    except BadSignatureError:
-        return "invalid client signature"
+        verify_challenge_transaction(challenge_transaction=envelope_xdr,
+                                     server_account_id=settings.STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS,
+                                     network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE)
+    except InvalidSep10ChallengeError as err:
+        return str(err)
     return ""
 
 
@@ -159,7 +104,7 @@ def _generate_jwt(request, envelope_xdr):
     """
     issued_at = time.time()
     hash_hex = binascii.hexlify(
-        TransactionEnvelope.from_xdr(envelope_xdr).hash_meta()
+        TransactionEnvelope.from_xdr(envelope_xdr, network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE).hash()
     ).decode()
     jwt_dict = {
         "iss": request.build_absolute_uri("/auth"),
@@ -180,7 +125,7 @@ def _get_auth(request):
         )
     transaction = _challenge_transaction(account)
     return JsonResponse(
-        {"transaction": transaction, "network_passphrase": _get_network_passphrase()}
+        {"transaction": transaction, "network_passphrase": settings.STELLAR_NETWORK_PASSPHRASE}
     )
 
 
@@ -207,4 +152,3 @@ def auth(request):
     if request.method == "POST":
         return _post_auth(request)
     return _get_auth(request)
-

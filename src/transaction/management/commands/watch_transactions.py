@@ -1,27 +1,23 @@
 """This module defines custom management commands for the app admin."""
 from django.conf import settings
-from django.utils.timezone import now
 from django.core.management.base import BaseCommand, CommandError
-from stellar_base.address import Address
-from stellar_base.horizon import HorizonError
-from stellar_base.stellarxdr import Xdr
-from stellar_base.transaction_envelope import TransactionEnvelope
-
+from django.utils.timezone import now
 from helpers import format_memo_horizon
+from stellar_sdk.exceptions import NotFoundError
+from stellar_sdk.transaction_envelope import TransactionEnvelope
+from stellar_sdk.xdr import Xdr
 from transaction.models import Transaction
 
 
 def stream_transactions():
     """Stream transactions for the server Stellar address. Decomposed for easier testing."""
-    address = Address(
-        address=settings.STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS, horizon_uri=settings.HORIZON_URI
-    )
-    # Ensure the distribution account actually exists
+    server = settings.HORIZON_SERVER
     try:
-        address.get()
-    except HorizonError as exc:
+        # Ensure the distribution account actually exists
+        server.load_account(settings.STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS)
+    except NotFoundError as exc:
         raise RuntimeError("Stellar distribution account does not exist in horizon")
-    return address.transactions(cursor="now", sse=True)
+    return server.transactions().for_account(settings.STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS).cursor("now").stream()
 
 
 def _check_payment_op(operation, want_asset, want_amount):
@@ -62,7 +58,7 @@ def process_withdrawal(response, transaction):
     if response_memo != format_memo_horizon(transaction.withdraw_memo):
         return False
 
-    horizon_tx = TransactionEnvelope.from_xdr(envelope_xdr).tx
+    horizon_tx = TransactionEnvelope.from_xdr(envelope_xdr, network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE).transaction
     found_matching_payment_op = False
     for operation in horizon_tx.operations:
         if _check_payment_op(operation, transaction.asset.code, transaction.amount_in):

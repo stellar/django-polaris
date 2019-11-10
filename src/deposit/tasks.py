@@ -5,10 +5,9 @@ from celery.task.schedules import crontab
 from celery.decorators import periodic_task
 from django.conf import settings
 from django.utils.timezone import now
-from stellar_base.address import Address
-from stellar_base.builder import Builder
-from stellar_base.exceptions import HorizonError, StellarError
-from stellar_base.horizon import Horizon
+
+from stellar_sdk.exceptions import BaseHorizonError
+from stellar_sdk.transaction_builder import TransactionBuilder
 
 from app.celery import app
 from transaction.models import Transaction
@@ -51,36 +50,32 @@ def create_stellar_deposit(transaction_id):
     # reserve and a trust line (recommended 2.01 XLM), update
     # the transaction in our internal database, and return.
 
-    address = Address(
-        stellar_account,
-        network=settings.STELLAR_NETWORK,
-        horizon_uri=settings.HORIZON_URI,
-    )
+    server = settings.HORIZON_SERVER
+    starting_balance = settings.ACCOUNT_STARTING_BALANCE
+    server_account = server.load_account(settings.STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS)
+    base_fee = server.fetch_base_fee()
+    builder = TransactionBuilder(source_account=server_account,
+                                 network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
+                                 base_fee=base_fee)
     try:
-        address.get()
-    except HorizonError as address_exc:
+        server.load_account(stellar_account)
+    except BaseHorizonError as address_exc:
         # 404 code corresponds to Resource Missing.
-        if address_exc.status_code != 404:
+        if address_exc.status != 404:
             logger.debug(
                 "error with message %s when loading stellar account",
                 address_exc.message,
             )
             return
-        starting_balance = settings.ACCOUNT_STARTING_BALANCE
-        builder = Builder(
-            secret=settings.STELLAR_DISTRIBUTION_ACCOUNT_SEED,
-            horizon_uri=settings.HORIZON_URI,
-            network=settings.STELLAR_NETWORK,
-        )
-        builder.append_create_account_op(
-            destination=stellar_account,
-            starting_balance=starting_balance,
-            source=settings.STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS,
-        )
-        builder.sign()
+        transaction_envelope = builder \
+            .append_create_account_op(destination=stellar_account,
+                                      starting_balance=starting_balance,
+                                      source=settings.STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS) \
+            .build()
+        transaction_envelope.sign(settings.STELLAR_DISTRIBUTION_ACCOUNT_SEED)
         try:
-            builder.submit()
-        except HorizonError as submit_exc:
+            server.submit_transaction(transaction_envelope)
+        except BaseHorizonError as submit_exc:
             logger.debug(
                 f"error with message {submit_exc.message} when submitting create account to horizon"
             )
@@ -94,23 +89,18 @@ def create_stellar_deposit(transaction_id):
     # transaction to completed at the current time. If it fails due to a
     # trustline error, we update the database accordingly. Else, we do not update.
 
-    builder = Builder(
-        secret=settings.STELLAR_DISTRIBUTION_ACCOUNT_SEED,
-        horizon_uri=settings.HORIZON_URI,
-        network=settings.STELLAR_NETWORK,
-    )
-    builder.append_payment_op(
-        destination=stellar_account,
-        asset_code=asset,
-        asset_issuer=settings.STELLAR_ISSUER_ACCOUNT_ADDRESS,
-        amount=str(payment_amount),
-    )
-    builder.sign()
+    transaction_envelope = builder \
+        .append_payment_op(destination=stellar_account,
+                           asset_code=asset,
+                           asset_issuer=settings.STELLAR_ISSUER_ACCOUNT_ADDRESS,
+                           amount=str(payment_amount)) \
+        .build()
+    transaction_envelope.sign(settings.STELLAR_DISTRIBUTION_ACCOUNT_SEED)
     try:
-        response = builder.submit()
+        response = server.submit_transaction(transaction_envelope)
     # Functional errors at this stage are Horizon errors.
-    except HorizonError as exception:
-        if TRUSTLINE_FAILURE_XDR not in exception.message:
+    except BaseHorizonError as exception:
+        if TRUSTLINE_FAILURE_XDR not in exception.result_xdr:
             logger.debug(
                 "error with message %s when submitting payment to horizon, non-trustline failure",
                 exception.message,
@@ -142,12 +132,12 @@ def check_trustlines():
     trustline has been created.
     """
     transactions = Transaction.objects.filter(status=Transaction.STATUS.pending_trust)
-    horizon = Horizon(horizon_uri=settings.HORIZON_URI)
+    server = settings.HORIZON_SERVER
     for transaction in transactions:
         try:
-            account = horizon.account(transaction.stellar_account)
-        except (StellarError, HorizonError) as exc:
-            logger.debug("could not load account using provided horizon URI")
+            account = server.accounts().account_id(transaction.stellar_account).call()
+        except BaseHorizonError as exc:
+            logger.debug("could not load account using provided horizon URL")
             continue
         try:
             balances = account["balances"]

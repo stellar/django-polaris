@@ -1,6 +1,4 @@
 """This module defines the logic for the `/info` endpoint."""
-import json
-from django.conf import settings
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 

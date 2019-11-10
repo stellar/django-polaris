@@ -13,13 +13,12 @@ from urllib.parse import urlencode
 from django.conf import settings
 from django.shortcuts import render
 from django.urls import reverse
-from django.utils.timezone import now
 from django.views.decorators.clickjacking import xframe_options_exempt
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from stellar_base.address import Address
-from stellar_base.exceptions import NotValidParamError, StellarAddressInvalidError
+from stellar_sdk.keypair import Keypair
+from stellar_sdk.exceptions import Ed25519PublicKeyInvalidError
 
 from helpers import (
     calc_fee,
@@ -226,12 +225,8 @@ def deposit(request):
         return render_error_response(f"invalid operation for asset {asset_code}")
 
     try:
-        Address(
-            address=stellar_account,
-            network=settings.STELLAR_NETWORK,
-            horizon_uri=settings.HORIZON_URI,
-        )
-    except (StellarAddressInvalidError, NotValidParamError):
+        Keypair.from_public_key(stellar_account)
+    except Ed25519PublicKeyInvalidError:
         return render_error_response("invalid 'account'")
 
     # Verify the optional request arguments.

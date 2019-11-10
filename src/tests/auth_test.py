@@ -1,9 +1,9 @@
 """This module tests the <auth> endpoint."""
 import json
 from django.conf import settings
-from stellar_base.keypair import Keypair
-from stellar_base.stellarxdr import Xdr
-from stellar_base.transaction_envelope import TransactionEnvelope
+from stellar_sdk.keypair import Keypair
+from stellar_sdk.transaction_envelope import TransactionEnvelope
+from stellar_sdk.xdr import Xdr
 
 from .conftest import STELLAR_ACCOUNT_1
 
@@ -27,8 +27,8 @@ def test_auth_get_account(client):
     assert content["transaction"]
 
     envelope_xdr = content["transaction"]
-    envelope_object = TransactionEnvelope.from_xdr(envelope_xdr)
-    transaction_object = envelope_object.tx
+    envelope_object = TransactionEnvelope.from_xdr(envelope_xdr, network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE)
+    transaction_object = envelope_object.transaction
     assert transaction_object.sequence == 0
     assert len(transaction_object.operations) == 1
 
@@ -41,8 +41,8 @@ def test_auth_get_account(client):
     assert len(signatures) == 1
     server_signature = signatures[0]
 
-    tx_hash = envelope_object.hash_meta()
-    server_public_key = Keypair.from_address(settings.STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS)
+    tx_hash = envelope_object.hash()
+    server_public_key = Keypair.from_public_key(settings.STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS)
     server_public_key.verify(tx_hash, server_signature.signature)
 
 
@@ -53,10 +53,10 @@ def test_auth_post_json_success(client):
 
     # Sign the XDR with the client.
     envelope_xdr = content["transaction"]
-    envelope_object = TransactionEnvelope.from_xdr(envelope_xdr)
-    client_signing_key = Keypair.from_seed(CLIENT_SEED)
+    envelope_object = TransactionEnvelope.from_xdr(envelope_xdr, network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE)
+    client_signing_key = Keypair.from_secret(CLIENT_SEED)
     envelope_object.sign(client_signing_key)
-    client_signed_envelope_xdr = envelope_object.xdr().decode("ascii")
+    client_signed_envelope_xdr = envelope_object.to_xdr()
 
     response = client.post(
         "/auth",
@@ -75,10 +75,10 @@ def test_auth_post_urlencode_success(client):
 
     # Sign the XDR with the client.
     envelope_xdr = content["transaction"]
-    envelope_object = TransactionEnvelope.from_xdr(envelope_xdr)
-    client_signing_key = Keypair.from_seed(CLIENT_SEED)
+    envelope_object = TransactionEnvelope.from_xdr(envelope_xdr, network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE)
+    client_signing_key = Keypair.from_secret(CLIENT_SEED)
     envelope_object.sign(client_signing_key)
-    client_signed_envelope_xdr = envelope_object.xdr().decode("ascii")
+    client_signed_envelope_xdr = envelope_object.to_xdr()
 
     response = client.post(
         "/auth",

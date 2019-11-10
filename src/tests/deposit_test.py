@@ -7,21 +7,20 @@ import uuid
 from unittest.mock import patch
 
 import pytest
-from django.conf import settings
-from stellar_base.exceptions import HorizonError
-
-from stellar_base.keypair import Keypair
-from stellar_base.transaction_envelope import TransactionEnvelope
-
 from deposit.tasks import (
     check_trustlines,
     create_stellar_deposit,
     SUCCESS_XDR,
     TRUSTLINE_FAILURE_XDR,
 )
+from django.conf import settings
+from stellar_sdk import Keypair, TransactionEnvelope
+from stellar_sdk.client.response import Response
+from stellar_sdk.exceptions import BadRequestError
 from transaction.models import Transaction
 
-from .helpers import mock_check_auth_success, mock_render_error_response
+from .helpers import mock_check_auth_success, mock_render_error_response, \
+    mock_load_not_exist_account
 
 HORIZON_SUCCESS_RESPONSE = {"result_xdr": SUCCESS_XDR, "hash": "test_stellar_id"}
 
@@ -260,22 +259,18 @@ def test_deposit_confirm_incorrect_amount(client, acc1_usd_deposit_transaction_f
 
 
 @pytest.mark.django_db
-@patch("stellar_base.horizon.Horizon.base_fee", return_value=100)
-@patch("stellar_base.builder.Builder.get_sequence", return_value=1)
-@patch("stellar_base.address.Address.get", return_value=True)
-@patch("stellar_base.builder.Builder.submit", return_value=HORIZON_SUCCESS_RESPONSE)
+@patch("stellar_sdk.server.Server.fetch_base_fee", return_value=100)
+@patch("stellar_sdk.server.Server.submit_transaction", return_value=HORIZON_SUCCESS_RESPONSE)
 @patch("deposit.tasks.create_stellar_deposit.delay", side_effect=create_stellar_deposit)
 def test_deposit_confirm_success(
     mock_delay,
     mock_submit,
-    mock_get,
-    mock_get_sequence,
     mock_base_fee,
     client,
     acc1_usd_deposit_transaction_factory,
 ):
     """`GET /deposit/confirm_transaction` succeeds with correct `amount` and `transaction_id`."""
-    del mock_delay, mock_submit, mock_get, mock_get_sequence, mock_base_fee
+    del mock_delay, mock_submit, mock_base_fee
     deposit = acc1_usd_deposit_transaction_factory()
     amount = deposit.amount_in
     response = client.get(
@@ -292,22 +287,18 @@ def test_deposit_confirm_success(
 
 
 @pytest.mark.django_db
-@patch("stellar_base.horizon.Horizon.base_fee", return_value=100)
-@patch("stellar_base.builder.Builder.get_sequence", return_value=1)
-@patch("stellar_base.address.Address.get", return_value=True)
-@patch("stellar_base.builder.Builder.submit", return_value=HORIZON_SUCCESS_RESPONSE)
+@patch("stellar_sdk.server.Server.fetch_base_fee", return_value=100)
+@patch("stellar_sdk.server.Server.submit_transaction", return_value=HORIZON_SUCCESS_RESPONSE)
 @patch("deposit.tasks.create_stellar_deposit.delay", side_effect=create_stellar_deposit)
 def test_deposit_confirm_external_id(
     mock_delay,
     mock_submit,
-    mock_get,
-    mock_get_sequence,
     mock_base_fee,
     client,
     acc1_usd_deposit_transaction_factory,
 ):
     """`GET /deposit/confirm_transaction` successfully stores an `external_id`."""
-    del mock_delay, mock_submit, mock_get, mock_get_sequence, mock_base_fee
+    del mock_delay, mock_submit, mock_base_fee
     deposit = acc1_usd_deposit_transaction_factory()
     amount = deposit.amount_in
     external_id = "foo"
@@ -329,27 +320,27 @@ def test_deposit_confirm_external_id(
 
 
 @pytest.mark.django_db
-@patch("stellar_base.horizon.Horizon.base_fee", return_value=100)
-@patch("stellar_base.builder.Builder.get_sequence", return_value=1)
-@patch("stellar_base.address.Address.get", return_value=True)
+@patch("stellar_sdk.server.Server.fetch_base_fee", return_value=100)
 @patch(
-    "stellar_base.builder.Builder.submit",
-    side_effect=HorizonError(msg=TRUSTLINE_FAILURE_XDR, status_code=400),
+    "stellar_sdk.server.Server.submit_transaction",
+    side_effect=BadRequestError(
+        response=Response(
+            status_code=400,
+            headers={},
+            url="",
+            text=json.dumps(dict(status=400, result_xdr=TRUSTLINE_FAILURE_XDR)),
+        )
+    ),
 )
 def test_deposit_stellar_no_trustline(
-    mock_submit,
-    mock_get,
-    mock_sequence,
-    mock_fee,
-    client,
-    acc1_usd_deposit_transaction_factory,
+    mock_submit, mock_base_fee, client, acc1_usd_deposit_transaction_factory,
 ):
     """
     `create_stellar_deposit` sets the transaction with the provided `transaction_id` to
     status `pending_trust` if the provided transaction's Stellar account has no trustline
     for its asset. (We assume the asset's issuer is the server Stellar account.)
     """
-    del mock_submit, mock_get, mock_sequence, mock_fee, client
+    del mock_submit, mock_base_fee, client
     deposit = acc1_usd_deposit_transaction_factory()
     deposit.status = Transaction.STATUS.pending_anchor
     deposit.save()
@@ -361,20 +352,12 @@ def test_deposit_stellar_no_trustline(
 
 
 @pytest.mark.django_db
-@patch("stellar_base.horizon.Horizon.base_fee", return_value=100)
-@patch("stellar_base.builder.Builder.get_sequence", return_value=1)
-@patch(
-    "stellar_base.address.Address.get",
-    side_effect=HorizonError(msg="get failed", status_code=404),
+@patch("stellar_sdk.server.Server.fetch_base_fee", return_value=100)
+@patch("stellar_sdk.server.Server.load_account", side_effect=mock_load_not_exist_account)
+@patch("stellar_sdk.server.Server.submit_transaction", return_value=HORIZON_SUCCESS_RESPONSE,
 )
-@patch("stellar_base.builder.Builder.submit", return_value=HORIZON_SUCCESS_RESPONSE)
 def test_deposit_stellar_no_account(
-    mock_submit,
-    mock_get,
-    mock_sequence,
-    mock_fee,
-    client,
-    acc1_usd_deposit_transaction_factory,
+    mock_load_account, mock_base_fee, client, acc1_usd_deposit_transaction_factory,
 ):
     """
     `create_stellar_deposit` sets the transaction with the provided `transaction_id` to
@@ -384,7 +367,7 @@ def test_deposit_stellar_no_account(
     Normally, this function creates the account. We have mocked out that functionality,
     as it relies on network calls to Horizon.
     """
-    del mock_submit, mock_get, mock_sequence, mock_fee, client
+    del mock_load_account, mock_base_fee, client
     deposit = acc1_usd_deposit_transaction_factory()
     deposit.status = Transaction.STATUS.pending_anchor
     deposit.save()
@@ -396,17 +379,10 @@ def test_deposit_stellar_no_account(
 
 
 @pytest.mark.django_db
-@patch("stellar_base.horizon.Horizon.base_fee", return_value=100)
-@patch("stellar_base.builder.Builder.get_sequence", return_value=1)
-@patch("stellar_base.address.Address.get", return_value=True)
-@patch("stellar_base.builder.Builder.submit", return_value=HORIZON_SUCCESS_RESPONSE)
+@patch("stellar_sdk.server.Server.fetch_base_fee", return_value=100)
+@patch("stellar_sdk.server.Server.submit_transaction", return_value=HORIZON_SUCCESS_RESPONSE)
 def test_deposit_stellar_success(
-    mock_submit,
-    mock_get,
-    mock_sequence,
-    mock_fee,
-    client,
-    acc1_usd_deposit_transaction_factory,
+    mock_submit, mock_base_fee, client, acc1_usd_deposit_transaction_factory,
 ):
     """
     `create_stellar_deposit` succeeds if the provided transaction's `stellar_account`
@@ -414,7 +390,7 @@ def test_deposit_stellar_success(
     successfully. All of these conditions and actions are mocked in this test to avoid
     network calls.
     """
-    del mock_submit, mock_get, mock_sequence, mock_fee, client
+    del mock_submit, mock_base_fee, client
     deposit = acc1_usd_deposit_transaction_factory()
     deposit.status = Transaction.STATUS.pending_anchor
     deposit.save()
@@ -423,19 +399,15 @@ def test_deposit_stellar_success(
 
 
 @pytest.mark.django_db
-@patch("stellar_base.horizon.Horizon.base_fee", return_value=100)
-@patch("stellar_base.builder.Builder.get_sequence", return_value=1)
-@patch("stellar_base.address.Address.get", return_value=True)
-@patch("stellar_base.builder.Builder.submit", return_value=HORIZON_SUCCESS_RESPONSE)
+@patch("stellar_sdk.server.Server.fetch_base_fee", return_value=100)
+@patch("stellar_sdk.server.Server.submit_transaction", return_value=HORIZON_SUCCESS_RESPONSE)
 @patch("deposit.tasks.create_stellar_deposit.delay", side_effect=create_stellar_deposit)
 @patch("helpers.check_auth", side_effect=mock_check_auth_success)
 def test_deposit_interactive_confirm_success(
     mock_check,
     mock_delay,
     mock_submit,
-    mock_get,
-    mock_sequence,
-    mock_fee,
+    mock_base_fee,
     client,
     acc1_usd_deposit_transaction_factory,
 ):
@@ -443,7 +415,7 @@ def test_deposit_interactive_confirm_success(
     `GET /deposit` and `GET /deposit/interactive_deposit` succeed with valid `account`
     and `asset_code`.
     """
-    del mock_check, mock_delay, mock_submit, mock_get, mock_sequence, mock_fee
+    del mock_check, mock_delay, mock_submit, mock_base_fee
     deposit = acc1_usd_deposit_transaction_factory()
     response = client.get(
         f"/deposit?asset_code=USD&account={deposit.stellar_account}", follow=True
@@ -486,20 +458,16 @@ def test_deposit_interactive_confirm_success(
 
 
 @pytest.mark.django_db
-@patch("stellar_base.horizon.Horizon.base_fee", return_value=100)
-@patch("stellar_base.builder.Builder.get_sequence", return_value=1)
-@patch("stellar_base.address.Address.get", return_value=True)
-@patch("stellar_base.builder.Builder.submit", return_value=HORIZON_SUCCESS_RESPONSE)
+@patch("stellar_sdk.server.Server.fetch_base_fee", return_value=100)
+@patch("stellar_sdk.server.Server.submit_transaction", return_value=HORIZON_SUCCESS_RESPONSE)
 @patch(
-    "stellar_base.horizon.Horizon.account",
-    return_value={"balances": [{"asset_code": "USD"}]},
+    "stellar_sdk.call_builder.accounts_call_builder.AccountsCallBuilder.call",
+    return_value={"sequence": 1, "balances": [{"asset_code": "USD"}]},
 )
 def test_deposit_check_trustlines_success(
     mock_account,
     mock_submit,
-    mock_get,
-    mock_sequence,
-    mock_fee,
+    mock_base_fee,
     client,
     acc1_usd_deposit_transaction_factory,
 ):
@@ -508,7 +476,7 @@ def test_deposit_check_trustlines_success(
     `check_trustlines` changes its status to `completed`. All the necessary
     functionality and conditions are mocked for determinism.
     """
-    del mock_account, mock_submit, mock_get, mock_sequence, mock_fee, client
+    del mock_account, mock_submit, mock_base_fee, client
     deposit = acc1_usd_deposit_transaction_factory()
     deposit.status = Transaction.STATUS.pending_trust
     deposit.save()
@@ -536,7 +504,7 @@ def test_deposit_check_trustlines_horizon(
     deposit = acc1_usd_deposit_transaction_factory()
 
     keypair = Keypair.random()
-    deposit.stellar_account = keypair.address().decode()
+    deposit.stellar_account = keypair.public_key
     response = client.get(
         f"/deposit?asset_code=USD&account={deposit.stellar_account}", follow=True
     )
@@ -586,20 +554,22 @@ def test_deposit_check_trustlines_horizon(
 
     # Add a trustline for the transaction asset from the server
     # source account to the transaction account.
-    from stellar_base.asset import Asset
-    from stellar_base.builder import Builder
+    from stellar_sdk.asset import Asset
+    from stellar_sdk.transaction_builder import TransactionBuilder
 
     print("Create trustline.")
     asset_code = deposit.asset.code
     asset_issuer = settings.STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS
     Asset(code=asset_code, issuer=asset_issuer)
-    builder = Builder(
-        secret=keypair.seed(),
-        horizon_uri=settings.HORIZON_URI,
-        network=settings.STELLAR_NETWORK,
-    ).append_change_trust_op(asset_code, asset_issuer)
-    builder.sign()
-    response = builder.submit()
+
+    server = settings.HORIZON_SERVER
+    source_account = server.load_account(keypair.public_key)
+    base_fee = 100
+    transaction = TransactionBuilder(source_account=source_account,
+                                     network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
+                                     base_fee=base_fee).append_change_trust_op(asset_code, asset_issuer).build()
+    transaction.sign(keypair)
+    response = server.submit_transaction(transaction)
     assert response["result_xdr"] == "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAAGAAAAAAAAAAA="
 
     print("Check trustlines, try three. Status should be completed.")
@@ -623,10 +593,10 @@ def test_deposit_authenticated_success(client, acc1_usd_deposit_transaction_fact
     content = json.loads(response.content)
 
     envelope_xdr = content["transaction"]
-    envelope_object = TransactionEnvelope.from_xdr(envelope_xdr)
-    client_signing_key = Keypair.from_seed(client_seed)
+    envelope_object = TransactionEnvelope.from_xdr(envelope_xdr, network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE)
+    client_signing_key = Keypair.from_secret(client_seed)
     envelope_object.sign(client_signing_key)
-    client_signed_envelope_xdr = envelope_object.xdr().decode("ascii")
+    client_signed_envelope_xdr = envelope_object.to_xdr()
 
     response = client.post(
         "/auth",
