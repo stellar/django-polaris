@@ -9,6 +9,7 @@ from stellar_sdk.transaction_builder import TransactionBuilder
 from polaris import settings
 from polaris.models import Transaction
 
+
 TRUSTLINE_FAILURE_XDR = "AAAAAAAAAGT/////AAAAAQAAAAAAAAAB////+gAAAAA="
 SUCCESS_XDR = "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA="
 

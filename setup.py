@@ -53,7 +53,7 @@ setup(
         "six==1.13.0",
         "sqlparse==0.3.0",
         "stellar-base-sseclient==0.0.21",
-        "stellar-sdk==2.0.0b3",
+        "stellar-sdk==2.0.0b4",
         "toml==0.10.0",
         "typing-extensions==3.7.4.1",
         "urllib3==1.25.7",

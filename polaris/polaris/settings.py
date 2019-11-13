@@ -40,6 +40,7 @@ if os.path.exists(env_file):
     environ.Env.read_env(str(env_file))
 
 SECRET_KEY = env("DJANGO_SECRET_KEY")
+DEBUG = env.bool("DJANGO_DEBUG", False)
 
 STELLAR_DISTRIBUTION_ACCOUNT_SEED = env("STELLAR_DISTRIBUTION_ACCOUNT_SEED")
 STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS = (
