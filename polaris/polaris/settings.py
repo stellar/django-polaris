@@ -30,12 +30,12 @@ env = environ.Env()
 # Use the directory of the django project that installed this app
 # Or if undefined, use outer directory for this app
 try:
-    REPO_DIR = settings.REPO_DIR
+    PROJECT_ROOT = settings.PROJECT_ROOT
 except ImproperlyConfigured:
-    REPO_DIR = os.path.dirname(BASE_DIR)
-    copyfile(os.path.join(REPO_DIR, ".env.example"), os.path.join(REPO_DIR, ".env"))
+    PROJECT_ROOT = os.path.dirname(BASE_DIR)
+    copyfile(os.path.join(PROJECT_ROOT, ".env.example"), os.path.join(PROJECT_ROOT, ".env"))
 
-env_file = os.path.join(REPO_DIR, ".env")
+env_file = os.path.join(PROJECT_ROOT, ".env")
 if os.path.exists(env_file):
     environ.Env.read_env(str(env_file))
 
@@ -97,7 +97,7 @@ TEMPLATES = [
 
 DATABASES = {
     "default": env.db(
-        "DATABASE_URL", default="sqlite:///" + os.path.join(REPO_DIR, "db.sqlite3")
+        "DATABASE_URL", default="sqlite:///" + os.path.join(PROJECT_ROOT, "db.sqlite3")
     )
 }
 

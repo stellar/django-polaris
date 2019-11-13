@@ -106,7 +106,7 @@ class Command(BaseCommand):
             response = server.submit_transaction(transaction_envelope)
         # Functional errors at this stage are Horizon errors.
         except BaseHorizonError as exception:
-            if TRUSTLINE_FAILURE_XDR not in exception.extras['result_xdr']:
+            if TRUSTLINE_FAILURE_XDR not in exception.result_xdr:
                 logger.debug(
                     "error with message %s when submitting payment to horizon, non-trustline failure",
                     exception.message,
