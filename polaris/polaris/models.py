@@ -1,4 +1,4 @@
-"""This module defines the models for the info app."""
+"""This module defines the models for the polaris app."""
 import uuid
 
 from django.contrib import admin
