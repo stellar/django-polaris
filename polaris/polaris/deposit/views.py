@@ -16,8 +16,9 @@ from django.urls import reverse
 from django.views.decorators.clickjacking import xframe_options_exempt
 from django.core.management import call_command
 from rest_framework import status
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, renderer_classes
 from rest_framework.response import Response
+from rest_framework.renderers import TemplateHTMLRenderer
 from stellar_sdk.keypair import Keypair
 from stellar_sdk.exceptions import Ed25519PublicKeyInvalidError
 
@@ -137,6 +138,7 @@ def confirm_transaction(request):
 
 @xframe_options_exempt
 @api_view(["GET", "POST"])
+@renderer_classes([TemplateHTMLRenderer])
 def interactive_deposit(request):
     """
     `GET /deposit/interactive_deposit` opens a form used to input information
@@ -146,15 +148,15 @@ def interactive_deposit(request):
     # Validate query parameters: account, asset_code, transaction_id.
     account = request.GET.get("account")
     if not account:
-        return render_error_response("no 'account' provided")
+        return render_error_response("no 'account' provided", content_type="text/html")
 
     asset_code = request.GET.get("asset_code")
     if not asset_code or not Asset.objects.filter(code=asset_code).exists():
-        return render_error_response("invalid 'asset_code'")
+        return render_error_response("invalid 'asset_code'", content_type="text/html")
 
     transaction_id = request.GET.get("transaction_id")
     if not transaction_id:
-        return render_error_response("no 'transaction_id' provided")
+        return render_error_response("no 'transaction_id' provided", content_type="text/html")
 
     # GET: The server needs to display the form for the user to input the deposit information.
     if request.method == "GET":
@@ -163,7 +165,8 @@ def interactive_deposit(request):
     else:
         if Transaction.objects.filter(id=transaction_id).exists():
             return render_error_response(
-                "transaction with matching 'transaction_id' already exists"
+                "transaction with matching 'transaction_id' already exists",
+                content_type="text/html"
             )
         form = DepositForm(request.POST)
         asset = Asset.objects.get(code=asset_code)
@@ -190,20 +193,19 @@ def interactive_deposit(request):
                 context={"more_info_url": _construct_more_info_url(request)},
             )
             tx_json = json.dumps({"transaction": serializer.data})
-            return render(
-                request,
-                "transaction/more_info.html",
-                context={
+            return Response(
+                {
                     "tx_json": tx_json,
                     "transaction": transaction,
                     "asset_code": transaction.asset.code,
                 },
+                template_name="transaction/more_info.html",
             )
-    return render(request, "deposit/form.html", {"form": form})
+    return Response({"form": form}, template_name="deposit/form.html")
 
 
-@validate_sep10_token()
 @api_view()
+@validate_sep10_token()
 def deposit(request):
     """
     `GET /deposit` initiates the deposit and returns an interactive

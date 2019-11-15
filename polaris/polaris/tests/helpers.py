@@ -13,11 +13,6 @@ def mock_check_auth_success(request, func):
     return func(request)
 
 
-def mock_render_error_response(error_str):
-    """Mocks `helpers.render_error_response`, for failure."""
-    return JsonResponse({"error": error_str}, status=400)
-
-
 def mock_load_not_exist_account(account_id):
     if account_id != settings.STELLAR_ISSUER_ACCOUNT_ADDRESS and account_id != settings.STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS:
         raise NotFoundError(response=Response(status_code=404, headers={}, url="", text=json.dumps(dict(status=404))))

@@ -7,7 +7,7 @@ from stellar_sdk.keypair import Keypair
 from stellar_sdk.transaction_envelope import TransactionEnvelope
 
 from polaris import settings
-from polaris.tests.helpers import mock_check_auth_success, mock_render_error_response
+from polaris.tests.helpers import mock_check_auth_success
 
 
 @patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
@@ -18,7 +18,7 @@ def test_fee_no_params(mock_check, client):
     content = json.loads(response.content)
 
     assert response.status_code == 400
-    assert content == {"error": "invalid 'asset_code'"}
+    assert content == {"error": "invalid 'asset_code'", "status_code": 400}
 
 
 @pytest.mark.django_db
@@ -30,7 +30,7 @@ def test_fee_wrong_asset_code(mock_check, client):
     content = json.loads(response.content)
 
     assert response.status_code == 400
-    assert content == {"error": "invalid 'asset_code'"}
+    assert content == {"error": "invalid 'asset_code'", "status_code": 400}
 
 
 @pytest.mark.django_db
@@ -43,7 +43,10 @@ def test_fee_no_operation(mock_check, client, usd_asset_factory):
     content = json.loads(response.content)
 
     assert response.status_code == 400
-    assert content == {"error": "'operation' should be either 'deposit' or 'withdraw'"}
+    assert content == {
+        "error": "'operation' should be either 'deposit' or 'withdraw'",
+        "status_code": 400
+    }
 
 
 @pytest.mark.django_db
@@ -56,7 +59,10 @@ def test_fee_invalid_operation(mock_check, client, usd_asset_factory):
     content = json.loads(response.content)
 
     assert response.status_code == 400
-    assert content == {"error": "'operation' should be either 'deposit' or 'withdraw'"}
+    assert content == {
+        "error": "'operation' should be either 'deposit' or 'withdraw'",
+        "status_code": 400
+    }
 
 
 @pytest.mark.django_db
@@ -69,7 +75,10 @@ def test_fee_no_amount(mock_check, client, usd_asset_factory):
     content = json.loads(response.content)
 
     assert response.status_code == 400
-    assert content == {"error": "invalid 'amount'"}
+    assert content == {
+        "error": "invalid 'amount'",
+        "status_code": 400
+    }
 
 
 @pytest.mark.django_db
@@ -84,7 +93,7 @@ def test_fee_invalid_amount(mock_check, client, usd_asset_factory):
     content = json.loads(response.content)
 
     assert response.status_code == 400
-    assert content == {"error": "invalid 'amount'"}
+    assert content == {"error": "invalid 'amount'", "status_code": 400}
 
 
 @pytest.mark.django_db
@@ -99,7 +108,10 @@ def test_fee_invalid_operation_type_deposit(mock_check, client, usd_asset_factor
     content = json.loads(response.content)
 
     assert response.status_code == 400
-    assert content == {"error": "the specified operation is not available for 'USD'"}
+    assert content == {
+        "error": "the specified operation is not available for 'USD'",
+        "status_code": 400
+    }
 
 
 @pytest.mark.django_db
@@ -114,7 +126,10 @@ def test_fee_invalid_operation_type_withdraw(mock_check, client, usd_asset_facto
     content = json.loads(response.content)
 
     assert response.status_code == 400
-    assert content == {"error": "the specified operation is not available for 'USD'"}
+    assert content == {
+        "error": "the specified operation is not available for 'USD'",
+        "status_code": 400
+    }
 
 
 @pytest.mark.django_db
@@ -130,7 +145,10 @@ def test_fee_withdraw_disabled(mock_check, client, eth_asset_factory):
     content = json.loads(response.content)
 
     assert response.status_code == 400
-    assert content == {"error": "the specified operation is not available for 'ETH'"}
+    assert content == {
+        "error": "the specified operation is not available for 'ETH'",
+        "status_code": 400
+    }
 
 
 @pytest.mark.django_db
@@ -148,7 +166,10 @@ def test_fee_deposit_disabled(mock_check, client, eth_asset_factory):
     content = json.loads(response.content)
 
     assert response.status_code == 400
-    assert content == {"error": "the specified operation is not available for 'ETH'"}
+    assert content == {
+        "error": "the specified operation is not available for 'ETH'",
+        "status_code": 400
+    }
 
 
 @pytest.mark.django_db
@@ -185,10 +206,8 @@ def test_fee_valid_withdrawal(mock_check, client, usd_asset_factory):
 
 
 @pytest.mark.django_db
-@patch("polaris.helpers.render_error_response", side_effect=mock_render_error_response)
-def test_fee_authenticated_success(mock_render, client, usd_asset_factory):
+def test_fee_authenticated_success(client, usd_asset_factory):
     """Succeeds for a valid fee, with successful authentication."""
-    del mock_render
     usd_asset_factory()
     client_address = "GDKFNRUATPH4BSZGVFDRBIGZ5QAFILVFRIRYNSQ4UO7V2ZQAPRNL73RI"
     client_seed = "SDKWSBERDHP3SXW5A3LXSI7FWMMO5H7HG33KNYBKWH2HYOXJG2DXQHQY"
@@ -225,14 +244,15 @@ def test_fee_authenticated_success(mock_render, client, usd_asset_factory):
 
 
 @pytest.mark.django_db
-@patch("polaris.helpers.render_error_response", side_effect=mock_render_error_response)
-def test_fee_no_jwt(mock_render, client, usd_asset_factory):
+def test_fee_no_jwt(client, usd_asset_factory):
     """`GET /fee` fails if a required JWT is not provided."""
-    del mock_render
     usd_asset_factory()
     response = client.get(
         f"/fee?asset_code=USD&operation=withdraw&amount=100.0", follow=True
     )
     content = json.loads(response.content)
     assert response.status_code == 400
-    assert content == {"error": "JWT must be passed as 'Authorization' header"}
+    assert content == {
+        "error": "JWT must be passed as 'Authorization' header",
+        "status_code": 400
+    }

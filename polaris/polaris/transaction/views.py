@@ -2,12 +2,12 @@
 import json
 from urllib.parse import urlencode
 
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, renderer_classes
 from rest_framework.response import Response
+from rest_framework.renderers import TemplateHTMLRenderer
 from rest_framework import status
 
 from polaris import settings
-from django.shortcuts import render
 from django.urls import reverse
 from django.views.decorators.clickjacking import xframe_options_exempt
 
@@ -73,6 +73,7 @@ def _construct_more_info_url(request):
 
 @xframe_options_exempt
 @api_view()
+@renderer_classes([TemplateHTMLRenderer])
 def more_info(request):
     """
     Popup to display more information about a specific transaction.
@@ -81,10 +82,12 @@ def more_info(request):
     try:
         request_transaction = _get_transaction_from_request(request)
     except AttributeError as exc:
-        return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return render_error_response(str(exc), content_type="text/html")
     except Transaction.DoesNotExist:
-        return Response(
-            {"error": "transaction not found"}, status=status.HTTP_404_NOT_FOUND
+        return render_error_response(
+            "transaction not found",
+            status_code=status.HTTP_404_NOT_FOUND,
+            content_type="text/html"
         )
 
     serializer = TransactionSerializer(
@@ -92,19 +95,18 @@ def more_info(request):
         context={"more_info_url": _construct_more_info_url(request)},
     )
     tx_json = json.dumps({"transaction": serializer.data})
-    return render(
-        request,
-        "transaction/more_info.html",
-        context={
+    return Response(
+        {
             "tx_json": tx_json,
             "transaction": request_transaction,
             "asset_code": request_transaction.asset.code,
         },
+        template_name="transaction/more_info.html"
     )
 
 
-@validate_sep10_token()
 @api_view()
+@validate_sep10_token()
 def transactions(request):
     """
     Definition of the /transactions endpoint, in accordance with SEP-0024.
@@ -113,12 +115,15 @@ def transactions(request):
     try:
         limit = _validate_limit(request.GET.get("limit"))
     except ValueError:
-        return Response({"error": "invalid limit"}, status=status.HTTP_400_BAD_REQUEST)
+        return render_error_response(
+            "invalid limit",
+            status_code=status.HTTP_400_BAD_REQUEST
+        )
 
     if not request.GET.get("asset_code") or not request.GET.get("account"):
-        return Response(
-            {"error": "asset_code and account are required fields"},
-            status=status.HTTP_400_BAD_REQUEST,
+        return render_error_response(
+            "asset_code and account are required fields",
+            status_code=status.HTTP_400_BAD_REQUEST,
         )
 
     translation_dict = {
@@ -138,8 +143,8 @@ def transactions(request):
         try:
             start_transaction = Transaction.objects.get(id=paging_id)
         except Transaction.DoesNotExist:
-            return Response(
-                {"error": "invalid paging_id"}, status=status.HTTP_400_BAD_REQUEST
+            return render_error_response(
+                "invalid paging_id", status_code=status.HTTP_400_BAD_REQUEST
             )
         qset_filter["started_at__lt"] = start_transaction.started_at
 
@@ -153,8 +158,8 @@ def transactions(request):
     return Response({"transactions": serializer.data})
 
 
-@validate_sep10_token()
 @api_view()
+@validate_sep10_token()
 def transaction(request):
     """
     Definition of the /transaction endpoint, in accordance with SEP-0024.
@@ -163,10 +168,10 @@ def transaction(request):
     try:
         request_transaction = _get_transaction_from_request(request)
     except AttributeError as exc:
-        return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return render_error_response(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
     except Transaction.DoesNotExist:
-        return Response(
-            {"error": "transaction not found"}, status=status.HTTP_404_NOT_FOUND
+        return render_error_response(
+            "transaction not found", status_code=status.HTTP_404_NOT_FOUND
         )
     serializer = TransactionSerializer(
         request_transaction,

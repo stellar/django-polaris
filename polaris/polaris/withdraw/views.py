@@ -11,8 +11,9 @@ from django.shortcuts import render
 from django.urls import reverse
 from django.views.decorators.clickjacking import xframe_options_exempt
 from rest_framework import status
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, renderer_classes
 from rest_framework.response import Response
+from rest_framework.renderers import TemplateHTMLRenderer
 
 from polaris.helpers import (
     render_error_response,
@@ -47,6 +48,7 @@ def _construct_more_info_url(request):
 
 @xframe_options_exempt
 @api_view(["GET", "POST"])
+@renderer_classes([TemplateHTMLRenderer])
 def interactive_withdraw(request):
     """
     `GET /withdraw/interactive_withdraw` opens a form used to input information about
@@ -54,11 +56,11 @@ def interactive_withdraw(request):
     """
     transaction_id = request.GET.get("transaction_id")
     if not transaction_id:
-        return render_error_response("no 'transaction_id' provided")
+        return render_error_response("no 'transaction_id' provided", content_type="text/html")
 
     asset_code = request.GET.get("asset_code")
     if not asset_code or not Asset.objects.filter(code=asset_code).exists():
-        return render_error_response("invalid 'asset_code'")
+        return render_error_response("invalid 'asset_code'", content_type="text/html")
 
     # GET: The server needs to display the form for the user to input withdrawal information.
     if request.method == "GET":
@@ -68,7 +70,8 @@ def interactive_withdraw(request):
     else:
         if Transaction.objects.filter(id=transaction_id).exists():
             return render_error_response(
-                "transaction with matching 'transaction_id' already exists"
+                "transaction with matching 'transaction_id' already exists",
+                content_type="text/html"
             )
         form = WithdrawForm(request.POST)
         asset = Asset.objects.get(code=asset_code)
@@ -107,20 +110,19 @@ def interactive_withdraw(request):
                 context={"more_info_url": _construct_more_info_url(request)},
             )
             tx_json = json.dumps({"transaction": serializer.data})
-            return render(
-                request,
-                "transaction/more_info.html",
-                context={
+            return Response(
+                {
                     "tx_json": tx_json,
                     "transaction": transaction,
                     "asset_code": asset_code,
                 },
+                template_name="transaction/more_info.html"
             )
-    return render(request, "withdraw/form.html", {"form": form})
+    return Response({"form": form}, template_name="withdraw/form.html")
 
 
-@validate_sep10_token()
 @api_view()
+@validate_sep10_token()
 def withdraw(request):
     """
     `GET /withdraw` initiates the withdrawal and returns an interactive
