@@ -8,7 +8,7 @@ from stellar_sdk.transaction_envelope import TransactionEnvelope
 
 from polaris import settings
 from polaris.models import Transaction
-from polaris.tests.helpers import mock_check_auth_success, mock_render_error_response
+from polaris.tests.helpers import mock_check_auth_success
 
 
 @pytest.mark.django_db
@@ -202,9 +202,7 @@ def test_transaction_filtering_no_result(
 
 
 @pytest.mark.django_db
-@patch("polaris.helpers.render_error_response", side_effect=mock_render_error_response)
 def test_transaction_authenticated_success(
-    mock_render,
     client,
     acc1_usd_deposit_transaction_factory,
     acc2_eth_withdrawal_transaction_factory,
@@ -214,7 +212,6 @@ def test_transaction_authenticated_success(
     Though it filters using the stellar transaction ID, the logic
     should apply in any case.
     """
-    del mock_render
     client_address = "GDKFNRUATPH4BSZGVFDRBIGZ5QAFILVFRIRYNSQ4UO7V2ZQAPRNL73RI"
     client_seed = "SDKWSBERDHP3SXW5A3LXSI7FWMMO5H7HG33KNYBKWH2HYOXJG2DXQHQY"
     acc1_usd_deposit_transaction_factory()
@@ -258,12 +255,10 @@ def test_transaction_authenticated_success(
 
 
 @pytest.mark.django_db
-@patch("polaris.helpers.render_error_response", side_effect=mock_render_error_response)
 def test_transaction_no_jwt(
-    mock_render, client, acc2_eth_withdrawal_transaction_factory
+    client, acc2_eth_withdrawal_transaction_factory
 ):
     """Fails if required JWT is not provided."""
-    del mock_render
     withdrawal = acc2_eth_withdrawal_transaction_factory()
 
     response = client.get(
@@ -277,4 +272,4 @@ def test_transaction_no_jwt(
     content = json.loads(response.content)
 
     assert response.status_code == 400
-    assert content == {"error": "JWT must be passed as 'Authorization' header"}
+    assert content == {"error": "JWT must be passed as 'Authorization' header", "status_code": 400}

@@ -28,10 +28,22 @@ def calc_fee(asset: Asset, operation: str, amount: float) -> float:
     return fee_fixed + (fee_percent / 100.0) * amount
 
 
-def render_error_response(description: str) -> Response:
-    """Renders an error response in Django."""
-    data = {"error": description}
-    return Response(data, status=status.HTTP_400_BAD_REQUEST)
+def render_error_response(description: str,
+                          status_code: int = status.HTTP_400_BAD_REQUEST,
+                          content_type: str = "application/json") -> Response:
+    """
+    Renders an error response in Django.
+
+    Currently supports HTML or JSON responses.
+    """
+    resp_data = {
+        "data": {"error": description, "status_code": status_code},
+        "status": status_code,
+        "content_type": content_type
+    }
+    if content_type == "text/html":
+        resp_data["template_name"] = "error.html"
+    return Response(**resp_data)
 
 
 def create_transaction_id():

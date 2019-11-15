@@ -116,6 +116,11 @@ STATICFILES_DIRS = (
 # Attributes to add to parent project's REST_FRAMEWORK
 REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "DEFAULT_RENDERER_CLASSES": [
+        'rest_framework.renderers.JSONRenderer',
+        'rest_framework.renderers.BrowsableAPIRenderer',
+        'rest_framework.renderers.TemplateHTMLRenderer'
+    ],
     "PAGE_SIZE": 10,
 }
 

@@ -10,7 +10,7 @@ from polaris import settings
 from polaris.helpers import format_memo_horizon
 from polaris.management.commands.watch_transactions import process_withdrawal
 from polaris.models import Transaction
-from polaris.tests.helpers import mock_check_auth_success, mock_render_error_response
+from polaris.tests.helpers import mock_check_auth_success
 
 
 @pytest.mark.django_db
@@ -36,7 +36,7 @@ def test_withdraw_invalid_asset(
     response = client.get(f"/withdraw?asset_code=ETH", follow=True)
     content = json.loads(response.content)
     assert response.status_code == 400
-    assert content == {"error": "invalid operation for asset ETH"}
+    assert content == {"error": "invalid operation for asset ETH", "status_code": 400}
 
 
 @pytest.mark.django_db
@@ -47,7 +47,7 @@ def test_withdraw_no_asset(mock_check, client):
     response = client.get(f"/withdraw", follow=True)
     content = json.loads(response.content)
     assert response.status_code == 400
-    assert content == {"error": "'asset_code' is required"}
+    assert content == {"error": "'asset_code' is required", "status_code": 400}
 
 
 @pytest.mark.django_db
@@ -61,9 +61,7 @@ def test_withdraw_interactive_no_txid(
     del mock_check
     acc1_usd_withdrawal_transaction_factory()
     response = client.get(f"/withdraw/interactive_withdraw?", follow=True)
-    content = json.loads(response.content)
     assert response.status_code == 400
-    assert content == {"error": "no 'transaction_id' provided"}
 
 
 @pytest.mark.django_db
@@ -79,9 +77,7 @@ def test_withdraw_interactive_no_asset(
     response = client.get(
         f"/withdraw/interactive_withdraw?transaction_id=2", follow=True
     )
-    content = json.loads(response.content)
     assert response.status_code == 400
-    assert content == {"error": "invalid 'asset_code'"}
 
 
 @pytest.mark.django_db
@@ -97,9 +93,7 @@ def test_withdraw_interactive_invalid_asset(
     response = client.get(
         f"/withdraw/interactive_withdraw?transaction_id=2&asset_code=ETH", follow=True
     )
-    content = json.loads(response.content)
     assert response.status_code == 400
-    assert content == {"error": "invalid 'asset_code'"}
 
 
 # TODO: Decompose the below tests, since they call the same logic. The issue: Pytest complains
@@ -345,12 +339,10 @@ def test_withdraw_authenticated_success(
 
 
 @pytest.mark.django_db
-@patch("polaris.helpers.render_error_response", side_effect=mock_render_error_response)
-def test_withdraw_no_jwt(mock_render, client, acc1_usd_withdrawal_transaction_factory):
+def test_withdraw_no_jwt(client, acc1_usd_withdrawal_transaction_factory):
     """`GET /withdraw` fails if a required JWT isn't provided."""
-    del mock_render
     acc1_usd_withdrawal_transaction_factory()
     response = client.get(f"/withdraw?asset_code=USD", follow=True)
     content = json.loads(response.content)
     assert response.status_code == 400
-    assert content == {"error": "JWT must be passed as 'Authorization' header"}
+    assert content == {"error": "JWT must be passed as 'Authorization' header", "status_code": 400}

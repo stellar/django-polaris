@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block "title" %}
+<title>Error: {{ status_code }}</title>
+{% endblock %}
+
+{% block "content" %}
+<section class="section">
+    <h2>Error: {{ status_code }}</h2>
+    <p>{{ error }}</p>
+</section>
+{% endblock %}

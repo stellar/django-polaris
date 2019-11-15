@@ -21,8 +21,8 @@ def _op_type_is_valid(asset_code: str, operation: str, op_type: str) -> bool:
     return False
 
 
-@validate_sep10_token()
 @api_view()
+@validate_sep10_token()
 def fee(request):
     """
     Definition of the /fee endpoint, in accordance with SEP-0024.

@@ -8,9 +8,7 @@ def test_more_info_required_fields(client, acc1_usd_deposit_transaction_factory)
     """Fails if no required fields are provided."""
     acc1_usd_deposit_transaction_factory()
     response = client.get(f"/transaction/more_info", follow=True)
-    content = json.loads(response.content)
     assert response.status_code == 400
-    assert content.get("error")
 
 
 @pytest.mark.django_db
@@ -72,7 +70,5 @@ def test_more_info_no_result(
         f"/transaction/more_info?id={deposit.id}&external_transaction_id={withdrawal.external_transaction_id}&stellar_transaction_id={withdrawal.stellar_transaction_id}",
         follow=True,
     )
-    content = json.loads(response.content)
     assert response.status_code == 404
-    assert content.get("error")
 
