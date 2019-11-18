@@ -18,7 +18,7 @@ def test_fee_no_params(mock_check, client):
     content = json.loads(response.content)
 
     assert response.status_code == 400
-    assert content == {"error": "invalid 'asset_code'", "status_code": 400}
+    assert content == {"error": "invalid 'asset_code'"}
 
 
 @pytest.mark.django_db
@@ -30,7 +30,7 @@ def test_fee_wrong_asset_code(mock_check, client):
     content = json.loads(response.content)
 
     assert response.status_code == 400
-    assert content == {"error": "invalid 'asset_code'", "status_code": 400}
+    assert content == {"error": "invalid 'asset_code'"}
 
 
 @pytest.mark.django_db
@@ -44,8 +44,7 @@ def test_fee_no_operation(mock_check, client, usd_asset_factory):
 
     assert response.status_code == 400
     assert content == {
-        "error": "'operation' should be either 'deposit' or 'withdraw'",
-        "status_code": 400
+        "error": "'operation' should be either 'deposit' or 'withdraw'"
     }
 
 
@@ -60,8 +59,7 @@ def test_fee_invalid_operation(mock_check, client, usd_asset_factory):
 
     assert response.status_code == 400
     assert content == {
-        "error": "'operation' should be either 'deposit' or 'withdraw'",
-        "status_code": 400
+        "error": "'operation' should be either 'deposit' or 'withdraw'"
     }
 
 
@@ -76,8 +74,7 @@ def test_fee_no_amount(mock_check, client, usd_asset_factory):
 
     assert response.status_code == 400
     assert content == {
-        "error": "invalid 'amount'",
-        "status_code": 400
+        "error": "invalid 'amount'"
     }
 
 
@@ -93,7 +90,7 @@ def test_fee_invalid_amount(mock_check, client, usd_asset_factory):
     content = json.loads(response.content)
 
     assert response.status_code == 400
-    assert content == {"error": "invalid 'amount'", "status_code": 400}
+    assert content == {"error": "invalid 'amount'"}
 
 
 @pytest.mark.django_db
@@ -109,8 +106,7 @@ def test_fee_invalid_operation_type_deposit(mock_check, client, usd_asset_factor
 
     assert response.status_code == 400
     assert content == {
-        "error": "the specified operation is not available for 'USD'",
-        "status_code": 400
+        "error": "the specified operation is not available for 'USD'"
     }
 
 
@@ -127,8 +123,7 @@ def test_fee_invalid_operation_type_withdraw(mock_check, client, usd_asset_facto
 
     assert response.status_code == 400
     assert content == {
-        "error": "the specified operation is not available for 'USD'",
-        "status_code": 400
+        "error": "the specified operation is not available for 'USD'"
     }
 
 
@@ -146,8 +141,7 @@ def test_fee_withdraw_disabled(mock_check, client, eth_asset_factory):
 
     assert response.status_code == 400
     assert content == {
-        "error": "the specified operation is not available for 'ETH'",
-        "status_code": 400
+        "error": "the specified operation is not available for 'ETH'"
     }
 
 
@@ -167,8 +161,7 @@ def test_fee_deposit_disabled(mock_check, client, eth_asset_factory):
 
     assert response.status_code == 400
     assert content == {
-        "error": "the specified operation is not available for 'ETH'",
-        "status_code": 400
+        "error": "the specified operation is not available for 'ETH'"
     }
 
 
@@ -253,6 +246,5 @@ def test_fee_no_jwt(client, usd_asset_factory):
     content = json.loads(response.content)
     assert response.status_code == 400
     assert content == {
-        "error": "JWT must be passed as 'Authorization' header",
-        "status_code": 400
+        "error": "JWT must be passed as 'Authorization' header"
     }

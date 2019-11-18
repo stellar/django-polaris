@@ -466,4 +466,4 @@ def test_transactions_no_jwt(
     )
     content = json.loads(response.content)
     assert response.status_code == 400
-    assert content == {"error": "JWT must be passed as 'Authorization' header", "status_code": 400}
+    assert content == {"error": "JWT must be passed as 'Authorization' header"}

@@ -63,7 +63,7 @@ def test_deposit_no_params(mock_check, client):
     content = json.loads(response.content)
 
     assert response.status_code == 400
-    assert content == {"error": "`asset_code` and `account` are required parameters", "status_code": 400}
+    assert content == {"error": "`asset_code` and `account` are required parameters"}
 
 @patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
 def test_deposit_no_account(mock_check, client):
@@ -73,7 +73,7 @@ def test_deposit_no_account(mock_check, client):
     content = json.loads(response.content)
 
     assert response.status_code == 400
-    assert content == {"error": "`asset_code` and `account` are required parameters", "status_code": 400}
+    assert content == {"error": "`asset_code` and `account` are required parameters"}
 
 
 @pytest.mark.django_db
@@ -86,7 +86,7 @@ def test_deposit_no_asset(mock_check, client, acc1_usd_deposit_transaction_facto
     content = json.loads(response.content)
 
     assert response.status_code == 400
-    assert content == {"error": "`asset_code` and `account` are required parameters", "status_code": 400}
+    assert content == {"error": "`asset_code` and `account` are required parameters"}
 
 
 @pytest.mark.django_db
@@ -104,7 +104,7 @@ def test_deposit_invalid_account(
     content = json.loads(response.content)
 
     assert response.status_code == 400
-    assert content == {"error": "invalid 'account'", "status_code": 400}
+    assert content == {"error": "invalid 'account'"}
 
 
 @pytest.mark.django_db
@@ -121,7 +121,7 @@ def test_deposit_invalid_asset(
     content = json.loads(response.content)
 
     assert response.status_code == 400
-    assert content == {"error": "invalid operation for asset GBP", "status_code": 400}
+    assert content == {"error": "invalid operation for asset GBP"}
 
 
 @pytest.mark.django_db
@@ -139,7 +139,7 @@ def test_deposit_invalid_memo_type(
     content = json.loads(response.content)
 
     assert response.status_code == 400
-    assert content == {"error": "invalid 'memo_type'", "status_code": 400}
+    assert content == {"error": "invalid 'memo_type'"}
 
 
 @pytest.mark.django_db
@@ -155,7 +155,7 @@ def test_deposit_no_memo(mock_check, client, acc1_usd_deposit_transaction_factor
     content = json.loads(response.content)
     print(response)
     assert response.status_code == 400
-    assert content == {"error": "'memo_type' provided with no 'memo'", "status_code": 400}
+    assert content == {"error": "'memo_type' provided with no 'memo'"}
 
 
 @pytest.mark.django_db
@@ -171,7 +171,7 @@ def test_deposit_no_memo_type(mock_check, client, acc1_usd_deposit_transaction_f
     content = json.loads(response.content)
 
     assert response.status_code == 400
-    assert content == {"error": "'memo' provided with no 'memo_type'", "status_code": 400}
+    assert content == {"error": "'memo' provided with no 'memo_type'"}
 
 
 @pytest.mark.django_db
@@ -189,7 +189,7 @@ def test_deposit_invalid_hash_memo(
     content = json.loads(response.content)
 
     assert response.status_code == 400
-    assert content == {"error": "'memo' does not match memo_type' hash", "status_code": 400}
+    assert content == {"error": "'memo' does not match memo_type' hash"}
 
 
 def test_deposit_confirm_no_txid(client):
@@ -198,8 +198,7 @@ def test_deposit_confirm_no_txid(client):
     content = json.loads(response.content)
     assert response.status_code == 400
     assert content == {
-        "error": "no 'transaction_id' provided",
-        "status_code": 400
+        "error": "no 'transaction_id' provided"
     }
 
 
@@ -214,8 +213,7 @@ def test_deposit_confirm_invalid_txid(client):
     content = json.loads(response.content)
     assert response.status_code == 400
     assert content == {
-        "error": "no transaction with matching 'transaction_id' exists",
-        "status_code": 400
+        "error": "no transaction with matching 'transaction_id' exists"
     }
 
 
@@ -228,7 +226,7 @@ def test_deposit_confirm_no_amount(client, acc1_usd_deposit_transaction_factory)
     )
     content = json.loads(response.content)
     assert response.status_code == 400
-    assert content == {"error": "no 'amount' provided", "status_code": 400}
+    assert content == {"error": "no 'amount' provided"}
 
 
 @pytest.mark.django_db
@@ -242,8 +240,7 @@ def test_deposit_confirm_invalid_amount(client, acc1_usd_deposit_transaction_fac
     content = json.loads(response.content)
     assert response.status_code == 400
     assert content == {
-        "error": "non-float 'amount' provided",
-        "status_code": 400
+        "error": "non-float 'amount' provided"
     }
 
 
@@ -259,8 +256,7 @@ def test_deposit_confirm_incorrect_amount(client, acc1_usd_deposit_transaction_f
     content = json.loads(response.content)
     assert response.status_code == 400
     assert content == {
-        "error": "incorrect 'amount' value for transaction with given 'transaction_id'",
-        "status_code": 400
+        "error": "incorrect 'amount' value for transaction with given 'transaction_id'"
     }
 
 
@@ -620,4 +616,4 @@ def test_deposit_no_jwt(client, acc1_usd_deposit_transaction_factory):
     )
     content = json.loads(response.content)
     assert response.status_code == 400
-    assert content == {"error": "JWT must be passed as 'Authorization' header", "status_code": 400}
+    assert content == {"error": "JWT must be passed as 'Authorization' header"}

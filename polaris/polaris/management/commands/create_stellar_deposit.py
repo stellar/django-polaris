@@ -32,7 +32,7 @@ class Command(BaseCommand):
 
         # We check the Transaction status to avoid double submission of a Stellar
         # transaction. The Transaction can be either `pending_anchor` if the task
-        # is called from `GET transactions/deposit/confirm_transaction` or `pending_trust` if called
+        # is called from `poll_pending_deposits()` or `pending_trust` if called
         # from the `check_trustlines()`.
         if transaction.status not in [
             Transaction.STATUS.pending_anchor,
@@ -61,9 +61,11 @@ class Command(BaseCommand):
         starting_balance = settings.ACCOUNT_STARTING_BALANCE
         server_account = server.load_account(settings.STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS)
         base_fee = server.fetch_base_fee()
-        builder = TransactionBuilder(source_account=server_account,
-                                    network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
-                                    base_fee=base_fee)
+        builder = TransactionBuilder(
+            source_account=server_account,
+            network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
+            base_fee=base_fee
+        )
         try:
             server.load_account(stellar_account)
         except BaseHorizonError as address_exc:
@@ -74,11 +76,11 @@ class Command(BaseCommand):
                     address_exc.message,
                 )
                 return
-            transaction_envelope = builder \
-                .append_create_account_op(destination=stellar_account,
-                                        starting_balance=starting_balance,
-                                        source=settings.STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS) \
-                .build()
+            transaction_envelope = builder.append_create_account_op(
+                destination=stellar_account,
+                starting_balance=starting_balance,
+                source=settings.STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS
+            ).build()
             transaction_envelope.sign(settings.STELLAR_DISTRIBUTION_ACCOUNT_SEED)
             try:
                 server.submit_transaction(transaction_envelope)
@@ -96,12 +98,12 @@ class Command(BaseCommand):
         # transaction to completed at the current time. If it fails due to a
         # trustline error, we update the database accordingly. Else, we do not update.
 
-        transaction_envelope = builder \
-            .append_payment_op(destination=stellar_account,
-                            asset_code=asset,
-                            asset_issuer=settings.STELLAR_ISSUER_ACCOUNT_ADDRESS,
-                            amount=str(payment_amount)) \
-            .build()
+        transaction_envelope = builder.append_payment_op(
+            destination=stellar_account,
+            asset_code=asset,
+            asset_issuer=settings.STELLAR_ISSUER_ACCOUNT_ADDRESS,
+            amount=str(payment_amount)
+        ).build()
         transaction_envelope.sign(settings.STELLAR_DISTRIBUTION_ACCOUNT_SEED)
         try:
             response = server.submit_transaction(transaction_envelope)

@@ -37,11 +37,12 @@ def render_error_response(description: str,
     Currently supports HTML or JSON responses.
     """
     resp_data = {
-        "data": {"error": description, "status_code": status_code},
+        "data": {"error": description},
         "status": status_code,
         "content_type": content_type
     }
     if content_type == "text/html":
+        resp_data["data"]["status_code"] = status_code
         resp_data["template_name"] = "error.html"
     return Response(**resp_data)
 

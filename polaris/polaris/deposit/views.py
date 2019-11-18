@@ -11,8 +11,6 @@ import json
 from urllib.parse import urlencode
 
 from polaris import settings
-from django.http import JsonResponse
-from django.shortcuts import render
 from django.urls import reverse
 from django.views.decorators.clickjacking import xframe_options_exempt
 from django.core.management import call_command
@@ -27,7 +25,6 @@ from polaris.helpers import (
     calc_fee,
     render_error_response,
     create_transaction_id,
-    validate_jwt_request,
     validate_sep10_token,
 )
 from polaris.models import Asset, Transaction

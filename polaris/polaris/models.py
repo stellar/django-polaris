@@ -1,7 +1,6 @@
 """This module defines the models for the polaris app."""
 import uuid
 
-from django.contrib import admin
 from polaris import settings
 from django.core.validators import MinLengthValidator
 from django.db import models
@@ -34,6 +33,8 @@ class Asset(TimeStampedModel):
     withdrawal_min_amount = models.FloatField(default=10.0, blank=True)
     withdrawal_max_amount = models.FloatField(default=10000.0, blank=True)
 
+    objects = models.Manager()
+
     class Meta:
         app_label = "polaris"
 
@@ -41,7 +42,6 @@ class Asset(TimeStampedModel):
 class Transaction(models.Model):
     """
     This defines a Transaction, as described in the SEP-24 `transaction` endpoint.
-    See: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md#transactions
     """
 
     KIND = Choices("deposit", "withdrawal")
@@ -62,6 +62,7 @@ class Transaction(models.Model):
     MEMO_TYPES = Choices("text", "id", "hash")
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4)
+
     # Stellar account to watch, and asset that is being transactioned
     # NOTE: these fields should not be publicly exposed
     stellar_account = models.TextField(validators=[MinLengthValidator(1)])
@@ -99,6 +100,9 @@ class Transaction(models.Model):
         choices=MEMO_TYPES, default=MEMO_TYPES.text, max_length=10
     )
 
+    objects = models.Manager()
+
+    @property
     def asset_name(self):
         return self.asset.code + ":" + self.asset.issuer
 
