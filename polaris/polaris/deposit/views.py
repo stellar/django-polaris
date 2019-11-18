@@ -205,7 +205,8 @@ def interactive_deposit(request):
     return Response({"form": form}, template_name="deposit/form.html")
 
 
-@api_view()
+@api_view(["POST"])
+@renderer_classes([JSONRenderer])
 @validate_sep10_token()
 def deposit(request):
     """

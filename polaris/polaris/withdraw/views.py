@@ -126,7 +126,7 @@ def interactive_withdraw(request):
 @renderer_classes([JSONRenderer])
 def withdraw(request):
     """
-    `GET /withdraw` initiates the withdrawal and returns an interactive
+    `POST /withdraw` initiates the withdrawal and returns an interactive
     withdrawal form to the user.
     """
     asset_code = request.POST.get("asset_code")
@@ -144,5 +144,4 @@ def withdraw(request):
     url = _construct_interactive_url(request, asset_code, transaction_id)
     return Response(
         {"type": "interactive_customer_info_needed", "url": url, "id": transaction_id},
-        status=status.HTTP_403_FORBIDDEN,
     )
