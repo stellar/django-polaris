@@ -11,6 +11,7 @@ import json
 from urllib.parse import urlencode
 
 from polaris import settings
+from django.http import JsonResponse
 from django.shortcuts import render
 from django.urls import reverse
 from django.views.decorators.clickjacking import xframe_options_exempt
@@ -18,7 +19,7 @@ from django.core.management import call_command
 from rest_framework import status
 from rest_framework.decorators import api_view, renderer_classes
 from rest_framework.response import Response
-from rest_framework.renderers import TemplateHTMLRenderer
+from rest_framework.renderers import TemplateHTMLRenderer, JSONRenderer
 from stellar_sdk.keypair import Keypair
 from stellar_sdk.exceptions import Ed25519PublicKeyInvalidError
 
@@ -35,13 +36,13 @@ from polaris.transaction.serializers import TransactionSerializer
 from polaris.deposit.forms import DepositForm
 
 
-def _construct_interactive_url(request, transaction_id):
+def _construct_interactive_url(request, asset_code, account, transaction_id): 
     """Constructs the URL for the deposit application for deposit info.
     This is located at `/deposit/interactive_deposit`."""
     qparams = urlencode(
         {
-            "asset_code": request.GET.get("asset_code"),
-            "account": request.GET.get("account"),
+            "asset_code": asset_code,
+            "account": account,
             "transaction_id": transaction_id,
         }
     )
@@ -64,11 +65,11 @@ def _construct_more_info_url(request):
 # pass these to the pop-up.
 def _verify_optional_args(request):
     """Verify the optional arguments to `GET /deposit`."""
-    memo_type = request.GET.get("memo_type")
+    memo_type = request.POST.get("memo_type")
     if memo_type and memo_type not in ("text", "id", "hash"):
         return render_error_response("invalid 'memo_type'")
 
-    memo = request.GET.get("memo")
+    memo = request.POST.get("memo")
     if memo_type and not memo:
         return render_error_response("'memo_type' provided with no 'memo'")
 
@@ -204,15 +205,16 @@ def interactive_deposit(request):
     return Response({"form": form}, template_name="deposit/form.html")
 
 
-@api_view()
+@api_view(["POST"])
+@renderer_classes([JSONRenderer])
 @validate_sep10_token()
 def deposit(request):
     """
-    `GET /deposit` initiates the deposit and returns an interactive
+    `POST /transactions/deposit/interactive` initiates the deposit and returns an interactive
     deposit form to the user.
     """
-    asset_code = request.GET.get("asset_code")
-    stellar_account = request.GET.get("account")
+    asset_code = request.POST.get("asset_code")
+    stellar_account = request.POST.get("account")
 
     # Verify that the request is valid.
     if not all([asset_code, stellar_account]):
@@ -237,7 +239,7 @@ def deposit(request):
 
     # Construct interactive deposit pop-up URL.
     transaction_id = create_transaction_id()
-    url = _construct_interactive_url(request, transaction_id)
+    url = _construct_interactive_url(request, asset_code, stellar_account, transaction_id)
     return Response(
         {"type": "interactive_customer_info_needed", "url": url, "id": transaction_id},
         status=status.HTTP_403_FORBIDDEN,

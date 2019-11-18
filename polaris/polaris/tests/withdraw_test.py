@@ -12,6 +12,7 @@ from polaris.management.commands.watch_transactions import process_withdrawal
 from polaris.models import Transaction
 from polaris.tests.helpers import mock_check_auth_success
 
+WITHDRAW_PATH = "/transactions/withdraw/interactive"
 
 @pytest.mark.django_db
 @patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
@@ -19,9 +20,8 @@ def test_withdraw_success(mock_check, client, acc1_usd_withdrawal_transaction_fa
     """`GET /withdraw` succeeds with no optional arguments."""
     del mock_check
     acc1_usd_withdrawal_transaction_factory()
-    response = client.get(f"/withdraw?asset_code=USD", follow=True)
+    response = client.post(WITHDRAW_PATH, {"asset_code": "USD"}, follow=True)
     content = json.loads(response.content)
-    assert response.status_code == 403
     assert content["type"] == "interactive_customer_info_needed"
 
 
@@ -33,7 +33,7 @@ def test_withdraw_invalid_asset(
     """`GET /withdraw` fails with an invalid asset argument."""
     del mock_check
     acc1_usd_withdrawal_transaction_factory()
-    response = client.get(f"/withdraw?asset_code=ETH", follow=True)
+    response = client.post(WITHDRAW_PATH, {"asset_code": "ETH"}, follow=True)
     content = json.loads(response.content)
     assert response.status_code == 400
     assert content == {"error": "invalid operation for asset ETH", "status_code": 400}
@@ -44,7 +44,7 @@ def test_withdraw_invalid_asset(
 def test_withdraw_no_asset(mock_check, client):
     """`GET /withdraw fails with no asset argument."""
     del mock_check
-    response = client.get(f"/withdraw", follow=True)
+    response = client.post(WITHDRAW_PATH, follow=True)
     content = json.loads(response.content)
     assert response.status_code == 400
     assert content == {"error": "'asset_code' is required", "status_code": 400}
@@ -114,9 +114,8 @@ def test_withdraw_interactive_failure_no_memotype(
     """
     del mock_check, mock_transactions
     acc1_usd_withdrawal_transaction_factory()
-    response = client.get(f"/withdraw?asset_code=USD", follow=True)
+    response = client.post(WITHDRAW_PATH, {"asset_code": "USD"}, follow=True)
     content = json.loads(response.content)
-    assert response.status_code == 403
     assert content["type"] == "interactive_customer_info_needed"
 
     transaction_id = content["id"]
@@ -145,9 +144,8 @@ def test_withdraw_interactive_failure_incorrect_memotype(
     """
     del mock_check, mock_transactions
     acc1_usd_withdrawal_transaction_factory()
-    response = client.get(f"/withdraw?asset_code=USD", follow=True)
+    response = client.post(WITHDRAW_PATH, {"asset_code": "USD"}, follow=True)
     content = json.loads(response.content)
-    assert response.status_code == 403
     assert content["type"] == "interactive_customer_info_needed"
 
     transaction_id = content["id"]
@@ -176,9 +174,8 @@ def test_withdraw_interactive_failure_no_memo(
     """
     del mock_check, mock_transactions
     acc1_usd_withdrawal_transaction_factory()
-    response = client.get(f"/withdraw?asset_code=USD", follow=True)
+    response = client.post(WITHDRAW_PATH, {"asset_code": "USD"}, follow=True)
     content = json.loads(response.content)
-    assert response.status_code == 403
     assert content["type"] == "interactive_customer_info_needed"
 
     transaction_id = content["id"]
@@ -207,9 +204,8 @@ def test_withdraw_interactive_failure_incorrect_memo(
     """
     del mock_check, mock_transactions
     acc1_usd_withdrawal_transaction_factory()
-    response = client.get(f"/withdraw?asset_code=USD", follow=True)
+    response = client.post(WITHDRAW_PATH, {"asset_code": "USD"}, follow=True)
     content = json.loads(response.content)
-    assert response.status_code == 403
     assert content["type"] == "interactive_customer_info_needed"
 
     transaction_id = content["id"]
@@ -235,9 +231,8 @@ def test_withdraw_interactive_success_transaction_unsuccessful(
     """
     del mock_check
     acc1_usd_withdrawal_transaction_factory()
-    response = client.get(f"/withdraw?asset_code=USD", follow=True)
+    response = client.post(WITHDRAW_PATH, {"asset_code": "USD"}, follow=True)
     content = json.loads(response.content)
-    assert response.status_code == 403
     assert content["type"] == "interactive_customer_info_needed"
 
     transaction_id = content["id"]
@@ -275,9 +270,8 @@ def test_withdraw_interactive_success_transaction_successful(
     """
     del mock_check
     acc1_usd_withdrawal_transaction_factory()
-    response = client.get(f"/withdraw?asset_code=USD", follow=True)
+    response = client.post(WITHDRAW_PATH, {"asset_code": "USD"}, follow=True)
     content = json.loads(response.content)
-    assert response.status_code == 403
     assert content["type"] == "interactive_customer_info_needed"
 
     transaction_id = content["id"]
@@ -332,9 +326,8 @@ def test_withdraw_authenticated_success(
     assert encoded_jwt
 
     header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
-    response = client.get(f"/withdraw?asset_code=USD", follow=True, **header)
+    response = client.post(WITHDRAW_PATH, {"asset_code": "USD"}, follow=True, **header)
     content = json.loads(response.content)
-    assert response.status_code == 403
     assert content["type"] == "interactive_customer_info_needed"
 
 
@@ -342,7 +335,7 @@ def test_withdraw_authenticated_success(
 def test_withdraw_no_jwt(client, acc1_usd_withdrawal_transaction_factory):
     """`GET /withdraw` fails if a required JWT isn't provided."""
     acc1_usd_withdrawal_transaction_factory()
-    response = client.get(f"/withdraw?asset_code=USD", follow=True)
+    response = client.post(WITHDRAW_PATH, {"asset_code": "USD"}, follow=True)
     content = json.loads(response.content)
     assert response.status_code == 400
     assert content == {"error": "JWT must be passed as 'Authorization' header", "status_code": 400}
