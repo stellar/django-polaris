@@ -620,5 +620,4 @@ def test_deposit_no_jwt(client, acc1_usd_deposit_transaction_factory):
     )
     content = json.loads(response.content)
     assert response.status_code == 400
-    print(content)
     assert content == {"error": "JWT must be passed as 'Authorization' header", "status_code": 400}
