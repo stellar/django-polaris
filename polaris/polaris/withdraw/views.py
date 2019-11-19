@@ -13,7 +13,7 @@ from django.views.decorators.clickjacking import xframe_options_exempt
 from rest_framework import status
 from rest_framework.decorators import api_view, renderer_classes
 from rest_framework.response import Response
-from rest_framework.renderers import TemplateHTMLRenderer
+from rest_framework.renderers import TemplateHTMLRenderer, JSONRenderer
 
 from polaris.helpers import (
     render_error_response,
@@ -26,11 +26,11 @@ from polaris.transaction.serializers import TransactionSerializer
 from polaris.withdraw.forms import WithdrawForm
 
 
-def _construct_interactive_url(request, transaction_id):
+def _construct_interactive_url(request, asset_code, transaction_id):
     """Constructs the URL for the interactive application for withdrawal info.
-    This is located at `/withdraw/interactive_withdraw`."""
+    This is located at `/transactions/withdraw/webapp`."""
     qparams = urlencode(
-        {"asset_code": request.GET.get("asset_code"), "transaction_id": transaction_id}
+        {"asset_code": asset_code, "transaction_id": transaction_id}
     )
     path = reverse("interactive_withdraw")
     url_params = f"{path}?{qparams}"
@@ -51,7 +51,7 @@ def _construct_more_info_url(request):
 @renderer_classes([TemplateHTMLRenderer])
 def interactive_withdraw(request):
     """
-    `GET /withdraw/interactive_withdraw` opens a form used to input information about
+    `GET /transactions/withdraw/webapp` opens a form used to input information about
     the withdrawal. This creates a corresponding transaction in our database.
     """
     transaction_id = request.GET.get("transaction_id")
@@ -121,14 +121,15 @@ def interactive_withdraw(request):
     return Response({"form": form}, template_name="withdraw/form.html")
 
 
-@api_view()
+@api_view(["POST"])
 @validate_sep10_token()
+@renderer_classes([JSONRenderer])
 def withdraw(request):
     """
-    `GET /withdraw` initiates the withdrawal and returns an interactive
+    `POST /withdraw` initiates the withdrawal and returns an interactive
     withdrawal form to the user.
     """
-    asset_code = request.GET.get("asset_code")
+    asset_code = request.POST.get("asset_code")
     if not asset_code:
         return render_error_response("'asset_code' is required")
 
@@ -140,8 +141,7 @@ def withdraw(request):
         return render_error_response(f"invalid operation for asset {asset_code}")
 
     transaction_id = create_transaction_id()
-    url = _construct_interactive_url(request, transaction_id)
+    url = _construct_interactive_url(request, asset_code, transaction_id)
     return Response(
         {"type": "interactive_customer_info_needed", "url": url, "id": transaction_id},
-        status=status.HTTP_403_FORBIDDEN,
     )

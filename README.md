@@ -56,13 +56,10 @@ At the time of writing this, the latest public release is v0.9.
 After each release, a new development branch is created for the next upcoming release. In this case, that is 0.9.1.dev.
 Follow the instructions below to submit a valid pull request.
 
-1. Checkout the current development branch (0.9.1.dev) (`git checkout`)
-1. Create a new branch based off the latest dev branch (`git checkout -b`)
-1. Make your changes (`git add .; git commit -m`)
-1. Push your changes to a new remote branch matching your local branch (`git push --set-upstream origin`)
-1. Create a pull request based off the current dev branch
-    1. If the latest dev branch has changed, rebase your branch on the new dev branch (`git fetch; git rebase`)
-
+1. Fork the repository
+1. Make your changes
+1. Push your changes to your forked repository
+1. Create a pull request based off master
 
 ### Testing
 ```.env

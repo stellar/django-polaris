@@ -17,11 +17,11 @@ from django.contrib import admin
 from django.urls import path, include
 
 urlpatterns = [
+    path(".well-known", include("polaris.stellartoml.urls")),
     path("info", include("polaris.info.urls")),
     path("fee", include("polaris.fee.urls")),
     path("", include("polaris.transaction.urls")),
-    path("deposit", include("polaris.deposit.urls")),
-    path(".well-known", include("polaris.stellartoml.urls")),
-    path("withdraw", include("polaris.withdraw.urls")),
+    path("", include("polaris.deposit.urls")),
+    path("", include("polaris.withdraw.urls")),
     path("auth", include("polaris.sep10auth.urls")),
 ]
