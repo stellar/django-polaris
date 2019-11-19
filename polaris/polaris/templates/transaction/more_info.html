@@ -101,7 +101,7 @@
             transactionId = transaction["id"];
             amount = transaction["amount_in"];
             xhr = new XMLHttpRequest();
-            xhrUrl = '/deposit/confirm_transaction?transaction_id=' + transactionId + '&amount=' + amount;
+            xhrUrl = '/transactions/deposit/confirm_transaction?transaction_id=' + transactionId + '&amount=' + amount;
             xhr.open('get', xhrUrl, true);
             xhr.onload = function () {
                 if (this.status >= 200 && this.status < 400) {

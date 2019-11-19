@@ -32,7 +32,7 @@ class Command(BaseCommand):
 
         # We check the Transaction status to avoid double submission of a Stellar
         # transaction. The Transaction can be either `pending_anchor` if the task
-        # is called from `GET deposit/confirm_transaction` or `pending_trust` if called
+        # is called from `GET transactions/deposit/confirm_transaction` or `pending_trust` if called
         # from the `check_trustlines()`.
         if transaction.status not in [
             Transaction.STATUS.pending_anchor,

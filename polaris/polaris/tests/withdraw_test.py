@@ -56,11 +56,11 @@ def test_withdraw_interactive_no_txid(
     mock_check, client, acc1_usd_withdrawal_transaction_factory
 ):
     """
-    `GET /withdraw/interactive_withdraw` fails with no transaction_id.
+    `GET /transactions/withdraw/webapp` fails with no transaction_id.
     """
     del mock_check
     acc1_usd_withdrawal_transaction_factory()
-    response = client.get(f"/withdraw/interactive_withdraw?", follow=True)
+    response = client.get(f"/transactions/withdraw/webapp?", follow=True)
     assert response.status_code == 400
 
 
@@ -70,12 +70,12 @@ def test_withdraw_interactive_no_asset(
     mock_check, client, acc1_usd_withdrawal_transaction_factory
 ):
     """
-    `GET /withdraw/interactive_withdraw` fails with no asset_code.
+    `GET /transactions/withdraw/webapp` fails with no asset_code.
     """
     del mock_check
     acc1_usd_withdrawal_transaction_factory()
     response = client.get(
-        f"/withdraw/interactive_withdraw?transaction_id=2", follow=True
+        f"/transactions/withdraw/webapp?transaction_id=2", follow=True
     )
     assert response.status_code == 400
 
@@ -86,12 +86,12 @@ def test_withdraw_interactive_invalid_asset(
     mock_check, client, acc1_usd_withdrawal_transaction_factory
 ):
     """
-    `GET /withdraw/interactive_withdraw` fails with invalid asset_code.
+    `GET /transactions/withdraw/webapp` fails with invalid asset_code.
     """
     del mock_check
     acc1_usd_withdrawal_transaction_factory()
     response = client.get(
-        f"/withdraw/interactive_withdraw?transaction_id=2&asset_code=ETH", follow=True
+        f"/transactions/withdraw/webapp?transaction_id=2&asset_code=ETH", follow=True
     )
     assert response.status_code == 400
 
@@ -110,7 +110,7 @@ def test_withdraw_interactive_failure_no_memotype(
     mock_check, mock_transactions, client, acc1_usd_withdrawal_transaction_factory
 ):
     """
-    `GET /withdraw/interactive_withdraw` fails with no `memo_type` in Horizon response.
+    `GET /transactions/withdraw/webapp` fails with no `memo_type` in Horizon response.
     """
     del mock_check, mock_transactions
     acc1_usd_withdrawal_transaction_factory()
@@ -140,7 +140,7 @@ def test_withdraw_interactive_failure_incorrect_memotype(
     mock_check, mock_transactions, client, acc1_usd_withdrawal_transaction_factory
 ):
     """
-    `GET /withdraw/interactive_withdraw` fails with incorrect `memo_type` in Horizon response.
+    `GET /transactions/withdraw/webapp` fails with incorrect `memo_type` in Horizon response.
     """
     del mock_check, mock_transactions
     acc1_usd_withdrawal_transaction_factory()
@@ -170,7 +170,7 @@ def test_withdraw_interactive_failure_no_memo(
     mock_check, mock_transactions, client, acc1_usd_withdrawal_transaction_factory
 ):
     """
-    `GET /withdraw/interactive_withdraw` fails with no `memo` in Horizon response.
+    `GET /transactions/withdraw/webapp` fails with no `memo` in Horizon response.
     """
     del mock_check, mock_transactions
     acc1_usd_withdrawal_transaction_factory()
@@ -200,7 +200,7 @@ def test_withdraw_interactive_failure_incorrect_memo(
     mock_check, mock_transactions, client, acc1_usd_withdrawal_transaction_factory
 ):
     """
-    `GET /withdraw/interactive_withdraw` fails with incorrect `memo` in Horizon response.
+    `GET /transactions/withdraw/webapp` fails with incorrect `memo` in Horizon response.
     """
     del mock_check, mock_transactions
     acc1_usd_withdrawal_transaction_factory()
@@ -226,7 +226,7 @@ def test_withdraw_interactive_success_transaction_unsuccessful(
     mock_check, client, acc1_usd_withdrawal_transaction_factory
 ):
     """
-    `GET /withdraw/interactive_withdraw` changes transaction to `pending_stellar`
+    `GET /transactions/withdraw/webapp` changes transaction to `pending_stellar`
     with unsuccessful transaction.
     """
     del mock_check
@@ -265,7 +265,7 @@ def test_withdraw_interactive_success_transaction_successful(
     mock_check, client, acc1_usd_withdrawal_transaction_factory
 ):
     """
-    `GET /withdraw/interactive_withdraw` changes transaction to `completed`
+    `GET /transactions/withdraw/webapp` changes transaction to `completed`
     with successful transaction.
     """
     del mock_check

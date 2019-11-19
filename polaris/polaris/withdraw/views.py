@@ -28,7 +28,7 @@ from polaris.withdraw.forms import WithdrawForm
 
 def _construct_interactive_url(request, asset_code, transaction_id):
     """Constructs the URL for the interactive application for withdrawal info.
-    This is located at `/withdraw/interactive_withdraw`."""
+    This is located at `/transactions/withdraw/webapp`."""
     qparams = urlencode(
         {"asset_code": asset_code, "transaction_id": transaction_id}
     )
@@ -51,7 +51,7 @@ def _construct_more_info_url(request):
 @renderer_classes([TemplateHTMLRenderer])
 def interactive_withdraw(request):
     """
-    `GET /withdraw/interactive_withdraw` opens a form used to input information about
+    `GET /transactions/withdraw/webapp` opens a form used to input information about
     the withdrawal. This creates a corresponding transaction in our database.
     """
     transaction_id = request.GET.get("transaction_id")

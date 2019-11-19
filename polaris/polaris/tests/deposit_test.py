@@ -193,8 +193,8 @@ def test_deposit_invalid_hash_memo(
 
 
 def test_deposit_confirm_no_txid(client):
-    """`GET /deposit/confirm_transaction` fails with no `transaction_id`."""
-    response = client.get(f"/deposit/confirm_transaction?amount=0", follow=True)
+    """`GET /transactions/deposit/confirm_transaction` fails with no `transaction_id`."""
+    response = client.get(f"/transactions/deposit/confirm_transaction?amount=0", follow=True)
     content = json.loads(response.content)
     assert response.status_code == 400
     assert content == {
@@ -205,10 +205,10 @@ def test_deposit_confirm_no_txid(client):
 
 @pytest.mark.django_db
 def test_deposit_confirm_invalid_txid(client):
-    """`GET /deposit/confirm_transaction` fails with an invalid `transaction_id`."""
+    """`GET /transactions/deposit/confirm_transaction` fails with an invalid `transaction_id`."""
     incorrect_transaction_id = uuid.uuid4()
     response = client.get(
-        f"/deposit/confirm_transaction?amount=0&transaction_id={incorrect_transaction_id}",
+        f"/transactions/deposit/confirm_transaction?amount=0&transaction_id={incorrect_transaction_id}",
         follow=True,
     )
     content = json.loads(response.content)
@@ -221,10 +221,10 @@ def test_deposit_confirm_invalid_txid(client):
 
 @pytest.mark.django_db
 def test_deposit_confirm_no_amount(client, acc1_usd_deposit_transaction_factory):
-    """`GET /deposit/confirm_transaction` fails with no `amount`."""
+    """`GET /transactions/deposit/confirm_transaction` fails with no `amount`."""
     deposit = acc1_usd_deposit_transaction_factory()
     response = client.get(
-        f"/deposit/confirm_transaction?transaction_id={deposit.id}", follow=True
+        f"/transactions/deposit/confirm_transaction?transaction_id={deposit.id}", follow=True
     )
     content = json.loads(response.content)
     assert response.status_code == 400
@@ -233,10 +233,10 @@ def test_deposit_confirm_no_amount(client, acc1_usd_deposit_transaction_factory)
 
 @pytest.mark.django_db
 def test_deposit_confirm_invalid_amount(client, acc1_usd_deposit_transaction_factory):
-    """`GET /deposit/confirm_transaction` fails with a non-float `amount`."""
+    """`GET /transactions/deposit/confirm_transaction` fails with a non-float `amount`."""
     deposit = acc1_usd_deposit_transaction_factory()
     response = client.get(
-        f"/deposit/confirm_transaction?transaction_id={deposit.id}&amount=foo",
+        f"/transactions/deposit/confirm_transaction?transaction_id={deposit.id}&amount=foo",
         follow=True,
     )
     content = json.loads(response.content)
@@ -249,11 +249,11 @@ def test_deposit_confirm_invalid_amount(client, acc1_usd_deposit_transaction_fac
 
 @pytest.mark.django_db
 def test_deposit_confirm_incorrect_amount(client, acc1_usd_deposit_transaction_factory):
-    """`GET /deposit/confirm_transaction` fails with an incorrect `amount`."""
+    """`GET /transactions/deposit/confirm_transaction` fails with an incorrect `amount`."""
     deposit = acc1_usd_deposit_transaction_factory()
     incorrect_amount = deposit.amount_in + 1
     response = client.get(
-        f"/deposit/confirm_transaction?transaction_id={deposit.id}&amount={incorrect_amount}",
+        f"/transactions/deposit/confirm_transaction?transaction_id={deposit.id}&amount={incorrect_amount}",
         follow=True,
     )
     content = json.loads(response.content)
@@ -273,12 +273,12 @@ def test_deposit_confirm_success(
     client,
     acc1_usd_deposit_transaction_factory,
 ):
-    """`GET /deposit/confirm_transaction` succeeds with correct `amount` and `transaction_id`."""
+    """`GET /transactions/deposit/confirm_transaction` succeeds with correct `amount` and `transaction_id`."""
     del mock_submit, mock_base_fee
     deposit = acc1_usd_deposit_transaction_factory()
     amount = deposit.amount_in
     response = client.get(
-        f"/deposit/confirm_transaction?amount={amount}&transaction_id={deposit.id}",
+        f"/transactions/deposit/confirm_transaction?amount={amount}&transaction_id={deposit.id}",
         follow=True,
     )
     assert response.status_code == 200
@@ -299,14 +299,14 @@ def test_deposit_confirm_external_id(
     client,
     acc1_usd_deposit_transaction_factory,
 ):
-    """`GET /deposit/confirm_transaction` successfully stores an `external_id`."""
+    """`GET /transactions/deposit/confirm_transaction` successfully stores an `external_id`."""
     del mock_submit, mock_base_fee
     deposit = acc1_usd_deposit_transaction_factory()
     amount = deposit.amount_in
     external_id = "foo"
     response = client.get(
         (
-            f"/deposit/confirm_transaction?amount={amount}&transaction_id="
+            f"/transactions/deposit/confirm_transaction?amount={amount}&transaction_id="
             f"{deposit.id}&external_transaction_id={external_id}"
         ),
         follow=True,
@@ -412,7 +412,7 @@ def test_deposit_interactive_confirm_success(
     acc1_usd_deposit_transaction_factory,
 ):
     """
-    `GET /deposit` and `GET /deposit/interactive_deposit` succeed with valid `account`
+    `GET /deposit` and `GET /transactions/deposit/webapp` succeed with valid `account`
     and `asset_code`.
     """
     del mock_check, mock_submit, mock_base_fee
@@ -436,7 +436,7 @@ def test_deposit_interactive_confirm_success(
     )
 
     response = client.get(
-        f"/deposit/confirm_transaction?amount={amount}&transaction_id={transaction_id}",
+        f"/transactions/deposit/confirm_transaction?amount={amount}&transaction_id={transaction_id}",
         follow=True,
     )
     assert response.status_code == 200
@@ -528,7 +528,7 @@ def test_deposit_check_trustlines_horizon(
     # Since the account will not have a trustline, the status will still
     # be `pending_trust`.
     response = client.get(
-        f"/deposit/confirm_transaction?amount={amount}&transaction_id={transaction_id}",
+        f"/transactions/deposit/confirm_transaction?amount={amount}&transaction_id={transaction_id}",
         follow=True,
     )
     assert response.status_code == 200

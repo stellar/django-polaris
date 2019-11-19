@@ -38,7 +38,7 @@ from polaris.deposit.forms import DepositForm
 
 def _construct_interactive_url(request, asset_code, account, transaction_id): 
     """Constructs the URL for the deposit application for deposit info.
-    This is located at `/deposit/interactive_deposit`."""
+    This is located at `/transactions/deposit/webapp`."""
     qparams = urlencode(
         {
             "asset_code": asset_code,
@@ -87,7 +87,7 @@ def _verify_optional_args(request):
 @api_view()
 def confirm_transaction(request):
     """
-    `GET /deposit/confirm_transaction` is used by an external agent to confirm
+    `GET /transactions/deposit/confirm_transaction` is used by an external agent to confirm
     that they have processed the transaction. This triggers submission of the
     corresponding Stellar transaction.
 
@@ -142,7 +142,7 @@ def confirm_transaction(request):
 @renderer_classes([TemplateHTMLRenderer])
 def interactive_deposit(request):
     """
-    `GET /deposit/interactive_deposit` opens a form used to input information
+    `GET /transactions/deposit/webapp` opens a form used to input information
     about the deposit. This creates a corresponding transaction in our
     database, pending processing by the external agent.
     """
