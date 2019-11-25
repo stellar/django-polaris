@@ -103,12 +103,15 @@ def _generate_jwt(request, envelope_xdr):
     See: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.md#token
     """
     issued_at = time.time()
-    hash_hex = binascii.hexlify(
-        TransactionEnvelope.from_xdr(envelope_xdr, network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE).hash()
-    ).decode()
+    transaction_envelope = TransactionEnvelope.from_xdr(
+        envelope_xdr,
+        network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE
+    )
+    transaction = transaction_envelope.transaction
+    hash_hex = binascii.hexlify(transaction_envelope.hash()).decode()
     jwt_dict = {
         "iss": request.build_absolute_uri("/auth"),
-        "sub": settings.STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS,
+        "sub": transaction.operations[0].source,
         "iat": issued_at,
         "exp": issued_at + 24 * 60 * 60,
         "jti": hash_hex,

@@ -11,6 +11,7 @@ from django.urls import reverse
 from django.views.decorators.clickjacking import xframe_options_exempt
 from rest_framework.decorators import api_view, renderer_classes
 from rest_framework.response import Response
+from rest_framework.request import Request
 from rest_framework.renderers import TemplateHTMLRenderer, JSONRenderer
 
 from polaris.helpers import (
@@ -122,7 +123,7 @@ def interactive_withdraw(request):
 @api_view(["POST"])
 @validate_sep10_token()
 @renderer_classes([JSONRenderer])
-def withdraw(request):
+def withdraw(source_address: str, request: Request) -> Response:
     """
     `POST /withdraw` initiates the withdrawal and returns an interactive
     withdrawal form to the user.

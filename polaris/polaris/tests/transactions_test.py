@@ -4,11 +4,12 @@ import urllib
 from unittest.mock import patch
 
 import pytest
-from django.conf import settings
-from stellar_sdk.keypair import Keypair
-from stellar_sdk.transaction_envelope import TransactionEnvelope
+from polaris.tests.helpers import mock_check_auth_success, sep10
 
-from polaris.tests.helpers import mock_check_auth_success
+
+# Test client account and seed
+client_address = "GDKFNRUATPH4BSZGVFDRBIGZ5QAFILVFRIRYNSQ4UO7V2ZQAPRNL73RI"
+client_seed = "SDKWSBERDHP3SXW5A3LXSI7FWMMO5H7HG33KNYBKWH2HYOXJG2DXQHQY"
 
 
 @pytest.mark.django_db
@@ -19,22 +20,6 @@ def test_required_fields(mock_check, client, acc2_eth_withdrawal_transaction_fac
     acc2_eth_withdrawal_transaction_factory()
 
     response = client.get(f"/transactions", follow=True)
-
-    content = json.loads(response.content)
-    assert response.status_code == 400
-    assert content.get("error") is not None
-
-
-@pytest.mark.django_db
-@patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
-def test_required_account(mock_check, client, acc2_eth_withdrawal_transaction_factory):
-    """Fails without `account` parameter."""
-    del mock_check
-    withdrawal = acc2_eth_withdrawal_transaction_factory()
-
-    response = client.get(
-        f"/transactions?asset_code={withdrawal.asset.code}", follow=True
-    )
 
     content = json.loads(response.content)
     assert response.status_code == 400
@@ -60,21 +45,24 @@ def test_required_asset_code(
 
 
 @pytest.mark.django_db
-@patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
 def test_transactions_format(
-    mock_check,
     client,
     acc2_eth_withdrawal_transaction_factory,
     acc2_eth_deposit_transaction_factory,
 ):
     """Response has correct length and status code."""
-    del mock_check
-    withdrawal = acc2_eth_withdrawal_transaction_factory()
-    acc2_eth_deposit_transaction_factory()
+    withdrawal = acc2_eth_withdrawal_transaction_factory(client_address)
+    acc2_eth_deposit_transaction_factory(client_address)
+
+    encoded_jwt = sep10(client, client_address, client_seed)
+    # For testing, we make the key `HTTP_AUTHORIZATION`. This is the value that
+    # we expect due to the middleware.
+    header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
 
     response = client.get(
-        f"/transactions?asset_code={withdrawal.asset.code}&account={withdrawal.stellar_account}",
+        f"/transactions?asset_code={withdrawal.asset.code}",
         follow=True,
+        **header
     )
     content = json.loads(response.content)
 
@@ -83,21 +71,24 @@ def test_transactions_format(
 
 
 @pytest.mark.django_db
-@patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
 def test_transactions_order(
-    mock_check,
     client,
     acc2_eth_withdrawal_transaction_factory,
     acc2_eth_deposit_transaction_factory,
 ):
     """Transactions are serialized in expected order."""
-    del mock_check
-    acc2_eth_deposit_transaction_factory()  # older transaction
-    withdrawal = acc2_eth_withdrawal_transaction_factory()  # newer transaction
+    acc2_eth_deposit_transaction_factory(client_address)  # older transaction
+    withdrawal = acc2_eth_withdrawal_transaction_factory(client_address)  # newer transaction
+
+    encoded_jwt = sep10(client, client_address, client_seed)
+    # For testing, we make the key `HTTP_AUTHORIZATION`. This is the value that
+    # we expect due to the middleware.
+    header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
 
     response = client.get(
-        f"/transactions?asset_code={withdrawal.asset.code}&account={withdrawal.stellar_account}",
+        f"/transactions?asset_code={withdrawal.asset.code}",
         follow=True,
+        **header
     )
     content = json.loads(response.content)
 
@@ -110,9 +101,7 @@ def test_transactions_order(
 
 
 @pytest.mark.django_db
-@patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
 def test_transactions_content(
-    mock_check,
     client,
     acc2_eth_deposit_transaction_factory,
     acc2_eth_withdrawal_transaction_factory,
@@ -126,17 +115,22 @@ def test_transactions_content(
     - amounts are floats, so values like "500" are displayed as "500.0"
     - nullable fields are displayed, but with a null value
     """
-    del mock_check
-    deposit = acc2_eth_deposit_transaction_factory()
-    withdrawal = acc2_eth_withdrawal_transaction_factory()
+    deposit = acc2_eth_deposit_transaction_factory(client_address)
+    withdrawal = acc2_eth_withdrawal_transaction_factory(client_address)
+
+    encoded_jwt = sep10(client, client_address, client_seed)
+    # For testing, we make the key `HTTP_AUTHORIZATION`. This is the value that
+    # we expect due to the middleware.
+    header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
 
     d_started_at = deposit.started_at.isoformat().replace("+00:00", "Z")
     w_started_at = withdrawal.started_at.isoformat().replace("+00:00", "Z")
     w_completed_at = withdrawal.completed_at.isoformat().replace("+00:00", "Z")
 
     response = client.get(
-        f"/transactions?asset_code={withdrawal.asset.code}&account={withdrawal.stellar_account}",
+        f"/transactions?asset_code={withdrawal.asset.code}",
         follow=True,
+        **header
     )
     content = json.loads(response.content)
 
@@ -211,25 +205,27 @@ def test_transactions_content(
 
 
 @pytest.mark.django_db
-@patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
 def test_paging_id(
-    mock_check,
     client,
     acc2_eth_deposit_transaction_factory,
     acc2_eth_withdrawal_transaction_factory,
 ):
     """Only return transactions chronologically after a `paging_id`, if provided."""
-    del mock_check
-    acc2_eth_deposit_transaction_factory()
-    withdrawal = acc2_eth_withdrawal_transaction_factory()
+    acc2_eth_deposit_transaction_factory(client_address)
+    withdrawal = acc2_eth_withdrawal_transaction_factory(client_address)
+
+    encoded_jwt = sep10(client, client_address, client_seed)
+    # For testing, we make the key `HTTP_AUTHORIZATION`. This is the value that
+    # we expect due to the middleware.
+    header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
 
     response = client.get(
         (
             f"/transactions?asset_code={withdrawal.asset.code}"
-            f"&account={withdrawal.stellar_account}"
             f"&paging_id={withdrawal.id}"
         ),
         follow=True,
+        **header
     )
     content = json.loads(response.content)
 
@@ -240,25 +236,27 @@ def test_paging_id(
 
 
 @pytest.mark.django_db
-@patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
 def test_kind_filter(
-    mock_check,
     client,
     acc2_eth_deposit_transaction_factory,
     acc2_eth_withdrawal_transaction_factory,
 ):
     """Valid `kind` succeeds."""
-    del mock_check
-    acc2_eth_deposit_transaction_factory()
-    withdrawal = acc2_eth_withdrawal_transaction_factory()
+    acc2_eth_deposit_transaction_factory(client_address)
+    withdrawal = acc2_eth_withdrawal_transaction_factory(client_address)
+
+    encoded_jwt = sep10(client, client_address, client_seed)
+    # For testing, we make the key `HTTP_AUTHORIZATION`. This is the value that
+    # we expect due to the middleware.
+    header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
 
     response = client.get(
         (
             f"/transactions?asset_code={withdrawal.asset.code}"
-            f"&account={withdrawal.stellar_account}"
-            f"&kind=deposit"
+            "&kind=deposit"
         ),
         follow=True,
+        **header
     )
     content = json.loads(response.content)
 
@@ -284,7 +282,7 @@ def test_kind_filter_no_500(
     response = client.get(
         (
             f"/transactions?asset_code={withdrawal.asset.code}"
-            f"&account={withdrawal.stellar_account}&kind=somethingelse"
+            "&kind=somethingelse"
         ),
         follow=True,
     )
@@ -296,22 +294,25 @@ def test_kind_filter_no_500(
 
 
 @pytest.mark.django_db
-@patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
 def test_limit(
-    mock_check,
     client,
     acc2_eth_deposit_transaction_factory,
     acc2_eth_withdrawal_transaction_factory,
 ):
     """Valid `limit` succeeds."""
-    del mock_check
-    acc2_eth_deposit_transaction_factory()
-    withdrawal = acc2_eth_withdrawal_transaction_factory()  # newest
+    acc2_eth_deposit_transaction_factory(client_address)
+    withdrawal = acc2_eth_withdrawal_transaction_factory(client_address)  # newest
+
+    encoded_jwt = sep10(client, client_address, client_seed)
+    # For testing, we make the key `HTTP_AUTHORIZATION`. This is the value that
+    # we expect due to the middleware.
+    header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
 
     response = client.get(
         f"/transactions?asset_code={withdrawal.asset.code}"
-        f"&account={withdrawal.stellar_account}&limit=1",
+        "&limit=1",
         follow=True,
+        **header
     )
     content = json.loads(response.content)
 
@@ -337,7 +338,7 @@ def test_invalid_limit(
     response = client.get(
         (
             f"/transactions?asset_code={withdrawal.asset.code}"
-            f"&account={withdrawal.stellar_account}&limit=string"
+            "&limit=string"
         ),
         follow=True,
     )
@@ -363,7 +364,7 @@ def test_negative_limit(
     response = client.get(
         (
             f"/transactions?asset_code={withdrawal.asset.code}"
-            f"&account={withdrawal.stellar_account}&limit=-1"
+            "&limit=-1"
         ),
         follow=True,
     )
@@ -374,28 +375,30 @@ def test_negative_limit(
 
 
 @pytest.mark.django_db
-@patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
 def test_no_older_than_filter(
-    mock_check,
     client,
     acc2_eth_deposit_transaction_factory,
     acc2_eth_withdrawal_transaction_factory,
 ):
     """Valid `no_older_than` succeeds."""
-    del mock_check
     withdrawal_transaction = (
-        acc2_eth_withdrawal_transaction_factory()
+        acc2_eth_withdrawal_transaction_factory(client_address)
     )  # older transaction
-    deposit_transaction = acc2_eth_deposit_transaction_factory()  # newer transaction
+    deposit_transaction = acc2_eth_deposit_transaction_factory(client_address)  # newer transaction
+
+    encoded_jwt = sep10(client, client_address, client_seed)
+    # For testing, we make the key `HTTP_AUTHORIZATION`. This is the value that
+    # we expect due to the middleware.
+    header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
 
     urlencoded_datetime = urllib.parse.quote(deposit_transaction.started_at.isoformat())
     response = client.get(
         (
             f"/transactions?asset_code={withdrawal_transaction.asset.code}"
-            f"&account={withdrawal_transaction.stellar_account}"
             f"&no_older_than={urlencoded_datetime}"
         ),
         follow=True,
+        **header
     )
     content = json.loads(response.content)
 
@@ -414,37 +417,16 @@ def test_transactions_authenticated_success(
     Response has correct length and status code, if the SEP 10 authentication
     token is required.
     """
-    client_address = "GDKFNRUATPH4BSZGVFDRBIGZ5QAFILVFRIRYNSQ4UO7V2ZQAPRNL73RI"
-    client_seed = "SDKWSBERDHP3SXW5A3LXSI7FWMMO5H7HG33KNYBKWH2HYOXJG2DXQHQY"
-    withdrawal = acc2_eth_withdrawal_transaction_factory()
-    withdrawal.stellar_address = client_address
-    withdrawal.save()
-    acc2_eth_deposit_transaction_factory()
-
-    # SEP 10.
-    response = client.get(f"/auth?account={client_address}", follow=True)
-    content = json.loads(response.content)
-    envelope_xdr = content["transaction"]
-    envelope_object = TransactionEnvelope.from_xdr(envelope_xdr, network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE)
-    client_signing_key = Keypair.from_secret(client_seed)
-    envelope_object.sign(client_signing_key)
-    client_signed_envelope_xdr = envelope_object.to_xdr()
-
-    response = client.post(
-        "/auth",
-        data={"transaction": client_signed_envelope_xdr},
-        content_type="application/json",
-    )
-    content = json.loads(response.content)
-    encoded_jwt = content["token"]
-    assert encoded_jwt
+    withdrawal = acc2_eth_withdrawal_transaction_factory(client_address)
+    acc2_eth_deposit_transaction_factory(client_address)
+    encoded_jwt = sep10(client, client_address, client_seed)
 
     # For testing, we make the key `HTTP_AUTHORIZATION`. This is the value that
     # we expect due to the middleware.
     header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
 
     response = client.get(
-        f"/transactions?asset_code={withdrawal.asset.code}&account={withdrawal.stellar_account}",
+        f"/transactions?asset_code={withdrawal.asset.code}",
         follow=True,
         **header,
     )
@@ -461,7 +443,7 @@ def test_transactions_no_jwt(
     """`GET /transactions` fails if a required JWT is not provided."""
     withdrawal = acc2_eth_withdrawal_transaction_factory()
     response = client.get(
-        f"/transactions?asset_code={withdrawal.asset.code}&account={withdrawal.stellar_account}",
+        f"/transactions?asset_code={withdrawal.asset.code}",
         follow=True,
     )
     content = json.loads(response.content)

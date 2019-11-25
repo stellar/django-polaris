@@ -17,6 +17,7 @@ from django.core.management import call_command
 from rest_framework import status
 from rest_framework.decorators import api_view, renderer_classes
 from rest_framework.response import Response
+from rest_framework.request import Request
 from rest_framework.renderers import TemplateHTMLRenderer, JSONRenderer
 from stellar_sdk.keypair import Keypair
 from stellar_sdk.exceptions import Ed25519PublicKeyInvalidError
@@ -205,7 +206,7 @@ def interactive_deposit(request):
 @api_view(["POST"])
 @renderer_classes([JSONRenderer])
 @validate_sep10_token()
-def deposit(request):
+def deposit(source_address: str, request: Request) -> Response:
     """
     `POST /transactions/deposit/interactive` initiates the deposit and returns an interactive
     deposit form to the user.

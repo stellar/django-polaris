@@ -124,11 +124,11 @@ def acc2_eth_withdrawal_transaction_factory(eth_asset_factory):
     Factory method fixture to populate the test database with a ETH withdrawal transaction.
     """
 
-    def create_withdrawal_transaction():
+    def create_withdrawal_transaction(stellar_account: str = STELLAR_ACCOUNT_2):
         eth_asset = eth_asset_factory()
 
         return Transaction.objects.create(
-            stellar_account=STELLAR_ACCOUNT_2,
+            stellar_account=stellar_account,
             asset=eth_asset,
             kind=Transaction.KIND.withdrawal,
             status=Transaction.STATUS.completed,
@@ -156,11 +156,11 @@ def acc2_eth_deposit_transaction_factory(eth_asset_factory):
     Factory method fixture to populate the test database with an ETH deposit transaction.
     """
 
-    def create_deposit_transaction():
+    def create_deposit_transaction(stellar_account: str = STELLAR_ACCOUNT_2):
         eth_asset = eth_asset_factory()
 
         return Transaction.objects.create(
-            stellar_account=STELLAR_ACCOUNT_2,
+            stellar_account=stellar_account,
             asset=eth_asset,
             kind=Transaction.KIND.deposit,
             status=Transaction.STATUS.pending_user_transfer_start,

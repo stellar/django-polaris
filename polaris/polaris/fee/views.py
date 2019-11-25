@@ -2,6 +2,7 @@
 from polaris import settings
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
+from rest_framework.request import Request
 
 from polaris.helpers import calc_fee, render_error_response, validate_sep10_token
 from polaris.models import Asset
@@ -23,7 +24,7 @@ def _op_type_is_valid(asset_code: str, operation: str, op_type: str) -> bool:
 
 @api_view()
 @validate_sep10_token()
-def fee(request):
+def fee(source_address: str, request: Request) -> Response:
     """
     Definition of the /fee endpoint, in accordance with SEP-0024.
     See: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md#fee

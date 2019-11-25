@@ -4,6 +4,7 @@ from urllib.parse import urlencode
 
 from rest_framework.decorators import api_view, renderer_classes
 from rest_framework.response import Response
+from rest_framework.request import Request
 from rest_framework.renderers import TemplateHTMLRenderer
 from rest_framework import status
 
@@ -107,7 +108,7 @@ def more_info(request):
 
 @api_view()
 @validate_sep10_token()
-def transactions(request):
+def transactions(source_address: str, request: Request) -> Response:
     """
     Definition of the /transactions endpoint, in accordance with SEP-0024.
     See: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md#transaction-history
@@ -120,20 +121,20 @@ def transactions(request):
             status_code=status.HTTP_400_BAD_REQUEST
         )
 
-    if not request.GET.get("asset_code") or not request.GET.get("account"):
+    if not request.GET.get("asset_code"):
         return render_error_response(
-            "asset_code and account are required fields",
+            "asset_code is required",
             status_code=status.HTTP_400_BAD_REQUEST,
         )
 
     translation_dict = {
         "asset_code": "asset__code",
-        "account": "stellar_account",
         "no_older_than": "started_at__gte",
         "kind": "kind",
     }
 
     qset_filter = _compute_qset_filters(request.GET, translation_dict)
+    qset_filter["stellar_account"] = source_address
 
     # Since the Transaction IDs are UUIDs, rather than in the chronological
     # order of their creation, we map the paging ID (if provided) to the
@@ -160,7 +161,7 @@ def transactions(request):
 
 @api_view()
 @validate_sep10_token()
-def transaction(request):
+def transaction(source_account: str, request: Request) -> Response:
     """
     Definition of the /transaction endpoint, in accordance with SEP-0024.
     See: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md#single-historical-transaction

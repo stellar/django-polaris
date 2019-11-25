@@ -7,6 +7,7 @@ from polaris import settings
 import jwt
 from rest_framework import status
 from rest_framework.response import Response
+from rest_framework.request import Request
 
 
 from polaris.models import Asset, Transaction
@@ -69,10 +70,11 @@ def check_auth(request, func):
     Check SEP 10 authentication in a request.
     Else call the original view function.
     """
-    jwt_error_str = validate_jwt_request(request)
-    if jwt_error_str:
-        return render_error_response(jwt_error_str)
-    return func(request)
+    try:
+        source_address = validate_jwt_request(request)
+    except ValueError as e:
+        return render_error_response(str(e))
+    return func(source_address, request)
 
 
 def validate_sep10_token():
@@ -87,30 +89,34 @@ def validate_sep10_token():
     return decorator
 
 
-def validate_jwt_request(request):
+def validate_jwt_request(request: Request) -> str:
     """
-    Validate the JSON web token in a request.
-    Return the appropriate error string, or empty string if valid.
+    Validate the JSON web token in a request and return the source account address
+
+    # TODO: Investigate if we can validate the JTI, a hex-encoded transaction hash.
+
+    :raises ValueError: invalid JWT
     """
     # While the SEP 24 spec calls the authorization header "Authorization", django middleware
     # renames this as "HTTP_AUTHORIZATION". We check this header for the JWT.
     jwt_header = request.META.get("HTTP_AUTHORIZATION")
     if not jwt_header:
-        return "JWT must be passed as 'Authorization' header"
+        raise ValueError("JWT must be passed as 'Authorization' header")
     if "Bearer" not in jwt_header:
-        return "'Authorization' header must be formatted as 'Bearer <token>'"
+        raise ValueError("'Authorization' header must be formatted as 'Bearer <token>'")
     encoded_jwt = jwt_header.split(" ")[1]
     if not encoded_jwt:
-        return "'jwt' is required"
+        raise ValueError("'jwt' is required")
 
     # Validate the JWT contents.
     jwt_dict = jwt.decode(encoded_jwt, settings.SERVER_JWT_KEY, algorithms=["HS256"])
     if jwt_dict["iss"] != request.build_absolute_uri("/auth"):
-        return "'jwt' has incorrect 'issuer'"
-    if jwt_dict["sub"] != settings.STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS:
-        return "'jwt' has incorrect 'subject'"
+        raise ValueError("'jwt' has incorrect 'issuer'")
     current_time = time.time()
     if current_time < jwt_dict["iat"] or current_time > jwt_dict["exp"]:
-        return "'jwt' is no longer valid"
-    # TODO: Investigate if we can validate the JTI, a hex-encoded transaction hash.
-    return ""
+        raise ValueError("'jwt' is no longer valid")
+
+    try:
+        return jwt_dict["sub"]
+    except KeyError:
+        raise ValueError("Decoded JWT missing 'sub' field")
