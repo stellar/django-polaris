@@ -418,7 +418,7 @@ def test_deposit_interactive_confirm_success(
         follow=True
     )
     content = json.loads(response.content)
-    assert response.status_code == 403
+    assert response.status_code == 200
     assert content["type"] == "interactive_customer_info_needed"
 
     transaction_id = content["id"]
@@ -503,7 +503,7 @@ def test_deposit_check_trustlines_horizon(
         f"/deposit?asset_code=USD&account={deposit.stellar_account}", follow=True
     )
     content = json.loads(response.content)
-    assert response.status_code == 403
+    assert response.status_code == 200
     assert content["type"] == "interactive_customer_info_needed"
 
     # Complete the interactive deposit. The transaction should be set
@@ -602,7 +602,7 @@ def test_deposit_authenticated_success(client, acc1_usd_deposit_transaction_fact
         **header,
     )
     content = json.loads(response.content)
-    assert response.status_code == 403
+    assert response.status_code == 200
     assert content["type"] == "interactive_customer_info_needed"
 
 

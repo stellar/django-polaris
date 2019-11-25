@@ -239,5 +239,5 @@ def deposit(request):
     url = _construct_interactive_url(request, asset_code, stellar_account, transaction_id)
     return Response(
         {"type": "interactive_customer_info_needed", "url": url, "id": transaction_id},
-        status=status.HTTP_403_FORBIDDEN,
+        status=status.HTTP_200_OK
     )
