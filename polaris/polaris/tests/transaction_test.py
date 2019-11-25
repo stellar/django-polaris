@@ -8,7 +8,12 @@ from stellar_sdk.transaction_envelope import TransactionEnvelope
 
 from polaris import settings
 from polaris.models import Transaction
-from polaris.tests.helpers import mock_check_auth_success
+from polaris.tests.helpers import mock_check_auth_success, sep10
+
+
+# Test client account and seed
+client_address = "GDKFNRUATPH4BSZGVFDRBIGZ5QAFILVFRIRYNSQ4UO7V2ZQAPRNL73RI"
+client_seed = "SDKWSBERDHP3SXW5A3LXSI7FWMMO5H7HG33KNYBKWH2HYOXJG2DXQHQY"
 
 
 @pytest.mark.django_db
@@ -32,22 +37,28 @@ def test_transaction_requires_param(
 
 
 @pytest.mark.django_db
-@patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
 def test_transaction_id_filter_and_format(
-    mock_check,
     client,
     acc1_usd_deposit_transaction_factory,
     acc2_eth_withdrawal_transaction_factory,
 ):
     """Succeeds with expected response if `id` provided."""
-    del mock_check
-    acc1_usd_deposit_transaction_factory()
-    withdrawal = acc2_eth_withdrawal_transaction_factory()
+    acc1_usd_deposit_transaction_factory(client_address)
+    withdrawal = acc2_eth_withdrawal_transaction_factory(client_address)
+
+    encoded_jwt = sep10(client, client_address, client_seed)
+    # For testing, we make the key `HTTP_AUTHORIZATION`. This is the value that
+    # we expect due to the middleware.
+    header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
 
     w_started_at = withdrawal.started_at.isoformat().replace("+00:00", "Z")
     w_completed_at = withdrawal.completed_at.isoformat().replace("+00:00", "Z")
 
-    response = client.get(f"/transaction?id={withdrawal.id}", follow=True)
+    response = client.get(
+        f"/transaction?id={withdrawal.id}",
+        follow=True,
+        **header
+    )
     content = json.loads(response.content)
 
     assert response.status_code == 200
@@ -87,21 +98,24 @@ def test_transaction_id_filter_and_format(
 
 
 @pytest.mark.django_db
-@patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
 def test_transaction_stellar_filter(
-    mock_check,
     client,
     acc1_usd_deposit_transaction_factory,
     acc2_eth_withdrawal_transaction_factory,
 ):
     """Succeeds with expected response if `stellar_transaction_id` provided."""
-    del mock_check
-    acc1_usd_deposit_transaction_factory()
-    withdrawal = acc2_eth_withdrawal_transaction_factory()
+    acc1_usd_deposit_transaction_factory(client_address)
+    withdrawal = acc2_eth_withdrawal_transaction_factory(client_address)
+
+    encoded_jwt = sep10(client, client_address, client_seed)
+    # For testing, we make the key `HTTP_AUTHORIZATION`. This is the value that
+    # we expect due to the middleware.
+    header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
 
     response = client.get(
         f"/transaction?stellar_transaction_id={withdrawal.stellar_transaction_id}",
         follow=True,
+        **header
     )
     content = json.loads(response.content)
 
@@ -113,21 +127,24 @@ def test_transaction_stellar_filter(
 
 
 @pytest.mark.django_db
-@patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
 def test_transaction_external_filter(
-    mock_check,
     client,
     acc1_usd_deposit_transaction_factory,
     acc2_eth_withdrawal_transaction_factory,
 ):
     """Succeeds with expected response if `external_transaction_id` provided."""
-    del mock_check
-    deposit = acc1_usd_deposit_transaction_factory()
-    acc2_eth_withdrawal_transaction_factory()
+    deposit = acc1_usd_deposit_transaction_factory(client_address)
+    acc2_eth_withdrawal_transaction_factory(client_address)
+
+    encoded_jwt = sep10(client, client_address, client_seed)
+    # For testing, we make the key `HTTP_AUTHORIZATION`. This is the value that
+    # we expect due to the middleware.
+    header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
 
     response = client.get(
         f"/transaction?external_transaction_id={deposit.external_transaction_id}",
         follow=True,
+        **header
     )
     content = json.loads(response.content)
 
@@ -142,17 +159,19 @@ def test_transaction_external_filter(
 
 
 @pytest.mark.django_db
-@patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
 def test_transaction_multiple_filters(
-    mock_check,
     client,
     acc1_usd_deposit_transaction_factory,
     acc2_eth_withdrawal_transaction_factory,
 ):
     """Succeeds with expected response if multiple valid ids provided."""
-    del mock_check
-    acc1_usd_deposit_transaction_factory()
-    withdrawal = acc2_eth_withdrawal_transaction_factory()
+    acc1_usd_deposit_transaction_factory(client_address)
+    withdrawal = acc2_eth_withdrawal_transaction_factory(client_address)
+
+    encoded_jwt = sep10(client, client_address, client_seed)
+    # For testing, we make the key `HTTP_AUTHORIZATION`. This is the value that
+    # we expect due to the middleware.
+    header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
 
     response = client.get(
         (
@@ -161,6 +180,7 @@ def test_transaction_multiple_filters(
             f"&stellar_transaction_id={withdrawal.stellar_transaction_id}"
         ),
         follow=True,
+        **header
     )
     content = json.loads(response.content)
 
@@ -175,17 +195,19 @@ def test_transaction_multiple_filters(
 
 
 @pytest.mark.django_db
-@patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
 def test_transaction_filtering_no_result(
-    mock_check,
     client,
     acc1_usd_deposit_transaction_factory,
     acc2_eth_withdrawal_transaction_factory,
 ):
     """Succeeds with expected response if invalid combo of ids provided."""
-    del mock_check
-    deposit = acc1_usd_deposit_transaction_factory()
-    withdrawal = acc2_eth_withdrawal_transaction_factory()
+    deposit = acc1_usd_deposit_transaction_factory(client_address)
+    withdrawal = acc2_eth_withdrawal_transaction_factory(client_address)
+
+    encoded_jwt = sep10(client, client_address, client_seed)
+    # For testing, we make the key `HTTP_AUTHORIZATION`. This is the value that
+    # we expect due to the middleware.
+    header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
 
     response = client.get(
         (
@@ -194,6 +216,7 @@ def test_transaction_filtering_no_result(
             f"&stellar_transaction_id={withdrawal.stellar_transaction_id}"
         ),
         follow=True,
+        **header
     )
     content = json.loads(response.content)
 
@@ -212,34 +235,16 @@ def test_transaction_authenticated_success(
     Though it filters using the stellar transaction ID, the logic
     should apply in any case.
     """
-    client_address = "GDKFNRUATPH4BSZGVFDRBIGZ5QAFILVFRIRYNSQ4UO7V2ZQAPRNL73RI"
-    client_seed = "SDKWSBERDHP3SXW5A3LXSI7FWMMO5H7HG33KNYBKWH2HYOXJG2DXQHQY"
-    acc1_usd_deposit_transaction_factory()
-    withdrawal = acc2_eth_withdrawal_transaction_factory()
+    acc1_usd_deposit_transaction_factory(client_address)
+    withdrawal = acc2_eth_withdrawal_transaction_factory(client_address)
     withdrawal.stellar_address = client_address
     withdrawal.save()
 
-    # SEP 10.
-    response = client.get(f"/auth?account={client_address}", follow=True)
-    content = json.loads(response.content)
-    envelope_xdr = content["transaction"]
-    envelope_object = TransactionEnvelope.from_xdr(envelope_xdr, network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE)
-    client_signing_key = Keypair.from_secret(client_seed)
-    envelope_object.sign(client_signing_key)
-    client_signed_envelope_xdr = envelope_object.to_xdr()
-
-    response = client.post(
-        "/auth",
-        data={"transaction": client_signed_envelope_xdr},
-        content_type="application/json",
-    )
-    content = json.loads(response.content)
-    encoded_jwt = content["token"]
-    assert encoded_jwt
-
+    encoded_jwt = sep10(client, client_address, client_seed)
     # For testing, we make the key `HTTP_AUTHORIZATION`. This is the value that
     # we expect due to the middleware.
     header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
+
     response = client.get(
         f"/transaction?stellar_transaction_id={withdrawal.stellar_transaction_id}",
         follow=True,

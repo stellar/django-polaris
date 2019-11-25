@@ -36,7 +36,7 @@ def _compute_qset_filters(req_params, translation_dict):
     }
 
 
-def _get_transaction_from_request(request):
+def _get_transaction_from_request(source_address, request):
     translation_dict = {
         "id": "id",
         "stellar_transaction_id": "stellar_transaction_id",
@@ -46,12 +46,12 @@ def _get_transaction_from_request(request):
     qset_filter = _compute_qset_filters(request.GET, translation_dict)
     if not qset_filter:
         raise AttributeError(
-            "at least one of id, stellar_transaction_id, or external_transaction_id must be provided"
+            "at least one of id, stellar_transaction_id, or "
+            "external_transaction_id must be provided"
         )
-    try:
-        return Transaction.objects.get(**qset_filter)
-    except Transaction.DoesNotExist as exc:
-        raise exc
+
+    qset_filter["stellar_account"] = source_address
+    return Transaction.objects.get(**qset_filter)
 
 
 def _construct_more_info_url(request):
@@ -75,13 +75,15 @@ def _construct_more_info_url(request):
 @xframe_options_exempt
 @api_view()
 @renderer_classes([TemplateHTMLRenderer])
-def more_info(request):
+@validate_sep10_token(content_type="text/html")
+def more_info(source_address: str, request: Request) -> Response:
     """
     Popup to display more information about a specific transaction.
     See table: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md#4-customer-information-status
     """
+    print(request.GET)
     try:
-        request_transaction = _get_transaction_from_request(request)
+        request_transaction = _get_transaction_from_request(source_address, request)
     except AttributeError as exc:
         return render_error_response(str(exc), content_type="text/html")
     except Transaction.DoesNotExist:
@@ -167,7 +169,7 @@ def transaction(source_account: str, request: Request) -> Response:
     See: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md#single-historical-transaction
     """
     try:
-        request_transaction = _get_transaction_from_request(request)
+        request_transaction = _get_transaction_from_request(source_account, request)
     except AttributeError as exc:
         return render_error_response(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
     except Transaction.DoesNotExist:

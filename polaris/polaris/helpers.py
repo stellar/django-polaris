@@ -65,7 +65,7 @@ def format_memo_horizon(memo):
     return (codecs.encode(codecs.decode(memo, "hex"), "base64").decode("utf-8")).strip()
 
 
-def check_auth(request, func):
+def check_auth(request, func, content_type: str = "application/json"):
     """
     Check SEP 10 authentication in a request.
     Else call the original view function.
@@ -73,16 +73,16 @@ def check_auth(request, func):
     try:
         source_address = validate_jwt_request(request)
     except ValueError as e:
-        return render_error_response(str(e))
+        return render_error_response(str(e), content_type=content_type)
     return func(source_address, request)
 
 
-def validate_sep10_token():
+def validate_sep10_token(content_type: str = "application/json"):
     """Decorator to validate the SEP 10 token in a request."""
 
     def decorator(view):
         def wrapper(request, *args, **kwargs):
-            return check_auth(request, view)
+            return check_auth(request, view, content_type=content_type)
 
         return wrapper
 
