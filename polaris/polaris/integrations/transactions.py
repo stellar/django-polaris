@@ -59,8 +59,8 @@ class DepositIntegration:
         users about completed deposits. Overriding this function is not
         required.
 
-        :param transaction: The django Transaction object that was executed on
-            the Stellar network
+        :param transaction: a :class:`polaris.models.Transaction` that was
+            executed on the Stellar network
         """
         pass
 
@@ -89,7 +89,8 @@ class WithdrawalIntegration:
 
         :param response: a response body returned from Horizon for the transactions
             for account endpoint_
-        :param transaction: a database model object representing the transaction
+        :param transaction: a :class:`polaris.models.Transaction` instance to
+            process
         """
         raise NotImplementedError(
             "`process_withdrawal` must be implemented to process withdrawals"

@@ -11,8 +11,7 @@ django-polaris documentation contents
     :caption: Contents:
 
     integrations/index
-
-
+    models/index
 
 
 Indices and tables
