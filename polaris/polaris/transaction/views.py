@@ -81,7 +81,6 @@ def more_info(account: str, request: Request) -> Response:
     Popup to display more information about a specific transaction.
     See table: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md#4-customer-information-status
     """
-    print(request.GET)
     try:
         request_transaction = _get_transaction_from_request(account, request)
     except AttributeError as exc:
