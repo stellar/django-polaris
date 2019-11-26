@@ -83,7 +83,8 @@ def _verify_optional_args(request):
 
 
 @api_view()
-def confirm_transaction(request):
+@validate_sep10_token()
+def confirm_transaction(account: str, request: Request) -> Response:
     """
     `GET /transactions/deposit/confirm_transaction` is used by an external agent to confirm
     that they have processed the transaction. This triggers submission of the
@@ -138,7 +139,7 @@ def confirm_transaction(request):
 @xframe_options_exempt
 @api_view(["GET", "POST"])
 @renderer_classes([TemplateHTMLRenderer])
-def interactive_deposit(request):
+def interactive_deposit(request: Request) -> Response:
     """
     `GET /transactions/deposit/webapp` opens a form used to input information
     about the deposit. This creates a corresponding transaction in our
@@ -206,7 +207,7 @@ def interactive_deposit(request):
 @api_view(["POST"])
 @renderer_classes([JSONRenderer])
 @validate_sep10_token()
-def deposit(source_address: str, request: Request) -> Response:
+def deposit(account: str, request: Request) -> Response:
     """
     `POST /transactions/deposit/interactive` initiates the deposit and returns an interactive
     deposit form to the user.

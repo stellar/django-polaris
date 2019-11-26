@@ -19,7 +19,7 @@ class DepositIntegration:
         **OVERRIDE REQUIRED**
 
         This function should poll the financial entity for the state of all
-        ``pending_deposits`` transactions and return the ones ready to be
+        `pending_deposits` transactions and return the ones ready to be
         executed on the Stellar network.
 
         For every transaction that is returned, Polaris will submit it to the
@@ -28,11 +28,11 @@ class DepositIntegration:
         overriding this function is optional.
 
         If the Stellar network is unable to execute a transaction returned
-        from this function, it's status will be marked as ``error`` and
-        its ``status_message`` attribute will be assigned a description of
+        from this function, it's status will be marked as ``pending_stellar``
+        and its ``status_message`` attribute will be assigned a description of
         the problem that occurred.
 
-        ``pending_deposits`` is a QuerySet of the form
+        `pending_deposits` is a QuerySet of the form
         ::
 
             Transactions.object.filter(
@@ -56,7 +56,7 @@ class DepositIntegration:
         Use this function to perform any post-processing of `transaction` after
         its been executed on the Stellar network. This could include actions
         such as updating other Django models in your project or logging
-        relevant information.
+        relevant information. Overriding this function is not required
 
         :param transaction: The django Transaction object that was executed on
             the Stellar network
@@ -77,7 +77,7 @@ class WithdrawalIntegration:
         **OVERRIDE REQUIRED**
 
         This method should implement the transfer of the amount of the
-        anchored asset specified by ``transaction`` to the user who requested
+        anchored asset specified by `transaction` to the user who requested
         the withdrawal.
 
         If an error is raised from this function, the transaction's status

@@ -71,10 +71,10 @@ def check_auth(request, func, content_type: str = "application/json"):
     Else call the original view function.
     """
     try:
-        source_address = validate_jwt_request(request)
+        account = validate_jwt_request(request)
     except ValueError as e:
         return render_error_response(str(e), content_type=content_type)
-    return func(source_address, request)
+    return func(account, request)
 
 
 def validate_sep10_token(content_type: str = "application/json"):

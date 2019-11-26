@@ -25,12 +25,17 @@ from polaris.transaction.serializers import TransactionSerializer
 from polaris.withdraw.forms import WithdrawForm
 
 
-def _construct_interactive_url(request, asset_code, transaction_id):
+def _construct_interactive_url(request: Request,
+                               asset_code: str,
+                               transaction_id: str,
+                               account: str) -> str:
     """Constructs the URL for the interactive application for withdrawal info.
     This is located at `/transactions/withdraw/webapp`."""
-    qparams = urlencode(
-        {"asset_code": asset_code, "transaction_id": transaction_id}
-    )
+    qparams = urlencode({
+        "asset_code": asset_code,
+        "transaction_id": transaction_id,
+        "account": account
+    })
     path = reverse("interactive_withdraw")
     url_params = f"{path}?{qparams}"
     return request.build_absolute_uri(url_params)
@@ -48,7 +53,7 @@ def _construct_more_info_url(request):
 @xframe_options_exempt
 @api_view(["GET", "POST"])
 @renderer_classes([TemplateHTMLRenderer])
-def interactive_withdraw(request):
+def interactive_withdraw(request: Request) -> Response:
     """
     `GET /transactions/withdraw/webapp` opens a form used to input information about
     the withdrawal. This creates a corresponding transaction in our database.
@@ -123,10 +128,10 @@ def interactive_withdraw(request):
 @api_view(["POST"])
 @validate_sep10_token()
 @renderer_classes([JSONRenderer])
-def withdraw(source_address: str, request: Request) -> Response:
+def withdraw(account: str, request: Request) -> Response:
     """
-    `POST /withdraw` initiates the withdrawal and returns an interactive
-    withdrawal form to the user.
+    `POST /transactions/withdraw` initiates the withdrawal and returns an
+    interactive withdrawal form to the user.
     """
     asset_code = request.POST.get("asset_code")
     if not asset_code:
