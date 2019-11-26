@@ -71,6 +71,9 @@ INSTALLED_APPS = django_apps + third_party_apps + ["polaris"]
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware"
 ]
 
 APPEND_SLASH = False

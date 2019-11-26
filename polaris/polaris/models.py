@@ -74,6 +74,7 @@ class Transaction(models.Model):
         choices=STATUS, default=STATUS.pending_external, max_length=30
     )
     status_eta = models.IntegerField(null=True, blank=True, default=3600)
+    status_message = models.TextField(null=True, blank=True)
     stellar_transaction_id = models.TextField(null=True, blank=True)
     external_transaction_id = models.TextField(null=True, blank=True)
     amount_in = models.FloatField(null=True, blank=True)
