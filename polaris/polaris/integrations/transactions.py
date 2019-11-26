@@ -74,6 +74,8 @@ class WithdrawalIntegration:
     @classmethod
     def process_withdrawal(cls, response: Dict, transaction: Transaction):
         """
+        .. _endpoint: https://www.stellar.org/developers/horizon/reference/resources/transaction.html
+
         **OVERRIDE REQUIRED**
 
         This method should implement the transfer of the amount of the
@@ -84,7 +86,8 @@ class WithdrawalIntegration:
         will be changed to ``error`` and its ``status_message`` will be
         assigned to the message raised with the exception.
 
-        :param response: a response body returned from Horizon for the transaction
+        :param response: a response body returned from Horizon for the transactions
+            for account endpoint_
         :param transaction: a database model object representing the transaction
         """
         raise NotImplementedError(

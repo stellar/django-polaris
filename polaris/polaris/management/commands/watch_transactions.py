@@ -134,30 +134,28 @@ class Command(BaseCommand):
                 kind=Transaction.KIND.withdrawal
             )
             for withdrawal_transaction in pending_withdrawal_transactions:
-                if match_transaction(response, withdrawal_transaction):
-                    if not response["successful"]:
-                        update_transaction(
-                            response,
-                            withdrawal_transaction,
-                            error_msg=("The transaction failed to execute on "
-                                       "the Stellar network"),
-                        )
-                        continue
+                if not match_transaction(response, withdrawal_transaction):
+                    continue
+                elif not response["successful"]:
+                    update_transaction(
+                        response, withdrawal_transaction,
+                        error_msg=("The transaction failed to "
+                                   "execute on the Stellar network")
+                    )
+                    continue
 
-                    try:
-                        rwi.process_withdrawal(response, withdrawal_transaction)
-                    except Exception as e:
-                        update_transaction(
-                            response,
-                            withdrawal_transaction,
-                            error_msg=str(e)
-                        )
-                        logger.exception(str(e))
-                        break
-
+                try:
+                    rwi.process_withdrawal(response, withdrawal_transaction)
+                except Exception as e:
+                    update_transaction(
+                        response, withdrawal_transaction, error_msg=str(e)
+                    )
+                    logger.exception(str(e))
+                else:
                     update_transaction(response, withdrawal_transaction)
                     logger.info(
                         f"successfully processed withdrawal for response with "
                         f"xdr {response['envelope_xdr']}"
                     )
+                finally:
                     break

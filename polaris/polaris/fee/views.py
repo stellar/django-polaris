@@ -24,7 +24,7 @@ def _op_type_is_valid(asset_code: str, operation: str, op_type: str) -> bool:
 
 @api_view()
 @validate_sep10_token()
-def fee(source_address: str, request: Request) -> Response:
+def fee(account: str, request: Request) -> Response:
     """
     Definition of the /fee endpoint, in accordance with SEP-0024.
     See: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md#fee
