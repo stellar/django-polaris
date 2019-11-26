@@ -55,8 +55,9 @@ class DepositIntegration:
         """
         Use this function to perform any post-processing of `transaction` after
         its been executed on the Stellar network. This could include actions
-        such as updating other Django models in your project or logging
-        relevant information. Overriding this function is not required
+        such as updating other django models in your project or emailing
+        users about completed deposits. Overriding this function is not
+        required.
 
         :param transaction: The django Transaction object that was executed on
             the Stellar network

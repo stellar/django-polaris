@@ -12,8 +12,8 @@ What is Polaris?
 
 Polaris is an implementation of SEP-24_ maintained by the `Stellar Development
 Foundation`_ (SDF). SEP-24 is a standard defined to make wallets and anchors
-interoperable, meaning any wallet can communicate with any anchor and vice
-versa.
+interoperable, meaning any wallet can communicate with any anchor for the
+purpose of withdrawing or depositing assets into the stellar network.
 
 Polaris is not a library or a framework; its an extendable django app. Like
 many django apps, it comes with fully-implemented endpoints, templates, and
@@ -97,8 +97,6 @@ To set up the development environment
 
 Git Flow
 --------
-At the time of writing this, the latest public release is v0.9.
-After each release, a new development branch is created for the next upcoming release. In this case, that is 0.9.1.dev.
 Follow the instructions below to submit a valid pull request.
 
 - Fork the repository
