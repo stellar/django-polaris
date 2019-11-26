@@ -145,7 +145,7 @@ def withdraw(account: str, request: Request) -> Response:
         return render_error_response(f"invalid operation for asset {asset_code}")
 
     transaction_id = create_transaction_id()
-    url = _construct_interactive_url(request, asset_code, transaction_id)
+    url = _construct_interactive_url(request, asset_code, transaction_id, account)
     return Response(
         {"type": "interactive_customer_info_needed", "url": url, "id": transaction_id},
     )

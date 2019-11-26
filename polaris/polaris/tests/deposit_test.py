@@ -18,10 +18,14 @@ from polaris.management.commands.create_stellar_deposit import (
     TRUSTLINE_FAILURE_XDR,
 )
 from polaris.models import Transaction
-from polaris.tests.helpers import mock_check_auth_success, mock_load_not_exist_account
+from polaris.tests.helpers import mock_check_auth_success, mock_load_not_exist_account, sep10
 
 DEPOSIT_PATH = f"/transactions/deposit/interactive"
 HORIZON_SUCCESS_RESPONSE = {"result_xdr": SUCCESS_XDR, "hash": "test_stellar_id"}
+# Test client account and seed
+client_address = "GDKFNRUATPH4BSZGVFDRBIGZ5QAFILVFRIRYNSQ4UO7V2ZQAPRNL73RI"
+client_seed = "SDKWSBERDHP3SXW5A3LXSI7FWMMO5H7HG33KNYBKWH2HYOXJG2DXQHQY"
+
 
 @pytest.mark.django_db
 @patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
@@ -64,6 +68,7 @@ def test_deposit_no_params(mock_check, client):
 
     assert response.status_code == 400
     assert content == {"error": "`asset_code` and `account` are required parameters"}
+
 
 @patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
 def test_deposit_no_account(mock_check, client):
@@ -194,7 +199,13 @@ def test_deposit_invalid_hash_memo(
 
 def test_deposit_confirm_no_txid(client):
     """`GET /transactions/deposit/confirm_transaction` fails with no `transaction_id`."""
-    response = client.get(f"/transactions/deposit/confirm_transaction?amount=0", follow=True)
+    encoded_jwt = sep10(client, client_address, client_seed)
+    header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
+    response = client.get(
+        f"/transactions/deposit/confirm_transaction?amount=0",
+        follow=True,
+        **header
+    )
     content = json.loads(response.content)
     assert response.status_code == 400
     assert content == {
@@ -206,9 +217,12 @@ def test_deposit_confirm_no_txid(client):
 def test_deposit_confirm_invalid_txid(client):
     """`GET /transactions/deposit/confirm_transaction` fails with an invalid `transaction_id`."""
     incorrect_transaction_id = uuid.uuid4()
+    encoded_jwt = sep10(client, client_address, client_seed)
+    header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
     response = client.get(
         f"/transactions/deposit/confirm_transaction?amount=0&transaction_id={incorrect_transaction_id}",
         follow=True,
+        **header
     )
     content = json.loads(response.content)
     assert response.status_code == 400
@@ -220,9 +234,13 @@ def test_deposit_confirm_invalid_txid(client):
 @pytest.mark.django_db
 def test_deposit_confirm_no_amount(client, acc1_usd_deposit_transaction_factory):
     """`GET /transactions/deposit/confirm_transaction` fails with no `amount`."""
-    deposit = acc1_usd_deposit_transaction_factory()
+    deposit = acc1_usd_deposit_transaction_factory(client_address)
+    encoded_jwt = sep10(client, client_address, client_seed)
+    header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
     response = client.get(
-        f"/transactions/deposit/confirm_transaction?transaction_id={deposit.id}", follow=True
+        f"/transactions/deposit/confirm_transaction?transaction_id={deposit.id}",
+        follow=True,
+        **header
     )
     content = json.loads(response.content)
     assert response.status_code == 400
@@ -232,10 +250,13 @@ def test_deposit_confirm_no_amount(client, acc1_usd_deposit_transaction_factory)
 @pytest.mark.django_db
 def test_deposit_confirm_invalid_amount(client, acc1_usd_deposit_transaction_factory):
     """`GET /transactions/deposit/confirm_transaction` fails with a non-float `amount`."""
-    deposit = acc1_usd_deposit_transaction_factory()
+    deposit = acc1_usd_deposit_transaction_factory(client_address)
+    encoded_jwt = sep10(client, client_address, client_seed)
+    header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
     response = client.get(
         f"/transactions/deposit/confirm_transaction?transaction_id={deposit.id}&amount=foo",
         follow=True,
+        **header
     )
     content = json.loads(response.content)
     assert response.status_code == 400
@@ -247,11 +268,14 @@ def test_deposit_confirm_invalid_amount(client, acc1_usd_deposit_transaction_fac
 @pytest.mark.django_db
 def test_deposit_confirm_incorrect_amount(client, acc1_usd_deposit_transaction_factory):
     """`GET /transactions/deposit/confirm_transaction` fails with an incorrect `amount`."""
-    deposit = acc1_usd_deposit_transaction_factory()
+    deposit = acc1_usd_deposit_transaction_factory(client_address)
+    encoded_jwt = sep10(client, client_address, client_seed)
+    header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
     incorrect_amount = deposit.amount_in + 1
     response = client.get(
         f"/transactions/deposit/confirm_transaction?transaction_id={deposit.id}&amount={incorrect_amount}",
         follow=True,
+        **header
     )
     content = json.loads(response.content)
     assert response.status_code == 400
@@ -271,11 +295,14 @@ def test_deposit_confirm_success(
 ):
     """`GET /transactions/deposit/confirm_transaction` succeeds with correct `amount` and `transaction_id`."""
     del mock_submit, mock_base_fee
-    deposit = acc1_usd_deposit_transaction_factory()
+    deposit = acc1_usd_deposit_transaction_factory(client_address)
     amount = deposit.amount_in
+    encoded_jwt = sep10(client, client_address, client_seed)
+    header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
     response = client.get(
         f"/transactions/deposit/confirm_transaction?amount={amount}&transaction_id={deposit.id}",
         follow=True,
+        **header
     )
     assert response.status_code == 200
     content = json.loads(response.content)
@@ -297,7 +324,9 @@ def test_deposit_confirm_external_id(
 ):
     """`GET /transactions/deposit/confirm_transaction` successfully stores an `external_id`."""
     del mock_submit, mock_base_fee
-    deposit = acc1_usd_deposit_transaction_factory()
+    deposit = acc1_usd_deposit_transaction_factory(client_address)
+    encoded_jwt = sep10(client, client_address, client_seed)
+    header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
     amount = deposit.amount_in
     external_id = "foo"
     response = client.get(
@@ -306,6 +335,7 @@ def test_deposit_confirm_external_id(
             f"{deposit.id}&external_transaction_id={external_id}"
         ),
         follow=True,
+        **header
     )
     assert response.status_code == 200
     content = json.loads(response.content)
@@ -431,9 +461,12 @@ def test_deposit_interactive_confirm_success(
         == Transaction.STATUS.pending_user_transfer_start
     )
 
+    encoded_jwt = sep10(client, client_address, client_seed)
+    header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
     response = client.get(
         f"/transactions/deposit/confirm_transaction?amount={amount}&transaction_id={transaction_id}",
         follow=True,
+        **header
     )
     assert response.status_code == 200
     content = json.loads(response.content)
