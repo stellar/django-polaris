@@ -33,53 +33,50 @@ Form Integrations
 
 Polaris uses `Django Forms`_ for collecting users' information, like their
 email or how much of their asset they want to deposit. Polaris comes out of
-the box with ``DepositForm`` and ``WithdrawForm`` to collect common pieces of
-data anchors may want to use.
+the box with forms for deposit and withdrawal flows.
 
 However, the data collected may not be sufficient for your needs, or maybe you
 need to do some validation or processing with the data that Polaris doesn't
-already do. That is why Polaris allows you to create and register your own
-Django form to use in-place of our default forms. Lets look at an example
-to see how you could use this functionality. You should be familiar with
-`Django Forms`_ and how they validate their inputs.
+already do. That is why Polaris provides the
+:class:`polaris.integrations.TransactionForm` for you to subclass and extend.
+
+.. autoclass:: polaris.integrations.TransactionForm
+
+Lets look at an example to see how you could use this functionality.
+You should be familiar with `Django Forms`_ and how they validate their inputs.
 
 ::
 
     from django import forms
-    from polaris.models import Asset
+    from polaris.integrations import TransactionForm
     from myapp.models import FormSubmissions
 
-    class MyDepositForm(forms.Form):
+    class MyDepositForm(TransactionForm):
         """This form accepts the amount to deposit from the user."""
+        first_name = forms.CharField()
+        last_name = forms.CharField()
 
-        amount = forms.FloatField(min_value=0)
-        asset = forms.CharField(max_length=4)
-
-        def clean_amount(self):
-            """Validate the provided amount of an asset."""
-            amount = round(self.cleaned_data["amount"], 2)
-            asset_obj = Asset.object.filter(code=self.cleaned_data["asset"]).first()
-            if asset_obj:
-                if amount < asset_obj.deposit_min_amount:
-                    raise forms.ValidationError(
-                        f"Amount is below minimum for asset {asset_obj.code}"
-                    )
-                elif amount > asset_obj.deposit_max_amount:
-                    raise forms.ValidationError(
-                        f"Amount is above maximum for asset {asset_obj.code}"
-                    )
-            return amount
+        def clean(self):
+            data = self.cleaned_data
+            if not (data["first_name"] and data["last_name"]):
+                raise ValidationError("Please enter your name.")
+            return data
 
         def after_validation(self):
             """Saves the data collected as a FormSubmission database object"""
+            data = self.cleaned_data
             FormSubmission.objects.create(
-                amount=self.cleaned_data["amount"]
-                asset=self.cleaned_data["asset"]
+                name=" ".join(data["first_name"], data["last_name"])
+                amount=data["amount"]
+                asset=data["asset"]
             )
 
-Essentially, the form collects the deposit amount and asset type and
+``TransactionForm`` already collects the deposit amount and asset type and
 validates that the amount is within the asset's accepted deposit range. In
-addition to this, Polaris will call the form's ``after_validation()`` function,
+this example, we've also added some contact information to the form fields
+and ensure they aren't left empty.
+
+Polaris will also call the form's ``after_validation()`` function,
 which in this case saves the form data collected to the database.
 
 Specifically, Polaris will facilitate that functionality like so:
@@ -99,5 +96,4 @@ raised during validation:
 
 Polaris does not yet allow you customize the template used to render the form,
 although that functionality is on the road map. For now, you can be assured
-that your ``ValidationError`` will be displayed correctly next to the
-relevant field(s).
+that your ``ValidationError`` will be displayed.

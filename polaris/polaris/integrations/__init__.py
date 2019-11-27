@@ -1,4 +1,5 @@
 import sys
+from polaris.integrations.forms import TransactionForm
 from polaris.integrations.transactions import (DepositIntegration,
                                                WithdrawalIntegration,
                                                registered_deposit_integration,
@@ -10,7 +11,9 @@ def register_integrations(deposit: DepositIntegration = None,
     """
     Registers instances of user-defined subclasses of
     :class:`.WithdrawalIntegration` and
-    :class:`.DepositIntegration` with Polaris.
+    :class:`.DepositIntegration` with Polaris. Each subclasses' `.form`
+    attribute must be a subclass of
+    :class:`polaris.integration.forms.TransactionForm`.
 
     Call this function in the relevant Django AppConfig.ready() function:
     ::
@@ -34,7 +37,9 @@ def register_integrations(deposit: DepositIntegration = None,
 
     These integration classes provide a structured interface for implementing
     user-defined logic used by Polaris, specifically for deposit and withdrawal
-    flows. See the integration classes for more information on implementation.
+    flows.
+
+    See the integration classes for more information on implementation.
 
     :param deposit: the :class:`.DepositIntegration` subclass instance to be
         used by Polaris
@@ -50,8 +55,12 @@ def register_integrations(deposit: DepositIntegration = None,
         raise ValueError("Must pass at least one integration class")
     elif deposit and not issubclass(deposit.__class__, DepositIntegration):
         raise TypeError("deposit must be a subclass of DepositIntegration")
+    elif not issubclass(deposit.form, TransactionForm):
+        raise TypeError("DepositIntegration.form must subclass TransactionForm")
     elif withdrawal and not issubclass(withdrawal.__class__, WithdrawalIntegration):
         raise TypeError("withdrawal must be a subclass of WithdrawalIntegration")
+    elif not issubclass(withdrawal.form, TransactionForm):
+        raise TypeError("WithdrawalIntegration.form must subclass TransactionForm")
 
     for obj, attr in [(deposit, "registered_deposit_integration"),
                       (withdrawal, "registered_withdrawal_integration")]:

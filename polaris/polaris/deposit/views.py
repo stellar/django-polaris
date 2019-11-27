@@ -13,7 +13,6 @@ from polaris import settings
 from django.urls import reverse
 from django.shortcuts import redirect
 from django.views.decorators.clickjacking import xframe_options_exempt
-from django.core.management import call_command
 from rest_framework import status
 from rest_framework.decorators import api_view, renderer_classes
 from rest_framework.response import Response
@@ -30,6 +29,7 @@ from polaris.helpers import (
 )
 from polaris.models import Asset, Transaction
 from polaris.transaction.serializers import TransactionSerializer
+from polaris.deposit.utils import create_stellar_deposit
 
 from polaris.integrations import registered_deposit_integration
 
@@ -132,7 +132,7 @@ def confirm_transaction(account: str, request: Request) -> Response:
     )
 
     # launch the deposit Stellar transaction.
-    call_command("create_stellar_deposit", transaction.id)
+    create_stellar_deposit(transaction.id)
     return Response({"transaction": serializer.data})
 
 

@@ -1,17 +1,15 @@
-from typing import Dict, List
+from typing import Type, Dict, List
 
 from django.db.models import QuerySet
 from django import forms
 
 from polaris.models import Transaction
-from polaris.deposit.forms import DepositForm
+from polaris.integrations.forms import TransactionForm
 from polaris.withdraw.forms import WithdrawForm
 
 
 class DepositIntegration:
     """
-
-
     The container class for deposit integration functions.
 
     Accepts a :class:`django.forms.Form` class to render for the response to
@@ -22,7 +20,7 @@ class DepositIntegration:
     Subclasses must be registered with Polaris by passing it to
     :func:`polaris.integrations.register_integrations`.
     """
-    def __init__(self, form: forms.Form = DepositForm):
+    def __init__(self, form: Type[forms.Form] = TransactionForm):
         self.form = form
 
     @classmethod
@@ -90,7 +88,7 @@ class WithdrawalIntegration:
     Subclasses must be registered with Polaris by passing it to
     :func:`polaris.integrations.register_integrations`.
     """
-    def __init__(self, form: forms.Form = WithdrawForm):
+    def __init__(self, form: Type[forms.Form] = WithdrawForm):
         self.form = form
 
     @classmethod
