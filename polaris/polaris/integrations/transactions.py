@@ -1,17 +1,30 @@
 from typing import Dict, List
 
 from django.db.models import QuerySet
+from django import forms
 
 from polaris.models import Transaction
+from polaris.deposit.forms import DepositForm
+from polaris.withdraw.forms import WithdrawForm
 
 
 class DepositIntegration:
     """
+
+
     The container class for deposit integration functions.
+
+    Accepts a :class:`django.forms.Form` class to render for the response to
+    Polaris' `/transactions/deposit/webapp` endpoint. By default, Polaris'
+    base ``WithdrawForm`` is used. See the `Form Integrations`_ section for
+    more information.
 
     Subclasses must be registered with Polaris by passing it to
     :func:`polaris.integrations.register_integrations`.
     """
+    def __init__(self, form: forms.Form = DepositForm):
+        self.form = form
+
     @classmethod
     def poll_pending_deposits(cls, pending_deposits: QuerySet
                               ) -> List[Transaction]:
@@ -69,9 +82,17 @@ class WithdrawalIntegration:
     """
     The container class for withdrawal integration functions
 
+    Accepts an optional :class:`django.forms.Form` class to render for the
+    response to Polaris' `/transactions/withdraw/webapp` endpoint. By default,
+    Polaris' base ``DepositForm`` is used. See the `Form Integrations`_ section
+    for more information.
+
     Subclasses must be registered with Polaris by passing it to
     :func:`polaris.integrations.register_integrations`.
     """
+    def __init__(self, form: forms.Form = WithdrawForm):
+        self.form = form
+
     @classmethod
     def process_withdrawal(cls, response: Dict, transaction: Transaction):
         """

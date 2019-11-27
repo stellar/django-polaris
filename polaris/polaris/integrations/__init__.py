@@ -8,10 +8,11 @@ from polaris.integrations.transactions import (DepositIntegration,
 def register_integrations(deposit: DepositIntegration = None,
                           withdrawal: WithdrawalIntegration = None):
     """
-    Registers user-defined subclasses of :class:`.WithdrawalIntegration` and
+    Registers instances of user-defined subclasses of
+    :class:`.WithdrawalIntegration` and
     :class:`.DepositIntegration` with Polaris.
 
-    Run this function in the relevant Django AppConfig.ready() function:
+    Call this function in the relevant Django AppConfig.ready() function:
     ::
 
         from django.apps import AppConfig
@@ -22,22 +23,23 @@ def register_integrations(deposit: DepositIntegration = None,
 
             def ready(self):
                 from polaris.integrations import register_integrations
+                from myapp.integrations.forms import MyDepositForm
                 from myapp.integrations import (MyDepositIntegration,
                                                 MyWithdrawalIntegration)
 
                 register_integrations(
-                    deposit=MyDepositIntegration(),
-                    withdrawal=MyWithdrawalIntegration()
+                    deposit=MyDepositIntegration(MyDepositForm),
+                    withdrawal=MyWithdrawalIntegration(MyWithdrawalForm)
                 )
 
     These integration classes provide a structured interface for implementing
     user-defined logic used by Polaris, specifically for deposit and withdrawal
     flows. See the integration classes for more information on implementation.
 
-    :param deposit: a :class:`.DepositIntegration` subclass object to be used
-        by Polaris
-    :param withdrawal: a :class:`WithdrawalIntegration` subclass object to be
+    :param deposit: the :class:`.DepositIntegration` subclass instance to be
         used by Polaris
+    :param withdrawal: the :class:`WithdrawalIntegration` subclass instance to
+        be used by Polaris
     :raises ValueError: missing argument(s)
     :raises TypeError: arguments are not subclasses of DepositIntegration or
         Withdrawal

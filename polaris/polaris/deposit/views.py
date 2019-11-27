@@ -31,7 +31,7 @@ from polaris.helpers import (
 from polaris.models import Asset, Transaction
 from polaris.transaction.serializers import TransactionSerializer
 
-from polaris.deposit.forms import DepositForm
+from polaris.integrations import registered_deposit_integration
 
 
 def _construct_interactive_url(request, asset_code, account, transaction_id): 
@@ -169,10 +169,16 @@ def interactive_deposit(request: Request) -> Response:
         )
 
     if request.method == "GET":
-        form = DepositForm()
+        form = registered_deposit_integration.form()
         return Response({"form": form}, template_name="deposit/form.html")
 
-    form = DepositForm(request.POST)
+    # POST: The user submitted a form with the amount to deposit.
+    if Transaction.objects.filter(id=transaction_id).exists():
+        return render_error_response(
+            "transaction with matching 'transaction_id' already exists",
+            content_type="text/html"
+        )
+    form = registered_deposit_integration.form(request.POST)
     form.asset = asset
     # If the form is valid, we create a transaction pending external action
     # and render the success page.

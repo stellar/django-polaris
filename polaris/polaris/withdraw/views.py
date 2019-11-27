@@ -22,7 +22,7 @@ from polaris.helpers import (
     validate_sep10_token,
 )
 from polaris.models import Asset, Transaction
-from polaris.withdraw.forms import WithdrawForm
+from polaris.integrations import registered_withdrawal_integration
 
 
 def _construct_interactive_url(request: Request,
@@ -79,10 +79,16 @@ def interactive_withdraw(request: Request) -> Response:
 
     # GET: The server needs to display the form for the user to input withdrawal information.
     if request.method == "GET":
-        form = WithdrawForm()
+        form = registered_withdrawal_integration.form()
         return Response({"form": form}, template_name="withdraw/form.html")
 
-    form = WithdrawForm(request.POST)
+    # POST: The user submitted a form with the withdrawal info.
+    if Transaction.objects.filter(id=transaction_id).exists():
+        return render_error_response(
+            "transaction with matching 'transaction_id' already exists",
+            content_type="text/html"
+        )
+    form = registered_withdrawal_integration.form(request.POST)
     form.asset = asset
 
     # If the form is valid, we create a transaction pending user action
