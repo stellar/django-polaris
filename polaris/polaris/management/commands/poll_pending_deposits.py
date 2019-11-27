@@ -51,7 +51,7 @@ class Command(BaseCommand):
         if options.get("loop"):
             while True:
                 self.execute_deposits()
-                time.sleep(options.get("interval", 10))
+                time.sleep(options.get("interval") or 10)
         else:
             self.execute_deposits()
 

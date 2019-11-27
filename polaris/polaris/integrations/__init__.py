@@ -1,3 +1,4 @@
+import sys
 from typing import Type
 from polaris.integrations.transactions import (DepositIntegration,
                                                WithdrawalIntegration,
@@ -41,7 +42,7 @@ def register_integrations(deposit: Type[DepositIntegration] = None,
     :raises TypeError: arguments are not subclasses of DepositIntegration or
         Withdrawal
     """
-    from polaris.integrations import transactions
+    this = sys.modules[__name__]
 
     if not (deposit or withdrawal):
         raise ValueError("Must pass at least one integration class")
@@ -53,4 +54,4 @@ def register_integrations(deposit: Type[DepositIntegration] = None,
     for cls, attr in [(deposit, "RegisteredDepositIntegration"),
                       (withdrawal, "RegisteredWithdrawalIntegration")]:
         if cls:
-            setattr(transactions, attr, cls)
+            setattr(this, attr, cls)
