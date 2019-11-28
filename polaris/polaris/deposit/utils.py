@@ -67,6 +67,7 @@ def create_stellar_deposit(transaction_id: str) -> bool:
     except BaseHorizonError as address_exc:
         # 404 code corresponds to Resource Missing.
         if address_exc.status != 404:
+            transaction.status = Transaction.STATUS.error
             transaction.status_message = (
                 "Horizon error when loading stellar account: "
                 f"{address_exc.message}"
@@ -83,6 +84,7 @@ def create_stellar_deposit(transaction_id: str) -> bool:
         try:
             server.submit_transaction(transaction_envelope)
         except BaseHorizonError as submit_exc:
+            transaction.status = Transaction.STATUS.error
             transaction.status_message = (
                 "Horizon error when submitting create account to horizon: "
                 f"{submit_exc.message}"
@@ -111,12 +113,16 @@ def create_stellar_deposit(transaction_id: str) -> bool:
     # Functional errors at this stage are Horizon errors.
     except BaseHorizonError as exception:
         if TRUSTLINE_FAILURE_XDR not in exception.result_xdr:
+            transaction.status = Transaction.STATUS.error
             transaction.status_message = (
                 "Unable to submit payment to horizon, "
                 f"non-trustline failure: {exception.message}"
             )
+            transaction.save()
             return False
-        logger.debug("trustline error when submitting transaction to horizon")
+        transaction.status_message = (
+            "trustline error when submitting transaction to horizon"
+        )
         transaction.status = Transaction.STATUS.pending_trust
         transaction.save()
         return False

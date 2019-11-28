@@ -256,7 +256,7 @@ def test_withdraw_interactive_success_transaction_unsuccessful(
     update_transaction(mock_response, transaction)
     assert (
         Transaction.objects.get(id=transaction_id).status
-        == Transaction.STATUS.pending_stellar
+        == Transaction.STATUS.error
     )
 
 

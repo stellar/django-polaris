@@ -92,20 +92,15 @@ def update_transaction(response: Dict,
     successfully executed on the Stellar network and `process_withdrawal`
     completed without raising an exception.
 
-    If the Horizon response indicates the response was not successful, we mark
-    the status as `pending_stellar`. If exception was raised during
-    `process_withdrawal`, we mark the corresponding `Transaction` status as
-    `error` and save an error message to the transaction database object.
-    If the Stellar transaction succeeded, we mark it as `completed`.
+    If the Horizon response indicates the response was not successful or an
+    exception was raised while processing the withdrawal, we mark the status
+    as `error`. If the Stellar transaction succeeded, we mark it as `completed`.
 
     :param error_msg: a description of the error that has occurred.
     :param response: a response body returned from Horizon for the transaction
     :param transaction: a database model object representing the transaction
     """
-    if not response["successful"]:
-        transaction.status = Transaction.STATUS.pending_stellar
-        transaction.status_message = error_msg
-    elif error_msg:
+    if error_msg or not response["successful"]:
         transaction.status = Transaction.STATUS.error
         transaction.status_message = error_msg
     else:
