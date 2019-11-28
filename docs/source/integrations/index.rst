@@ -11,7 +11,7 @@ financial entities. This is where :class:`.DepositIntegration` and
 :class:`.WithdrawalIntegration` come in.
 
 Polaris expects developers to override these base class methods and register
-them using :func:`polaris.integrations.register_integrations`. The code will
+them using :func:`.register_integrations`. The code will
 be executed from inside Polaris `Django Commands`_, which should be run in a
 separate process from the web server running Polaris. See the
 stellar-anchor-server_ project, specifically the ``docker-compose.yml``,

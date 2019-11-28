@@ -16,15 +16,16 @@ def register_integrations(deposit: Type[DepositIntegration] = None,
     ::
 
         from django.apps import AppConfig
-        from polaris.integrations import register_integrations
-        from myapp.integrations import (CustomDepositIntegration,
-                                        CustomWithdrawalIntegration)
 
         class PolarisIntegrationApp(AppConfig):
             name = 'Polaris Integration'
             verbose_name = name
 
             def ready(self):
+                from polaris.integrations import register_integrations
+                from myapp.integrations import (CustomDepositIntegration,
+                                                CustomWithdrawalIntegration)
+
                 register_integrations(
                     deposit=CustomDepositIntegration,
                     withdrawal=CustomWithdrawalIntegration
