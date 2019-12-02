@@ -1,12 +1,12 @@
 from setuptools import setup, find_packages
 
 
-with open("README.md") as f:
+with open("README.rst") as f:
     long_description = f.read()
 
 setup(
     name="django-polaris",
-    version="0.9.2",
+    version="0.9.3",
     description="A SEP-24-compliant Django anchor server",
     long_description=long_description,
     long_description_content_type="text/markdown",

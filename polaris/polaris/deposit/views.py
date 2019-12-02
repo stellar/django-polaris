@@ -11,14 +11,13 @@ import json
 from urllib.parse import urlencode
 
 from polaris import settings
-from django.http import JsonResponse
-from django.shortcuts import render
 from django.urls import reverse
 from django.views.decorators.clickjacking import xframe_options_exempt
 from django.core.management import call_command
 from rest_framework import status
 from rest_framework.decorators import api_view, renderer_classes
 from rest_framework.response import Response
+from rest_framework.request import Request
 from rest_framework.renderers import TemplateHTMLRenderer, JSONRenderer
 from stellar_sdk.keypair import Keypair
 from stellar_sdk.exceptions import Ed25519PublicKeyInvalidError
@@ -27,7 +26,6 @@ from polaris.helpers import (
     calc_fee,
     render_error_response,
     create_transaction_id,
-    validate_jwt_request,
     validate_sep10_token,
 )
 from polaris.models import Asset, Transaction
@@ -85,7 +83,8 @@ def _verify_optional_args(request):
 
 
 @api_view()
-def confirm_transaction(request):
+@validate_sep10_token()
+def confirm_transaction(account: str, request: Request) -> Response:
     """
     `GET /transactions/deposit/confirm_transaction` is used by an external agent to confirm
     that they have processed the transaction. This triggers submission of the
@@ -140,7 +139,7 @@ def confirm_transaction(request):
 @xframe_options_exempt
 @api_view(["GET", "POST"])
 @renderer_classes([TemplateHTMLRenderer])
-def interactive_deposit(request):
+def interactive_deposit(request: Request) -> Response:
     """
     `GET /transactions/deposit/webapp` opens a form used to input information
     about the deposit. This creates a corresponding transaction in our
@@ -208,7 +207,7 @@ def interactive_deposit(request):
 @api_view(["POST"])
 @renderer_classes([JSONRenderer])
 @validate_sep10_token()
-def deposit(request):
+def deposit(account: str, request: Request) -> Response:
     """
     `POST /transactions/deposit/interactive` initiates the deposit and returns an interactive
     deposit form to the user.
@@ -242,5 +241,5 @@ def deposit(request):
     url = _construct_interactive_url(request, asset_code, stellar_account, transaction_id)
     return Response(
         {"type": "interactive_customer_info_needed", "url": url, "id": transaction_id},
-        status=status.HTTP_403_FORBIDDEN,
+        status=status.HTTP_200_OK
     )

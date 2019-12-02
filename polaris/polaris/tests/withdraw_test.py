@@ -8,11 +8,12 @@ from stellar_sdk.transaction_envelope import TransactionEnvelope
 
 from polaris import settings
 from polaris.helpers import format_memo_horizon
-from polaris.management.commands.watch_transactions import process_withdrawal
+from polaris.management.commands.watch_transactions import update_transaction
 from polaris.models import Transaction
 from polaris.tests.helpers import mock_check_auth_success
 
 WITHDRAW_PATH = "/transactions/withdraw/interactive"
+
 
 @pytest.mark.django_db
 @patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
@@ -36,7 +37,7 @@ def test_withdraw_invalid_asset(
     response = client.post(WITHDRAW_PATH, {"asset_code": "ETH"}, follow=True)
     content = json.loads(response.content)
     assert response.status_code == 400
-    assert content == {"error": "invalid operation for asset ETH", "status_code": 400}
+    assert content == {"error": "invalid operation for asset ETH"}
 
 
 @pytest.mark.django_db
@@ -47,7 +48,7 @@ def test_withdraw_no_asset(mock_check, client):
     response = client.post(WITHDRAW_PATH, follow=True)
     content = json.loads(response.content)
     assert response.status_code == 400
-    assert content == {"error": "'asset_code' is required", "status_code": 400}
+    assert content == {"error": "'asset_code' is required"}
 
 
 @pytest.mark.django_db
@@ -252,10 +253,10 @@ def test_withdraw_interactive_success_transaction_unsuccessful(
         "id": "c5e8ada72c0e3c248ac7e1ec0ec97e204c06c295113eedbe632020cd6dc29ff8",
         "envelope_xdr": "AAAAAEU1B1qeJrucdqkbk1mJsnuFaNORfrOAzJyaAy1yzW8TAAAAZAAE2s4AAAABAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAAoUKq+1Z2GGB98qurLSmocHafvG6S+YzKNE6oiHIXo6kAAAABVVNEAAAAAACnUE2lfwuFZ+G+dkc+qiL0MwxB0CoR0au324j+JC9exQAAAAAdzWUAAAAAAAAAAAA=",
     }
-    process_withdrawal(mock_response, transaction)
+    update_transaction(mock_response, transaction)
     assert (
         Transaction.objects.get(id=transaction_id).status
-        == Transaction.STATUS.pending_stellar
+        == Transaction.STATUS.error
     )
 
 
@@ -291,7 +292,7 @@ def test_withdraw_interactive_success_transaction_successful(
         "id": "c5e8ada72c0e3c248ac7e1ec0ec97e204c06c295113eedbe632020cd6dc29ff8",
         "envelope_xdr": "AAAAAEU1B1qeJrucdqkbk1mJsnuFaNORfrOAzJyaAy1yzW8TAAAAZAAE2s4AAAABAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAAoUKq+1Z2GGB98qurLSmocHafvG6S+YzKNE6oiHIXo6kAAAABVVNEAAAAAACnUE2lfwuFZ+G+dkc+qiL0MwxB0CoR0au324j+JC9exQAAAAAdzWUAAAAAAAAAAAA=",
     }
-    process_withdrawal(mock_response, transaction)
+    update_transaction(mock_response, transaction)
 
     assert transaction.status == Transaction.STATUS.completed
     assert transaction.completed_at
@@ -338,4 +339,4 @@ def test_withdraw_no_jwt(client, acc1_usd_withdrawal_transaction_factory):
     response = client.post(WITHDRAW_PATH, {"asset_code": "USD"}, follow=True)
     content = json.loads(response.content)
     assert response.status_code == 400
-    assert content == {"error": "JWT must be passed as 'Authorization' header", "status_code": 400}
+    assert content == {"error": "JWT must be passed as 'Authorization' header"}

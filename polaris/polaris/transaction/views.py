@@ -4,6 +4,7 @@ from urllib.parse import urlencode
 
 from rest_framework.decorators import api_view, renderer_classes
 from rest_framework.response import Response
+from rest_framework.request import Request
 from rest_framework.renderers import TemplateHTMLRenderer
 from rest_framework import status
 
@@ -35,7 +36,7 @@ def _compute_qset_filters(req_params, translation_dict):
     }
 
 
-def _get_transaction_from_request(request):
+def _get_transaction_from_request(request, account: str = None):
     translation_dict = {
         "id": "id",
         "stellar_transaction_id": "stellar_transaction_id",
@@ -45,12 +46,14 @@ def _get_transaction_from_request(request):
     qset_filter = _compute_qset_filters(request.GET, translation_dict)
     if not qset_filter:
         raise AttributeError(
-            "at least one of id, stellar_transaction_id, or external_transaction_id must be provided"
+            "at least one of id, stellar_transaction_id, or "
+            "external_transaction_id must be provided"
         )
-    try:
-        return Transaction.objects.get(**qset_filter)
-    except Transaction.DoesNotExist as exc:
-        raise exc
+
+    if account:
+        qset_filter["stellar_account"] = account
+
+    return Transaction.objects.get(**qset_filter)
 
 
 def _construct_more_info_url(request):
@@ -74,7 +77,7 @@ def _construct_more_info_url(request):
 @xframe_options_exempt
 @api_view()
 @renderer_classes([TemplateHTMLRenderer])
-def more_info(request):
+def more_info(request: Request) -> Response:
     """
     Popup to display more information about a specific transaction.
     See table: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md#4-customer-information-status
@@ -107,7 +110,7 @@ def more_info(request):
 
 @api_view()
 @validate_sep10_token()
-def transactions(request):
+def transactions(account: str, request: Request) -> Response:
     """
     Definition of the /transactions endpoint, in accordance with SEP-0024.
     See: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md#transaction-history
@@ -120,20 +123,20 @@ def transactions(request):
             status_code=status.HTTP_400_BAD_REQUEST
         )
 
-    if not request.GET.get("asset_code") or not request.GET.get("account"):
+    if not request.GET.get("asset_code"):
         return render_error_response(
-            "asset_code and account are required fields",
+            "asset_code is required",
             status_code=status.HTTP_400_BAD_REQUEST,
         )
 
     translation_dict = {
         "asset_code": "asset__code",
-        "account": "stellar_account",
         "no_older_than": "started_at__gte",
         "kind": "kind",
     }
 
     qset_filter = _compute_qset_filters(request.GET, translation_dict)
+    qset_filter["stellar_account"] = account
 
     # Since the Transaction IDs are UUIDs, rather than in the chronological
     # order of their creation, we map the paging ID (if provided) to the
@@ -160,13 +163,13 @@ def transactions(request):
 
 @api_view()
 @validate_sep10_token()
-def transaction(request):
+def transaction(account: str, request: Request) -> Response:
     """
     Definition of the /transaction endpoint, in accordance with SEP-0024.
     See: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md#single-historical-transaction
     """
     try:
-        request_transaction = _get_transaction_from_request(request)
+        request_transaction = _get_transaction_from_request(request, account=account)
     except AttributeError as exc:
         return render_error_response(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
     except Transaction.DoesNotExist:

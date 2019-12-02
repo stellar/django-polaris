@@ -76,11 +76,11 @@ def fixture_eth_asset_factory():
 def acc1_usd_deposit_transaction_factory(usd_asset_factory):
     """Factory method fixture to populate the test database with a USD deposit transaction."""
 
-    def create_deposit_transaction():
+    def create_deposit_transaction(stellar_account: str = STELLAR_ACCOUNT_1):
         usd_asset = usd_asset_factory()
 
         return Transaction.objects.create(
-            stellar_account=STELLAR_ACCOUNT_1,
+            stellar_account=stellar_account,
             asset=usd_asset,
             kind=Transaction.KIND.deposit,
             status=Transaction.STATUS.pending_user_transfer_start,
@@ -100,11 +100,11 @@ def acc1_usd_deposit_transaction_factory(usd_asset_factory):
 def acc1_usd_withdrawal_transaction_factory(usd_asset_factory):
     """Factory method fixture to populate the test database with a USD withdrawal transaction."""
 
-    def create_withdrawal_transaction():
+    def create_withdrawal_transaction(stellar_account: str = STELLAR_ACCOUNT_1):
         usd_asset = usd_asset_factory()
         return Transaction.objects.create(
             id="80ea73ea-01d3-411a-8d9c-ea22999eef9e",
-            stellar_account=STELLAR_ACCOUNT_1,
+            stellar_account=stellar_account,
             asset=usd_asset,
             kind=Transaction.KIND.withdrawal,
             status=Transaction.STATUS.pending_user_transfer_start,
@@ -124,11 +124,11 @@ def acc2_eth_withdrawal_transaction_factory(eth_asset_factory):
     Factory method fixture to populate the test database with a ETH withdrawal transaction.
     """
 
-    def create_withdrawal_transaction():
+    def create_withdrawal_transaction(stellar_account: str = STELLAR_ACCOUNT_2):
         eth_asset = eth_asset_factory()
 
         return Transaction.objects.create(
-            stellar_account=STELLAR_ACCOUNT_2,
+            stellar_account=stellar_account,
             asset=eth_asset,
             kind=Transaction.KIND.withdrawal,
             status=Transaction.STATUS.completed,
@@ -156,11 +156,11 @@ def acc2_eth_deposit_transaction_factory(eth_asset_factory):
     Factory method fixture to populate the test database with an ETH deposit transaction.
     """
 
-    def create_deposit_transaction():
+    def create_deposit_transaction(stellar_account: str = STELLAR_ACCOUNT_2):
         eth_asset = eth_asset_factory()
 
         return Transaction.objects.create(
-            stellar_account=STELLAR_ACCOUNT_2,
+            stellar_account=stellar_account,
             asset=eth_asset,
             kind=Transaction.KIND.deposit,
             status=Transaction.STATUS.pending_user_transfer_start,
