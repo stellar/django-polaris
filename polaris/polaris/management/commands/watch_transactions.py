@@ -138,7 +138,6 @@ class Command(BaseCommand):
                                    "execute on the Stellar network")
                     )
                     continue
-
                 try:
                     rwi.process_withdrawal(response, withdrawal_transaction)
                 except Exception as e:

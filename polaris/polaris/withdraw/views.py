@@ -69,60 +69,60 @@ def interactive_withdraw(request: Request) -> Response:
     # GET: The server needs to display the form for the user to input withdrawal information.
     if request.method == "GET":
         form = WithdrawForm()
+        resp_data = {"form": form, "account": request.GET.get("account")}
+        return Response(resp_data, template_name="withdraw/form.html")
 
     # POST: The user submitted a form with the withdrawal info.
-    else:
-        if Transaction.objects.filter(id=transaction_id).exists():
-            return render_error_response(
-                "transaction with matching 'transaction_id' already exists",
-                content_type="text/html"
-            )
-        form = WithdrawForm(request.POST)
-        asset = Asset.objects.get(code=asset_code)
-        form.asset = asset
+    if Transaction.objects.filter(id=transaction_id).exists():
+        return render_error_response(
+            "transaction with matching 'transaction_id' already exists",
+            content_type="text/html"
+        )
+    form = WithdrawForm(request.POST)
+    asset = Asset.objects.get(code=asset_code)
+    form.asset = asset
 
-        # If the form is valid, we create a transaction pending user action
-        # and render the success page.
-        if form.is_valid():
-            amount_in = form.cleaned_data["amount"]
-            amount_fee = calc_fee(asset, settings.OPERATION_WITHDRAWAL, amount_in)
+    # If the form is valid, we create a transaction pending user action
+    # and render the success page.
+    if form.is_valid():
+        amount_in = form.cleaned_data["amount"]
+        amount_fee = calc_fee(asset, settings.OPERATION_WITHDRAWAL, amount_in)
 
-            # We use the transaction ID as a memo on the Stellar transaction for the
-            # payment in the withdrawal. This lets us identify that as uniquely
-            # corresponding to this `Transaction` in the database. But a UUID4 is a 32
-            # character hex string, while the Stellar HashMemo requires a 64 character
-            # hex-encoded (32 byte) string. So, we zero-pad the ID to create an
-            # appropriately sized string for the `HashMemo`.
-            transaction_id_hex = uuid.UUID(transaction_id).hex
-            withdraw_memo = "0" * (64 - len(transaction_id_hex)) + transaction_id_hex
-            transaction = Transaction(
-                id=transaction_id,
-                stellar_account=settings.STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS,
-                asset=asset,
-                kind=Transaction.KIND.withdrawal,
-                status=Transaction.STATUS.pending_user_transfer_start,
-                amount_in=amount_in,
-                amount_fee=amount_fee,
-                withdraw_anchor_account=settings.STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS,
-                withdraw_memo=withdraw_memo,
-                withdraw_memo_type=Transaction.MEMO_TYPES.hash,
-            )
-            transaction.save()
+        # We use the transaction ID as a memo on the Stellar transaction for the
+        # payment in the withdrawal. This lets us identify that as uniquely
+        # corresponding to this `Transaction` in the database. But a UUID4 is a 32
+        # character hex string, while the Stellar HashMemo requires a 64 character
+        # hex-encoded (32 byte) string. So, we zero-pad the ID to create an
+        # appropriately sized string for the `HashMemo`.
+        transaction_id_hex = uuid.UUID(transaction_id).hex
+        withdraw_memo = "0" * (64 - len(transaction_id_hex)) + transaction_id_hex
+        transaction = Transaction(
+            id=transaction_id,
+            stellar_account=request.POST.get("account"),
+            asset=asset,
+            kind=Transaction.KIND.withdrawal,
+            status=Transaction.STATUS.pending_user_transfer_start,
+            amount_in=amount_in,
+            amount_fee=amount_fee,
+            withdraw_anchor_account=request.POST.get("account"),
+            withdraw_memo=withdraw_memo,
+            withdraw_memo_type=Transaction.MEMO_TYPES.hash,
+        )
+        transaction.save()
 
-            serializer = TransactionSerializer(
-                transaction,
-                context={"more_info_url": _construct_more_info_url(request)},
-            )
-            tx_json = json.dumps({"transaction": serializer.data})
-            return Response(
-                {
-                    "tx_json": tx_json,
-                    "transaction": transaction,
-                    "asset_code": asset_code,
-                },
-                template_name="transaction/more_info.html"
-            )
-    return Response({"form": form}, template_name="withdraw/form.html")
+        serializer = TransactionSerializer(
+            transaction,
+            context={"more_info_url": _construct_more_info_url(request)},
+        )
+        tx_json = json.dumps({"transaction": serializer.data})
+        return Response(
+            {
+                "tx_json": tx_json,
+                "transaction": transaction,
+                "asset_code": asset_code,
+            },
+            template_name="transaction/more_info.html"
+        )
 
 
 @api_view(["POST"])
