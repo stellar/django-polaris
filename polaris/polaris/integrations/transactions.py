@@ -97,5 +97,5 @@ class WithdrawalIntegration:
         )
 
 
-RegisteredDepositIntegration = DepositIntegration
-RegisteredWithdrawalIntegration = WithdrawalIntegration
+registered_deposit_integration = DepositIntegration()
+registered_withdrawal_integration = WithdrawalIntegration()

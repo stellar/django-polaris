@@ -1,13 +1,12 @@
 import sys
-from typing import Type
 from polaris.integrations.transactions import (DepositIntegration,
                                                WithdrawalIntegration,
-                                               RegisteredWithdrawalIntegration,
-                                               RegisteredDepositIntegration)
+                                               registered_deposit_integration,
+                                               registered_withdrawal_integration)
 
 
-def register_integrations(deposit: Type[DepositIntegration] = None,
-                          withdrawal: Type[WithdrawalIntegration] = None):
+def register_integrations(deposit: DepositIntegration = None,
+                          withdrawal: WithdrawalIntegration = None):
     """
     Registers user-defined subclasses of :class:`.WithdrawalIntegration` and
     :class:`.DepositIntegration` with Polaris.
@@ -23,22 +22,22 @@ def register_integrations(deposit: Type[DepositIntegration] = None,
 
             def ready(self):
                 from polaris.integrations import register_integrations
-                from myapp.integrations import (CustomDepositIntegration,
-                                                CustomWithdrawalIntegration)
+                from myapp.integrations import (MyDepositIntegration,
+                                                MyWithdrawalIntegration)
 
                 register_integrations(
-                    deposit=CustomDepositIntegration,
-                    withdrawal=CustomWithdrawalIntegration
+                    deposit=MyDepositIntegration(),
+                    withdrawal=MyWithdrawalIntegration()
                 )
 
     These integration classes provide a structured interface for implementing
     user-defined logic used by Polaris, specifically for deposit and withdrawal
     flows. See the integration classes for more information on implementation.
 
-    :param deposit: the :class:`.DepositIntegration` subclass to be used by
-        Polaris
-    :param withdrawal: the :class:`WithdrawalIntegration` subclass to be used
+    :param deposit: a :class:`.DepositIntegration` subclass object to be used
         by Polaris
+    :param withdrawal: a :class:`WithdrawalIntegration` subclass object to be
+        used by Polaris
     :raises ValueError: missing argument(s)
     :raises TypeError: arguments are not subclasses of DepositIntegration or
         Withdrawal
@@ -47,12 +46,12 @@ def register_integrations(deposit: Type[DepositIntegration] = None,
 
     if not (deposit or withdrawal):
         raise ValueError("Must pass at least one integration class")
-    elif deposit and not issubclass(deposit, DepositIntegration):
+    elif deposit and not issubclass(deposit.__class__, DepositIntegration):
         raise TypeError("deposit must be a subclass of DepositIntegration")
-    elif withdrawal and not issubclass(withdrawal, WithdrawalIntegration):
+    elif withdrawal and not issubclass(withdrawal.__class__, WithdrawalIntegration):
         raise TypeError("withdrawal must be a subclass of WithdrawalIntegration")
 
-    for cls, attr in [(deposit, "RegisteredDepositIntegration"),
-                      (withdrawal, "RegisteredWithdrawalIntegration")]:
-        if cls:
-            setattr(this, attr, cls)
+    for obj, attr in [(deposit, "registered_deposit_integration"),
+                      (withdrawal, "registered_withdrawal_integration")]:
+        if obj:
+            setattr(this, attr, obj)

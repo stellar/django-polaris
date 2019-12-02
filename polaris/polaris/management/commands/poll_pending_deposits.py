@@ -2,7 +2,7 @@ import logging
 import time
 from django.core.management import BaseCommand, CommandError
 from polaris.deposit.utils import create_stellar_deposit
-from polaris.integrations import RegisteredDepositIntegration as rdi
+from polaris.integrations import registered_deposit_integration as rdi
 from polaris.models import Transaction
 
 

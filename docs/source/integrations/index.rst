@@ -19,6 +19,6 @@ for an example on how to run the Polaris web server and management commands.
 
 .. automodule:: polaris.integrations.transactions
     :members:
-    :exclude-members: RegisteredDepositIntegration, RegisteredWithdrawalIntegration
+    :exclude-members: registered_deposit_integration, registered_withdrawal_integration
 
 .. autofunction:: polaris.integrations.register_integrations
