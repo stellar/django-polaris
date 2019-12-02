@@ -104,7 +104,7 @@ def interactive_withdraw(request: Request) -> Response:
             status=Transaction.STATUS.pending_user_transfer_start,
             amount_in=amount_in,
             amount_fee=amount_fee,
-            withdraw_anchor_account=request.POST.get("account"),
+            withdraw_anchor_account=settings.STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS,
             withdraw_memo=withdraw_memo,
             withdraw_memo_type=Transaction.MEMO_TYPES.hash,
         )
