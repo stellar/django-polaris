@@ -123,6 +123,9 @@ def interactive_withdraw(request: Request) -> Response:
             },
             template_name="transaction/more_info.html"
         )
+    else:
+        resp_data = {"form": form, "account": request.POST.get("account")}
+        return Response(resp_data, template_name="withdraw/form.html")
 
 
 @api_view(["POST"])
