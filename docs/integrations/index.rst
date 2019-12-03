@@ -29,6 +29,7 @@ Registering Integrations
 Form Integrations
 -----------------
 
+.. _Bulma: https://bulma.io/documentation
 .. _Django Forms: https://docs.djangoproject.com/en/2.2/topics/forms/#forms-in-django
 
 Polaris uses `Django Forms`_ for collecting users' information, like their
@@ -53,8 +54,12 @@ You should be familiar with `Django Forms`_ and how they validate their inputs.
 
     class MyDepositForm(TransactionForm):
         """This form accepts the amount to deposit from the user."""
-        first_name = forms.CharField()
-        last_name = forms.CharField()
+        first_name = forms.CharField(
+            widget=forms.widgets.TextInput(attrs={"class": "input"})
+        )
+        last_name = forms.CharField(
+            widget=forms.widgets.TextInput(attrs={"class": "input"})
+        )
 
         def clean(self):
             data = self.cleaned_data
@@ -74,7 +79,19 @@ You should be familiar with `Django Forms`_ and how they validate their inputs.
 ``TransactionForm`` already collects the deposit amount and asset type and
 validates that the amount is within the asset's accepted deposit range. In
 this example, we've also added some contact information to the form fields
-and ensure they aren't left empty.
+and validation that ensures they're not empty.
+
+Polaris uses default CSS provided by Bulma_ for styling forms. To keep the
+UX consistent, make sure to pass in a modified `widget` parameter to all
+form fields displaying text like so:
+
+::
+
+    widget=forms.widgets.TextInput(attrs={"class": "input"})
+
+The `attrs` parameter adds a HTML attribute to the `<input>` tag that Bulma
+uses to add better styling. You may also add more Bulma-supported attributes
+to Polaris forms.
 
 Polaris will also call the form's ``after_validation()`` function,
 which in this case saves the form data collected to the database.

@@ -20,7 +20,7 @@ class TransactionForm(forms.Form):
     """
     amount = forms.FloatField(
         min_value=0,
-        widget=forms.NumberInput()
+        widget=forms.NumberInput(attrs={"class": "input"})
     )
     asset = None
 
