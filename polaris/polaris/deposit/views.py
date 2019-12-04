@@ -172,17 +172,15 @@ def interactive_deposit(request: Request) -> Response:
         form = registered_deposit_integration.form()
         return Response({"form": form}, template_name="deposit/form.html")
 
-    # POST: The user submitted a form with the amount to deposit.
-    if Transaction.objects.filter(id=transaction_id).exists():
-        return render_error_response(
-            "transaction with matching 'transaction_id' already exists",
-            content_type="text/html"
-        )
     form = registered_deposit_integration.form(request.POST)
     form.asset = asset
     # If the form is valid, we create a transaction pending external action
     # and render the success page.
     if form.is_valid():
+        # Perform any defined post-validation logic defined by Polaris users
+        if hasattr(form, "after_validation") and callable(form.after_validation):
+            form.after_validation()
+
         transaction.amount_in = form.cleaned_data["amount"]
         transaction.amount_fee = calc_fee(
             asset, settings.OPERATION_DEPOSIT, transaction.amount_in

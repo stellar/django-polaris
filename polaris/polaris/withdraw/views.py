@@ -82,18 +82,16 @@ def interactive_withdraw(request: Request) -> Response:
         form = registered_withdrawal_integration.form()
         return Response({"form": form}, template_name="withdraw/form.html")
 
-    # POST: The user submitted a form with the withdrawal info.
-    if Transaction.objects.filter(id=transaction_id).exists():
-        return render_error_response(
-            "transaction with matching 'transaction_id' already exists",
-            content_type="text/html"
-        )
     form = registered_withdrawal_integration.form(request.POST)
     form.asset = asset
 
     # If the form is valid, we create a transaction pending user action
     # and render the success page.
     if form.is_valid():
+        # Perform any defined post-validation logic defined by Polaris users
+        if hasattr(form, "after_validation") and callable(form.after_validation):
+            form.after_validation()
+
         transaction.amount_in = form.cleaned_data["amount"]
         transaction.amount_fee = calc_fee(
             asset, settings.OPERATION_WITHDRAWAL, transaction.amount_in
