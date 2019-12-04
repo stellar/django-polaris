@@ -121,9 +121,12 @@ def test_withdraw_interactive_failure_no_memotype(
 
     transaction_id = content["id"]
     url = content["url"]
-    response = client.post(
-        url, {"amount": 20, "bank_account": "123456", "bank": "Bank"}
-    )
+    response = client.post(url, {
+        "amount": 20,
+        "bank_account": "123456",
+        "bank": "Bank",
+        "account": "Account"
+    })
     assert response.status_code == 200
     assert (
         Transaction.objects.get(id=transaction_id).status
@@ -151,9 +154,12 @@ def test_withdraw_interactive_failure_incorrect_memotype(
 
     transaction_id = content["id"]
     url = content["url"]
-    response = client.post(
-        url, {"amount": 20, "bank_account": "123456", "bank": "Bank"}
-    )
+    response = client.post(url, {
+        "amount": 20,
+        "bank_account": "123456",
+        "bank": "Bank",
+        "account": "Account"
+    })
     assert response.status_code == 200
     assert (
         Transaction.objects.get(id=transaction_id).status
@@ -181,9 +187,12 @@ def test_withdraw_interactive_failure_no_memo(
 
     transaction_id = content["id"]
     url = content["url"]
-    response = client.post(
-        url, {"amount": 20, "bank_account": "123456", "bank": "Bank"}
-    )
+    response = client.post(url, {
+        "amount": 20,
+        "bank_account": "123456",
+        "bank": "Bank",
+        "account": "Account"
+    })
     assert response.status_code == 200
     assert (
         Transaction.objects.get(id=transaction_id).status
@@ -211,9 +220,12 @@ def test_withdraw_interactive_failure_incorrect_memo(
 
     transaction_id = content["id"]
     url = content["url"]
-    response = client.post(
-        url, {"amount": 20, "bank_account": "123456", "bank": "Bank"}
-    )
+    response = client.post(url, {
+        "amount": 20,
+        "bank_account": "123456",
+        "bank": "Bank",
+        "account": "Account"
+    })
     assert response.status_code == 200
     assert (
         Transaction.objects.get(id=transaction_id).status
@@ -238,9 +250,12 @@ def test_withdraw_interactive_success_transaction_unsuccessful(
 
     transaction_id = content["id"]
     url = content["url"]
-    response = client.post(
-        url, {"amount": 50, "bank_account": "123456", "bank": "Bank"}
-    )
+    response = client.post(url, {
+        "amount": 50,
+        "bank_account": "123456",
+        "bank": "Bank",
+        "account": "Account"
+    })
     assert response.status_code == 200
     transaction = Transaction.objects.get(id=transaction_id)
     assert transaction.status == Transaction.STATUS.pending_user_transfer_start
@@ -277,9 +292,12 @@ def test_withdraw_interactive_success_transaction_successful(
 
     transaction_id = content["id"]
     url = content["url"]
-    response = client.post(
-        url, {"amount": 50, "bank_account": "123456", "bank": "Bank"}
-    )
+    response = client.post(url, {
+        "amount": 50,
+        "bank_account": "123456",
+        "bank": "Bank",
+        "account": "Account"
+    })
     assert response.status_code == 200
     transaction = Transaction.objects.get(id=transaction_id)
     assert transaction.status == Transaction.STATUS.pending_user_transfer_start
