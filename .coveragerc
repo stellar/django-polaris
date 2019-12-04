@@ -1,5 +1,8 @@
 [run]
+source =
+  polaris
 omit =
+  *admin.py,
   *apps.py,
   *migrations/*,
   *settings*,

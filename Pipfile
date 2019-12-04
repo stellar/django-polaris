@@ -10,11 +10,11 @@ black = "*"
 pytest = "*"
 pytest-django = "*"
 pytest-cov = "*"
-coveralls = "*"
 pipenv-setup = "*"
 readthedocs-sphinx-ext = "<1.1"
 sphinx = "<2"
 sphinx-rtd-theme = "<0.5"
+codecov = "*"
 pipenv-to-requirements = "*"
 
 [packages]
