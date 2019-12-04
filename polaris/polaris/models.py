@@ -96,42 +96,6 @@ class Transaction(models.Model):
         "too_large",
         "error",
     )
-    """
-    Choices object for processing status of deposit/withdrawal.
-    
-    * completed 
-        deposit/withdrawal fully completed
-    * pending_external
-        deposit/withdrawal has been submitted to external 
-        network, but is not yet confirmed. This is the status when waiting on 
-        Bitcoin or other external crypto network to complete a transaction, or 
-        when waiting on a bank transfer.
-    * pending_anchor
-        deposit/withdrawal is being processed internally by anchor.
-    * pending_stellar
-        deposit/withdrawal operation has been submitted to Stellar network, but 
-        is not yet confirmed.
-    * pending_trust
-        the user must add a trust-line for the asset for the deposit to complete.
-    * pending_user
-        the user must take additional action before the deposit / withdrawal can 
-        complete.
-    * pending_user_transfer_start
-        the user has not yet initiated their transfer to the anchor. This is the 
-        necessary first step in any deposit or withdrawal flow.
-    * incomplete
-        there is not yet enough information for this transaction to be initiated. 
-        Perhaps the user has not yet entered necessary info in an interactive flow.
-    * no_market
-        could not complete deposit because no satisfactory asset/XLM market 
-        was available to create the account.
-    * too_small
-        deposit/withdrawal size less than min_amount.
-    * too_large
-        deposit/withdrawal size exceeded max_amount.
-    * error
-        catch-all for any error not enumerated above.
-    """
     MEMO_TYPES = PolarisChoices("text", "id", "hash")
     """Type for the ``deposit_memo``. Can be either `hash`, `id`, or `text`"""
 
@@ -151,7 +115,54 @@ class Transaction(models.Model):
     status = models.CharField(
         choices=STATUS, default=STATUS.pending_external, max_length=30
     )
-    """The character field for the available ``STATUS`` choices."""
+    """
+    Choices object for processing status of deposit/withdrawal.
+
+    * **completed**
+        
+        deposit/withdrawal fully completed
+    * **pending_external**
+    
+        deposit/withdrawal has been submitted to external 
+        network, but is not yet confirmed. This is the status when waiting on 
+        Bitcoin or other external crypto network to complete a transaction, or 
+        when waiting on a bank transfer.
+    * **pending_anchor**
+    
+        deposit/withdrawal is being processed internally by anchor.
+    * **pending_stellar**
+    
+        deposit/withdrawal operation has been submitted to Stellar network, but 
+        is not yet confirmed.
+    * **pending_trust**
+    
+        the user must add a trust-line for the asset for the deposit to complete.
+    * **pending_user**
+    
+        the user must take additional action before the deposit / withdrawal can 
+        complete.
+    * **pending_user_transfer_start**
+    
+        the user has not yet initiated their transfer to the anchor. This is the 
+        necessary first step in any deposit or withdrawal flow.
+    * **incomplete**
+    
+        there is not yet enough information for this transaction to be initiated. 
+        Perhaps the user has not yet entered necessary info in an interactive flow.
+    * **no_market**
+    
+        could not complete deposit because no satisfactory asset/XLM market 
+        was available to create the account.
+    * **too_small**
+    
+        deposit/withdrawal size less than min_amount.
+    * **too_large**
+    
+        deposit/withdrawal size exceeded max_amount.
+    * **error**
+    
+        catch-all for any error not enumerated above.
+    """
     status_eta = models.IntegerField(null=True, blank=True, default=3600)
     """(optional) Estimated number of seconds until a status change is expected."""
     status_message = models.TextField(null=True, blank=True)

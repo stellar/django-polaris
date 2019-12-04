@@ -12,9 +12,10 @@ pytest-django = "*"
 pytest-cov = "*"
 coveralls = "*"
 pipenv-setup = "*"
-sphinx = "*"
-sphinx-autodoc-typehints = "*"
-sphinx-rtd-theme = "*"
+readthedocs-sphinx-ext = "<1.1"
+sphinx = "<2"
+sphinx-rtd-theme = "<0.5"
+pipenv-to-requirements = "*"
 
 [packages]
 django = "==2.2.4"
