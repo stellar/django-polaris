@@ -22,7 +22,7 @@ from polaris.helpers import (
     validate_sep10_token,
 )
 from polaris.models import Asset, Transaction
-from polaris.integrations import registered_withdrawal_integration
+from polaris.integrations import registered_withdrawal_integration as rwi
 
 
 def _construct_interactive_url(request: Request,
@@ -79,25 +79,26 @@ def interactive_withdraw(request: Request) -> Response:
 
     # GET: The server needs to display the form for the user to input withdrawal information.
     if request.method == "GET":
-        form = registered_withdrawal_integration.form()
+        form = rwi.form()
         return Response({"form": form}, template_name="withdraw/form.html")
 
-    form = registered_withdrawal_integration.form(request.POST)
+    form = rwi.form(request.POST)
     form.asset = asset
 
     # If the form is valid, we create a transaction pending user action
     # and render the success page.
     if form.is_valid():
-        # Perform any defined post-validation logic defined by Polaris users
-        if hasattr(form, "after_validation") and callable(form.after_validation):
-            form.after_validation()
-
         transaction.amount_in = form.cleaned_data["amount"]
         transaction.amount_fee = calc_fee(
             asset, settings.OPERATION_WITHDRAWAL, transaction.amount_in
         )
         transaction.status = Transaction.STATUS.pending_user_transfer_start
         transaction.save()
+
+        # Perform any defined post-validation logic defined by Polaris users
+        afv = getattr(rwi, "after_form_validation", None)
+        if callable(afv):
+            afv(form, transaction)
 
         return redirect(f"{reverse('more_info')}?{urlencode({'id': transaction_id})}")
     else:

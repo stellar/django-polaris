@@ -31,7 +31,7 @@ from polaris.models import Asset, Transaction
 from polaris.transaction.serializers import TransactionSerializer
 from polaris.deposit.utils import create_stellar_deposit
 
-from polaris.integrations import registered_deposit_integration
+from polaris.integrations import registered_deposit_integration as rdi
 
 
 def _construct_interactive_url(request, asset_code, account, transaction_id): 
@@ -169,24 +169,25 @@ def interactive_deposit(request: Request) -> Response:
         )
 
     if request.method == "GET":
-        form = registered_deposit_integration.form()
+        form = rdi.form()
         return Response({"form": form}, template_name="deposit/form.html")
 
-    form = registered_deposit_integration.form(request.POST)
+    form = rdi.form(request.POST)
     form.asset = asset
     # If the form is valid, we create a transaction pending external action
     # and render the success page.
     if form.is_valid():
-        # Perform any defined post-validation logic defined by Polaris users
-        if hasattr(form, "after_validation") and callable(form.after_validation):
-            form.after_validation()
-
         transaction.amount_in = form.cleaned_data["amount"]
         transaction.amount_fee = calc_fee(
             asset, settings.OPERATION_DEPOSIT, transaction.amount_in
         )
         transaction.status = Transaction.STATUS.pending_user_transfer_start
         transaction.save()
+
+        # Perform any defined post-validation logic defined by Polaris users
+        afv = getattr(rdi, "after_form_validation", None)
+        if callable(afv):
+            afv(form, transaction)
 
         return redirect(f"{reverse('more_info')}?{urlencode({'id': transaction_id})}")
     else:

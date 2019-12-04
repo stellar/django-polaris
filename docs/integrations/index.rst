@@ -49,7 +49,8 @@ You should be familiar with `Django Forms`_ and how they validate their inputs.
 ::
 
     from django import forms
-    from polaris.integrations import TransactionForm
+    from polaris.models import Transaction
+    from polaris.integrations import TransactionForm, DepositIntegration
     from myapp.models import FormSubmissions
 
     class MyDepositForm(TransactionForm):
@@ -67,20 +68,53 @@ You should be familiar with `Django Forms`_ and how they validate their inputs.
                 raise ValidationError("Please enter your name.")
             return data
 
-        def after_validation(self):
+
+    class MyDepositIntegration(DepositIntegration):
+        def after_form_validation(self, form: forms.Form, transaction: Transaction):
             """Saves the data collected as a FormSubmission database object"""
-            data = self.cleaned_data
+            data = form.cleaned_data
             FormSubmission.objects.create(
                 name=" ".join(data["first_name"], data["last_name"])
                 amount=data["amount"]
-                asset=data["asset"]
+                asset=data["asset"],
+                transaction=transaction
             )
 
-``TransactionForm`` already collects the deposit amount and asset type and
-validates that the amount is within the asset's accepted deposit range. In
-this example, we've also added some contact information to the form fields
-and validation that ensures they're not empty.
+The ``TransactionForm`` superclass collects the deposit amount and asset type
+and validates that the amount is within the asset's accepted deposit range.
+In this example, we've also added contact information fields to the form
+and validate that they're not empty after submission.
 
+Processing Form Submissions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Once the form is validated, Polaris will call :func:`after_form_validation` on
+the integration subclass, which in this case saves the form data collected to
+the database.
+
+Specifically, Polaris will facilitate that functionality like so:
+::
+
+    from polaris.integrations import registered_deposit_integration as rdi
+
+    form = rdi.form(request.POST)
+    if form.is_valid():
+        afv = getattr(rdi, "after_form_validation", None)
+        if callable(afv):
+            afv(form, transaction)
+
+If form is not valid, Polaris will return a rendered form with the errors
+raised during validation:
+::
+
+    else:
+        return Response({"form": form}, template_name="deposit/form.html")
+
+Polaris does not yet allow you customize the template used to render the form,
+although that functionality is on the road map. For now, you can be assured
+that your ``ValidationError`` will be displayed.
+
+Form CSS
+^^^^^^^^
 Polaris uses default CSS provided by Bulma_ for styling forms. To keep the
 UX consistent, make sure to pass in a modified `widget` parameter to all
 form fields displaying text like so:
@@ -93,24 +127,3 @@ The `attrs` parameter adds a HTML attribute to the `<input>` tag that Bulma
 uses to add better styling. You may also add more Bulma-supported attributes
 to Polaris forms.
 
-Polaris will also call the form's ``after_validation()`` function,
-which in this case saves the form data collected to the database.
-
-Specifically, Polaris will facilitate that functionality like so:
-::
-
-    form = registered_deposit_integration.form(request.POST)
-    if form.is_valid():
-        if hasattr(form, "after_validation") and callable(form.after_validation):
-            form.after_validation()
-
-If form is not valid, Polaris will return a rendered form with the errors
-raised during validation:
-::
-
-    else:
-        return Response({"form": form}, template_name="deposit/form.html")
-
-Polaris does not yet allow you customize the template used to render the form,
-although that functionality is on the road map. For now, you can be assured
-that your ``ValidationError`` will be displayed.
