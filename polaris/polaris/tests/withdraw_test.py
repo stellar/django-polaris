@@ -127,7 +127,7 @@ def test_withdraw_interactive_failure_no_memotype(
         "bank": "Bank",
         "account": "Account"
     })
-    assert response.status_code == 200
+    assert response.status_code == 302
     assert (
         Transaction.objects.get(id=transaction_id).status
         == Transaction.STATUS.pending_user_transfer_start
@@ -160,7 +160,7 @@ def test_withdraw_interactive_failure_incorrect_memotype(
         "bank": "Bank",
         "account": "Account"
     })
-    assert response.status_code == 200
+    assert response.status_code == 302
     assert (
         Transaction.objects.get(id=transaction_id).status
         == Transaction.STATUS.pending_user_transfer_start
@@ -193,7 +193,7 @@ def test_withdraw_interactive_failure_no_memo(
         "bank": "Bank",
         "account": "Account"
     })
-    assert response.status_code == 200
+    assert response.status_code == 302
     assert (
         Transaction.objects.get(id=transaction_id).status
         == Transaction.STATUS.pending_user_transfer_start
@@ -226,7 +226,7 @@ def test_withdraw_interactive_failure_incorrect_memo(
         "bank": "Bank",
         "account": "Account"
     })
-    assert response.status_code == 200
+    assert response.status_code == 302
     assert (
         Transaction.objects.get(id=transaction_id).status
         == Transaction.STATUS.pending_user_transfer_start
@@ -256,7 +256,7 @@ def test_withdraw_interactive_success_transaction_unsuccessful(
         "bank": "Bank",
         "account": "Account"
     })
-    assert response.status_code == 200
+    assert response.status_code == 302
     transaction = Transaction.objects.get(id=transaction_id)
     assert transaction.status == Transaction.STATUS.pending_user_transfer_start
 
@@ -298,7 +298,7 @@ def test_withdraw_interactive_success_transaction_successful(
         "bank": "Bank",
         "account": "Account"
     })
-    assert response.status_code == 200
+    assert response.status_code == 302
     transaction = Transaction.objects.get(id=transaction_id)
     assert transaction.status == Transaction.STATUS.pending_user_transfer_start
 

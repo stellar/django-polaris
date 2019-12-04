@@ -13,6 +13,7 @@ from stellar_sdk.exceptions import BadRequestError
 from django.core.management import call_command
     
 from polaris import settings
+from polaris.tests.conftest import STELLAR_ACCOUNT_1_SEED
 from polaris.management.commands.create_stellar_deposit import (
     SUCCESS_XDR,
     TRUSTLINE_FAILURE_XDR,
@@ -304,6 +305,7 @@ def test_deposit_confirm_success(
         follow=True,
         **header
     )
+
     assert response.status_code == 200
     content = json.loads(response.content)
     transaction = content["transaction"]
@@ -429,9 +431,7 @@ def test_deposit_stellar_success(
 @pytest.mark.django_db
 @patch("stellar_sdk.server.Server.fetch_base_fee", return_value=100)
 @patch("stellar_sdk.server.Server.submit_transaction", return_value=HORIZON_SUCCESS_RESPONSE)
-@patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
 def test_deposit_interactive_confirm_success(
-    mock_check,
     mock_submit,
     mock_base_fee,
     client,
@@ -441,11 +441,16 @@ def test_deposit_interactive_confirm_success(
     `GET /deposit` and `GET /transactions/deposit/webapp` succeed with valid `account`
     and `asset_code`.
     """
-    del mock_check, mock_submit, mock_base_fee
+    del mock_submit, mock_base_fee
     deposit = acc1_usd_deposit_transaction_factory()
+
+    encoded_jwt = sep10(client, deposit.stellar_account, STELLAR_ACCOUNT_1_SEED)
+    header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
+
     response = client.post(
         DEPOSIT_PATH, {"asset_code": "USD", "account": deposit.stellar_account},
-        follow=True
+        follow=True,
+        **header
     )
     content = json.loads(response.content)
     assert response.status_code == 200
@@ -455,14 +460,12 @@ def test_deposit_interactive_confirm_success(
     url = content["url"]
     amount = 20
     response = client.post(url, {"amount": amount})
-    assert response.status_code == 200
+    assert response.status_code == 302
     assert (
         Transaction.objects.get(id=transaction_id).status
         == Transaction.STATUS.pending_user_transfer_start
     )
 
-    encoded_jwt = sep10(client, client_address, client_seed)
-    header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
     response = client.get(
         f"/transactions/deposit/confirm_transaction?amount={amount}&transaction_id={transaction_id}",
         follow=True,

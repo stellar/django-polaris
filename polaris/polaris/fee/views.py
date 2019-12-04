@@ -45,7 +45,7 @@ def fee(account: str, request: Request) -> Response:
     amount_str = request.GET.get("amount")
     try:
         amount = float(amount_str)
-    except (TypeError, ValueError):
+    except (ValueError, TypeError):
         return render_error_response("invalid 'amount'")
 
     # Validate that the operation, and the specified type (if provided)

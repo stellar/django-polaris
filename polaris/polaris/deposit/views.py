@@ -7,11 +7,11 @@ confirm that the first step of the deposit successfully completed.
 """
 import base64
 import binascii
-import json
 from urllib.parse import urlencode
 
 from polaris import settings
 from django.urls import reverse
+from django.shortcuts import redirect
 from django.views.decorators.clickjacking import xframe_options_exempt
 from django.core.management import call_command
 from rest_framework import status
@@ -147,61 +147,45 @@ def interactive_deposit(request: Request) -> Response:
     """
     # Validate query parameters: account, asset_code, transaction_id.
     account = request.GET.get("account")
+    asset_code = request.GET.get("asset_code")
+    asset = Asset.objects.filter(code=asset_code).first()
+    transaction_id = request.GET.get("transaction_id")
     if not account:
         return render_error_response("no 'account' provided", content_type="text/html")
-
-    asset_code = request.GET.get("asset_code")
-    if not asset_code or not Asset.objects.filter(code=asset_code).exists():
+    elif not (asset_code and asset):
         return render_error_response("invalid 'asset_code'", content_type="text/html")
-
-    transaction_id = request.GET.get("transaction_id")
-    if not transaction_id:
+    elif not transaction_id:
         return render_error_response("no 'transaction_id' provided", content_type="text/html")
 
-    # GET: The server needs to display the form for the user to input the deposit information.
+    try:
+        transaction = Transaction.objects.get(
+            id=transaction_id, asset=asset
+        )
+    except Transaction.DoesNotExist:
+        return render_error_response(
+            "Transaction with ID and asset_code not found",
+            content_type="text/html",
+            status_code=status.HTTP_404_NOT_FOUND
+        )
+
     if request.method == "GET":
         form = DepositForm()
-    # POST: The user submitted a form with the amount to deposit.
-    else:
-        if Transaction.objects.filter(id=transaction_id).exists():
-            return render_error_response(
-                "transaction with matching 'transaction_id' already exists",
-                content_type="text/html"
-            )
-        form = DepositForm(request.POST)
-        asset = Asset.objects.get(code=asset_code)
-        form.asset = asset
-        # If the form is valid, we create a transaction pending external action
-        # and render the success page.
-        if form.is_valid():
-            amount_in = form.cleaned_data["amount"]
-            amount_fee = calc_fee(asset, settings.OPERATION_DEPOSIT, amount_in)
-            transaction = Transaction(
-                id=transaction_id,
-                stellar_account=account,
-                asset=asset,
-                kind=Transaction.KIND.deposit,
-                status=Transaction.STATUS.pending_user_transfer_start,
-                amount_in=amount_in,
-                amount_fee=amount_fee,
-                to_address=account,
-            )
-            transaction.save()
+        return Response({"form": form}, template_name="deposit/form.html")
 
-            serializer = TransactionSerializer(
-                transaction,
-                context={"more_info_url": _construct_more_info_url(request)},
-            )
-            tx_json = json.dumps({"transaction": serializer.data})
-            return Response(
-                {
-                    "tx_json": tx_json,
-                    "transaction": transaction,
-                    "asset_code": transaction.asset.code,
-                },
-                template_name="transaction/more_info.html",
-            )
-    return Response({"form": form}, template_name="deposit/form.html")
+    form = DepositForm(request.POST)
+    form.asset = asset
+    # If the form is valid, we create a transaction pending external action
+    # and render the success page.
+    if form.is_valid():
+        transaction.amount_in = form.cleaned_data["amount"]
+        transaction.amount_fee = calc_fee(
+            asset, settings.OPERATION_DEPOSIT, transaction.amount_in
+        )
+        transaction.save()
+
+        return redirect(f"{reverse('more_info')}?{urlencode({'id': transaction_id})}")
+    else:
+        return Response({"form": form}, template_name="deposit/form.html")
 
 
 @api_view(["POST"])
@@ -238,6 +222,14 @@ def deposit(account: str, request: Request) -> Response:
 
     # Construct interactive deposit pop-up URL.
     transaction_id = create_transaction_id()
+    Transaction.objects.create(
+        id=transaction_id,
+        stellar_account=account,
+        asset=asset,
+        kind=Transaction.KIND.deposit,
+        status=Transaction.STATUS.pending_user_transfer_start,
+        to_address=account
+    )
     url = _construct_interactive_url(request, asset_code, stellar_account, transaction_id)
     return Response(
         {"type": "interactive_customer_info_needed", "url": url, "id": transaction_id},
