@@ -28,7 +28,6 @@ jobs: # A basic unit of work in a run
       - run:
           command: |
             cp .env.example .env
-            pipenv run python src/manage.py collectstatic --no-input
             pipenv run pytest
       - run: |
           if [ "$CIRCLE_PR_USERNAME" == "" ]; then
