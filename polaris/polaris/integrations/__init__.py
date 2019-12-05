@@ -11,9 +11,7 @@ def register_integrations(deposit: DepositIntegration = None,
     """
     Registers instances of user-defined subclasses of
     :class:`.WithdrawalIntegration` and
-    :class:`.DepositIntegration` with Polaris. Each subclasses' `.form`
-    attribute must be a subclass of
-    :class:`polaris.integration.forms.TransactionForm`.
+    :class:`.DepositIntegration` with Polaris.
 
     Call this function in the relevant Django AppConfig.ready() function:
     ::
@@ -26,13 +24,12 @@ def register_integrations(deposit: DepositIntegration = None,
 
             def ready(self):
                 from polaris.integrations import register_integrations
-                from myapp.integrations.forms import MyDepositForm
                 from myapp.integrations import (MyDepositIntegration,
                                                 MyWithdrawalIntegration)
 
                 register_integrations(
-                    deposit=MyDepositIntegration(MyDepositForm),
-                    withdrawal=MyWithdrawalIntegration(MyWithdrawalForm)
+                    deposit=MyDepositIntegration(),
+                    withdrawal=MyWithdrawalIntegration()
                 )
 
     These integration classes provide a structured interface for implementing

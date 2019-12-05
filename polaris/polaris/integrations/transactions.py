@@ -26,8 +26,8 @@ class DepositIntegration:
         **OVERRIDE REQUIRED**
 
         This function should poll the financial entity for the state of all
-        `pending_deposits` transactions and return the ones ready to be
-        executed on the Stellar network.
+        `pending_deposits` and return the ones ready to be executed on the
+        Stellar network.
 
         For every transaction that is returned, Polaris will submit it to the
         Stellar network. If a transaction was completed on the network, the
@@ -53,7 +53,7 @@ class DepositIntegration:
         memory usage.
 
         :param pending_deposits: a django Queryset for pending Transactions
-        :return a list of Transaction database objects to execute
+        :return: a list of Transaction database objects to execute
         """
         raise NotImplementedError(
             "`poll_transactions` must be implemented to process deposits"
@@ -107,6 +107,8 @@ class DepositIntegration:
 
         :param transaction: the :class:`Transaction` database object
         :return: an uninitialized :class:`forms.Form` subclass. For transaction
+            information, return a :class:`polaris.integrations.TransactionForm`
+            subclass.
         """
         if transaction.amount_in:
             # we've collected transaction info
@@ -128,7 +130,7 @@ class DepositIntegration:
         There is no need to implement that yourself.
 
         DO NOT update `transaction.status` here or in any other function for
-            that matter. This column is managed by Polaris and is expected to have
+        that matter. This column is managed by Polaris and is expected to have
         particular values at different points in the flow.
 
         If you need to store some data to determine which form to return next when

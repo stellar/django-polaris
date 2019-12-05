@@ -2,7 +2,6 @@ django-polaris documentation contents
 ==========================================
 
 .. toctree::
-    :hidden:
 
     index
 
@@ -12,6 +11,7 @@ django-polaris documentation contents
 
     integrations/index
     models/index
+    forms/index
 
 
 Indices and tables
