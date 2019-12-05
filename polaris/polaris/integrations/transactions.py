@@ -1,7 +1,11 @@
 from typing import Type, Dict, List, Optional
+from urllib.parse import urlencode
 
+from django.urls import reverse
+from django.http import HttpRequest
 from django.db.models import QuerySet
 from django import forms
+from rest_framework.request import Request
 
 from polaris.models import Transaction
 from polaris.withdraw.forms import WithdrawForm
@@ -136,6 +140,33 @@ class DepositIntegration:
         """
         pass
 
+    @classmethod
+    def url_for_interactive_flow(cls,
+                                 request: HttpRequest,
+                                 transaction_id: str,
+                                 account: str,
+                                 asset_code: str) -> str:
+        """
+        Use this function to construct and return the URL that should be
+        requested by the wallet to start the interactive deposit. If not
+        overridden, this function will return the URL to the `/webapp`
+        endpoint.
+
+        :param request: the :class:`rest_framework.request.Request` object
+            for the current request.
+        :param transaction_id: the :class:`Transaction` database object ID
+        :param account: the Stellar account string
+        :param asset_code: the asset code for the anchored asset
+        :return: the URL to serve as the interactive flow's entrypoint
+        """
+        qparams = urlencode({
+            "asset_code": asset_code,
+            "account": account,
+            "transaction_id": transaction_id,
+        })
+        url_params = f"{reverse('interactive_deposit')}?{qparams}"
+        return request.build_absolute_uri(url_params)
+
 
 class WithdrawalIntegration:
     """
@@ -237,6 +268,33 @@ class WithdrawalIntegration:
         :param transaction: the :class:`Transaction` database object
         """
         pass
+
+    @classmethod
+    def url_for_interactive_flow(cls,
+                                 request: Request,
+                                 transaction_id: str,
+                                 account: str,
+                                 asset_code: str) -> str:
+        """
+        Use this function to construct and return the URL that should be
+        requested by the wallet to start the interactive deposit. If not
+        overridden, this function will return the URL to the `/webapp`
+        endpoint.
+
+        :param request: the :class:`rest_framework.request.Request` object
+            for the current request.
+        :param transaction_id: the :class:`Transaction` database object ID
+        :param account: the Stellar account string
+        :param asset_code: the asset code for the anchored asset
+        :return: the URL to serve as the interactive flow's entrypoint
+        """
+        qparams = urlencode({
+            "asset_code": asset_code,
+            "transaction_id": transaction_id,
+            "account": account
+        })
+        url_params = f"{reverse('interactive_withdraw')}?{qparams}"
+        return request.build_absolute_uri(url_params)
 
 
 registered_deposit_integration = DepositIntegration()

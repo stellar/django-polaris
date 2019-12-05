@@ -34,21 +34,6 @@ from polaris.deposit.utils import create_stellar_deposit
 from polaris.integrations import registered_deposit_integration as rdi
 
 
-def _construct_interactive_url(request, asset_code, account, transaction_id): 
-    """Constructs the URL for the deposit application for deposit info.
-    This is located at `/transactions/deposit/webapp`."""
-    qparams = urlencode(
-        {
-            "asset_code": asset_code,
-            "account": account,
-            "transaction_id": transaction_id,
-        }
-    )
-    path = reverse("interactive_deposit")
-    url_params = f"{path}?{qparams}"
-    return request.build_absolute_uri(url_params)
-
-
 def _construct_more_info_url(request):
     """Constructs the more info URL for a deposit."""
     qparams_dict = {"id": request.GET.get("transaction_id")}
@@ -234,8 +219,14 @@ def deposit(account: str, request: Request) -> Response:
         status=Transaction.STATUS.incomplete,
         to_address=account
     )
-    url = _construct_interactive_url(request, asset_code, stellar_account, transaction_id)
+    url = rdi.url_for_interactive_flow(
+        request, transaction_id, stellar_account, asset_code
+    )
     return Response(
-        {"type": "interactive_customer_info_needed", "url": url, "id": transaction_id},
+        {
+            "type": "interactive_customer_info_needed",
+            "url": url,
+            "id": transaction_id
+        },
         status=status.HTTP_200_OK
     )

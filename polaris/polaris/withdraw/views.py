@@ -25,22 +25,6 @@ from polaris.models import Asset, Transaction
 from polaris.integrations import registered_withdrawal_integration as rwi
 
 
-def _construct_interactive_url(request: Request,
-                               asset_code: str,
-                               transaction_id: str,
-                               account: str) -> str:
-    """Constructs the URL for the interactive application for withdrawal info.
-    This is located at `/transactions/withdraw/webapp`."""
-    qparams = urlencode({
-        "asset_code": asset_code,
-        "transaction_id": transaction_id,
-        "account": account
-    })
-    path = reverse("interactive_withdraw")
-    url_params = f"{path}?{qparams}"
-    return request.build_absolute_uri(url_params)
-
-
 def _construct_more_info_url(request):
     """Constructs the more info URL for a withdraw."""
     qparams_dict = {"id": request.GET.get("transaction_id")}
@@ -142,7 +126,11 @@ def withdraw(account: str, request: Request) -> Response:
         withdraw_memo=withdraw_memo,
         withdraw_memo_type=Transaction.MEMO_TYPES.hash,
     )
-    url = _construct_interactive_url(request, asset_code, transaction_id, account)
-    return Response(
-        {"type": "interactive_customer_info_needed", "url": url, "id": transaction_id},
+    url = rwi.url_for_interactive_flow(
+        request, transaction_id, account, asset_code
     )
+    return Response({
+        "type": "interactive_customer_info_needed",
+        "url": url,
+        "id": transaction_id
+    })
