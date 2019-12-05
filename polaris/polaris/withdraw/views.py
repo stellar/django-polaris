@@ -79,10 +79,11 @@ def interactive_withdraw(request: Request) -> Response:
 
     # GET: The server needs to display the form for the user to input withdrawal information.
     if request.method == "GET":
-        form = rwi.form()
-        return Response({"form": form}, template_name="withdraw/form.html")
+        form = rwi.form_for_transaction(transaction)()
+        resp_data = {"form": form, "account": request.GET.get("account")}
+        return Response(resp_data, template_name="withdraw/form.html")
 
-    form = rwi.form(request.POST)
+    form = rwi.form_for_transaction(transaction)(request.POST)
     form.asset = asset
 
     # If the form is valid, we create a transaction pending user action
@@ -96,9 +97,7 @@ def interactive_withdraw(request: Request) -> Response:
         transaction.save()
 
         # Perform any defined post-validation logic defined by Polaris users
-        afv = getattr(rwi, "after_form_validation", None)
-        if callable(afv):
-            afv(form, transaction)
+        rwi.after_form_validation(form, transaction)
 
         return redirect(f"{reverse('more_info')}?{urlencode({'id': transaction_id})}")
     else:

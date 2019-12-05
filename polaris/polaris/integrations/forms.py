@@ -5,10 +5,8 @@ class TransactionForm(forms.Form):
     """
     Base class for collecting transaction information
 
-    Developers must define subclasses to collect additional information,
-    apply additional validation, or perform additional processing of the data.
-    :meth:`polaris.integrations.register_integrations` will not accept forms
-    that do not inherit from this class.
+    Developers must define subclasses to collect additional information and
+    apply additional validation.
 
     Defines the :class:`.forms.FloatField` `amount` and also has a non-form
     attribute `asset`, which will be populated by the `asset_code`

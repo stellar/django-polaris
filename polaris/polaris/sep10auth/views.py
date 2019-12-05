@@ -58,7 +58,7 @@ def _get_transaction_json(body):
     """Get the transaction for JSON-encoded transaction data to `POST <auth>`."""
     try:
         body_dict = json.loads(body)
-    except TypeError:
+    except (ValueError, TypeError):
         return 0, "invalid json"
     try:
         envelope_xdr = body_dict["transaction"]

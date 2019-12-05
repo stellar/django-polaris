@@ -172,7 +172,7 @@ def interactive_deposit(request: Request) -> Response:
         form = rdi.form()
         return Response({"form": form}, template_name="deposit/form.html")
 
-    form = rdi.form(request.POST)
+    form = rdi.form_for_transaction(transaction)(request.POST)
     form.asset = asset
     # If the form is valid, we create a transaction pending external action
     # and render the success page.
@@ -185,9 +185,7 @@ def interactive_deposit(request: Request) -> Response:
         transaction.save()
 
         # Perform any defined post-validation logic defined by Polaris users
-        afv = getattr(rdi, "after_form_validation", None)
-        if callable(afv):
-            afv(form, transaction)
+        rdi.after_form_validation(form, transaction)
 
         return redirect(f"{reverse('more_info')}?{urlencode({'id': transaction_id})}")
     else:
