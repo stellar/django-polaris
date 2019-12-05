@@ -30,7 +30,7 @@ from polaris.helpers import (
 from polaris.models import Asset, Transaction
 from polaris.transaction.serializers import TransactionSerializer
 from polaris.deposit.utils import create_stellar_deposit
-
+from polaris.integrations.forms import TransactionForm
 from polaris.integrations import registered_deposit_integration as rdi
 
 
@@ -126,9 +126,6 @@ def confirm_transaction(account: str, request: Request) -> Response:
 @renderer_classes([TemplateHTMLRenderer])
 def interactive_deposit(request: Request) -> Response:
     """
-    `GET /transactions/deposit/webapp` opens a form used to input information
-    about the deposit. This creates a corresponding transaction in our
-    database, pending processing by the external agent.
     """
     # Validate query parameters: account, asset_code, transaction_id.
     account = request.GET.get("account")
@@ -136,17 +133,22 @@ def interactive_deposit(request: Request) -> Response:
     asset = Asset.objects.filter(code=asset_code).first()
     transaction_id = request.GET.get("transaction_id")
     if not account:
-        return render_error_response("no 'account' provided", content_type="text/html")
+        err_msg = "no 'account' provided"
+        return render_error_response(err_msg, content_type="text/html")
     elif not (asset_code and asset):
-        return render_error_response("invalid 'asset_code'", content_type="text/html")
+        err_msg = "invalid 'asset_code'"
+        return render_error_response(err_msg, content_type="text/html")
     elif not transaction_id:
-        return render_error_response("no 'transaction_id' provided", content_type="text/html")
+        err_msg = "no 'transaction_id' provided"
+        return render_error_response(err_msg, content_type="text/html")
 
+    # Ensure the transaction exists
     try:
         transaction = Transaction.objects.get(
-            id=transaction_id, asset=asset
+            id=transaction_id,
+            asset=asset
         )
-    except Transaction.DoesNotExist:
+    except Transaction.objects.DoesNotExist:
         return render_error_response(
             "Transaction with ID and asset_code not found",
             content_type="text/html",
@@ -154,25 +156,39 @@ def interactive_deposit(request: Request) -> Response:
         )
 
     if request.method == "GET":
-        form = rdi.form()
+        form = rdi.form_for_transaction(transaction)()
         return Response({"form": form}, template_name="deposit/form.html")
 
+    # request.method == "POST"
     form = rdi.form_for_transaction(transaction)(request.POST)
-    form.asset = asset
-    # If the form is valid, we create a transaction pending external action
-    # and render the success page.
+    is_transaction_form = issubclass(form.__class__, TransactionForm)
+    if is_transaction_form:
+        form.asset = asset
+
     if form.is_valid():
-        transaction.amount_in = form.cleaned_data["amount"]
-        transaction.amount_fee = calc_fee(
-            asset, settings.OPERATION_DEPOSIT, transaction.amount_in
-        )
-        transaction.status = Transaction.STATUS.pending_user_transfer_start
-        transaction.save()
+        if is_transaction_form:
+            transaction.amount_in = form.cleaned_data["amount"]
+            transaction.amount_fee = calc_fee(
+                asset, settings.OPERATION_DEPOSIT, transaction.amount_in
+            )
+            transaction.save()
 
         # Perform any defined post-validation logic defined by Polaris users
         rdi.after_form_validation(form, transaction)
+        # Check to see if there is another form to render
+        form_class = rdi.form_for_transaction(transaction)
 
-        return redirect(f"{reverse('more_info')}?{urlencode({'id': transaction_id})}")
+        if form_class:
+            return Response(
+                {"form": form_class()},
+                template_name="deposit/form.html"
+            )
+        else:
+            transaction.status = Transaction.STATUS.pending_user_transfer_start
+            transaction.save()
+            url, args = reverse('more_info'), urlencode({'id': transaction_id})
+            return redirect(f"{url}?{args}")
+
     else:
         return Response({"form": form}, template_name="deposit/form.html")
 

@@ -22,6 +22,7 @@ from polaris.helpers import (
     validate_sep10_token,
 )
 from polaris.models import Asset, Transaction
+from polaris.integrations.forms import TransactionForm
 from polaris.integrations import registered_withdrawal_integration as rwi
 
 
@@ -39,8 +40,6 @@ def _construct_more_info_url(request):
 @renderer_classes([TemplateHTMLRenderer])
 def interactive_withdraw(request: Request) -> Response:
     """
-    `GET /transactions/withdraw/webapp` opens a form used to input information about
-    the withdrawal. This creates a corresponding transaction in our database.
     """
     transaction_id = request.GET.get("transaction_id")
     asset_code = request.GET.get("asset_code")
@@ -56,34 +55,44 @@ def interactive_withdraw(request: Request) -> Response:
         )
     except (Transaction.DoesNotExist, ValidationError):
         return render_error_response(
-            "Transaction with ID not found",
+            "Transaction with ID and asset_code not found",
             content_type="text/html",
             status_code=status.HTTP_404_NOT_FOUND
         )
 
-    # GET: The server needs to display the form for the user to input withdrawal information.
     if request.method == "GET":
-        form = rwi.form_for_transaction(transaction)()
-        resp_data = {"form": form, "account": request.GET.get("account")}
-        return Response(resp_data, template_name="withdraw/form.html")
+        form_class = rwi.form_for_transaction(transaction)
+        return Response({"form": form_class()}, template_name="withdraw/form.html")
 
+    # request.method == "POST"
     form = rwi.form_for_transaction(transaction)(request.POST)
-    form.asset = asset
+    is_transaction_form = issubclass(form.__class__, TransactionForm)
+    if is_transaction_form:
+        form.asset = asset
 
-    # If the form is valid, we create a transaction pending user action
-    # and render the success page.
     if form.is_valid():
-        transaction.amount_in = form.cleaned_data["amount"]
-        transaction.amount_fee = calc_fee(
-            asset, settings.OPERATION_WITHDRAWAL, transaction.amount_in
-        )
-        transaction.status = Transaction.STATUS.pending_user_transfer_start
-        transaction.save()
+        if is_transaction_form:
+            transaction.amount_in = form.cleaned_data["amount"]
+            transaction.amount_fee = calc_fee(
+                asset, settings.OPERATION_WITHDRAWAL, transaction.amount_in
+            )
+            transaction.save()
 
         # Perform any defined post-validation logic defined by Polaris users
         rwi.after_form_validation(form, transaction)
+        # Check to see if there is another form to render
+        form_class = rwi.form_for_transaction(transaction)
 
-        return redirect(f"{reverse('more_info')}?{urlencode({'id': transaction_id})}")
+        if form_class:
+            return Response(
+                {"form": form_class()},
+                template_name="withdraw/form.html"
+            )
+        else:
+            transaction.status = Transaction.STATUS.pending_user_transfer_start
+            transaction.save()
+            url, args = reverse('more_info'), urlencode({'id': transaction_id})
+            return redirect(f"{url}?{args}")
     else:
         return Response({"form": form}, template_name="withdraw/form.html")
 
