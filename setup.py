@@ -10,7 +10,7 @@ setup(
     description="A SEP-24-compliant Django anchor server",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/stellar/django-polaris",
+    url="https://django-polaris.readthedocs.io/en/stable",
     author="Jake Urban",
     author_email="jake@stellar.org",
     license="Apache license 2.0",
