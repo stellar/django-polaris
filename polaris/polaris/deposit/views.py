@@ -34,6 +34,19 @@ from polaris.integrations.forms import TransactionForm
 from polaris.integrations import registered_deposit_integration as rdi
 
 
+def _construct_interactive_url(request: Request,
+                               transaction_id: str,
+                               account: str,
+                               asset_code: str) -> str:
+    qparams = urlencode({
+        "asset_code": asset_code,
+        "account": account,
+        "transaction_id": transaction_id,
+    })
+    url_params = f"{reverse('interactive_deposit')}?{qparams}"
+    return request.build_absolute_uri(url_params)
+
+
 def _construct_more_info_url(request):
     """Constructs the more info URL for a deposit."""
     qparams_dict = {"id": request.GET.get("transaction_id")}
@@ -235,7 +248,7 @@ def deposit(account: str, request: Request) -> Response:
         status=Transaction.STATUS.incomplete,
         to_address=account
     )
-    url = rdi.url_for_interactive_flow(
+    url = _construct_interactive_url(
         request, transaction_id, stellar_account, asset_code
     )
     return Response(

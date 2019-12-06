@@ -21,6 +21,8 @@ from polaris.management.commands.create_stellar_deposit import (
 from polaris.models import Transaction
 from polaris.tests.helpers import mock_check_auth_success, mock_load_not_exist_account, sep10
 
+from polaris.models import Asset
+
 DEPOSIT_PATH = f"/transactions/deposit/interactive"
 HORIZON_SUCCESS_RESPONSE = {"result_xdr": SUCCESS_XDR, "hash": "test_stellar_id"}
 # Test client account and seed
