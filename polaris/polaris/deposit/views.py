@@ -181,6 +181,7 @@ def interactive_deposit(request: Request) -> Response:
         transaction.amount_fee = calc_fee(
             asset, settings.OPERATION_DEPOSIT, transaction.amount_in
         )
+        transaction.status = Transaction.STATUS.pending_user_transfer_start
         transaction.save()
 
         return redirect(f"{reverse('more_info')}?{urlencode({'id': transaction_id})}")
@@ -227,7 +228,7 @@ def deposit(account: str, request: Request) -> Response:
         stellar_account=account,
         asset=asset,
         kind=Transaction.KIND.deposit,
-        status=Transaction.STATUS.pending_user_transfer_start,
+        status=Transaction.STATUS.incomplete,
         to_address=account
     )
     url = _construct_interactive_url(request, asset_code, stellar_account, transaction_id)

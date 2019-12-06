@@ -92,6 +92,7 @@ def interactive_withdraw(request: Request) -> Response:
         transaction.amount_fee = calc_fee(
             asset, settings.OPERATION_WITHDRAWAL, transaction.amount_in
         )
+        transaction.status = Transaction.STATUS.pending_user_transfer_start
         transaction.save()
 
         return redirect(f"{reverse('more_info')}?{urlencode({'id': transaction_id})}")
@@ -132,7 +133,7 @@ def withdraw(account: str, request: Request) -> Response:
         stellar_account=account,
         asset=asset,
         kind=Transaction.KIND.withdrawal,
-        status=Transaction.STATUS.pending_user_transfer_start,
+        status=Transaction.STATUS.incomplete,
         withdraw_anchor_account=settings.STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS,
         withdraw_memo=withdraw_memo,
         withdraw_memo_type=Transaction.MEMO_TYPES.hash,
