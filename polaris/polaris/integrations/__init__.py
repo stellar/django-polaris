@@ -1,5 +1,4 @@
 import sys
-from polaris.integrations.forms import TransactionForm
 from polaris.integrations.transactions import (DepositIntegration,
                                                WithdrawalIntegration,
                                                registered_deposit_integration,
@@ -52,12 +51,8 @@ def register_integrations(deposit: DepositIntegration = None,
         raise ValueError("Must pass at least one integration class")
     elif deposit and not issubclass(deposit.__class__, DepositIntegration):
         raise TypeError("deposit must be a subclass of DepositIntegration")
-    elif not issubclass(deposit.form, TransactionForm):
-        raise TypeError("DepositIntegration.form must subclass TransactionForm")
     elif withdrawal and not issubclass(withdrawal.__class__, WithdrawalIntegration):
         raise TypeError("withdrawal must be a subclass of WithdrawalIntegration")
-    elif not issubclass(withdrawal.form, TransactionForm):
-        raise TypeError("WithdrawalIntegration.form must subclass TransactionForm")
 
     for obj, attr in [(deposit, "registered_deposit_integration"),
                       (withdrawal, "registered_withdrawal_integration")]:
