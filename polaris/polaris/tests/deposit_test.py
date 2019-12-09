@@ -3,7 +3,6 @@ This module tests the `/deposit` endpoint.
 Celery tasks are called synchronously. Horizon calls are mocked for speed and correctness.
 """
 import json
-import uuid
 from unittest.mock import patch
 
 import pytest
@@ -18,6 +17,7 @@ from polaris.management.commands.create_stellar_deposit import (
     SUCCESS_XDR,
     TRUSTLINE_FAILURE_XDR,
 )
+from polaris.management.commands.poll_pending_deposits import execute_deposit
 from polaris.models import Transaction
 from polaris.tests.helpers import mock_check_auth_success, mock_load_not_exist_account, sep10
 
@@ -200,157 +200,6 @@ def test_deposit_invalid_hash_memo(
     assert content == {"error": "'memo' does not match memo_type' hash"}
 
 
-def test_deposit_confirm_no_txid(client):
-    """`GET /transactions/deposit/confirm_transaction` fails with no `transaction_id`."""
-    encoded_jwt = sep10(client, client_address, client_seed)
-    header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
-    response = client.get(
-        f"/transactions/deposit/confirm_transaction?amount=0",
-        follow=True,
-        **header
-    )
-    content = json.loads(response.content)
-    assert response.status_code == 400
-    assert content == {
-        "error": "no 'transaction_id' provided"
-    }
-
-
-@pytest.mark.django_db
-def test_deposit_confirm_invalid_txid(client):
-    """`GET /transactions/deposit/confirm_transaction` fails with an invalid `transaction_id`."""
-    incorrect_transaction_id = uuid.uuid4()
-    encoded_jwt = sep10(client, client_address, client_seed)
-    header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
-    response = client.get(
-        f"/transactions/deposit/confirm_transaction?amount=0&transaction_id={incorrect_transaction_id}",
-        follow=True,
-        **header
-    )
-    content = json.loads(response.content)
-    assert response.status_code == 400
-    assert content == {
-        "error": "no transaction with matching 'transaction_id' exists"
-    }
-
-
-@pytest.mark.django_db
-def test_deposit_confirm_no_amount(client, acc1_usd_deposit_transaction_factory):
-    """`GET /transactions/deposit/confirm_transaction` fails with no `amount`."""
-    deposit = acc1_usd_deposit_transaction_factory(client_address)
-    encoded_jwt = sep10(client, client_address, client_seed)
-    header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
-    response = client.get(
-        f"/transactions/deposit/confirm_transaction?transaction_id={deposit.id}",
-        follow=True,
-        **header
-    )
-    content = json.loads(response.content)
-    assert response.status_code == 400
-    assert content == {"error": "no 'amount' provided"}
-
-
-@pytest.mark.django_db
-def test_deposit_confirm_invalid_amount(client, acc1_usd_deposit_transaction_factory):
-    """`GET /transactions/deposit/confirm_transaction` fails with a non-float `amount`."""
-    deposit = acc1_usd_deposit_transaction_factory(client_address)
-    encoded_jwt = sep10(client, client_address, client_seed)
-    header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
-    response = client.get(
-        f"/transactions/deposit/confirm_transaction?transaction_id={deposit.id}&amount=foo",
-        follow=True,
-        **header
-    )
-    content = json.loads(response.content)
-    assert response.status_code == 400
-    assert content == {
-        "error": "non-float 'amount' provided"
-    }
-
-
-@pytest.mark.django_db
-def test_deposit_confirm_incorrect_amount(client, acc1_usd_deposit_transaction_factory):
-    """`GET /transactions/deposit/confirm_transaction` fails with an incorrect `amount`."""
-    deposit = acc1_usd_deposit_transaction_factory(client_address)
-    encoded_jwt = sep10(client, client_address, client_seed)
-    header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
-    incorrect_amount = deposit.amount_in + 1
-    response = client.get(
-        f"/transactions/deposit/confirm_transaction?transaction_id={deposit.id}&amount={incorrect_amount}",
-        follow=True,
-        **header
-    )
-    content = json.loads(response.content)
-    assert response.status_code == 400
-    assert content == {
-        "error": "incorrect 'amount' value for transaction with given 'transaction_id'"
-    }
-
-
-@pytest.mark.django_db
-@patch("stellar_sdk.server.Server.fetch_base_fee", return_value=100)
-@patch("stellar_sdk.server.Server.submit_transaction", return_value=HORIZON_SUCCESS_RESPONSE)
-def test_deposit_confirm_success(
-    mock_submit,
-    mock_base_fee,
-    client,
-    acc1_usd_deposit_transaction_factory,
-):
-    """`GET /transactions/deposit/confirm_transaction` succeeds with correct `amount` and `transaction_id`."""
-    del mock_submit, mock_base_fee
-    deposit = acc1_usd_deposit_transaction_factory(client_address)
-    amount = deposit.amount_in
-    encoded_jwt = sep10(client, client_address, client_seed)
-    header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
-    response = client.get(
-        f"/transactions/deposit/confirm_transaction?amount={amount}&transaction_id={deposit.id}",
-        follow=True,
-        **header
-    )
-
-    assert response.status_code == 200
-    content = json.loads(response.content)
-    transaction = content["transaction"]
-    assert transaction
-    assert transaction["status"] == Transaction.STATUS.pending_anchor
-    assert float(transaction["amount_in"]) == amount
-    assert int(transaction["status_eta"]) == 5
-
-
-@pytest.mark.django_db
-@patch("stellar_sdk.server.Server.fetch_base_fee", return_value=100)
-@patch("stellar_sdk.server.Server.submit_transaction", return_value=HORIZON_SUCCESS_RESPONSE)
-def test_deposit_confirm_external_id(
-    mock_submit,
-    mock_base_fee,
-    client,
-    acc1_usd_deposit_transaction_factory,
-):
-    """`GET /transactions/deposit/confirm_transaction` successfully stores an `external_id`."""
-    del mock_submit, mock_base_fee
-    deposit = acc1_usd_deposit_transaction_factory(client_address)
-    encoded_jwt = sep10(client, client_address, client_seed)
-    header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
-    amount = deposit.amount_in
-    external_id = "foo"
-    response = client.get(
-        (
-            f"/transactions/deposit/confirm_transaction?amount={amount}&transaction_id="
-            f"{deposit.id}&external_transaction_id={external_id}"
-        ),
-        follow=True,
-        **header
-    )
-    assert response.status_code == 200
-    content = json.loads(response.content)
-    transaction = content["transaction"]
-    assert transaction
-    assert transaction["status"] == Transaction.STATUS.pending_anchor
-    assert float(transaction["amount_in"]) == amount
-    assert int(transaction["status_eta"]) == 5
-    assert transaction["external_transaction_id"] == external_id
-
-
 @pytest.mark.django_db
 @patch("stellar_sdk.server.Server.fetch_base_fee", return_value=100)
 @patch(
@@ -468,28 +317,14 @@ def test_deposit_interactive_confirm_success(
         == Transaction.STATUS.pending_user_transfer_start
     )
 
-    response = client.get(
-        f"/transactions/deposit/confirm_transaction?amount={amount}&transaction_id={transaction_id}",
-        follow=True,
-        **header
-    )
-    assert response.status_code == 200
-    content = json.loads(response.content)
-    transaction = content["transaction"]
-    assert transaction
+    transaction = Transaction.objects.get(id=transaction_id)
+    execute_deposit(transaction)
 
-    # The transaction in the response was serialized before the Stellar transaction
-    # to ensure deterministic behavior in testing. Thus, the response will contain
-    # a transaction with status `pending_anchor`.
-    assert transaction["status"] == Transaction.STATUS.pending_anchor
-    assert float(transaction["amount_in"]) == amount
-
-    # Since we have mocked the `create_deposit` function to success, the
-    # transaction itself should be stored with status `completed`.
-    assert (
-        Transaction.objects.get(id=transaction_id).status
-        == Transaction.STATUS.completed
-    )
+    # We've mocked submit_transaction, but the status should be marked as
+    # completed after executing the function above.
+    transaction.refresh_from_db()
+    assert float(transaction.amount_in) == amount
+    assert transaction.status == Transaction.STATUS.completed
 
 
 @pytest.mark.django_db
@@ -556,21 +391,16 @@ def test_deposit_check_trustlines_horizon(
         == Transaction.STATUS.pending_user_transfer_start
     )
 
-    # As a result of this external confirmation, the transaction should
-    # be `pending_trust`. This will trigger a synchronous call to
+    # After calling execute_deposit(), the transaction should
+    # be `pending_trust`. The function will trigger a synchronous call to
     # `create_stellar_deposit`, which will register the account on testnet.
     # Since the account will not have a trustline, the status will still
     # be `pending_trust`.
-    response = client.get(
-        f"/transactions/deposit/confirm_transaction?amount={amount}&transaction_id={transaction_id}",
-        follow=True,
-    )
-    assert response.status_code == 200
-    content = json.loads(response.content)
-    transaction = content["transaction"]
-    assert transaction
-    assert transaction["status"] == Transaction.STATUS.pending_anchor
-    assert float(transaction["amount_in"]) == amount
+    transaction = Transaction.objects.get(id=transaction_id)
+    execute_deposit(transaction)
+    transaction.refresh_from_db()
+    assert transaction.status == Transaction.STATUS.pending_anchor
+    assert float(transaction.amount_in) == amount
 
     # The Stellar account has not been registered, so
     # this should not change the status of the Transaction.

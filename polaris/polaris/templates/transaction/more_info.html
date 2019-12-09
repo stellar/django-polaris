@@ -94,37 +94,6 @@
             // }
             targetWindow.postMessage(tx_json, "*");
         }
-
-        // Confirm an uncompleted deposit transaction.
-        function submitExternal() {
-            var transactionId, amount, xhr;
-            transactionId = transaction["id"];
-            amount = transaction["amount_in"];
-            xhr = new XMLHttpRequest();
-            xhrUrl = '/transactions/deposit/confirm_transaction?transaction_id=' + transactionId + '&amount=' + amount;
-            xhr.open('get', xhrUrl, true);
-            xhr.onload = function () {
-                if (this.status >= 200 && this.status < 400) {
-                    postTransactionCallback();
-                }
-            }
-            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded; charset=UTF-8');
-            xhr.send();
-            return false;
-        }
     </script>
 </section>
-{% endblock %}
-
-{% block "footer" %}
-{% if transaction.status != "completed" %}
-    <div class="at-bottom button-row">
-        {% if transaction.kind == "deposit" %}
-            <button type="button" class="button-main" onclick="return submitExternal()">Admin: Confirm external transaction.</button>
-
-        {% endif %}
-        <div class="spacer"></div>
-        <button type="button" class="button-secondary refresh-icon" onclick="location.reload(true);"></button>
-    </div>
-{% endif %}
 {% endblock %}
