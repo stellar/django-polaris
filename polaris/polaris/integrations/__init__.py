@@ -1,4 +1,5 @@
 import sys
+from polaris.integrations.forms import TransactionForm
 from polaris.integrations.transactions import (DepositIntegration,
                                                WithdrawalIntegration,
                                                registered_deposit_integration,
