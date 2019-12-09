@@ -26,6 +26,8 @@ from polaris.helpers import (
     render_error_response,
     create_transaction_id,
     validate_sep10_token,
+    validate_interactive_jwt,
+    invalidate_session
 )
 from polaris.models import Asset, Transaction
 from polaris.transaction.serializers import TransactionSerializer
@@ -82,6 +84,7 @@ def _verify_optional_args(request):
 
 @xframe_options_exempt
 @api_view(["GET", "POST"])
+@validate_interactive_jwt
 @renderer_classes([TemplateHTMLRenderer])
 def interactive_deposit(request: Request) -> Response:
     """
@@ -143,6 +146,7 @@ def interactive_deposit(request: Request) -> Response:
                 template_name="deposit/form.html"
             )
         else:
+            invalidate_session(request)  # Last form has been submitted
             transaction.status = Transaction.STATUS.pending_user_transfer_start
             transaction.save()
             url, args = reverse('more_info'), urlencode({'id': transaction_id})

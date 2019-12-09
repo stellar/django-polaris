@@ -20,6 +20,8 @@ from polaris.helpers import (
     create_transaction_id,
     calc_fee,
     validate_sep10_token,
+    validate_interactive_jwt,
+    invalidate_session
 )
 from polaris.models import Asset, Transaction
 from polaris.integrations.forms import TransactionForm
@@ -52,6 +54,7 @@ def _construct_more_info_url(request):
 
 @xframe_options_exempt
 @api_view(["GET", "POST"])
+@validate_interactive_jwt
 @renderer_classes([TemplateHTMLRenderer])
 def interactive_withdraw(request: Request) -> Response:
     """
@@ -104,6 +107,7 @@ def interactive_withdraw(request: Request) -> Response:
                 template_name="withdraw/form.html"
             )
         else:
+            invalidate_session(request)  # Last form has been submitted
             transaction.status = Transaction.STATUS.pending_user_transfer_start
             transaction.save()
             url, args = reverse('more_info'), urlencode({'id': transaction_id})
