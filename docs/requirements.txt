@@ -13,7 +13,7 @@
 django-cors-headers
 django-environ
 django-model-utils
-django==2.2.4
+django==2.2.8
 djangorestframework
 gunicorn
 psycopg2-binary
