@@ -80,60 +80,6 @@ def _verify_optional_args(request):
     return None
 
 
-@api_view()
-@validate_sep10_token()
-def confirm_transaction(account: str, request: Request) -> Response:
-    """
-    `GET /transactions/deposit/confirm_transaction` is used by an external agent to confirm
-    that they have processed the transaction. This triggers submission of the
-    corresponding Stellar transaction.
-
-    Note that this endpoint is not part of the SEP 24 workflow, it is merely
-    a mechanism for confirming the external transaction for demonstration purposes.
-    If reusing this technique in a real-life scenario, add a strictly secure
-    authentication system.
-    """
-    # Validate the provided transaction_id and amount.
-    transaction_id = request.GET.get("transaction_id")
-    if not transaction_id:
-        return render_error_response("no 'transaction_id' provided")
-
-    transaction = Transaction.objects.filter(id=transaction_id).first()
-    if not transaction:
-        return render_error_response(
-            "no transaction with matching 'transaction_id' exists"
-        )
-
-    amount_str = request.GET.get("amount")
-    if not amount_str:
-        return render_error_response("no 'amount' provided")
-    try:
-        amount = float(amount_str)
-    except ValueError:
-        return render_error_response("non-float 'amount' provided")
-
-    if transaction.amount_in != amount:
-        return render_error_response(
-            "incorrect 'amount' value for transaction with given 'transaction_id'"
-        )
-
-    external_transaction_id = request.GET.get("external_transaction_id")
-
-    # The external deposit has been completed, so the transaction
-    # status must now be updated to pending_anchor.
-    transaction.status = Transaction.STATUS.pending_anchor
-    transaction.status_eta = 5  # Ledger close time.
-    transaction.external_transaction_id = external_transaction_id
-    transaction.save()
-    serializer = TransactionSerializer(
-        transaction, context={"more_info_url": _construct_more_info_url(request)}
-    )
-
-    # launch the deposit Stellar transaction.
-    create_stellar_deposit(transaction.id)
-    return Response({"transaction": serializer.data})
-
-
 @xframe_options_exempt
 @api_view(["GET", "POST"])
 @renderer_classes([TemplateHTMLRenderer])
