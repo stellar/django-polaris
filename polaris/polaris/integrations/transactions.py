@@ -1,11 +1,7 @@
 from typing import Type, Dict, List, Optional
-from urllib.parse import urlencode
 
-from django.urls import reverse
-from django.http import HttpRequest
 from django.db.models import QuerySet
 from django import forms
-from rest_framework.request import Request
 
 from polaris.models import Transaction
 from polaris.withdraw.forms import WithdrawForm
@@ -26,8 +22,7 @@ class DepositIntegration:
         **OVERRIDE REQUIRED**
 
         This function should poll the financial entity for the state of all
-        `pending_deposits` and return the ones ready to be executed on the
-        Stellar network.
+        `pending_deposits` and return the ones that have externally completed.
 
         For every transaction that is returned, Polaris will submit it to the
         Stellar network. If a transaction was completed on the network, the
@@ -53,7 +48,8 @@ class DepositIntegration:
         memory usage.
 
         :param pending_deposits: a django Queryset for pending Transactions
-        :return: a list of Transaction database objects to execute
+        :return: a list of Transaction database objects which correspond to
+            successful user deposits to the anchor's account.
         """
         raise NotImplementedError(
             "`poll_transactions` must be implemented to process deposits"

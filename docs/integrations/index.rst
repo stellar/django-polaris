@@ -8,8 +8,8 @@ Integrations
 
 Polaris does most of the work implementing SEP-24_. However, some pieces of
 SEP-24 can only be implemented by the anchor. Specifically, anchors need to
-implement their own banking rails and KYC requirements. This is where
-:class:`DepositIntegration` and :class:`WithdrawalIntegration` come in.
+implement their own banking rails and KYC requirements. This is where the
+Integrations classes come in
 
 These classes should be subclassed and its methods overridden by Polaris
 developers to fill in the gaps in Polaris's functionality.
@@ -37,7 +37,7 @@ email or how much of their asset they want to deposit. Polaris comes out of
 the box with forms for deposit and withdrawal flows.
 
 However, the data collected may not be sufficient for your needs. Maybe you
-need to do collect additional fields and some validation or processing with
+need to collect additional fields and do some validation or processing with
 the data that Polaris doesn't already do. Maybe you need to serve more forms
 than just the one to collect transaction information.
 
