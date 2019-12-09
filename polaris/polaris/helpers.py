@@ -197,3 +197,20 @@ def invalidate_session(request: Request):
     Invalidates request's session for the interactive flow.
     """
     request.session["authenticated"] = False
+
+
+def generate_interactive_jwt(request: Request, transaction_id: str, account: str) -> str:
+    """
+    Generates a 30-second JWT for the client to use in the GET URL for
+    the interactive flow.
+    """
+    issued_at = time.time()
+    payload = {
+        "iss": request.build_absolute_uri(request.path),
+        "iat": issued_at,
+        "exp": issued_at + 30,
+        "sub": account,
+        "jti": transaction_id
+    }
+    encoded_jwt = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256")
+    return encoded_jwt.decode("ascii")

@@ -21,7 +21,8 @@ from polaris.helpers import (
     calc_fee,
     validate_sep10_token,
     validate_interactive_jwt,
-    invalidate_session
+    invalidate_session,
+    generate_interactive_jwt
 )
 from polaris.models import Asset, Transaction
 from polaris.integrations.forms import TransactionForm
@@ -37,7 +38,8 @@ def _construct_interactive_url(request: Request,
     qparams = urlencode({
         "asset_code": asset_code,
         "transaction_id": transaction_id,
-        "account": account
+        "account": account,
+        "token": generate_interactive_jwt(request, transaction_id, account)
     })
     url_params = f"{reverse('interactive_withdraw')}?{qparams}"
     return request.build_absolute_uri(url_params)

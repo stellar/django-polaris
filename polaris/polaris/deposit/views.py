@@ -27,7 +27,8 @@ from polaris.helpers import (
     create_transaction_id,
     validate_sep10_token,
     validate_interactive_jwt,
-    invalidate_session
+    invalidate_session,
+    generate_interactive_jwt
 )
 from polaris.models import Asset, Transaction
 from polaris.transaction.serializers import TransactionSerializer
@@ -44,6 +45,7 @@ def _construct_interactive_url(request: Request,
         "asset_code": asset_code,
         "account": account,
         "transaction_id": transaction_id,
+        "token": generate_interactive_jwt(request, transaction_id, account)
     })
     url_params = f"{reverse('interactive_deposit')}?{qparams}"
     return request.build_absolute_uri(url_params)
