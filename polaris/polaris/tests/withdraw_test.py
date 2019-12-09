@@ -53,13 +53,14 @@ def test_withdraw_no_asset(mock_check, client):
 
 @pytest.mark.django_db
 @patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
+@patch("polaris.helpers.authenticate_session")
 def test_withdraw_interactive_no_txid(
-    mock_check, client, acc1_usd_withdrawal_transaction_factory
+    mock_check, mock_auth, client, acc1_usd_withdrawal_transaction_factory
 ):
     """
     `GET /transactions/withdraw/webapp` fails with no transaction_id.
     """
-    del mock_check
+    del mock_check, mock_auth
     acc1_usd_withdrawal_transaction_factory()
     response = client.get(f"/transactions/withdraw/webapp?", follow=True)
     assert response.status_code == 400
@@ -67,13 +68,14 @@ def test_withdraw_interactive_no_txid(
 
 @pytest.mark.django_db
 @patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
+@patch("polaris.helpers.authenticate_session")
 def test_withdraw_interactive_no_asset(
-    mock_check, client, acc1_usd_withdrawal_transaction_factory
+    mock_check, mock_auth, client, acc1_usd_withdrawal_transaction_factory
 ):
     """
     `GET /transactions/withdraw/webapp` fails with no asset_code.
     """
-    del mock_check
+    del mock_check, mock_auth
     acc1_usd_withdrawal_transaction_factory()
     response = client.get(
         f"/transactions/withdraw/webapp?transaction_id=2", follow=True
@@ -83,13 +85,14 @@ def test_withdraw_interactive_no_asset(
 
 @pytest.mark.django_db
 @patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
+@patch("polaris.helpers.authenticate_session")
 def test_withdraw_interactive_invalid_asset(
-    mock_check, client, acc1_usd_withdrawal_transaction_factory
+    mock_check, mock_auth, client, acc1_usd_withdrawal_transaction_factory
 ):
     """
     `GET /transactions/withdraw/webapp` fails with invalid asset_code.
     """
-    del mock_check
+    del mock_check, mock_auth
     acc1_usd_withdrawal_transaction_factory()
     response = client.get(
         f"/transactions/withdraw/webapp?transaction_id=2&asset_code=ETH", follow=True
@@ -121,6 +124,10 @@ def test_withdraw_interactive_failure_no_memotype(
 
     transaction_id = content["id"]
     url = content["url"]
+    response = client.get(url)
+    assert response.status_code == 200
+    assert client.session["authenticated"] is True
+
     response = client.post(url, {
         "amount": 20,
         "bank_account": "123456",
@@ -154,6 +161,10 @@ def test_withdraw_interactive_failure_incorrect_memotype(
 
     transaction_id = content["id"]
     url = content["url"]
+    response = client.get(url)
+    assert response.status_code == 200
+    assert client.session["authenticated"] is True
+
     response = client.post(url, {
         "amount": 20,
         "bank_account": "123456",
@@ -187,6 +198,10 @@ def test_withdraw_interactive_failure_no_memo(
 
     transaction_id = content["id"]
     url = content["url"]
+    response = client.get(url)
+    assert response.status_code == 200
+    assert client.session["authenticated"] is True
+
     response = client.post(url, {
         "amount": 20,
         "bank_account": "123456",
@@ -220,6 +235,10 @@ def test_withdraw_interactive_failure_incorrect_memo(
 
     transaction_id = content["id"]
     url = content["url"]
+    response = client.get(url)
+    assert response.status_code == 200
+    assert client.session["authenticated"] is True
+
     response = client.post(url, {
         "amount": 20,
         "bank_account": "123456",
@@ -250,6 +269,10 @@ def test_withdraw_interactive_success_transaction_unsuccessful(
 
     transaction_id = content["id"]
     url = content["url"]
+    response = client.get(url)
+    assert response.status_code == 200
+    assert client.session["authenticated"] is True
+
     response = client.post(url, {
         "amount": 50,
         "bank_account": "123456",
@@ -292,6 +315,10 @@ def test_withdraw_interactive_success_transaction_successful(
 
     transaction_id = content["id"]
     url = content["url"]
+    response = client.get(url)
+    assert response.status_code == 200
+    assert client.session["authenticated"] is True
+
     response = client.post(url, {
         "amount": 50,
         "bank_account": "123456",

@@ -309,6 +309,11 @@ def test_deposit_interactive_confirm_success(
 
     transaction_id = content["id"]
     url = content["url"]
+    # Authenticate session
+    response = client.get(url)
+    assert response.status_code == 200
+    assert client.session["authenticated"] is True
+
     amount = 20
     response = client.post(url, {"amount": amount})
     assert response.status_code == 302

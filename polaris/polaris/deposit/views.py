@@ -43,7 +43,6 @@ def _construct_interactive_url(request: Request,
                                asset_code: str) -> str:
     qparams = urlencode({
         "asset_code": asset_code,
-        "account": account,
         "transaction_id": transaction_id,
         "token": generate_interactive_jwt(request, transaction_id, account)
     })
@@ -86,20 +85,16 @@ def _verify_optional_args(request):
 
 @xframe_options_exempt
 @api_view(["GET", "POST"])
-@validate_interactive_jwt
 @renderer_classes([TemplateHTMLRenderer])
+@validate_interactive_jwt()
 def interactive_deposit(request: Request) -> Response:
     """
     """
     # Validate query parameters: account, asset_code, transaction_id.
-    account = request.GET.get("account")
     asset_code = request.GET.get("asset_code")
     asset = Asset.objects.filter(code=asset_code).first()
     transaction_id = request.GET.get("transaction_id")
-    if not account:
-        err_msg = "no 'account' provided"
-        return render_error_response(err_msg, content_type="text/html")
-    elif not (asset_code and asset):
+    if not (asset_code and asset):
         err_msg = "invalid 'asset_code'"
         return render_error_response(err_msg, content_type="text/html")
     elif not transaction_id:
@@ -201,7 +196,7 @@ def deposit(account: str, request: Request) -> Response:
         to_address=account
     )
     url = _construct_interactive_url(
-        request, transaction_id, stellar_account, asset_code
+        request, str(transaction_id), stellar_account, asset_code
     )
     return Response(
         {

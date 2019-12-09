@@ -38,7 +38,6 @@ def _construct_interactive_url(request: Request,
     qparams = urlencode({
         "asset_code": asset_code,
         "transaction_id": transaction_id,
-        "account": account,
         "token": generate_interactive_jwt(request, transaction_id, account)
     })
     url_params = f"{reverse('interactive_withdraw')}?{qparams}"
@@ -56,8 +55,8 @@ def _construct_more_info_url(request):
 
 @xframe_options_exempt
 @api_view(["GET", "POST"])
-@validate_interactive_jwt
 @renderer_classes([TemplateHTMLRenderer])
+@validate_interactive_jwt()
 def interactive_withdraw(request: Request) -> Response:
     """
     """
@@ -157,7 +156,7 @@ def withdraw(account: str, request: Request) -> Response:
         withdraw_memo_type=Transaction.MEMO_TYPES.hash,
     )
     url = _construct_interactive_url(
-        request, transaction_id, account, asset_code
+        request, str(transaction_id), account, asset_code
     )
     return Response({
         "type": "interactive_customer_info_needed",
