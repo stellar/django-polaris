@@ -16,6 +16,7 @@
 
     {% for field in form %}
     <div class="field">
+      {% if field.name == 'amount' %}
       <label class="label">{{ field.label }}</label>
       <div class="control has-icons-left">
         {{ field }}
@@ -23,6 +24,10 @@
           <i class="fas fa-dollar-sign"></i>
         </span>
       </div>
+      {% else %}
+      <label class="label"> {{ field.label }}</label>
+      <div> {{ field }} </div>
+      {% endif %}
 
       {% if field.errors %}
       <p class="help is-danger">

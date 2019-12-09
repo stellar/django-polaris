@@ -1,14 +1,24 @@
-"""This module defines forms used in the deposit view."""
 from django import forms
 
 
-class DepositForm(forms.Form):
-    """This form accepts the amount to deposit from the user."""
+class TransactionForm(forms.Form):
+    """
+    Base class for collecting transaction information
 
+    Developers must define subclasses to collect additional information and
+    apply additional validation.
+
+    Defines the :class:`.forms.FloatField` `amount` and also has a non-form
+    attribute `asset`, which will be populated by the `asset_code`
+    request parameter used in `/transactions/deposit/webapp` and
+    `/transactions/withdraw/webapp` endpoints.
+
+    The `amount` field is validated with the :meth:`clean_amount` function,
+    which ensures the amount is within the bounds for the asset type.
+    """
     amount = forms.FloatField(
-        help_text="Enter the amount to deposit, as a two decimal places float.",
         min_value=0,
-        widget=forms.NumberInput(attrs={"class": "input"}),
+        widget=forms.NumberInput(attrs={"class": "input"})
     )
     asset = None
 

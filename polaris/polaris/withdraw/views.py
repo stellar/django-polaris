@@ -22,13 +22,14 @@ from polaris.helpers import (
     validate_sep10_token,
 )
 from polaris.models import Asset, Transaction
-from polaris.withdraw.forms import WithdrawForm
+from polaris.integrations.forms import TransactionForm
+from polaris.integrations import registered_withdrawal_integration as rwi
 
 
 def _construct_interactive_url(request: Request,
-                               asset_code: str,
                                transaction_id: str,
-                               account: str) -> str:
+                               account: str,
+                               asset_code: str) -> str:
     """Constructs the URL for the interactive application for withdrawal info.
     This is located at `/transactions/withdraw/webapp`."""
     qparams = urlencode({
@@ -36,8 +37,7 @@ def _construct_interactive_url(request: Request,
         "transaction_id": transaction_id,
         "account": account
     })
-    path = reverse("interactive_withdraw")
-    url_params = f"{path}?{qparams}"
+    url_params = f"{reverse('interactive_withdraw')}?{qparams}"
     return request.build_absolute_uri(url_params)
 
 
@@ -55,8 +55,6 @@ def _construct_more_info_url(request):
 @renderer_classes([TemplateHTMLRenderer])
 def interactive_withdraw(request: Request) -> Response:
     """
-    `GET /transactions/withdraw/webapp` opens a form used to input information about
-    the withdrawal. This creates a corresponding transaction in our database.
     """
     transaction_id = request.GET.get("transaction_id")
     asset_code = request.GET.get("asset_code")
@@ -72,30 +70,44 @@ def interactive_withdraw(request: Request) -> Response:
         )
     except (Transaction.DoesNotExist, ValidationError):
         return render_error_response(
-            "Transaction with ID not found",
+            "Transaction with ID and asset_code not found",
             content_type="text/html",
             status_code=status.HTTP_404_NOT_FOUND
         )
 
-    # GET: The server needs to display the form for the user to input withdrawal information.
     if request.method == "GET":
-        form = WithdrawForm()
-        return Response({"form": form}, template_name="withdraw/form.html")
+        form_class = rwi.form_for_transaction(transaction)
+        return Response({"form": form_class()}, template_name="withdraw/form.html")
 
-    form = WithdrawForm(request.POST)
-    form.asset = asset
+    # request.method == "POST"
+    form = rwi.form_for_transaction(transaction)(request.POST)
+    is_transaction_form = issubclass(form.__class__, TransactionForm)
+    if is_transaction_form:
+        form.asset = asset
 
-    # If the form is valid, we create a transaction pending user action
-    # and render the success page.
     if form.is_valid():
-        transaction.amount_in = form.cleaned_data["amount"]
-        transaction.amount_fee = calc_fee(
-            asset, settings.OPERATION_WITHDRAWAL, transaction.amount_in
-        )
-        transaction.status = Transaction.STATUS.pending_user_transfer_start
-        transaction.save()
+        if is_transaction_form:
+            transaction.amount_in = form.cleaned_data["amount"]
+            transaction.amount_fee = calc_fee(
+                asset, settings.OPERATION_WITHDRAWAL, transaction.amount_in
+            )
+            transaction.save()
 
-        return redirect(f"{reverse('more_info')}?{urlencode({'id': transaction_id})}")
+        # Perform any defined post-validation logic defined by Polaris users
+        rwi.after_form_validation(form, transaction)
+        # Check to see if there is another form to render
+        form_class = rwi.form_for_transaction(transaction)
+
+        if form_class:
+            return Response(
+                {"form": form_class()},
+                template_name="withdraw/form.html"
+            )
+        else:
+            transaction.status = Transaction.STATUS.pending_user_transfer_start
+            transaction.save()
+            url, args = reverse('more_info'), urlencode({'id': transaction_id})
+            return redirect(f"{url}?{args}")
     else:
         return Response({"form": form}, template_name="withdraw/form.html")
 
@@ -138,7 +150,11 @@ def withdraw(account: str, request: Request) -> Response:
         withdraw_memo=withdraw_memo,
         withdraw_memo_type=Transaction.MEMO_TYPES.hash,
     )
-    url = _construct_interactive_url(request, asset_code, transaction_id, account)
-    return Response(
-        {"type": "interactive_customer_info_needed", "url": url, "id": transaction_id},
+    url = _construct_interactive_url(
+        request, transaction_id, account, asset_code
     )
+    return Response({
+        "type": "interactive_customer_info_needed",
+        "url": url,
+        "id": transaction_id
+    })

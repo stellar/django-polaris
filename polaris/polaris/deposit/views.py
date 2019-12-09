@@ -13,7 +13,6 @@ from polaris import settings
 from django.urls import reverse
 from django.shortcuts import redirect
 from django.views.decorators.clickjacking import xframe_options_exempt
-from django.core.management import call_command
 from rest_framework import status
 from rest_framework.decorators import api_view, renderer_classes
 from rest_framework.response import Response
@@ -30,22 +29,21 @@ from polaris.helpers import (
 )
 from polaris.models import Asset, Transaction
 from polaris.transaction.serializers import TransactionSerializer
+from polaris.deposit.utils import create_stellar_deposit
+from polaris.integrations.forms import TransactionForm
+from polaris.integrations import registered_deposit_integration as rdi
 
-from polaris.deposit.forms import DepositForm
 
-
-def _construct_interactive_url(request, asset_code, account, transaction_id): 
-    """Constructs the URL for the deposit application for deposit info.
-    This is located at `/transactions/deposit/webapp`."""
-    qparams = urlencode(
-        {
-            "asset_code": asset_code,
-            "account": account,
-            "transaction_id": transaction_id,
-        }
-    )
-    path = reverse("interactive_deposit")
-    url_params = f"{path}?{qparams}"
+def _construct_interactive_url(request: Request,
+                               transaction_id: str,
+                               account: str,
+                               asset_code: str) -> str:
+    qparams = urlencode({
+        "asset_code": asset_code,
+        "account": account,
+        "transaction_id": transaction_id,
+    })
+    url_params = f"{reverse('interactive_deposit')}?{qparams}"
     return request.build_absolute_uri(url_params)
 
 
@@ -132,7 +130,7 @@ def confirm_transaction(account: str, request: Request) -> Response:
     )
 
     # launch the deposit Stellar transaction.
-    call_command("create_stellar_deposit", transaction.id)
+    create_stellar_deposit(transaction.id)
     return Response({"transaction": serializer.data})
 
 
@@ -141,9 +139,6 @@ def confirm_transaction(account: str, request: Request) -> Response:
 @renderer_classes([TemplateHTMLRenderer])
 def interactive_deposit(request: Request) -> Response:
     """
-    `GET /transactions/deposit/webapp` opens a form used to input information
-    about the deposit. This creates a corresponding transaction in our
-    database, pending processing by the external agent.
     """
     # Validate query parameters: account, asset_code, transaction_id.
     account = request.GET.get("account")
@@ -151,17 +146,22 @@ def interactive_deposit(request: Request) -> Response:
     asset = Asset.objects.filter(code=asset_code).first()
     transaction_id = request.GET.get("transaction_id")
     if not account:
-        return render_error_response("no 'account' provided", content_type="text/html")
+        err_msg = "no 'account' provided"
+        return render_error_response(err_msg, content_type="text/html")
     elif not (asset_code and asset):
-        return render_error_response("invalid 'asset_code'", content_type="text/html")
+        err_msg = "invalid 'asset_code'"
+        return render_error_response(err_msg, content_type="text/html")
     elif not transaction_id:
-        return render_error_response("no 'transaction_id' provided", content_type="text/html")
+        err_msg = "no 'transaction_id' provided"
+        return render_error_response(err_msg, content_type="text/html")
 
+    # Ensure the transaction exists
     try:
         transaction = Transaction.objects.get(
-            id=transaction_id, asset=asset
+            id=transaction_id,
+            asset=asset
         )
-    except Transaction.DoesNotExist:
+    except Transaction.objects.DoesNotExist:
         return render_error_response(
             "Transaction with ID and asset_code not found",
             content_type="text/html",
@@ -169,22 +169,39 @@ def interactive_deposit(request: Request) -> Response:
         )
 
     if request.method == "GET":
-        form = DepositForm()
+        form = rdi.form_for_transaction(transaction)()
         return Response({"form": form}, template_name="deposit/form.html")
 
-    form = DepositForm(request.POST)
-    form.asset = asset
-    # If the form is valid, we create a transaction pending external action
-    # and render the success page.
-    if form.is_valid():
-        transaction.amount_in = form.cleaned_data["amount"]
-        transaction.amount_fee = calc_fee(
-            asset, settings.OPERATION_DEPOSIT, transaction.amount_in
-        )
-        transaction.status = Transaction.STATUS.pending_user_transfer_start
-        transaction.save()
+    # request.method == "POST"
+    form = rdi.form_for_transaction(transaction)(request.POST)
+    is_transaction_form = issubclass(form.__class__, TransactionForm)
+    if is_transaction_form:
+        form.asset = asset
 
-        return redirect(f"{reverse('more_info')}?{urlencode({'id': transaction_id})}")
+    if form.is_valid():
+        if is_transaction_form:
+            transaction.amount_in = form.cleaned_data["amount"]
+            transaction.amount_fee = calc_fee(
+                asset, settings.OPERATION_DEPOSIT, transaction.amount_in
+            )
+            transaction.save()
+
+        # Perform any defined post-validation logic defined by Polaris users
+        rdi.after_form_validation(form, transaction)
+        # Check to see if there is another form to render
+        form_class = rdi.form_for_transaction(transaction)
+
+        if form_class:
+            return Response(
+                {"form": form_class()},
+                template_name="deposit/form.html"
+            )
+        else:
+            transaction.status = Transaction.STATUS.pending_user_transfer_start
+            transaction.save()
+            url, args = reverse('more_info'), urlencode({'id': transaction_id})
+            return redirect(f"{url}?{args}")
+
     else:
         return Response({"form": form}, template_name="deposit/form.html")
 
@@ -231,8 +248,14 @@ def deposit(account: str, request: Request) -> Response:
         status=Transaction.STATUS.incomplete,
         to_address=account
     )
-    url = _construct_interactive_url(request, asset_code, stellar_account, transaction_id)
+    url = _construct_interactive_url(
+        request, transaction_id, stellar_account, asset_code
+    )
     return Response(
-        {"type": "interactive_customer_info_needed", "url": url, "id": transaction_id},
+        {
+            "type": "interactive_customer_info_needed",
+            "url": url,
+            "id": transaction_id
+        },
         status=status.HTTP_200_OK
     )
