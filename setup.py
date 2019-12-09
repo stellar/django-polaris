@@ -60,7 +60,7 @@ setup(
         "typing-extensions==3.7.4.1",
         "urllib3==1.25.7",
         "whitenoise==4.1.4",
-        "yarl==1.4.1",
+        "yarl==1.4.2",
     ],
     python_requires=">=3.7",
 )
