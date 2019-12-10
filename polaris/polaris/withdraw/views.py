@@ -20,7 +20,7 @@ from polaris.helpers import (
     create_transaction_id,
     calc_fee,
     validate_sep10_token,
-    validate_interactive_jwt,
+    interactive_authentication,
     invalidate_session,
     generate_interactive_jwt
 )
@@ -56,7 +56,7 @@ def _construct_more_info_url(request):
 @xframe_options_exempt
 @api_view(["GET", "POST"])
 @renderer_classes([TemplateHTMLRenderer])
-@validate_interactive_jwt()
+@interactive_authentication()
 def interactive_withdraw(request: Request) -> Response:
     """
     """

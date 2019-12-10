@@ -26,13 +26,11 @@ from polaris.helpers import (
     render_error_response,
     create_transaction_id,
     validate_sep10_token,
-    validate_interactive_jwt,
+    interactive_authentication,
     invalidate_session,
     generate_interactive_jwt
 )
 from polaris.models import Asset, Transaction
-from polaris.transaction.serializers import TransactionSerializer
-from polaris.deposit.utils import create_stellar_deposit
 from polaris.integrations.forms import TransactionForm
 from polaris.integrations import registered_deposit_integration as rdi
 
@@ -86,7 +84,7 @@ def _verify_optional_args(request):
 @xframe_options_exempt
 @api_view(["GET", "POST"])
 @renderer_classes([TemplateHTMLRenderer])
-@validate_interactive_jwt()
+@interactive_authentication()
 def interactive_deposit(request: Request) -> Response:
     """
     """

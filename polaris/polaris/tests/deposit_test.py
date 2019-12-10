@@ -317,9 +317,12 @@ def test_deposit_interactive_confirm_success(
     response = client.get(url)
     assert response.status_code == 200
     assert client.session["authenticated"] is True
+    print(client.session.items())
+    print(url)
 
     amount = 20
     response = client.post(url, {"amount": amount})
+    print(response.content)
     assert response.status_code == 302
     assert (
         Transaction.objects.get(id=transaction_id).status
