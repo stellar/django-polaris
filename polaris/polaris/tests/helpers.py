@@ -1,5 +1,6 @@
 """Helper functions to use across tests."""
 import json
+import time
 
 from django.conf import settings
 from stellar_sdk import Account
@@ -38,3 +39,15 @@ def mock_load_not_exist_account(account_id):
     if account_id != settings.STELLAR_ISSUER_ACCOUNT_ADDRESS and account_id != settings.STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS:
         raise NotFoundError(response=Response(status_code=404, headers={}, url="", text=json.dumps(dict(status=404))))
     return Account(account_id, 1)
+
+
+def interactive_jwt_payload(transaction, transaction_type):
+    current_time = time.time()
+    return {
+        "iss": f"http://testserver/transactions/{transaction_type}/interactive",
+        "exp": current_time + 30,
+        "iat": current_time,
+        "jti": str(transaction.id),
+        "sub": transaction.stellar_account
+    }
+

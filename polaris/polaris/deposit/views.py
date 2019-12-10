@@ -26,10 +26,11 @@ from polaris.helpers import (
     render_error_response,
     create_transaction_id,
     validate_sep10_token,
+    interactive_authentication,
+    invalidate_session,
+    generate_interactive_jwt
 )
 from polaris.models import Asset, Transaction
-from polaris.transaction.serializers import TransactionSerializer
-from polaris.deposit.utils import create_stellar_deposit
 from polaris.integrations.forms import TransactionForm
 from polaris.integrations import registered_deposit_integration as rdi
 
@@ -40,8 +41,8 @@ def _construct_interactive_url(request: Request,
                                asset_code: str) -> str:
     qparams = urlencode({
         "asset_code": asset_code,
-        "account": account,
         "transaction_id": transaction_id,
+        "token": generate_interactive_jwt(request, transaction_id, account)
     })
     url_params = f"{reverse('interactive_deposit')}?{qparams}"
     return request.build_absolute_uri(url_params)
@@ -83,18 +84,15 @@ def _verify_optional_args(request):
 @xframe_options_exempt
 @api_view(["GET", "POST"])
 @renderer_classes([TemplateHTMLRenderer])
+@interactive_authentication()
 def interactive_deposit(request: Request) -> Response:
     """
     """
     # Validate query parameters: account, asset_code, transaction_id.
-    account = request.GET.get("account")
     asset_code = request.GET.get("asset_code")
     asset = Asset.objects.filter(code=asset_code).first()
     transaction_id = request.GET.get("transaction_id")
-    if not account:
-        err_msg = "no 'account' provided"
-        return render_error_response(err_msg, content_type="text/html")
-    elif not (asset_code and asset):
+    if not (asset_code and asset):
         err_msg = "invalid 'asset_code'"
         return render_error_response(err_msg, content_type="text/html")
     elif not transaction_id:
@@ -142,7 +140,8 @@ def interactive_deposit(request: Request) -> Response:
                 {"form": form_class()},
                 template_name="deposit/form.html"
             )
-        else:
+        else:  # Last form has been submitted
+            invalidate_session(request)
             transaction.status = Transaction.STATUS.pending_user_transfer_start
             transaction.save()
             url, args = reverse('more_info'), urlencode({'id': transaction_id})
@@ -195,7 +194,7 @@ def deposit(account: str, request: Request) -> Response:
         to_address=account
     )
     url = _construct_interactive_url(
-        request, transaction_id, stellar_account, asset_code
+        request, str(transaction_id), stellar_account, asset_code
     )
     return Response(
         {

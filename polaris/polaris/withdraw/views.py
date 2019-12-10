@@ -20,6 +20,9 @@ from polaris.helpers import (
     create_transaction_id,
     calc_fee,
     validate_sep10_token,
+    interactive_authentication,
+    invalidate_session,
+    generate_interactive_jwt
 )
 from polaris.models import Asset, Transaction
 from polaris.integrations.forms import TransactionForm
@@ -35,7 +38,7 @@ def _construct_interactive_url(request: Request,
     qparams = urlencode({
         "asset_code": asset_code,
         "transaction_id": transaction_id,
-        "account": account
+        "token": generate_interactive_jwt(request, transaction_id, account)
     })
     url_params = f"{reverse('interactive_withdraw')}?{qparams}"
     return request.build_absolute_uri(url_params)
@@ -53,6 +56,7 @@ def _construct_more_info_url(request):
 @xframe_options_exempt
 @api_view(["GET", "POST"])
 @renderer_classes([TemplateHTMLRenderer])
+@interactive_authentication()
 def interactive_withdraw(request: Request) -> Response:
     """
     """
@@ -103,7 +107,8 @@ def interactive_withdraw(request: Request) -> Response:
                 {"form": form_class()},
                 template_name="withdraw/form.html"
             )
-        else:
+        else:  # Last form has been submitted
+            invalidate_session(request)
             transaction.status = Transaction.STATUS.pending_user_transfer_start
             transaction.save()
             url, args = reverse('more_info'), urlencode({'id': transaction_id})
@@ -151,7 +156,7 @@ def withdraw(account: str, request: Request) -> Response:
         withdraw_memo_type=Transaction.MEMO_TYPES.hash,
     )
     url = _construct_interactive_url(
-        request, transaction_id, account, asset_code
+        request, str(transaction_id), account, asset_code
     )
     return Response({
         "type": "interactive_customer_info_needed",
