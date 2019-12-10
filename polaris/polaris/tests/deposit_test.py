@@ -165,7 +165,6 @@ def test_deposit_no_memo(mock_check, client, acc1_usd_deposit_transaction_factor
         follow=True,
     )
     content = json.loads(response.content)
-    print(response)
     assert response.status_code == 400
     assert content == {"error": "'memo_type' provided with no 'memo'"}
 
@@ -317,12 +316,9 @@ def test_deposit_interactive_confirm_success(
     response = client.get(url)
     assert response.status_code == 200
     assert client.session["authenticated"] is True
-    print(client.session.items())
-    print(url)
 
     amount = 20
     response = client.post(url, {"amount": amount})
-    print(response.content)
     assert response.status_code == 302
     assert (
         Transaction.objects.get(id=transaction_id).status
