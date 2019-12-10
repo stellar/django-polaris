@@ -158,12 +158,10 @@ def authenticate_session(r: Request):
     Decodes and validates the JWT token passed in the GET request to a
     /webapp endpoint.
 
-    Adds three items to ``r.session``:
+    Adds two items to ``r.session``:
     - authenticated: a boolean for whether the session has been authenticated
         for any transaction
     - account: the stellar account address associated with the token
-    - transaction_ids: the list of transactions this session has been authenticated
-        for. All transactions must be associated to the same account.
     """
     if r.session.get("authenticated") and r.session.get("account", ""):
         transaction_qs = Transaction.objects.filter(
