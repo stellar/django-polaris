@@ -4,6 +4,8 @@ Celery tasks are called synchronously. Horizon calls are mocked for speed and co
 """
 import json
 from unittest.mock import patch
+import jwt
+import time
 
 import pytest
 from stellar_sdk import Keypair, TransactionEnvelope
@@ -19,9 +21,11 @@ from polaris.management.commands.create_stellar_deposit import (
 )
 from polaris.management.commands.poll_pending_deposits import execute_deposit
 from polaris.models import Transaction
-from polaris.tests.helpers import mock_check_auth_success, mock_load_not_exist_account, sep10
+from polaris.tests.helpers import (mock_check_auth_success,
+                                   mock_load_not_exist_account,
+                                   sep10,
+                                   interactive_jwt_payload)
 
-from polaris.models import Asset
 
 DEPOSIT_PATH = f"/transactions/deposit/interactive"
 HORIZON_SUCCESS_RESPONSE = {"result_xdr": SUCCESS_XDR, "hash": "test_stellar_id"}
@@ -364,89 +368,8 @@ def test_deposit_check_trustlines_success(
 
 
 @pytest.mark.django_db
-@pytest.mark.skip
-def test_deposit_check_trustlines_horizon(
-    client, acc1_usd_deposit_transaction_factory
-):
-    """
-    Tests the `check_trustlines` function's various logical paths. Note that the Stellar
-    deposit is created synchronously. This makes Horizon calls, so it is skipped by the CI.
-    """
-    # Initiate a transaction with a new Stellar account.
-    deposit = acc1_usd_deposit_transaction_factory()
-
-    keypair = Keypair.random()
-    deposit.stellar_account = keypair.public_key
-    response = client.get(
-        f"/deposit?asset_code=USD&account={deposit.stellar_account}", follow=True
-    )
-    content = json.loads(response.content)
-    assert response.status_code == 200
-    assert content["type"] == "interactive_customer_info_needed"
-
-    # Complete the interactive deposit. The transaction should be set
-    # to pending_user_transfer_start, since wallet-side confirmation has not happened.
-    transaction_id = content["id"]
-    url = content["url"]
-    amount = 20
-    response = client.post(url, {"amount": amount})
-    assert response.status_code == 200
-    assert (
-        Transaction.objects.get(id=transaction_id).status
-        == Transaction.STATUS.pending_user_transfer_start
-    )
-
-    # After calling execute_deposit(), the transaction should
-    # be `pending_trust`. The function will trigger a synchronous call to
-    # `create_stellar_deposit`, which will register the account on testnet.
-    # Since the account will not have a trustline, the status will still
-    # be `pending_trust`.
-    transaction = Transaction.objects.get(id=transaction_id)
-    execute_deposit(transaction)
-    transaction.refresh_from_db()
-    assert transaction.status == Transaction.STATUS.pending_anchor
-    assert float(transaction.amount_in) == amount
-
-    # The Stellar account has not been registered, so
-    # this should not change the status of the Transaction.
-    call_command("check_trustlines")
-    assert (
-        Transaction.objects.get(id=transaction_id).status
-        == Transaction.STATUS.pending_trust
-    )
-
-    # Add a trustline for the transaction asset from the server
-    # source account to the transaction account.
-    from stellar_sdk.asset import Asset
-    from stellar_sdk.transaction_builder import TransactionBuilder
-
-    asset_code = deposit.asset.code
-    asset_issuer = settings.STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS
-    Asset(code=asset_code, issuer=asset_issuer)
-
-    server = settings.HORIZON_SERVER
-    source_account = server.load_account(keypair.public_key)
-    base_fee = 100
-    transaction = TransactionBuilder(source_account=source_account,
-                                     network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
-                                     base_fee=base_fee).append_change_trust_op(asset_code, asset_issuer).build()
-    transaction.sign(keypair)
-    response = server.submit_transaction(transaction)
-    assert response["result_xdr"] == "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAAGAAAAAAAAAAA="
-
-    call_command("check_trustlines")
-    completed_transaction = Transaction.objects.get(id=transaction_id)
-    assert completed_transaction.status == Transaction.STATUS.completed
-    assert (
-        completed_transaction.stellar_transaction_id == HORIZON_SUCCESS_RESPONSE["hash"]
-    )
-
-
-@pytest.mark.django_db
 def test_deposit_authenticated_success(client, acc1_usd_deposit_transaction_factory):
     """`GET /deposit` succeeds with the SEP 10 authentication flow."""
-    client_address = "GDKFNRUATPH4BSZGVFDRBIGZ5QAFILVFRIRYNSQ4UO7V2ZQAPRNL73RI"
-    client_seed = "SDKWSBERDHP3SXW5A3LXSI7FWMMO5H7HG33KNYBKWH2HYOXJG2DXQHQY"
     deposit = acc1_usd_deposit_transaction_factory()
 
     # SEP 10.
@@ -490,3 +413,87 @@ def test_deposit_no_jwt(client, acc1_usd_deposit_transaction_factory):
     content = json.loads(response.content)
     assert response.status_code == 400
     assert content == {"error": "JWT must be passed as 'Authorization' header"}
+
+
+@pytest.mark.django_db
+def test_interactive_deposit_no_token(client, acc1_usd_deposit_transaction_factory):
+    """
+    `GET /deposit/webapp` fails without token argument
+
+    The endpoint returns HTML so we cannot extract the error message from the
+    response.
+    """
+    response = client.get("/transactions/deposit/webapp")
+    assert "Missing authentication token" in str(response.content)
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_interactive_deposit_bad_issuer(client, acc1_usd_deposit_transaction_factory):
+    deposit = acc1_usd_deposit_transaction_factory()
+
+    payload = interactive_jwt_payload(deposit, "deposit")
+    payload["iss"] = "bad iss"
+    encoded_token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256")
+    token = encoded_token.decode("ascii")
+
+    response = client.get(f"/transactions/deposit/webapp?token={token}")
+    assert "Invalid token issuer" in str(response.content)
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_interactive_deposit_past_exp(client, acc1_usd_deposit_transaction_factory):
+    deposit = acc1_usd_deposit_transaction_factory()
+
+    payload = interactive_jwt_payload(deposit, "deposit")
+    payload["exp"] = time.time()
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode("ascii")
+
+    response = client.get(f"/transactions/deposit/webapp?token={token}")
+    assert "Token is not yet valid or is expired" in str(response.content)
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_interactive_deposit_no_transaction(client, acc1_usd_deposit_transaction_factory):
+    deposit = acc1_usd_deposit_transaction_factory()
+
+    payload = interactive_jwt_payload(deposit, "deposit")
+    deposit.delete()  # remove from database
+
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode("ascii")
+
+    response = client.get(f"/transactions/deposit/webapp?token={token}")
+    assert "Transaction for account not found" in str(response.content)
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_interactive_deposit_success(client, acc1_usd_deposit_transaction_factory):
+    deposit = acc1_usd_deposit_transaction_factory()
+    deposit.amount_in = None
+    deposit.save()
+
+    payload = interactive_jwt_payload(deposit, "deposit")
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode("ascii")
+
+    response = client.get(
+        f"/transactions/deposit/webapp"
+        f"?token={token}"
+        f"&transaction_id={deposit.id}"
+        f"&asset_code={deposit.asset.code}"
+    )
+    assert response.status_code == 200
+    assert client.session["authenticated"] is True
+
+    response = client.post(
+        "/transactions/deposit/webapp"
+        f"?transaction_id={deposit.id}"
+        f"&asset_code={deposit.asset.code}",
+        {
+            "amount": 200.0
+        }
+    )
+    assert response.status_code == 302
+    assert client.session["authenticated"] is False

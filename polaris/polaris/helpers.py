@@ -164,6 +164,9 @@ def authenticate_session(r: Request):
         return
 
     token = r.GET.get("token")
+    if not token:
+        raise ValueError("Missing authentication token")
+
     try:
         jwt_dict = jwt.decode(token, settings.SERVER_JWT_KEY, algorithms=["HS256"])
     except InvalidTokenError as e:
