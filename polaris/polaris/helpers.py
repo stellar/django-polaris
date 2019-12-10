@@ -217,11 +217,19 @@ def check_authentication(r: Request):
         raise ValueError("Session has not been authenticated")
 
 
-def invalidate_session(request: Request):
+def invalidate_session_for_transaction(request: Request, transaction_id: str):
     """
-    Invalidates request's session for the interactive flow.
+    Invalidates request's session for a particular transaction.
+
+    If ``transaction_id`` is the only transaction for which the session
+    is authenticated, mark ``request.session["authenticated"]`` as False.
     """
-    request.session["authenticated"] = False
+    request.session["transaction_ids"].remove(transaction_id)
+    if not request.session["transaction_ids"]:
+        del request.session["transaction_ids"]
+        request.session["authenticated"] = False
+    else:
+        request.session.modified = True
 
 
 def generate_interactive_jwt(request: Request, transaction_id: str, account: str) -> str:

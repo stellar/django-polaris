@@ -27,7 +27,7 @@ from polaris.helpers import (
     create_transaction_id,
     validate_sep10_token,
     interactive_authentication,
-    invalidate_session,
+    invalidate_session_for_transaction,
     generate_interactive_jwt
 )
 from polaris.models import Asset, Transaction
@@ -140,8 +140,8 @@ def interactive_deposit(request: Request) -> Response:
                 {"form": form_class()},
                 template_name="deposit/form.html"
             )
-        else:
-            invalidate_session(request)  # Last form has been submitted
+        else:  # Last form has been submitted
+            invalidate_session_for_transaction(request, transaction_id)
             transaction.status = Transaction.STATUS.pending_user_transfer_start
             transaction.save()
             url, args = reverse('more_info'), urlencode({'id': transaction_id})
