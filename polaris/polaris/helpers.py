@@ -165,10 +165,16 @@ def authenticate_session(r: Request):
     - transaction_ids: the list of transactions this session has been authenticated
         for. All transactions must be associated to the same account.
     """
-    transaction_id = r.GET.get("transaction_id")
-    if (r.session.get("authenticated") and
-            transaction_id in r.session.get("transaction_ids", [])):
-        return
+    if r.session.get("authenticated") and r.session.get("account", ""):
+        transaction_qs = Transaction.objects.filter(
+            id=r.GET.get("transaction_id"),
+            stellar_account=r.session["account"]
+        )
+        if not transaction_qs.exists():
+            raise ValueError("Transaction for account not found")
+        else:
+            # client has been authenticated for the requested transaction
+            return
 
     token = r.GET.get("token")
     if not token:
@@ -193,43 +199,29 @@ def authenticate_session(r: Request):
 
     # JWT is valid, authenticate session
     r.session["authenticated"] = True
-    if "account" in r.session:
-        if r.session["account"] != jwt_dict["sub"]:
-            raise ValueError("Cannot authenticate for multiple accounts")
-    else:
-        r.session["account"] = jwt_dict["sub"]
-    if "transaction_ids" in r.session:
-        r.session["transaction_ids"].append(transaction_id)
-        # The session isn't modified unless a new object is assigned
-        # https://docs.djangoproject.com/en/2.2/topics/http/sessions
-        r.session.modified = True
-    else:
-        r.session["transaction_ids"] = [transaction_id]
+    r.session["account"] = jwt_dict["sub"]
 
 
 def check_authentication(r: Request):
     """
     Checks that the session associated with the request is authenticated
     """
-    transaction_ids = r.session.get("transaction_ids", [])
-    if not (r.session.get("authenticated") and
-            r.GET.get("transaction_id") in transaction_ids):
-        raise ValueError("Session has not been authenticated")
+    if not r.session.get("authenticated"):
+        raise ValueError("Session is not authenticated")
+
+    transaction_qs = Transaction.objects.filter(
+        id=r.GET.get("transaction_id"),
+        stellar_account=r.session.get("account")
+    )
+    if not transaction_qs.exists():
+        raise ValueError("Transaction for account not found")
 
 
-def invalidate_session_for_transaction(request: Request, transaction_id: str):
+def invalidate_session(request: Request):
     """
-    Invalidates request's session for a particular transaction.
-
-    If ``transaction_id`` is the only transaction for which the session
-    is authenticated, mark ``request.session["authenticated"]`` as False.
+    Invalidates request's session for the interactive flow.
     """
-    request.session["transaction_ids"].remove(transaction_id)
-    if not request.session["transaction_ids"]:
-        del request.session["transaction_ids"]
-        request.session["authenticated"] = False
-    else:
-        request.session.modified = True
+    request.session["authenticated"] = False
 
 
 def generate_interactive_jwt(request: Request, transaction_id: str, account: str) -> str:
