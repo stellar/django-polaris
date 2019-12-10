@@ -75,6 +75,11 @@ The `attrs` parameter adds a HTML attribute to the `<input>` tag that Bulma
 uses to add better styling. You may also add more Bulma-supported attributes
 to Polaris forms.
 
+Deposit Instructions
+--------------------
+
+.. autofunction:: polaris.integrations.DepositIntegration.instructions_for_pending_deposit
+
 Registering Integrations
 ------------------------
 In order for Polaris to use the integration classes you've defined, you
