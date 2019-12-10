@@ -43,3 +43,6 @@ class PolarisSameSiteMiddleware:
             response.cookies[settings.SESSION_COOKIE_NAME]["samesite"] = "None"
 
         return response
+
+
+import_path = "polaris.middleware.PolarisSameSiteMiddleware"

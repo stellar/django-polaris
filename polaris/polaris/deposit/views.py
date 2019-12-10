@@ -8,8 +8,9 @@ confirm that the first step of the deposit successfully completed.
 import base64
 import binascii
 from urllib.parse import urlencode
+from typing import Optional
 
-from polaris import settings
+from django.conf import settings as django_settings
 from django.urls import reverse
 from django.shortcuts import redirect
 from django.views.decorators.clickjacking import xframe_options_exempt
@@ -21,6 +22,7 @@ from rest_framework.renderers import TemplateHTMLRenderer, JSONRenderer
 from stellar_sdk.keypair import Keypair
 from stellar_sdk.exceptions import Ed25519PublicKeyInvalidError
 
+from polaris import settings
 from polaris.helpers import (
     calc_fee,
     render_error_response,
@@ -33,6 +35,7 @@ from polaris.helpers import (
 from polaris.models import Asset, Transaction
 from polaris.integrations.forms import TransactionForm
 from polaris.integrations import registered_deposit_integration as rdi
+from polaris.middleware import import_path
 
 
 def _construct_interactive_url(request: Request,
@@ -81,6 +84,28 @@ def _verify_optional_args(request):
     return None
 
 
+def check_middleware(content_type: str = "text/html") -> Optional[Response]:
+    """
+    Ensures the Django app running Polaris has the correct middleware
+    configuration for GET /webapp requests.
+    """
+    err_msg = None
+    session_middleware_path = "django.contrib.sessions.middleware.SessionMiddleware"
+    if import_path not in django_settings.MIDDLEWARE:
+        err_msg = f"{import_path} is not installed"
+    elif session_middleware_path not in django_settings.MIDDLEWARE:
+        err_msg = f"{session_middleware_path} is not installed"
+    elif django_settings.MIDDLEWARE.index(import_path) > django_settings.MIDDLEWARE.index(session_middleware_path):
+        err_msg = f"{import_path} must be listed before {session_middleware_path}"
+
+    if err_msg:
+        return render_error_response(
+            err_msg, content_type=content_type, status_code=501
+        )
+    else:
+        return None
+
+
 @xframe_options_exempt
 @api_view(["GET", "POST"])
 @renderer_classes([TemplateHTMLRenderer])
@@ -113,6 +138,10 @@ def interactive_deposit(request: Request) -> Response:
         )
 
     if request.method == "GET":
+        err_resp = check_middleware()
+        if err_resp:
+            return err_resp
+
         form = rdi.form_for_transaction(transaction)()
         return Response({"form": form}, template_name="deposit/form.html")
 
