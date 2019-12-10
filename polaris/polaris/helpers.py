@@ -10,7 +10,6 @@ from jwt.exceptions import InvalidTokenError
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.request import Request
-from django.urls import reverse
 
 from polaris.models import Asset, Transaction
 
