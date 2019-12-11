@@ -83,8 +83,8 @@ def test_transaction_id_filter_and_format(
         withdrawal_transaction["external_transaction_id"]
         == "2dd16cb409513026fbe7defc0c6f826c2d2c65c3da993f747d09bf7dafd31094"
     )
-    assert withdrawal_transaction["from_address"] is None
-    assert withdrawal_transaction["to_address"] is None
+    assert withdrawal_transaction["from"] is None
+    assert withdrawal_transaction["to"] is None
     assert withdrawal_transaction["external_extra"] is None
     assert withdrawal_transaction["external_extra_text"] is None
     assert withdrawal_transaction["deposit_memo"] is None

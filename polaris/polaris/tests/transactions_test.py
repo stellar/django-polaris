@@ -155,8 +155,8 @@ def test_transactions_content(
         withdrawal_transaction["external_transaction_id"]
         == withdrawal.external_transaction_id
     )
-    assert withdrawal_transaction["from_address"] is None
-    assert withdrawal_transaction["to_address"] is None
+    assert withdrawal_transaction["from"] is None
+    assert withdrawal_transaction["to"] is None
     assert withdrawal_transaction["external_extra"] is None
     assert withdrawal_transaction["external_extra_text"] is None
     assert withdrawal_transaction["deposit_memo"] is None
@@ -183,8 +183,8 @@ def test_transactions_content(
         deposit_transaction["external_transaction_id"]
         == deposit.external_transaction_id
     )
-    assert deposit_transaction["from_address"] is None
-    assert deposit_transaction["to_address"] is None
+    assert deposit_transaction["from"] is None
+    assert deposit_transaction["to"] is None
     assert deposit_transaction["external_extra"] is None
     assert deposit_transaction["external_extra_text"] is None
     assert deposit_transaction["deposit_memo"] == deposit.deposit_memo
