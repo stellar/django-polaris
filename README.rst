@@ -45,6 +45,23 @@ Add it to ``INSTALLED_APPS`` in settings.py
         "polaris",
     ]
 
+Add Polaris' :doc:`PolarisSameSiteMiddleware </middleware/index>` to your
+``settings.MIDDLEWARE``. Make sure its listed `above` ``SessionMiddleware``.
+::
+
+    MIDDLEWARE = [
+        'django.middleware.security.SecurityMiddleware',
+        'polaris.middleware.PolarisSameSiteMiddleware',
+        'django.contrib.sessions.middleware.SessionMiddleware',
+        'django.middleware.common.CommonMiddleware',
+        'django.middleware.csrf.CsrfViewMiddleware',
+        'django.contrib.auth.middleware.AuthenticationMiddleware',
+        'django.contrib.messages.middleware.MessageMiddleware',
+        'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    ]
+
+
+
 Define ``PROJECT_ROOT`` in your project's settings.py. Polaris uses this to
 find your ``.env`` file.
 ::
