@@ -285,7 +285,9 @@ def test_deposit_stellar_success(
 @pytest.mark.django_db
 @patch("stellar_sdk.server.Server.fetch_base_fee", return_value=100)
 @patch("stellar_sdk.server.Server.submit_transaction", return_value=HORIZON_SUCCESS_RESPONSE)
+@patch("polaris.deposit.views.check_middleware", return_value=None)
 def test_deposit_interactive_confirm_success(
+    mock_check_middleware,
     mock_submit,
     mock_base_fee,
     client,
@@ -295,7 +297,7 @@ def test_deposit_interactive_confirm_success(
     `GET /deposit` and `GET /transactions/deposit/webapp` succeed with valid `account`
     and `asset_code`.
     """
-    del mock_submit, mock_base_fee
+    del mock_submit, mock_base_fee, mock_check_middleware
     deposit = acc1_usd_deposit_transaction_factory()
 
     encoded_jwt = sep10(client, deposit.stellar_account, STELLAR_ACCOUNT_1_SEED)
@@ -469,7 +471,11 @@ def test_interactive_deposit_no_transaction(client, acc1_usd_deposit_transaction
 
 
 @pytest.mark.django_db
-def test_interactive_deposit_success(client, acc1_usd_deposit_transaction_factory):
+@patch("polaris.deposit.views.check_middleware", return_value=None)
+def test_interactive_deposit_success(mock_check_middleware,
+                                     client,
+                                     acc1_usd_deposit_transaction_factory):
+    del mock_check_middleware
     deposit = acc1_usd_deposit_transaction_factory()
     deposit.amount_in = None
     deposit.save()
