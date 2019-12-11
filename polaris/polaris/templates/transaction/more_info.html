@@ -6,6 +6,16 @@
 
 {% block "content" %}
 <section class="section receipt">
+    {% if instructions is not none %}
+    <div class="field">
+        <label>
+            instructions
+        </label>
+        <div class="field-value">
+            {{ instructions|safe }}
+        </div>
+    </div>
+    {% endif %}
     <div class="field">
         <label>
             kind
@@ -59,7 +69,7 @@
             {{ transaction.completed_at }}
         </div>
     </div>
-    
+
     <script type="text/javascript">
         var tx_json = JSON.parse('{{ tx_json|safe }}');
         var transaction = tx_json["transaction"];

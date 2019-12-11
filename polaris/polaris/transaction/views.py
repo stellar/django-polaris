@@ -12,9 +12,10 @@ from polaris import settings
 from django.urls import reverse
 from django.views.decorators.clickjacking import xframe_options_exempt
 
-from polaris.helpers import render_error_response, validate_sep10_token, validate_jwt_request
+from polaris.helpers import render_error_response, validate_sep10_token
 from polaris.models import Transaction
 from polaris.transaction.serializers import TransactionSerializer
+from polaris.integrations import registered_deposit_integration as rdi
 
 
 def _validate_limit(limit):
@@ -98,14 +99,16 @@ def more_info(request: Request) -> Response:
         context={"more_info_url": _construct_more_info_url(request)},
     )
     tx_json = json.dumps({"transaction": serializer.data})
-    return Response(
-        {
-            "tx_json": tx_json,
-            "transaction": request_transaction,
-            "asset_code": request_transaction.asset.code,
-        },
-        template_name="transaction/more_info.html"
-    )
+    resp_data = {
+        "tx_json": tx_json,
+        "transaction": request_transaction,
+        "asset_code": request_transaction.asset.code,
+        "instructions": None
+    }
+    if (request_transaction.kind == Transaction.KIND.deposit and
+            request_transaction.status == Transaction.STATUS.pending_user_transfer_start):
+        resp_data["instructions"] = rdi.instructions_for_pending_deposit(transaction)
+    return Response(resp_data, template_name="transaction/more_info.html")
 
 
 @api_view()

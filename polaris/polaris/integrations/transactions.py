@@ -138,6 +138,19 @@ class DepositIntegration:
         """
         pass
 
+    @classmethod
+    def instructions_for_pending_deposit(cls, transaction: Transaction):
+        """
+        For pending deposits, its common to show instructions to the user for how
+        to initiate the external transfer. Use this function to return text or HTML
+        instructions to be rendered in response to `/transaction/more_info`.
+
+        :param transaction: the transaction database object to be serialized and
+            rendered in the response.
+        :return: the text or HTML to render in the instructions template section
+        """
+        pass
+
 
 class WithdrawalIntegration:
     """
