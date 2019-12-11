@@ -1,4 +1,6 @@
 """This module defines the `/fee` view."""
+from decimal import Decimal, DecimalException
+
 from polaris import settings
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -44,8 +46,8 @@ def fee(account: str, request: Request) -> Response:
     # Verify that amount is provided, and that it is parseable into a float:
     amount_str = request.GET.get("amount")
     try:
-        amount = float(amount_str)
-    except (ValueError, TypeError):
+        amount = Decimal(amount_str)
+    except (DecimalException, TypeError):
         return render_error_response("invalid 'amount'")
 
     # Validate that the operation, and the specified type (if provided)

@@ -1,4 +1,5 @@
 """This module defines helpers for various endpoints."""
+from decimal import Decimal
 from typing import Callable
 import codecs
 import time
@@ -14,7 +15,7 @@ from rest_framework.request import Request
 from polaris.models import Asset, Transaction
 
 
-def calc_fee(asset: Asset, operation: str, amount: float) -> float:
+def calc_fee(asset: Asset, operation: str, amount: Decimal) -> Decimal:
     """Calculates fees for an operation with a given asset and amount."""
     if operation == settings.OPERATION_WITHDRAWAL:
         fee_percent = asset.withdrawal_fee_percent
@@ -27,7 +28,7 @@ def calc_fee(asset: Asset, operation: str, amount: float) -> float:
     # `op_type` is not used in this context, since there is no fee variation
     # based on operation type in this example implementation, but that can
     # occur in real-life applications.
-    return fee_fixed + (fee_percent / 100.0) * amount
+    return fee_fixed + (fee_percent / Decimal('100.0')) * amount
 
 
 def render_error_response(description: str,
