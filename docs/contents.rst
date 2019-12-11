@@ -12,6 +12,7 @@ django-polaris documentation contents
     integrations/index
     models/index
     forms/index
+    middleware/index
 
 
 Indices and tables
