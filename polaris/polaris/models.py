@@ -32,39 +32,55 @@ class Asset(TimeStampedModel):
     # Deposit-related info
     deposit_enabled = models.BooleanField(null=False, default=True)
     """``True`` if SEP-6 deposit for this asset is supported."""
-    deposit_fee_fixed = models.FloatField(default=1.0, blank=True)
+    deposit_fee_fixed = models.DecimalField(
+        default=1.0, blank=True, max_digits=50, decimal_places=25
+    )
     """
     Optional fixed (base) fee for deposit. In units of the deposited asset. 
     This is in addition to any ``fee_percent``. Omit if there is no fee or the fee 
     schedule is complex.
     """
-    deposit_fee_percent = models.FloatField(default=0.01, blank=True)
+    deposit_fee_percent = models.DecimalField(
+        default=0.01, blank=True, max_digits=50, decimal_places=25
+    )
     """
     Optional percentage fee for deposit. In percentage points. This is in 
     addition to any ``fee_fixed``. Omit if there is no fee or the fee schedule
     is complex.
     """
-    deposit_min_amount = models.FloatField(default=10.0, blank=True)
+    deposit_min_amount = models.DecimalField(
+        default=10.0, blank=True, max_digits=50, decimal_places=25
+    )
     """Optional minimum amount. No limit if not specified."""
-    deposit_max_amount = models.FloatField(default=10000.0, blank=True)
+    deposit_max_amount = models.DecimalField(
+        default=10000.0, blank=True, max_digits=50, decimal_places=25
+    )
     """Optional maximum amount. No limit if not specified."""
 
     # Withdrawal-related info
     withdrawal_enabled = models.BooleanField(null=False, default=True)
     """``True`` if SEP-6 withdrawal for this asset is supported."""
-    withdrawal_fee_fixed = models.FloatField(default=1.0, blank=True)
+    withdrawal_fee_fixed = models.DecimalField(
+        default=1.0, blank=True, max_digits=50, decimal_places=25
+    )
     """
     Optional fixed (base) fee for withdraw. In units of the withdrawn asset. 
     This is in addition to any ``fee_percent``.
     """
-    withdrawal_fee_percent = models.FloatField(default=0.01, blank=True)
+    withdrawal_fee_percent = models.DecimalField(
+        default=0.01, blank=True, max_digits=50, decimal_places=25
+    )
     """
     Optional percentage fee for withdraw in percentage points. This is in 
     addition to any ``fee_fixed``.
     """
-    withdrawal_min_amount = models.FloatField(default=10.0, blank=True)
+    withdrawal_min_amount = models.DecimalField(
+        default=10.0, blank=True, max_digits=50, decimal_places=25
+    )
     """Optional minimum amount. No limit if not specified."""
-    withdrawal_max_amount = models.FloatField(default=10000.0, blank=True)
+    withdrawal_max_amount = models.DecimalField(
+        default=10000.0, blank=True, max_digits=50, decimal_places=25
+    )
     """Optional maximum amount. No limit if not specified."""
 
     objects = models.Manager()
@@ -177,19 +193,25 @@ class Transaction(models.Model):
     (optional) ID of transaction on external network that either started 
     the deposit or completed the withdrawal.
     """
-    amount_in = models.FloatField(null=True, blank=True)
+    amount_in = models.DecimalField(
+        null=True, blank=True, max_digits=50, decimal_places=25
+    )
     """
     Amount received by anchor at start of transaction as a string with up 
     to 7 decimals. Excludes any fees charged before the anchor received the 
     funds.
     """
-    amount_out = models.FloatField(null=True, blank=True)
+    amount_out = models.DecimalField(
+        null=True, blank=True, max_digits=50, decimal_places=25
+    )
     """
     Amount sent by anchor to user at end of transaction as a string with up to
     7 decimals. Excludes amount converted to XLM to fund account and any 
     external fees.
     """
-    amount_fee = models.FloatField(null=True, blank=True)
+    amount_fee = models.DecimalField(
+        null=True, blank=True, max_digits=50, decimal_places=25
+    )
     """Amount of fee charged by anchor."""
     started_at = models.DateTimeField(auto_now_add=True)
     """Start date and time of transaction."""

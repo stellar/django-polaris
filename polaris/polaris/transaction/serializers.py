@@ -4,13 +4,25 @@ from rest_framework import serializers
 from polaris.models import Transaction
 
 
+class PolarisDecimalField(serializers.DecimalField):
+    @staticmethod
+    def strip_trailing_zeros(num):
+        if num == num.to_integral():
+            return round(num, 1)
+        else:
+            return num.normalize()
+
+    def to_representation(self, value):
+        return str(self.strip_trailing_zeros(value))
+
+
 class TransactionSerializer(serializers.ModelSerializer):
     """Defines the custom serializer for a transaction."""
 
     id = serializers.CharField()
-    amount_in = serializers.CharField()
-    amount_out = serializers.CharField()
-    amount_fee = serializers.CharField()
+    amount_in = PolarisDecimalField(max_digits=50, decimal_places=25)
+    amount_out = PolarisDecimalField(max_digits=50, decimal_places=25)
+    amount_fee = PolarisDecimalField(max_digits=50, decimal_places=25)
     more_info_url = serializers.SerializerMethodField()
 
     def get_more_info_url(self, transaction_instance):

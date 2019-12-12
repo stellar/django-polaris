@@ -16,9 +16,11 @@ class TransactionForm(forms.Form):
     The `amount` field is validated with the :meth:`clean_amount` function,
     which ensures the amount is within the bounds for the asset type.
     """
-    amount = forms.FloatField(
+    amount = forms.DecimalField(
         min_value=0,
-        widget=forms.NumberInput(attrs={"class": "input"})
+        widget=forms.NumberInput(attrs={"class": "input"}),
+        max_digits=50,
+        decimal_places=25
     )
     asset = None
 
