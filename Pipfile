@@ -16,6 +16,8 @@ sphinx = "<2"
 sphinx-rtd-theme = "<0.5"
 codecov = "*"
 pipenv-to-requirements = "*"
+watchdog = "*"
+django-sslserver = "*"
 
 [packages]
 django = "==2.2.8"

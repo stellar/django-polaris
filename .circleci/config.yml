@@ -27,7 +27,7 @@ jobs: # A basic unit of work in a run
             - "/usr/local/lib/python3.7/site-packages"
       - run:
           command: |
-            cp .env.example .env
+            cp polaris/.env.example polaris/.env
             pipenv run pytest --cov
             pipenv run codecov
       - store_test_results: # Upload test results for display in Test Summary: https://circleci.com/docs/2.0/collect-test-data/

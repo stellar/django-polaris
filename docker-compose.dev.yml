@@ -1,0 +1,51 @@
+version: "3"
+
+services:
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./polaris/polaris:/code/polaris
+      - ./examples/server:/code/server
+      - ./polaris/db.sqlite3:/code/db.sqlite3
+      - ./polaris/settings.py:/code/settings.py
+    ports:
+      - "8000:8000"
+    command: pipenv run watchmedo auto-restart --recursive --pattern="*.py" --directory="." sh run.sh
+  watch_transactions:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./polaris/polaris:/code/polaris
+      - ./examples/server:/code/server
+      - ./polaris/db.sqlite3:/code/db.sqlite3
+      - ./polaris/settings.py:/code/settings.py
+    depends_on:
+      - server
+    command: pipenv run watchmedo auto-restart --recursive --pattern="*.py" --directory="." python manage.py watch_transactions
+  check_trustlines:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./polaris/polaris:/code/polaris
+      - ./examples/server:/code/server
+      - ./polaris/db.sqlite3:/code/db.sqlite3
+      - ./polaris/settings.py:/code/settings.py
+    depends_on:
+      - server
+    command: pipenv run watchmedo auto-restart --recursive --pattern="*.py" --directory="." python manage.py check_trustlines -- --loop
+  poll_pending_deposits:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./polaris/polaris:/code/polaris
+      - ./examples/server:/code/server
+      - ./polaris/db.sqlite3:/code/db.sqlite3
+      - ./polaris/settings.py:/code/settings.py
+    depends_on:
+      - server
+    command: pipenv run watchmedo auto-restart --recursive --pattern="*.py" --directory="." python manage.py poll_pending_deposits -- --loop

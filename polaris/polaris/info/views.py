@@ -1,9 +1,7 @@
 """This module defines the logic for the `/info` endpoint."""
-import json
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from polaris import settings
 from polaris.models import Asset
 
 

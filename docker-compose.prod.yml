@@ -1,0 +1,42 @@
+version: "3"
+
+services:
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    volumes:
+      - ./example:/code
+    ports:
+      - "8000:8000"
+    command: >
+      sh -c "pipenv run python manage.py migrate
+      && pipenv run python manage.py collectstatic --no-input
+      && pipenv run python manage.py runserver --nostatic 0.0.0.0:8000"
+  watch_transactions:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    volumes:
+      - ./example:/code
+    depends_on:
+    - server
+    command: pipenv run python manage.py watch_transactions
+  check_trustlines:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    volumes:
+      - ./example:/code
+    depends_on:
+      - server
+    command: pipenv run python manage.py check_trustlines --loop
+  poll_pending_deposits:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    volumes:
+      - ./example:/code
+    depends_on:
+      - server
+    command: pipenv run python manage.py poll_pending_deposits --loop
