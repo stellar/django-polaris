@@ -108,12 +108,10 @@ DATABASES = {
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.2/howto/static-files/
 
-STATIC_ROOT = os.path.join(BASE_DIR, "polaris/static")
+STATIC_ROOT = os.path.join(BASE_DIR, "polaris/collectstatic")
 STATIC_URL = "/polaris/static/"
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
-STATICFILES_DIRS = (
-    os.path.join(BASE_DIR, 'polaris/static'),
-)
+STATICFILES_DIRS = ()
 
 # Django Rest Framework Settings:
 # Attributes to add to parent project's REST_FRAMEWORK

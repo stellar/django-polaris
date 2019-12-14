@@ -41,6 +41,7 @@ class PolarisSameSiteMiddleware:
         from django.conf import settings
         if settings.SESSION_COOKIE_NAME in response.cookies:
             response.cookies[settings.SESSION_COOKIE_NAME]["samesite"] = "None"
+            response.cookies[settings.SESSION_COOKIE_NAME]["secure"] = True
 
         return response
 
