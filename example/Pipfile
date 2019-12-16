@@ -1,0 +1,25 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+pytest = "*"
+pytest-django = "*"
+pytest-cov = "*"
+codecov = "*"
+
+[packages]
+django = "==2.2.8"
+django-environ = "*"
+gunicorn = "*"
+whitenoise = "*"
+psycopg2-binary = "*"
+django-cors-headers = "*"
+django-polaris = "==0.9.10"
+
+[requires]
+python_version = "3.7"
+
+[pipenv]
+allow_prereleases = true

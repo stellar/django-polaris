@@ -3,10 +3,7 @@ import json
 from unittest.mock import patch
 
 import pytest
-from stellar_sdk.keypair import Keypair
-from stellar_sdk.transaction_envelope import TransactionEnvelope
 
-from polaris import settings
 from polaris.models import Transaction
 from polaris.tests.helpers import mock_check_auth_success, sep10
 

@@ -2,7 +2,7 @@
 import json
 import time
 
-from django.conf import settings
+from polaris import settings
 from stellar_sdk import Account
 from stellar_sdk.client.response import Response
 from stellar_sdk.exceptions import NotFoundError

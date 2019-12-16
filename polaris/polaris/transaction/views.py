@@ -8,7 +8,7 @@ from rest_framework.request import Request
 from rest_framework.renderers import TemplateHTMLRenderer
 from rest_framework import status
 
-from polaris import settings
+from django.conf import settings
 from django.urls import reverse
 from django.views.decorators.clickjacking import xframe_options_exempt
 

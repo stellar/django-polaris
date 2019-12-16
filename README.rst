@@ -61,7 +61,6 @@ Add Polaris' :doc:`PolarisSameSiteMiddleware </middleware/index>` to your
     ]
 
 
-
 Define ``PROJECT_ROOT`` in your project's settings.py. Polaris uses this to
 find your ``.env`` file.
 ::
@@ -103,25 +102,28 @@ You now have Polaris completely integrated into your Django project!
 
 Contributing and Testing
 ========================
-To set up the development environment
+To set up the development environment, fork the repository, then:
 ::
 
-    pip install pipenv
-    git clone https://github.com/stellar/django-polaris.git
     cd django-polaris
-    pipenv install --dev
+    docker-compose -f docker-compose.dev.yml build
+    docker-compose -f docker-compose.dev.yml up
 
-Git Flow
---------
-Follow the instructions below to submit a valid pull request.
-
-- Fork the repository
-- Make your changes
-- Push your changes to your forked repository
-- Create a pull request based off master
+You should now have a minimal anchor server running on port 8000.
+When you make changes locally, the docker containers will restart with the updated code.
 
 Testing
 -------
+We don't have a way to run our tests in the docker containers, but you can
+install the dependencies locally in a virtual environment:
 ::
 
+    pip install pipenv
+    cd django-polaris
+    pipenv install --dev
     pipenv run pytest
+
+Submit a PR
+-----------
+After you've made your changes, push them to you a remote branch
+and make a Pull Request on the stellar/django-polaris master branch.

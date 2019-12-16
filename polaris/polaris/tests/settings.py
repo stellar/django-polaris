@@ -1,5 +1,5 @@
 """Override polaris.settings for testing purposes"""
 
-from polaris.settings import *
+from settings import *
 
 del STATICFILES_STORAGE
