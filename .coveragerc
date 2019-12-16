@@ -1,6 +1,7 @@
 [run]
 source =
-  polaris
+  polaris,
+  server
 omit =
   *admin.py,
   *apps.py,
@@ -8,4 +9,6 @@ omit =
   *settings*,
   *tests/*,
   *urls.py,
-  polaris/manage.py
+  *wsgi.py,
+  *collectstatic/*,
+  *manage.py
