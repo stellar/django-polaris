@@ -17,7 +17,7 @@ import sys
 sys.path.insert(0, os.path.abspath('../polaris'))
 
 # Specify settings module
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'polaris.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'settings')
 
 # Setup Django
 import django
