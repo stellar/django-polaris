@@ -7,7 +7,7 @@ services:
       dockerfile: Dockerfile.dev
     volumes:
       - ./polaris/polaris:/code/polaris
-      - ./examples/server:/code/server
+      - ./example/server:/code/server
       - ./polaris/db.sqlite3:/code/db.sqlite3
       - ./polaris/settings.py:/code/settings.py
     ports:
@@ -19,7 +19,7 @@ services:
       dockerfile: Dockerfile.dev
     volumes:
       - ./polaris/polaris:/code/polaris
-      - ./examples/server:/code/server
+      - ./example/server:/code/server
       - ./polaris/db.sqlite3:/code/db.sqlite3
       - ./polaris/settings.py:/code/settings.py
     depends_on:
@@ -31,7 +31,7 @@ services:
       dockerfile: Dockerfile.dev
     volumes:
       - ./polaris/polaris:/code/polaris
-      - ./examples/server:/code/server
+      - ./example/server:/code/server
       - ./polaris/db.sqlite3:/code/db.sqlite3
       - ./polaris/settings.py:/code/settings.py
     depends_on:
@@ -43,7 +43,7 @@ services:
       dockerfile: Dockerfile.dev
     volumes:
       - ./polaris/polaris:/code/polaris
-      - ./examples/server:/code/server
+      - ./example/server:/code/server
       - ./polaris/db.sqlite3:/code/db.sqlite3
       - ./polaris/settings.py:/code/settings.py
     depends_on:

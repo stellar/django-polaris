@@ -50,10 +50,6 @@ input[type=text], input[type=number] {
   font-weight: bold;
 }
 
-.receipt .field-value {
-  text-transform: capitalize;
-}
-
 .flex {
   display: flex;
   flex-direction: column;
