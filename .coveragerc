@@ -12,4 +12,5 @@ omit =
   *wsgi.py,
   *collectstatic/*,
   *manage.py,
-  *.venv
+  *.venv/*
+  *.local/*
