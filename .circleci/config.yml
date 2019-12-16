@@ -30,10 +30,9 @@ jobs: # A basic unit of work in a run
             cp polaris/.env.example polaris/.env
             pipenv run pytest --cov -c polaris/pytest.ini
             pipenv --rm
-            cp example/Pipfile .
+            cd example
             pipenv install --dev
-            pipenv run pytest --cov -c example/pytest.ini
-            rm Pipfile
+            pipenv run pytest --cov
             pipenv run codecov
       - store_test_results: # Upload test results for display in Test Summary: https://circleci.com/docs/2.0/collect-test-data/
           path: test-results
