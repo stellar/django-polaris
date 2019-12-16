@@ -13,11 +13,11 @@
 django-cors-headers
 django-environ
 django-model-utils
+django-sslserver
 django==2.2.8
 djangorestframework
-gunicorn
 psycopg2-binary
 pyjwt
-stellar-sdk==2.0.0b5
+stellar-sdk==2.0.0
 toml
 whitenoise

@@ -17,7 +17,6 @@ sphinx-rtd-theme = "<0.5"
 codecov = "*"
 pipenv-to-requirements = "*"
 watchdog = "*"
-django-sslserver = "*"
 
 [packages]
 django = "==2.2.8"
@@ -30,6 +29,7 @@ stellar-sdk = "==2.0.0"
 django-cors-headers = "*"
 toml = "*"
 pyjwt = "*"
+django-sslserver = "*"
 
 [requires]
 python_version = "3.7"
