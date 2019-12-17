@@ -7,11 +7,9 @@ class AnchorConfig(AppConfig):
     def ready(self):
         from polaris.integrations import register_integrations
         from .integrations import (MyDepositIntegration,
-                                   MyWithdrawalIntegration,
-                                   get_stellar_toml)
+                                   MyWithdrawalIntegration)
 
         register_integrations(
             deposit=MyDepositIntegration(),
-            withdrawal=MyWithdrawalIntegration(),
-            toml_func=get_stellar_toml
+            withdrawal=MyWithdrawalIntegration()
         )
