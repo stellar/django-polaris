@@ -16,7 +16,7 @@ gunicorn = "*"
 whitenoise = "*"
 psycopg2-binary = "*"
 django-cors-headers = "*"
-django-polaris = "==0.9.10"
+django-polaris = "==0.9.11"
 
 [requires]
 python_version = "3.7"
