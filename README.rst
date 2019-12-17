@@ -110,8 +110,8 @@ To set up the development environment, fork the repository, then:
 ::
 
     cd django-polaris
-    docker-compose -f docker-compose.dev.yml build
-    docker-compose -f docker-compose.dev.yml up
+    docker-compose build
+    docker-compose up
 
 You should now have a minimal anchor server running on port 8000.
 When you make changes locally, the docker containers will restart with the updated code.
