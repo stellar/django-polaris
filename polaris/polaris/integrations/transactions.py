@@ -70,7 +70,7 @@ class DepositIntegration:
         pass
 
     @classmethod
-    def form_for_transaction(cls, transaction: Transaction) -> Optional[Type[TransactionForm]]:
+    def form_for_transaction(cls, transaction: Transaction) -> Optional[Type[forms.Form]]:
         """
         This function should return the next form class to render for the user
         given the state of the interactive flow.
@@ -78,7 +78,7 @@ class DepositIntegration:
         For example, this function should return a :class:`TransactionForm` to
         get the amount that should be transferred. Once the form is submitted,
         Polaris will detect the form used is a :class:`TransactionForm` subclass
-        and update the _amount_in_ column with the amount specified in form.
+        and update the ``amount_in`` column with the amount specified in form.
 
         After a form is submitted and validated, Polaris will call
         :func:`DepositlIntegration.after_form_validation` with the populated
@@ -188,7 +188,7 @@ class WithdrawalIntegration:
         )
 
     @classmethod
-    def form_for_transaction(cls, transaction: Transaction) -> Optional[Type[TransactionForm]]:
+    def form_for_transaction(cls, transaction: Transaction) -> Optional[Type[forms.Form]]:
         """
         This function should return the next form class to render for the user
         given the state of the interactive flow.
@@ -196,7 +196,7 @@ class WithdrawalIntegration:
         For example, this function should return a :class:`TransactionForm` to
         get the amount that should be transferred. Once the form is submitted,
         Polaris will detect the form used is a :class:`TransactionForm` subclass
-        and update the _amount_in_ column with the amount specified in form.
+        and update the ``amount_in`` column with the amount specified in form.
 
         After a form is submitted and validated, Polaris will call
         :func:`WithdrawalIntegration.after_form_validation` with the populated
