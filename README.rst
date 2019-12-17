@@ -1,3 +1,4 @@
+=====================
 Polaris Documentation
 =====================
 
@@ -25,6 +26,9 @@ Instead, Polaris provides several base classes for integrating with its
 already-implemented functionality, similar to a framework. This documentation
 focuses on the parts of Polaris you will need to use in order to fully implement
 the SEP-24_ protocol.
+
+Documentation for these base classes can be found in the
+:doc:`Integrations </integrations/index>` section.
 
 For an example on how to use Polaris, see the SDF's stellar-anchor-server_.
 
@@ -134,4 +138,5 @@ Submit a PR
 -----------
 After you've made your changes, push them to you a remote branch
 and make a Pull Request on the stellar/django-polaris master branch.
+
 
