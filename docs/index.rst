@@ -103,3 +103,40 @@ Add the Polaris endpoints in ``urls.py``
 Run migrations: ``python manage.py migrate``
 
 You now have Polaris completely integrated into your Django project!
+
+Contributing
+============
+To set up the development environment, fork the repository, then:
+::
+
+    cd django-polaris
+    docker-compose -f docker-compose.dev.yml build
+    docker-compose -f docker-compose.dev.yml up
+
+You should now have a minimal anchor server running on port 8000.
+When you make changes locally, the docker containers will restart with the updated code.
+Your browser may complain about the service using a self-signed certificate for HTTPS.
+You can resolve this by marking the certificate used by the service as trusted.
+
+Testing
+-------
+You can install the dependencies locally in a virtual environment:
+::
+
+    pip install pipenv
+    cd django-polaris
+    pipenv install --dev
+    pipenv run pytest -c polaris/pytest.ini
+
+Or, you can simply run the tests from inside the docker container. However,
+this may be slower.
+::
+
+    docker exec -it <image ID> pipenv run pytest
+
+Submit a PR
+-----------
+After you've made your changes, push them to you a remote branch
+and make a Pull Request on the stellar/django-polaris master branch.
+
+
