@@ -6,10 +6,8 @@ class AnchorConfig(AppConfig):
 
     def ready(self):
         from polaris.integrations import register_integrations
-        from .integrations import (MyDepositIntegration,
-                                   MyWithdrawalIntegration)
+        from .integrations import MyDepositIntegration, MyWithdrawalIntegration
 
         register_integrations(
-            deposit=MyDepositIntegration(),
-            withdrawal=MyWithdrawalIntegration()
+            deposit=MyDepositIntegration(), withdrawal=MyWithdrawalIntegration()
         )

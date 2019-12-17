@@ -28,7 +28,9 @@ def test_auth_get_account(client):
     assert content["transaction"]
 
     envelope_xdr = content["transaction"]
-    envelope_object = TransactionEnvelope.from_xdr(envelope_xdr, network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE)
+    envelope_object = TransactionEnvelope.from_xdr(
+        envelope_xdr, network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE
+    )
     transaction_object = envelope_object.transaction
     assert transaction_object.sequence == 0
     assert len(transaction_object.operations) == 1
@@ -43,7 +45,9 @@ def test_auth_get_account(client):
     server_signature = signatures[0]
 
     tx_hash = envelope_object.hash()
-    server_public_key = Keypair.from_public_key(settings.STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS)
+    server_public_key = Keypair.from_public_key(
+        settings.STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS
+    )
     server_public_key.verify(tx_hash, server_signature.signature)
 
 
@@ -54,7 +58,9 @@ def test_auth_post_json_success(client):
 
     # Sign the XDR with the client.
     envelope_xdr = content["transaction"]
-    envelope_object = TransactionEnvelope.from_xdr(envelope_xdr, network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE)
+    envelope_object = TransactionEnvelope.from_xdr(
+        envelope_xdr, network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE
+    )
     client_signing_key = Keypair.from_secret(CLIENT_SEED)
     envelope_object.sign(client_signing_key)
     client_signed_envelope_xdr = envelope_object.to_xdr()
@@ -76,7 +82,9 @@ def test_auth_post_urlencode_success(client):
 
     # Sign the XDR with the client.
     envelope_xdr = content["transaction"]
-    envelope_object = TransactionEnvelope.from_xdr(envelope_xdr, network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE)
+    envelope_object = TransactionEnvelope.from_xdr(
+        envelope_xdr, network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE
+    )
     client_signing_key = Keypair.from_secret(CLIENT_SEED)
     envelope_object.sign(client_signing_key)
     client_signed_envelope_xdr = envelope_object.to_xdr()

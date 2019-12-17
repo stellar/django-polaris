@@ -22,24 +22,25 @@ from polaris.helpers import (
     validate_sep10_token,
     interactive_authentication,
     invalidate_session,
-    generate_interactive_jwt
+    generate_interactive_jwt,
 )
 from polaris.models import Asset, Transaction
 from polaris.integrations.forms import TransactionForm
 from polaris.integrations import registered_withdrawal_integration as rwi
 
 
-def _construct_interactive_url(request: Request,
-                               transaction_id: str,
-                               account: str,
-                               asset_code: str) -> str:
+def _construct_interactive_url(
+    request: Request, transaction_id: str, account: str, asset_code: str
+) -> str:
     """Constructs the URL for the interactive application for withdrawal info.
     This is located at `/transactions/withdraw/webapp`."""
-    qparams = urlencode({
-        "asset_code": asset_code,
-        "transaction_id": transaction_id,
-        "token": generate_interactive_jwt(request, transaction_id, account)
-    })
+    qparams = urlencode(
+        {
+            "asset_code": asset_code,
+            "transaction_id": transaction_id,
+            "token": generate_interactive_jwt(request, transaction_id, account),
+        }
+    )
     url_params = f"{reverse('interactive_withdraw')}?{qparams}"
     return request.build_absolute_uri(url_params)
 
@@ -64,19 +65,19 @@ def interactive_withdraw(request: Request) -> Response:
     asset_code = request.GET.get("asset_code")
     asset = Asset.objects.filter(code=asset_code).first()
     if not transaction_id:
-        return render_error_response("no 'transaction_id' provided", content_type="text/html")
+        return render_error_response(
+            "no 'transaction_id' provided", content_type="text/html"
+        )
     elif not (asset_code and asset):
         return render_error_response("invalid 'asset_code'", content_type="text/html")
 
     try:
-        transaction = Transaction.objects.get(
-            id=transaction_id, asset=asset
-        )
+        transaction = Transaction.objects.get(id=transaction_id, asset=asset)
     except (Transaction.DoesNotExist, ValidationError):
         return render_error_response(
             "Transaction with ID and asset_code not found",
             content_type="text/html",
-            status_code=status.HTTP_404_NOT_FOUND
+            status_code=status.HTTP_404_NOT_FOUND,
         )
 
     if request.method == "GET":
@@ -103,15 +104,12 @@ def interactive_withdraw(request: Request) -> Response:
         form_class = rwi.form_for_transaction(transaction)
 
         if form_class:
-            return Response(
-                {"form": form_class()},
-                template_name="withdraw/form.html"
-            )
+            return Response({"form": form_class()}, template_name="withdraw/form.html")
         else:  # Last form has been submitted
             invalidate_session(request)
             transaction.status = Transaction.STATUS.pending_user_transfer_start
             transaction.save()
-            url, args = reverse('more_info'), urlencode({'id': transaction_id})
+            url, args = reverse("more_info"), urlencode({"id": transaction_id})
             return redirect(f"{url}?{args}")
     else:
         return Response({"form": form}, template_name="withdraw/form.html")
@@ -155,11 +153,7 @@ def withdraw(account: str, request: Request) -> Response:
         withdraw_memo=withdraw_memo,
         withdraw_memo_type=Transaction.MEMO_TYPES.hash,
     )
-    url = _construct_interactive_url(
-        request, str(transaction_id), account, asset_code
+    url = _construct_interactive_url(request, str(transaction_id), account, asset_code)
+    return Response(
+        {"type": "interactive_customer_info_needed", "url": url, "id": transaction_id}
     )
-    return Response({
-        "type": "interactive_customer_info_needed",
-        "url": url,
-        "id": transaction_id
-    })

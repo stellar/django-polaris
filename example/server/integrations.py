@@ -55,5 +55,5 @@ def get_stellar_toml():
         "CURRENCIES": [
             {"code": asset.code, "issuer": settings.STELLAR_ISSUER_ACCOUNT_ADDRESS}
             for asset in Asset.objects.all().iterator()
-        ]
+        ],
     }

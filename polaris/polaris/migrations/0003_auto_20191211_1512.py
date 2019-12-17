@@ -7,63 +7,85 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('polaris', '0002_auto_20191125_1829'),
+        ("polaris", "0002_auto_20191125_1829"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='asset',
-            name='deposit_fee_fixed',
-            field=models.DecimalField(blank=True, decimal_places=25, default=1.0, max_digits=50),
+            model_name="asset",
+            name="deposit_fee_fixed",
+            field=models.DecimalField(
+                blank=True, decimal_places=25, default=1.0, max_digits=50
+            ),
         ),
         migrations.AlterField(
-            model_name='asset',
-            name='deposit_fee_percent',
-            field=models.DecimalField(blank=True, decimal_places=25, default=0.01, max_digits=50),
+            model_name="asset",
+            name="deposit_fee_percent",
+            field=models.DecimalField(
+                blank=True, decimal_places=25, default=0.01, max_digits=50
+            ),
         ),
         migrations.AlterField(
-            model_name='asset',
-            name='deposit_max_amount',
-            field=models.DecimalField(blank=True, decimal_places=25, default=10000.0, max_digits=50),
+            model_name="asset",
+            name="deposit_max_amount",
+            field=models.DecimalField(
+                blank=True, decimal_places=25, default=10000.0, max_digits=50
+            ),
         ),
         migrations.AlterField(
-            model_name='asset',
-            name='deposit_min_amount',
-            field=models.DecimalField(blank=True, decimal_places=25, default=10.0, max_digits=50),
+            model_name="asset",
+            name="deposit_min_amount",
+            field=models.DecimalField(
+                blank=True, decimal_places=25, default=10.0, max_digits=50
+            ),
         ),
         migrations.AlterField(
-            model_name='asset',
-            name='withdrawal_fee_fixed',
-            field=models.DecimalField(blank=True, decimal_places=25, default=1.0, max_digits=50),
+            model_name="asset",
+            name="withdrawal_fee_fixed",
+            field=models.DecimalField(
+                blank=True, decimal_places=25, default=1.0, max_digits=50
+            ),
         ),
         migrations.AlterField(
-            model_name='asset',
-            name='withdrawal_fee_percent',
-            field=models.DecimalField(blank=True, decimal_places=25, default=0.01, max_digits=50),
+            model_name="asset",
+            name="withdrawal_fee_percent",
+            field=models.DecimalField(
+                blank=True, decimal_places=25, default=0.01, max_digits=50
+            ),
         ),
         migrations.AlterField(
-            model_name='asset',
-            name='withdrawal_max_amount',
-            field=models.DecimalField(blank=True, decimal_places=25, default=10000.0, max_digits=50),
+            model_name="asset",
+            name="withdrawal_max_amount",
+            field=models.DecimalField(
+                blank=True, decimal_places=25, default=10000.0, max_digits=50
+            ),
         ),
         migrations.AlterField(
-            model_name='asset',
-            name='withdrawal_min_amount',
-            field=models.DecimalField(blank=True, decimal_places=25, default=10.0, max_digits=50),
+            model_name="asset",
+            name="withdrawal_min_amount",
+            field=models.DecimalField(
+                blank=True, decimal_places=25, default=10.0, max_digits=50
+            ),
         ),
         migrations.AlterField(
-            model_name='transaction',
-            name='amount_fee',
-            field=models.DecimalField(blank=True, decimal_places=25, max_digits=50, null=True),
+            model_name="transaction",
+            name="amount_fee",
+            field=models.DecimalField(
+                blank=True, decimal_places=25, max_digits=50, null=True
+            ),
         ),
         migrations.AlterField(
-            model_name='transaction',
-            name='amount_in',
-            field=models.DecimalField(blank=True, decimal_places=25, max_digits=50, null=True),
+            model_name="transaction",
+            name="amount_in",
+            field=models.DecimalField(
+                blank=True, decimal_places=25, max_digits=50, null=True
+            ),
         ),
         migrations.AlterField(
-            model_name='transaction',
-            name='amount_out',
-            field=models.DecimalField(blank=True, decimal_places=25, max_digits=50, null=True),
+            model_name="transaction",
+            name="amount_out",
+            field=models.DecimalField(
+                blank=True, decimal_places=25, max_digits=50, null=True
+            ),
         ),
     ]

@@ -30,7 +30,7 @@ from polaris.helpers import (
     validate_sep10_token,
     interactive_authentication,
     invalidate_session,
-    generate_interactive_jwt
+    generate_interactive_jwt,
 )
 from polaris.models import Asset, Transaction
 from polaris.integrations.forms import TransactionForm
@@ -38,15 +38,16 @@ from polaris.integrations import registered_deposit_integration as rdi
 from polaris.middleware import import_path
 
 
-def _construct_interactive_url(request: Request,
-                               transaction_id: str,
-                               account: str,
-                               asset_code: str) -> str:
-    qparams = urlencode({
-        "asset_code": asset_code,
-        "transaction_id": transaction_id,
-        "token": generate_interactive_jwt(request, transaction_id, account)
-    })
+def _construct_interactive_url(
+    request: Request, transaction_id: str, account: str, asset_code: str
+) -> str:
+    qparams = urlencode(
+        {
+            "asset_code": asset_code,
+            "transaction_id": transaction_id,
+            "token": generate_interactive_jwt(request, transaction_id, account),
+        }
+    )
     url_params = f"{reverse('interactive_deposit')}?{qparams}"
     return request.build_absolute_uri(url_params)
 
@@ -95,7 +96,9 @@ def check_middleware(content_type: str = "text/html") -> Optional[Response]:
         err_msg = f"{import_path} is not installed"
     elif session_middleware_path not in django_settings.MIDDLEWARE:
         err_msg = f"{session_middleware_path} is not installed"
-    elif django_settings.MIDDLEWARE.index(import_path) > django_settings.MIDDLEWARE.index(session_middleware_path):
+    elif django_settings.MIDDLEWARE.index(
+        import_path
+    ) > django_settings.MIDDLEWARE.index(session_middleware_path):
         err_msg = f"{import_path} must be listed before {session_middleware_path}"
 
     if err_msg:
@@ -126,15 +129,12 @@ def interactive_deposit(request: Request) -> Response:
 
     # Ensure the transaction exists
     try:
-        transaction = Transaction.objects.get(
-            id=transaction_id,
-            asset=asset
-        )
+        transaction = Transaction.objects.get(id=transaction_id, asset=asset)
     except Transaction.objects.DoesNotExist:
         return render_error_response(
             "Transaction with ID and asset_code not found",
             content_type="text/html",
-            status_code=status.HTTP_404_NOT_FOUND
+            status_code=status.HTTP_404_NOT_FOUND,
         )
 
     if request.method == "GET":
@@ -165,15 +165,12 @@ def interactive_deposit(request: Request) -> Response:
         form_class = rdi.form_for_transaction(transaction)
 
         if form_class:
-            return Response(
-                {"form": form_class()},
-                template_name="deposit/form.html"
-            )
+            return Response({"form": form_class()}, template_name="deposit/form.html")
         else:  # Last form has been submitted
             invalidate_session(request)
             transaction.status = Transaction.STATUS.pending_user_transfer_start
             transaction.save()
-            url, args = reverse('more_info'), urlencode({'id': transaction_id})
+            url, args = reverse("more_info"), urlencode({"id": transaction_id})
             return redirect(f"{url}?{args}")
 
     else:
@@ -220,16 +217,12 @@ def deposit(account: str, request: Request) -> Response:
         asset=asset,
         kind=Transaction.KIND.deposit,
         status=Transaction.STATUS.incomplete,
-        to_address=account
+        to_address=account,
     )
     url = _construct_interactive_url(
         request, str(transaction_id), stellar_account, asset_code
     )
     return Response(
-        {
-            "type": "interactive_customer_info_needed",
-            "url": url,
-            "id": transaction_id
-        },
-        status=status.HTTP_200_OK
+        {"type": "interactive_customer_info_needed", "url": url, "id": transaction_id},
+        status=status.HTTP_200_OK,
     )

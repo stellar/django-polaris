@@ -2,15 +2,19 @@ import sys
 from typing import Callable
 from polaris.integrations.forms import TransactionForm
 from polaris.integrations.toml import get_stellar_toml, registered_toml_func
-from polaris.integrations.transactions import (DepositIntegration,
-                                               WithdrawalIntegration,
-                                               registered_deposit_integration,
-                                               registered_withdrawal_integration)
+from polaris.integrations.transactions import (
+    DepositIntegration,
+    WithdrawalIntegration,
+    registered_deposit_integration,
+    registered_withdrawal_integration,
+)
 
 
-def register_integrations(deposit: DepositIntegration = None,
-                          withdrawal: WithdrawalIntegration = None,
-                          toml_func: Callable = None):
+def register_integrations(
+    deposit: DepositIntegration = None,
+    withdrawal: WithdrawalIntegration = None,
+    toml_func: Callable = None,
+):
     """
     Registers instances of user-defined subclasses of
     :class:`.WithdrawalIntegration` and
@@ -63,8 +67,10 @@ def register_integrations(deposit: DepositIntegration = None,
     elif toml_func and not callable(toml_func):
         raise TypeError("toml_func is not callable")
 
-    for obj, attr in [(deposit, "registered_deposit_integration"),
-                      (withdrawal, "registered_withdrawal_integration"),
-                      (toml_func, "registered_toml_func")]:
+    for obj, attr in [
+        (deposit, "registered_deposit_integration"),
+        (withdrawal, "registered_withdrawal_integration"),
+        (toml_func, "registered_toml_func"),
+    ]:
         if obj:
             setattr(this, attr, obj)

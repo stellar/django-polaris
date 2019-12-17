@@ -16,7 +16,10 @@ from rest_framework import status
 from rest_framework.decorators import api_view
 
 from stellar_sdk.transaction_envelope import TransactionEnvelope
-from stellar_sdk.sep.stellar_web_authentication import build_challenge_transaction, verify_challenge_transaction
+from stellar_sdk.sep.stellar_web_authentication import (
+    build_challenge_transaction,
+    verify_challenge_transaction,
+)
 from stellar_sdk.sep.exceptions import InvalidSep10ChallengeError
 
 MIME_URLENCODE, MIME_JSON = "application/x-www-form-urlencoded", "application/json"
@@ -29,10 +32,12 @@ def _challenge_transaction(client_account):
     This is used in `GET <auth>`, as per SEP 10.
     Returns the XDR encoding of that transaction.
     """
-    challenge_tx_xdr = build_challenge_transaction(server_secret=settings.STELLAR_DISTRIBUTION_ACCOUNT_SEED,
-                                                   client_account_id=client_account,
-                                                   anchor_name=ANCHOR_NAME,
-                                                   network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE)
+    challenge_tx_xdr = build_challenge_transaction(
+        server_secret=settings.STELLAR_DISTRIBUTION_ACCOUNT_SEED,
+        client_account_id=client_account,
+        anchor_name=ANCHOR_NAME,
+        network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
+    )
     return challenge_tx_xdr
 
 
@@ -88,9 +93,11 @@ def _validate_envelope_xdr(envelope_xdr):
     appropriate error if it fails, else the empty string.
     """
     try:
-        verify_challenge_transaction(challenge_transaction=envelope_xdr,
-                                     server_account_id=settings.STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS,
-                                     network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE)
+        verify_challenge_transaction(
+            challenge_transaction=envelope_xdr,
+            server_account_id=settings.STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS,
+            network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
+        )
     except InvalidSep10ChallengeError as err:
         return str(err)
     return ""
@@ -104,8 +111,7 @@ def _generate_jwt(request, envelope_xdr):
     """
     issued_at = time.time()
     transaction_envelope = TransactionEnvelope.from_xdr(
-        envelope_xdr,
-        network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE
+        envelope_xdr, network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE
     )
     transaction = transaction_envelope.transaction
     hash_hex = binascii.hexlify(transaction_envelope.hash()).decode()
@@ -128,7 +134,10 @@ def _get_auth(request):
         )
     transaction = _challenge_transaction(account)
     return JsonResponse(
-        {"transaction": transaction, "network_passphrase": settings.STELLAR_NETWORK_PASSPHRASE}
+        {
+            "transaction": transaction,
+            "network_passphrase": settings.STELLAR_NETWORK_PASSPHRASE,
+        }
     )
 
 

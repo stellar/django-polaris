@@ -16,11 +16,12 @@ class Command(BaseCommand):
     Create Stellar transaction for deposit transactions marked as pending trust, if a
     trustline has been created.
     """
+
     def add_arguments(self, parser):
         parser.add_argument("--loop", "-l", action="store_true")
 
     def handle(self, *args, **options):
-        if options.get('loop'):
+        if options.get("loop"):
             while True:
                 self.check_trustlines()
                 time.sleep(60)
@@ -32,11 +33,15 @@ class Command(BaseCommand):
         Create Stellar transaction for deposit transactions marked as pending trust, if a
         trustline has been created.
         """
-        transactions = Transaction.objects.filter(status=Transaction.STATUS.pending_trust)
+        transactions = Transaction.objects.filter(
+            status=Transaction.STATUS.pending_trust
+        )
         server = settings.HORIZON_SERVER
         for transaction in transactions:
             try:
-                account = server.accounts().account_id(transaction.stellar_account).call()
+                account = (
+                    server.accounts().account_id(transaction.stellar_account).call()
+                )
             except BaseHorizonError:
                 logger.debug("could not load account using provided horizon URL")
                 continue
@@ -52,5 +57,4 @@ class Command(BaseCommand):
                     logger.debug("horizon balances had no asset_code")
                     continue
                 if asset_code == transaction.asset.code:
-                    call_command('create_stellar_deposit', transaction.id)
-
+                    call_command("create_stellar_deposit", transaction.id)

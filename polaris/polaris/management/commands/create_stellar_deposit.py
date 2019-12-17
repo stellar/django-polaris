@@ -12,6 +12,7 @@ class Command(BaseCommand):
     """
     Create and submit the Stellar transaction for the deposit.
     """
+
     def add_arguments(self, parser):
         parser.add_argument("transaction_id")
 

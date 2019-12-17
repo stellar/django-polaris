@@ -19,7 +19,9 @@ def sep10(client, address, seed):
     response = client.get(f"/auth?account={address}", follow=True)
     content = json.loads(response.content)
     envelope_xdr = content["transaction"]
-    envelope_object = TransactionEnvelope.from_xdr(envelope_xdr, network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE)
+    envelope_object = TransactionEnvelope.from_xdr(
+        envelope_xdr, network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE
+    )
     client_signing_key = Keypair.from_secret(seed)
     envelope_object.sign(client_signing_key)
     client_signed_envelope_xdr = envelope_object.to_xdr()
@@ -36,8 +38,15 @@ def sep10(client, address, seed):
 
 
 def mock_load_not_exist_account(account_id):
-    if account_id != settings.STELLAR_ISSUER_ACCOUNT_ADDRESS and account_id != settings.STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS:
-        raise NotFoundError(response=Response(status_code=404, headers={}, url="", text=json.dumps(dict(status=404))))
+    if (
+        account_id != settings.STELLAR_ISSUER_ACCOUNT_ADDRESS
+        and account_id != settings.STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS
+    ):
+        raise NotFoundError(
+            response=Response(
+                status_code=404, headers={}, url="", text=json.dumps(dict(status=404))
+            )
+        )
     return Account(account_id, 1)
 
 
@@ -48,6 +57,5 @@ def interactive_jwt_payload(transaction, transaction_type):
         "exp": current_time + 30,
         "iat": current_time,
         "jti": str(transaction.id),
-        "sub": transaction.stellar_account
+        "sub": transaction.stellar_account,
     }
-

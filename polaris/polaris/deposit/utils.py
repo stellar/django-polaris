@@ -60,7 +60,7 @@ def create_stellar_deposit(transaction_id: str) -> bool:
     builder = TransactionBuilder(
         source_account=server_account,
         network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
-        base_fee=base_fee
+        base_fee=base_fee,
     )
     try:
         server.load_account(stellar_account)
@@ -69,8 +69,7 @@ def create_stellar_deposit(transaction_id: str) -> bool:
         if address_exc.status != 404:
             transaction.status = Transaction.STATUS.error
             transaction.status_message = (
-                "Horizon error when loading stellar account: "
-                f"{address_exc.message}"
+                "Horizon error when loading stellar account: " f"{address_exc.message}"
             )
             transaction.save()
             return False
@@ -78,7 +77,7 @@ def create_stellar_deposit(transaction_id: str) -> bool:
         transaction_envelope = builder.append_create_account_op(
             destination=stellar_account,
             starting_balance=starting_balance,
-            source=settings.STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS
+            source=settings.STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS,
         ).build()
         transaction_envelope.sign(settings.STELLAR_DISTRIBUTION_ACCOUNT_SEED)
         try:
@@ -105,7 +104,7 @@ def create_stellar_deposit(transaction_id: str) -> bool:
         destination=stellar_account,
         asset_code=asset,
         asset_issuer=settings.STELLAR_ISSUER_ACCOUNT_ADDRESS,
-        amount=str(payment_amount)
+        amount=str(payment_amount),
     ).build()
     transaction_envelope.sign(settings.STELLAR_DISTRIBUTION_ACCOUNT_SEED)
     try:

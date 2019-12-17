@@ -29,9 +29,7 @@ def test_more_info_id_filter(client, acc1_usd_deposit_transaction_factory):
     # we expect due to the middleware.
     header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
     response = client.get(
-        f"/transaction/more_info?id={deposit.id}",
-        follow=True,
-        **header
+        f"/transaction/more_info?id={deposit.id}", follow=True, **header
     )
 
     assert response.status_code == 200
@@ -50,7 +48,7 @@ def test_more_info_stellar_filter(client, acc1_usd_deposit_transaction_factory):
     response = client.get(
         f"/transaction/more_info?stellar_transaction_id={deposit.stellar_transaction_id}",
         follow=True,
-        **header
+        **header,
     )
     assert response.status_code == 200
 
@@ -66,7 +64,7 @@ def test_more_info_external_filter(client, acc1_usd_deposit_transaction_factory)
     response = client.get(
         f"/transaction/more_info?external_transaction_id={deposit.external_transaction_id}",
         follow=True,
-        **header
+        **header,
     )
     assert response.status_code == 200
 
@@ -86,7 +84,7 @@ def test_more_info_multiple_filters(client, acc1_usd_deposit_transaction_factory
         f"&external_transaction_id={deposit.external_transaction_id}"
         f"&stellar_transaction_id={deposit.stellar_transaction_id}",
         follow=True,
-        **header
+        **header,
     )
     assert response.status_code == 200
 
@@ -109,7 +107,6 @@ def test_more_info_no_result(
         f"&external_transaction_id={withdrawal.external_transaction_id}"
         f"&stellar_transaction_id={withdrawal.stellar_transaction_id}",
         follow=True,
-        **header
+        **header,
     )
     assert response.status_code == 404
-

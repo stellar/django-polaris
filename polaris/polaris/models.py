@@ -10,6 +10,7 @@ from model_utils import Choices
 
 class PolarisChoices(Choices):
     """A subclass to change the verbose default string representation"""
+
     def __repr__(self):
         return str(Choices)
 
@@ -25,7 +26,8 @@ class Asset(TimeStampedModel):
     """The asset code as defined on the Stellar network."""
 
     issuer = models.TextField(
-        validators=[MinLengthValidator(56)], default=settings.STELLAR_ISSUER_ACCOUNT_ADDRESS
+        validators=[MinLengthValidator(56)],
+        default=settings.STELLAR_ISSUER_ACCOUNT_ADDRESS,
     )
     """The issuing Stellar account address."""
 

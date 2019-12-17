@@ -51,11 +51,7 @@ def test_transaction_id_filter_and_format(
     w_started_at = withdrawal.started_at.isoformat().replace("+00:00", "Z")
     w_completed_at = withdrawal.completed_at.isoformat().replace("+00:00", "Z")
 
-    response = client.get(
-        f"/transaction?id={withdrawal.id}",
-        follow=True,
-        **header
-    )
+    response = client.get(f"/transaction?id={withdrawal.id}", follow=True, **header)
     content = json.loads(response.content)
 
     assert response.status_code == 200
@@ -112,7 +108,7 @@ def test_transaction_stellar_filter(
     response = client.get(
         f"/transaction?stellar_transaction_id={withdrawal.stellar_transaction_id}",
         follow=True,
-        **header
+        **header,
     )
     content = json.loads(response.content)
 
@@ -141,7 +137,7 @@ def test_transaction_external_filter(
     response = client.get(
         f"/transaction?external_transaction_id={deposit.external_transaction_id}",
         follow=True,
-        **header
+        **header,
     )
     content = json.loads(response.content)
 
@@ -177,7 +173,7 @@ def test_transaction_multiple_filters(
             f"&stellar_transaction_id={withdrawal.stellar_transaction_id}"
         ),
         follow=True,
-        **header
+        **header,
     )
     content = json.loads(response.content)
 
@@ -213,7 +209,7 @@ def test_transaction_filtering_no_result(
             f"&stellar_transaction_id={withdrawal.stellar_transaction_id}"
         ),
         follow=True,
-        **header
+        **header,
     )
     content = json.loads(response.content)
 
@@ -257,9 +253,7 @@ def test_transaction_authenticated_success(
 
 
 @pytest.mark.django_db
-def test_transaction_no_jwt(
-    client, acc2_eth_withdrawal_transaction_factory
-):
+def test_transaction_no_jwt(client, acc2_eth_withdrawal_transaction_factory):
     """Fails if required JWT is not provided."""
     withdrawal = acc2_eth_withdrawal_transaction_factory()
 

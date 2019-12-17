@@ -63,8 +63,7 @@ def match_transaction(response: Dict, transaction: Transaction) -> bool:
         return False
 
     horizon_tx = TransactionEnvelope.from_xdr(
-        response["envelope_xdr"],
-        network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE
+        response["envelope_xdr"], network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE
     ).transaction
     found_matching_payment_op = False
     for operation in horizon_tx.operations:
@@ -75,18 +74,21 @@ def match_transaction(response: Dict, transaction: Transaction) -> bool:
     return found_matching_payment_op
 
 
-def _check_payment_op(operation: Operation, want_asset: str, want_amount: float) -> bool:
-    return (operation.type_code() == Xdr.const.PAYMENT and
-            str(operation.destination) == settings.STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS and
-            str(operation.asset.code) == want_asset and
-            # TODO: Handle multiple possible asset issuance accounts
-            str(operation.asset.issuer) == settings.STELLAR_ISSUER_ACCOUNT_ADDRESS and
-            float(operation.amount) == want_amount)
+def _check_payment_op(
+    operation: Operation, want_asset: str, want_amount: float
+) -> bool:
+    return (
+        operation.type_code() == Xdr.const.PAYMENT
+        and str(operation.destination) == settings.STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS
+        and str(operation.asset.code) == want_asset
+        and
+        # TODO: Handle multiple possible asset issuance accounts
+        str(operation.asset.issuer) == settings.STELLAR_ISSUER_ACCOUNT_ADDRESS
+        and float(operation.amount) == want_amount
+    )
 
 
-def update_transaction(response: Dict,
-                       transaction: Transaction,
-                       error_msg: str = None):
+def update_transaction(response: Dict, transaction: Transaction, error_msg: str = None):
     """
     Updates the transaction depending on whether or not the transaction was
     successfully executed on the Stellar network and `process_withdrawal`
@@ -122,20 +124,24 @@ class Command(BaseCommand):
 
     `process_withdrawal` must be overridden by the developer using Polaris.
     """
+
     def handle(self, *args, **options):
         for response in stream_transactions():
             pending_withdrawal_transactions = Transaction.objects.filter(
                 status=Transaction.STATUS.pending_user_transfer_start,
-                kind=Transaction.KIND.withdrawal
+                kind=Transaction.KIND.withdrawal,
             )
             for withdrawal_transaction in pending_withdrawal_transactions:
                 if not match_transaction(response, withdrawal_transaction):
                     continue
                 elif not response["successful"]:
                     update_transaction(
-                        response, withdrawal_transaction,
-                        error_msg=("The transaction failed to "
-                                   "execute on the Stellar network")
+                        response,
+                        withdrawal_transaction,
+                        error_msg=(
+                            "The transaction failed to "
+                            "execute on the Stellar network"
+                        ),
                     )
                     continue
                 try:

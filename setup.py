@@ -6,7 +6,7 @@ with open("README.rst") as f:
 
 setup(
     name="django-polaris",
-    version="0.9.10",
+    version="0.9.11",
     description="A SEP-24-compliant Django anchor server",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -41,6 +41,7 @@ setup(
         "django-cors-headers==3.2.0",
         "django-environ==0.4.5",
         "django-model-utils==4.0.0",
+        "django-sslserver==0.22",
         "djangorestframework==3.11.0",
         "idna==2.8",
         "mnemonic==0.19",

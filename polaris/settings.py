@@ -45,7 +45,7 @@ MIDDLEWARE = [
     "polaris.middleware.PolarisSameSiteMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
-    "django.contrib.messages.middleware.MessageMiddleware"
+    "django.contrib.messages.middleware.MessageMiddleware",
 ]
 
 ROOT_URLCONF = "polaris.urls"
@@ -87,9 +87,9 @@ STATICFILES_DIRS = ()
 REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "DEFAULT_RENDERER_CLASSES": [
-        'rest_framework.renderers.JSONRenderer',
-        'rest_framework.renderers.BrowsableAPIRenderer',
-        'rest_framework.renderers.TemplateHTMLRenderer'
+        "rest_framework.renderers.JSONRenderer",
+        "rest_framework.renderers.BrowsableAPIRenderer",
+        "rest_framework.renderers.TemplateHTMLRenderer",
     ],
     "PAGE_SIZE": 10,
 }

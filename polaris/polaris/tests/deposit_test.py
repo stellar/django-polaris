@@ -12,7 +12,7 @@ from stellar_sdk import Keypair, TransactionEnvelope
 from stellar_sdk.client.response import Response
 from stellar_sdk.exceptions import BadRequestError
 from django.core.management import call_command
-    
+
 from polaris import settings
 from polaris.tests.conftest import STELLAR_ACCOUNT_1_SEED
 from polaris.management.commands.create_stellar_deposit import (
@@ -21,10 +21,12 @@ from polaris.management.commands.create_stellar_deposit import (
 )
 from polaris.management.commands.poll_pending_deposits import execute_deposit
 from polaris.models import Transaction
-from polaris.tests.helpers import (mock_check_auth_success,
-                                   mock_load_not_exist_account,
-                                   sep10,
-                                   interactive_jwt_payload)
+from polaris.tests.helpers import (
+    mock_check_auth_success,
+    mock_load_not_exist_account,
+    sep10,
+    interactive_jwt_payload,
+)
 
 
 DEPOSIT_PATH = f"/transactions/deposit/interactive"
@@ -54,7 +56,13 @@ def test_deposit_success_memo(mock_check, client, acc1_usd_deposit_transaction_f
     del mock_check
     deposit = acc1_usd_deposit_transaction_factory()
     response = client.post(
-        DEPOSIT_PATH, {"asset_code": "USD", "account": deposit.stellar_account, "memo_type": "text", "memo": "foo"},
+        DEPOSIT_PATH,
+        {
+            "asset_code": "USD",
+            "account": deposit.stellar_account,
+            "memo_type": "text",
+            "memo": "foo",
+        },
         follow=True,
     )
 
@@ -69,8 +77,7 @@ def test_deposit_no_params(mock_check, client):
     # earlier in the file is not persisted when the tests not requiring
     # a database are run. Thus, we set that flag again here.
     del mock_check
-    response = client.post(
-        DEPOSIT_PATH, {}, follow=True)
+    response = client.post(DEPOSIT_PATH, {}, follow=True)
     content = json.loads(response.content)
 
     assert response.status_code == 400
@@ -94,7 +101,9 @@ def test_deposit_no_asset(mock_check, client, acc1_usd_deposit_transaction_facto
     """`POST /transactions/deposit/interactive` fails with no `asset_code` parameter."""
     del mock_check
     deposit = acc1_usd_deposit_transaction_factory()
-    response = client.post(DEPOSIT_PATH, {"account": deposit.stellar_account}, follow=True)
+    response = client.post(
+        DEPOSIT_PATH, {"account": deposit.stellar_account}, follow=True
+    )
     content = json.loads(response.content)
 
     assert response.status_code == 400
@@ -110,7 +119,11 @@ def test_deposit_invalid_account(
     del mock_check
     acc1_usd_deposit_transaction_factory()
     response = client.post(
-        DEPOSIT_PATH, {"asset_code": "USD", "account": "GBSH7WNSDU5FEIED2JQZIOQPZXREO3YNH2M5DIBE8L2X5OOAGZ7N2QI6"},
+        DEPOSIT_PATH,
+        {
+            "asset_code": "USD",
+            "account": "GBSH7WNSDU5FEIED2JQZIOQPZXREO3YNH2M5DIBE8L2X5OOAGZ7N2QI6",
+        },
         follow=True,
     )
     content = json.loads(response.content)
@@ -128,7 +141,9 @@ def test_deposit_invalid_asset(
     del mock_check
     deposit = acc1_usd_deposit_transaction_factory()
     response = client.post(
-        DEPOSIT_PATH, {"asset_code": "GBP", "account": deposit.stellar_account}, follow=True
+        DEPOSIT_PATH,
+        {"asset_code": "GBP", "account": deposit.stellar_account},
+        follow=True,
     )
     content = json.loads(response.content)
 
@@ -145,7 +160,8 @@ def test_deposit_invalid_memo_type(
     del mock_check
     deposit = acc1_usd_deposit_transaction_factory()
     response = client.post(
-        DEPOSIT_PATH, {"asset_code": "USD", "account": deposit.stellar_account, "memo_type": "test"},
+        DEPOSIT_PATH,
+        {"asset_code": "USD", "account": deposit.stellar_account, "memo_type": "test"},
         follow=True,
     )
     content = json.loads(response.content)
@@ -161,7 +177,8 @@ def test_deposit_no_memo(mock_check, client, acc1_usd_deposit_transaction_factor
     del mock_check
     deposit = acc1_usd_deposit_transaction_factory()
     response = client.post(
-        DEPOSIT_PATH, {"asset_code": "USD", "account": deposit.stellar_account, "memo_type": "text"},
+        DEPOSIT_PATH,
+        {"asset_code": "USD", "account": deposit.stellar_account, "memo_type": "text"},
         follow=True,
     )
     content = json.loads(response.content)
@@ -176,7 +193,8 @@ def test_deposit_no_memo_type(mock_check, client, acc1_usd_deposit_transaction_f
     del mock_check
     deposit = acc1_usd_deposit_transaction_factory()
     response = client.post(
-        DEPOSIT_PATH, {"asset_code": "USD", "account": deposit.stellar_account, "memo": "text"},
+        DEPOSIT_PATH,
+        {"asset_code": "USD", "account": deposit.stellar_account, "memo": "text"},
         follow=True,
     )
     content = json.loads(response.content)
@@ -194,7 +212,13 @@ def test_deposit_invalid_hash_memo(
     del mock_check
     deposit = acc1_usd_deposit_transaction_factory()
     response = client.post(
-        DEPOSIT_PATH, {"asset_code": "USD", "account": deposit.stellar_account, "memo_type": "hash", "memo": "foo"},
+        DEPOSIT_PATH,
+        {
+            "asset_code": "USD",
+            "account": deposit.stellar_account,
+            "memo_type": "hash",
+            "memo": "foo",
+        },
         follow=True,
     )
     content = json.loads(response.content)
@@ -212,7 +236,9 @@ def test_deposit_invalid_hash_memo(
             status_code=400,
             headers={},
             url="",
-            text=json.dumps(dict(status=400, extras=dict(result_xdr=TRUSTLINE_FAILURE_XDR))),
+            text=json.dumps(
+                dict(status=400, extras=dict(result_xdr=TRUSTLINE_FAILURE_XDR))
+            ),
         )
     ),
 )
@@ -237,8 +263,12 @@ def test_deposit_stellar_no_trustline(
 
 @pytest.mark.django_db
 @patch("stellar_sdk.server.Server.fetch_base_fee", return_value=100)
-@patch("stellar_sdk.server.Server.load_account", side_effect=mock_load_not_exist_account)
-@patch("stellar_sdk.server.Server.submit_transaction", return_value=HORIZON_SUCCESS_RESPONSE,
+@patch(
+    "stellar_sdk.server.Server.load_account", side_effect=mock_load_not_exist_account
+)
+@patch(
+    "stellar_sdk.server.Server.submit_transaction",
+    return_value=HORIZON_SUCCESS_RESPONSE,
 )
 def test_deposit_stellar_no_account(
     mock_load_account, mock_base_fee, client, acc1_usd_deposit_transaction_factory,
@@ -264,7 +294,10 @@ def test_deposit_stellar_no_account(
 
 @pytest.mark.django_db
 @patch("stellar_sdk.server.Server.fetch_base_fee", return_value=100)
-@patch("stellar_sdk.server.Server.submit_transaction", return_value=HORIZON_SUCCESS_RESPONSE)
+@patch(
+    "stellar_sdk.server.Server.submit_transaction",
+    return_value=HORIZON_SUCCESS_RESPONSE,
+)
 def test_deposit_stellar_success(
     mock_submit, mock_base_fee, client, acc1_usd_deposit_transaction_factory,
 ):
@@ -284,7 +317,10 @@ def test_deposit_stellar_success(
 
 @pytest.mark.django_db
 @patch("stellar_sdk.server.Server.fetch_base_fee", return_value=100)
-@patch("stellar_sdk.server.Server.submit_transaction", return_value=HORIZON_SUCCESS_RESPONSE)
+@patch(
+    "stellar_sdk.server.Server.submit_transaction",
+    return_value=HORIZON_SUCCESS_RESPONSE,
+)
 @patch("polaris.deposit.views.check_middleware", return_value=None)
 def test_deposit_interactive_confirm_success(
     mock_check_middleware,
@@ -304,9 +340,10 @@ def test_deposit_interactive_confirm_success(
     header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
 
     response = client.post(
-        DEPOSIT_PATH, {"asset_code": "USD", "account": deposit.stellar_account},
+        DEPOSIT_PATH,
+        {"asset_code": "USD", "account": deposit.stellar_account},
         follow=True,
-        **header
+        **header,
     )
     content = json.loads(response.content)
     assert response.status_code == 200
@@ -339,7 +376,10 @@ def test_deposit_interactive_confirm_success(
 
 @pytest.mark.django_db
 @patch("stellar_sdk.server.Server.fetch_base_fee", return_value=100)
-@patch("stellar_sdk.server.Server.submit_transaction", return_value=HORIZON_SUCCESS_RESPONSE)
+@patch(
+    "stellar_sdk.server.Server.submit_transaction",
+    return_value=HORIZON_SUCCESS_RESPONSE,
+)
 @patch(
     "stellar_sdk.call_builder.accounts_call_builder.AccountsCallBuilder.call",
     return_value={"sequence": 1, "balances": [{"asset_code": "USD"}]},
@@ -378,7 +418,9 @@ def test_deposit_authenticated_success(client, acc1_usd_deposit_transaction_fact
     content = json.loads(response.content)
 
     envelope_xdr = content["transaction"]
-    envelope_object = TransactionEnvelope.from_xdr(envelope_xdr, network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE)
+    envelope_object = TransactionEnvelope.from_xdr(
+        envelope_xdr, network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE
+    )
     client_signing_key = Keypair.from_secret(client_seed)
     envelope_object.sign(client_signing_key)
     client_signed_envelope_xdr = envelope_object.to_xdr()
@@ -394,7 +436,8 @@ def test_deposit_authenticated_success(client, acc1_usd_deposit_transaction_fact
 
     header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
     response = client.post(
-        DEPOSIT_PATH, {"asset_code": "USD", "account": deposit.stellar_account},
+        DEPOSIT_PATH,
+        {"asset_code": "USD", "account": deposit.stellar_account},
         follow=True,
         **header,
     )
@@ -408,7 +451,13 @@ def test_deposit_no_jwt(client, acc1_usd_deposit_transaction_factory):
     """`GET /deposit` fails if a required JWT isn't provided."""
     deposit = acc1_usd_deposit_transaction_factory()
     response = client.post(
-        DEPOSIT_PATH, {"asset_code": "USD", "account": deposit.stellar_account, "memo_type": "text", "memo": "foo"},
+        DEPOSIT_PATH,
+        {
+            "asset_code": "USD",
+            "account": deposit.stellar_account,
+            "memo_type": "text",
+            "memo": "foo",
+        },
         follow=True,
     )
     content = json.loads(response.content)
@@ -449,7 +498,9 @@ def test_interactive_deposit_past_exp(client, acc1_usd_deposit_transaction_facto
 
     payload = interactive_jwt_payload(deposit, "deposit")
     payload["exp"] = time.time()
-    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode("ascii")
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode(
+        "ascii"
+    )
 
     response = client.get(f"/transactions/deposit/webapp?token={token}")
     assert "Token is not yet valid or is expired" in str(response.content)
@@ -457,13 +508,17 @@ def test_interactive_deposit_past_exp(client, acc1_usd_deposit_transaction_facto
 
 
 @pytest.mark.django_db
-def test_interactive_deposit_no_transaction(client, acc1_usd_deposit_transaction_factory):
+def test_interactive_deposit_no_transaction(
+    client, acc1_usd_deposit_transaction_factory
+):
     deposit = acc1_usd_deposit_transaction_factory()
 
     payload = interactive_jwt_payload(deposit, "deposit")
     deposit.delete()  # remove from database
 
-    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode("ascii")
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode(
+        "ascii"
+    )
 
     response = client.get(f"/transactions/deposit/webapp?token={token}")
     assert "Transaction for account not found" in str(response.content)
@@ -472,16 +527,18 @@ def test_interactive_deposit_no_transaction(client, acc1_usd_deposit_transaction
 
 @pytest.mark.django_db
 @patch("polaris.deposit.views.check_middleware", return_value=None)
-def test_interactive_deposit_success(mock_check_middleware,
-                                     client,
-                                     acc1_usd_deposit_transaction_factory):
+def test_interactive_deposit_success(
+    mock_check_middleware, client, acc1_usd_deposit_transaction_factory
+):
     del mock_check_middleware
     deposit = acc1_usd_deposit_transaction_factory()
     deposit.amount_in = None
     deposit.save()
 
     payload = interactive_jwt_payload(deposit, "deposit")
-    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode("ascii")
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode(
+        "ascii"
+    )
 
     response = client.get(
         f"/transactions/deposit/webapp"
@@ -496,9 +553,7 @@ def test_interactive_deposit_success(mock_check_middleware,
         "/transactions/deposit/webapp"
         f"?transaction_id={deposit.id}"
         f"&asset_code={deposit.asset.code}",
-        {
-            "amount": 200.0
-        }
+        {"amount": 200.0},
     )
     assert response.status_code == 302
     assert client.session["authenticated"] is False

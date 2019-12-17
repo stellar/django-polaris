@@ -3,4 +3,3 @@ from django.urls import path
 from polaris.sep10auth.views import auth
 
 urlpatterns = [path("", auth)]
-

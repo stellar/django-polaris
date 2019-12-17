@@ -43,9 +43,7 @@ def test_fee_no_operation(mock_check, client, usd_asset_factory):
     content = json.loads(response.content)
 
     assert response.status_code == 400
-    assert content == {
-        "error": "'operation' should be either 'deposit' or 'withdraw'"
-    }
+    assert content == {"error": "'operation' should be either 'deposit' or 'withdraw'"}
 
 
 @pytest.mark.django_db
@@ -58,9 +56,7 @@ def test_fee_invalid_operation(mock_check, client, usd_asset_factory):
     content = json.loads(response.content)
 
     assert response.status_code == 400
-    assert content == {
-        "error": "'operation' should be either 'deposit' or 'withdraw'"
-    }
+    assert content == {"error": "'operation' should be either 'deposit' or 'withdraw'"}
 
 
 @pytest.mark.django_db
@@ -73,9 +69,7 @@ def test_fee_no_amount(mock_check, client, usd_asset_factory):
     content = json.loads(response.content)
 
     assert response.status_code == 400
-    assert content == {
-        "error": "invalid 'amount'"
-    }
+    assert content == {"error": "invalid 'amount'"}
 
 
 @pytest.mark.django_db
@@ -105,9 +99,7 @@ def test_fee_invalid_operation_type_deposit(mock_check, client, usd_asset_factor
     content = json.loads(response.content)
 
     assert response.status_code == 400
-    assert content == {
-        "error": "the specified operation is not available for 'USD'"
-    }
+    assert content == {"error": "the specified operation is not available for 'USD'"}
 
 
 @pytest.mark.django_db
@@ -122,9 +114,7 @@ def test_fee_invalid_operation_type_withdraw(mock_check, client, usd_asset_facto
     content = json.loads(response.content)
 
     assert response.status_code == 400
-    assert content == {
-        "error": "the specified operation is not available for 'USD'"
-    }
+    assert content == {"error": "the specified operation is not available for 'USD'"}
 
 
 @pytest.mark.django_db
@@ -140,9 +130,7 @@ def test_fee_withdraw_disabled(mock_check, client, eth_asset_factory):
     content = json.loads(response.content)
 
     assert response.status_code == 400
-    assert content == {
-        "error": "the specified operation is not available for 'ETH'"
-    }
+    assert content == {"error": "the specified operation is not available for 'ETH'"}
 
 
 @pytest.mark.django_db
@@ -160,9 +148,7 @@ def test_fee_deposit_disabled(mock_check, client, eth_asset_factory):
     content = json.loads(response.content)
 
     assert response.status_code == 400
-    assert content == {
-        "error": "the specified operation is not available for 'ETH'"
-    }
+    assert content == {"error": "the specified operation is not available for 'ETH'"}
 
 
 @pytest.mark.django_db
@@ -209,7 +195,9 @@ def test_fee_authenticated_success(client, usd_asset_factory):
     response = client.get(f"/auth?account={client_address}", follow=True)
     content = json.loads(response.content)
     envelope_xdr = content["transaction"]
-    envelope_object = TransactionEnvelope.from_xdr(envelope_xdr, network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE)
+    envelope_object = TransactionEnvelope.from_xdr(
+        envelope_xdr, network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE
+    )
     client_signing_key = Keypair.from_secret(client_seed)
     envelope_object.sign(client_signing_key)
     client_signed_envelope_xdr = envelope_object.to_xdr()
@@ -245,6 +233,4 @@ def test_fee_no_jwt(client, usd_asset_factory):
     )
     content = json.loads(response.content)
     assert response.status_code == 400
-    assert content == {
-        "error": "JWT must be passed as 'Authorization' header"
-    }
+    assert content == {"error": "JWT must be passed as 'Authorization' header"}

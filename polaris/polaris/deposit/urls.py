@@ -5,5 +5,7 @@ from polaris.deposit.views import deposit, interactive_deposit
 
 urlpatterns = [
     path("transactions/deposit/interactive", csrf_exempt(deposit)),
-    path("transactions/deposit/webapp", interactive_deposit, name="interactive_deposit")
+    path(
+        "transactions/deposit/webapp", interactive_deposit, name="interactive_deposit"
+    ),
 ]

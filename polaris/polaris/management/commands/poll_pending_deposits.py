@@ -39,13 +39,22 @@ class Command(BaseCommand):
     for execution, and executes them. This process can be run in a loop,
     restarting every 10 seconds (or a user-defined time period)
     """
+
     def add_arguments(self, parser):
-        parser.add_argument("--loop", action="store_true",
-                            help="Continually restart command after a specified "
-                                 "number of seconds (10)")
-        parser.add_argument("--interval", "-i", type=int, nargs=1,
-                            help="The number of seconds to wait before "
-                                 "restarting command. Defaults to 10.")
+        parser.add_argument(
+            "--loop",
+            action="store_true",
+            help="Continually restart command after a specified "
+            "number of seconds (10)",
+        )
+        parser.add_argument(
+            "--interval",
+            "-i",
+            type=int,
+            nargs=1,
+            help="The number of seconds to wait before "
+            "restarting command. Defaults to 10.",
+        )
 
     def handle(self, *args, **options):
         if options.get("loop"):
@@ -59,7 +68,7 @@ class Command(BaseCommand):
     def execute_deposits(cls):
         pending_deposits = Transaction.objects.filter(
             kind=Transaction.KIND.deposit,
-            status=Transaction.STATUS.pending_user_transfer_start
+            status=Transaction.STATUS.pending_user_transfer_start,
         )
         try:
             ready_transactions = rdi.poll_pending_deposits(pending_deposits)

@@ -15,9 +15,9 @@ class DepositIntegration:
     Subclasses must be registered with Polaris by passing it to
     :func:`polaris.integrations.register_integrations`.
     """
+
     @classmethod
-    def poll_pending_deposits(cls, pending_deposits: QuerySet
-                              ) -> List[Transaction]:
+    def poll_pending_deposits(cls, pending_deposits: QuerySet) -> List[Transaction]:
         """
         **OVERRIDE REQUIRED**
 
@@ -70,7 +70,9 @@ class DepositIntegration:
         pass
 
     @classmethod
-    def form_for_transaction(cls, transaction: Transaction) -> Optional[Type[forms.Form]]:
+    def form_for_transaction(
+        cls, transaction: Transaction
+    ) -> Optional[Type[forms.Form]]:
         """
         This function should return the next form class to render for the user
         given the state of the interactive flow.
@@ -164,6 +166,7 @@ class WithdrawalIntegration:
     Subclasses must be registered with Polaris by passing it to
     :func:`polaris.integrations.register_integrations`.
     """
+
     @classmethod
     def process_withdrawal(cls, response: Dict, transaction: Transaction):
         """
@@ -188,7 +191,9 @@ class WithdrawalIntegration:
         )
 
     @classmethod
-    def form_for_transaction(cls, transaction: Transaction) -> Optional[Type[forms.Form]]:
+    def form_for_transaction(
+        cls, transaction: Transaction
+    ) -> Optional[Type[forms.Form]]:
         """
         This function should return the next form class to render for the user
         given the state of the interactive flow.

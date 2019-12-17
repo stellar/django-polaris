@@ -128,12 +128,10 @@ def test_withdraw_interactive_failure_no_memotype(
     assert response.status_code == 200
     assert client.session["authenticated"] is True
 
-    response = client.post(url, {
-        "amount": 20,
-        "bank_account": "123456",
-        "bank": "Bank",
-        "account": "Account"
-    })
+    response = client.post(
+        url,
+        {"amount": 20, "bank_account": "123456", "bank": "Bank", "account": "Account"},
+    )
     assert response.status_code == 302
     assert (
         Transaction.objects.get(id=transaction_id).status
@@ -165,12 +163,10 @@ def test_withdraw_interactive_failure_incorrect_memotype(
     assert response.status_code == 200
     assert client.session["authenticated"] is True
 
-    response = client.post(url, {
-        "amount": 20,
-        "bank_account": "123456",
-        "bank": "Bank",
-        "account": "Account"
-    })
+    response = client.post(
+        url,
+        {"amount": 20, "bank_account": "123456", "bank": "Bank", "account": "Account"},
+    )
     assert response.status_code == 302
     assert (
         Transaction.objects.get(id=transaction_id).status
@@ -202,12 +198,10 @@ def test_withdraw_interactive_failure_no_memo(
     assert response.status_code == 200
     assert client.session["authenticated"] is True
 
-    response = client.post(url, {
-        "amount": 20,
-        "bank_account": "123456",
-        "bank": "Bank",
-        "account": "Account"
-    })
+    response = client.post(
+        url,
+        {"amount": 20, "bank_account": "123456", "bank": "Bank", "account": "Account"},
+    )
     assert response.status_code == 302
     assert (
         Transaction.objects.get(id=transaction_id).status
@@ -239,12 +233,10 @@ def test_withdraw_interactive_failure_incorrect_memo(
     assert response.status_code == 200
     assert client.session["authenticated"] is True
 
-    response = client.post(url, {
-        "amount": 20,
-        "bank_account": "123456",
-        "bank": "Bank",
-        "account": "Account"
-    })
+    response = client.post(
+        url,
+        {"amount": 20, "bank_account": "123456", "bank": "Bank", "account": "Account"},
+    )
     assert response.status_code == 302
     assert (
         Transaction.objects.get(id=transaction_id).status
@@ -273,12 +265,10 @@ def test_withdraw_interactive_success_transaction_unsuccessful(
     assert response.status_code == 200
     assert client.session["authenticated"] is True
 
-    response = client.post(url, {
-        "amount": 50,
-        "bank_account": "123456",
-        "bank": "Bank",
-        "account": "Account"
-    })
+    response = client.post(
+        url,
+        {"amount": 50, "bank_account": "123456", "bank": "Bank", "account": "Account"},
+    )
     assert response.status_code == 302
     transaction = Transaction.objects.get(id=transaction_id)
     assert transaction.status == Transaction.STATUS.pending_user_transfer_start
@@ -292,10 +282,7 @@ def test_withdraw_interactive_success_transaction_unsuccessful(
         "envelope_xdr": "AAAAAEU1B1qeJrucdqkbk1mJsnuFaNORfrOAzJyaAy1yzW8TAAAAZAAE2s4AAAABAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAAoUKq+1Z2GGB98qurLSmocHafvG6S+YzKNE6oiHIXo6kAAAABVVNEAAAAAACnUE2lfwuFZ+G+dkc+qiL0MwxB0CoR0au324j+JC9exQAAAAAdzWUAAAAAAAAAAAA=",
     }
     update_transaction(mock_response, transaction)
-    assert (
-        Transaction.objects.get(id=transaction_id).status
-        == Transaction.STATUS.error
-    )
+    assert Transaction.objects.get(id=transaction_id).status == Transaction.STATUS.error
 
 
 @pytest.mark.django_db
@@ -319,12 +306,10 @@ def test_withdraw_interactive_success_transaction_successful(
     assert response.status_code == 200
     assert client.session["authenticated"] is True
 
-    response = client.post(url, {
-        "amount": 50,
-        "bank_account": "123456",
-        "bank": "Bank",
-        "account": "Account"
-    })
+    response = client.post(
+        url,
+        {"amount": 50, "bank_account": "123456", "bank": "Bank", "account": "Account"},
+    )
     assert response.status_code == 302
     transaction = Transaction.objects.get(id=transaction_id)
     assert transaction.status == Transaction.STATUS.pending_user_transfer_start
@@ -357,7 +342,9 @@ def test_withdraw_authenticated_success(
     content = json.loads(response.content)
 
     envelope_xdr = content["transaction"]
-    envelope_object = TransactionEnvelope.from_xdr(envelope_xdr, network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE)
+    envelope_object = TransactionEnvelope.from_xdr(
+        envelope_xdr, network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE
+    )
     client_signing_key = Keypair.from_secret(client_seed)
     envelope_object.sign(client_signing_key)
     client_signed_envelope_xdr = envelope_object.to_xdr()

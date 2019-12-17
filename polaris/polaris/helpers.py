@@ -28,12 +28,14 @@ def calc_fee(asset: Asset, operation: str, amount: Decimal) -> Decimal:
     # `op_type` is not used in this context, since there is no fee variation
     # based on operation type in this example implementation, but that can
     # occur in real-life applications.
-    return fee_fixed + (fee_percent / Decimal('100.0')) * amount
+    return fee_fixed + (fee_percent / Decimal("100.0")) * amount
 
 
-def render_error_response(description: str,
-                          status_code: int = status.HTTP_400_BAD_REQUEST,
-                          content_type: str = "application/json") -> Response:
+def render_error_response(
+    description: str,
+    status_code: int = status.HTTP_400_BAD_REQUEST,
+    content_type: str = "application/json",
+) -> Response:
     """
     Renders an error response in Django.
 
@@ -42,7 +44,7 @@ def render_error_response(description: str,
     resp_data = {
         "data": {"error": description},
         "status": status_code,
-        "content_type": content_type
+        "content_type": content_type,
     }
     if content_type == "text/html":
         resp_data["data"]["status_code"] = status_code
@@ -112,7 +114,9 @@ def validate_jwt_request(request: Request) -> str:
 
     # Validate the JWT contents.
     try:
-        jwt_dict = jwt.decode(encoded_jwt, settings.SERVER_JWT_KEY, algorithms=["HS256"])
+        jwt_dict = jwt.decode(
+            encoded_jwt, settings.SERVER_JWT_KEY, algorithms=["HS256"]
+        )
     except InvalidTokenError as e:
         raise ValueError(str(e))
 
@@ -165,8 +169,7 @@ def authenticate_session(r: Request):
     """
     if r.session.get("authenticated") and r.session.get("account", ""):
         transaction_qs = Transaction.objects.filter(
-            id=r.GET.get("transaction_id"),
-            stellar_account=r.session["account"]
+            id=r.GET.get("transaction_id"), stellar_account=r.session["account"]
         )
         if not transaction_qs.exists():
             raise ValueError("Transaction for account not found")
@@ -208,8 +211,7 @@ def check_authentication(r: Request):
         raise ValueError("Session is not authenticated")
 
     transaction_qs = Transaction.objects.filter(
-        id=r.GET.get("transaction_id"),
-        stellar_account=r.session.get("account")
+        id=r.GET.get("transaction_id"), stellar_account=r.session.get("account")
     )
     if not transaction_qs.exists():
         raise ValueError("Transaction for account not found")
@@ -222,7 +224,9 @@ def invalidate_session(request: Request):
     request.session["authenticated"] = False
 
 
-def generate_interactive_jwt(request: Request, transaction_id: str, account: str) -> str:
+def generate_interactive_jwt(
+    request: Request, transaction_id: str, account: str
+) -> str:
     """
     Generates a 30-second JWT for the client to use in the GET URL for
     the interactive flow.
@@ -233,7 +237,7 @@ def generate_interactive_jwt(request: Request, transaction_id: str, account: str
         "iat": issued_at,
         "exp": issued_at + 30,
         "sub": account,
-        "jti": transaction_id
+        "jti": transaction_id,
     }
     encoded_jwt = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256")
     return encoded_jwt.decode("ascii")

@@ -60,9 +60,7 @@ def test_transactions_format(
     header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
 
     response = client.get(
-        f"/transactions?asset_code={withdrawal.asset.code}",
-        follow=True,
-        **header
+        f"/transactions?asset_code={withdrawal.asset.code}", follow=True, **header
     )
     content = json.loads(response.content)
 
@@ -78,7 +76,9 @@ def test_transactions_order(
 ):
     """Transactions are serialized in expected order."""
     acc2_eth_deposit_transaction_factory(client_address)  # older transaction
-    withdrawal = acc2_eth_withdrawal_transaction_factory(client_address)  # newer transaction
+    withdrawal = acc2_eth_withdrawal_transaction_factory(
+        client_address
+    )  # newer transaction
 
     encoded_jwt = sep10(client, client_address, client_seed)
     # For testing, we make the key `HTTP_AUTHORIZATION`. This is the value that
@@ -86,9 +86,7 @@ def test_transactions_order(
     header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
 
     response = client.get(
-        f"/transactions?asset_code={withdrawal.asset.code}",
-        follow=True,
-        **header
+        f"/transactions?asset_code={withdrawal.asset.code}", follow=True, **header
     )
     content = json.loads(response.content)
 
@@ -128,9 +126,7 @@ def test_transactions_content(
     w_completed_at = withdrawal.completed_at.isoformat().replace("+00:00", "Z")
 
     response = client.get(
-        f"/transactions?asset_code={withdrawal.asset.code}",
-        follow=True,
-        **header
+        f"/transactions?asset_code={withdrawal.asset.code}", follow=True, **header
     )
     content = json.loads(response.content)
 
@@ -225,7 +221,7 @@ def test_paging_id(
             f"&paging_id={withdrawal.id}"
         ),
         follow=True,
-        **header
+        **header,
     )
     content = json.loads(response.content)
 
@@ -251,12 +247,9 @@ def test_kind_filter(
     header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
 
     response = client.get(
-        (
-            f"/transactions?asset_code={withdrawal.asset.code}"
-            "&kind=deposit"
-        ),
+        (f"/transactions?asset_code={withdrawal.asset.code}" "&kind=deposit"),
         follow=True,
-        **header
+        **header,
     )
     content = json.loads(response.content)
 
@@ -280,10 +273,7 @@ def test_kind_filter_no_500(
     withdrawal = acc2_eth_withdrawal_transaction_factory()
 
     response = client.get(
-        (
-            f"/transactions?asset_code={withdrawal.asset.code}"
-            "&kind=somethingelse"
-        ),
+        (f"/transactions?asset_code={withdrawal.asset.code}" "&kind=somethingelse"),
         follow=True,
     )
     content = json.loads(response.content)
@@ -309,10 +299,9 @@ def test_limit(
     header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
 
     response = client.get(
-        f"/transactions?asset_code={withdrawal.asset.code}"
-        "&limit=1",
+        f"/transactions?asset_code={withdrawal.asset.code}" "&limit=1",
         follow=True,
-        **header
+        **header,
     )
     content = json.loads(response.content)
 
@@ -336,10 +325,7 @@ def test_invalid_limit(
     withdrawal = acc2_eth_withdrawal_transaction_factory()  # newest
 
     response = client.get(
-        (
-            f"/transactions?asset_code={withdrawal.asset.code}"
-            "&limit=string"
-        ),
+        (f"/transactions?asset_code={withdrawal.asset.code}" "&limit=string"),
         follow=True,
     )
     content = json.loads(response.content)
@@ -362,11 +348,7 @@ def test_negative_limit(
     withdrawal = acc2_eth_withdrawal_transaction_factory()  # newest
 
     response = client.get(
-        (
-            f"/transactions?asset_code={withdrawal.asset.code}"
-            "&limit=-1"
-        ),
-        follow=True,
+        (f"/transactions?asset_code={withdrawal.asset.code}" "&limit=-1"), follow=True,
     )
     content = json.loads(response.content)
 
@@ -381,10 +363,12 @@ def test_no_older_than_filter(
     acc2_eth_withdrawal_transaction_factory,
 ):
     """Valid `no_older_than` succeeds."""
-    withdrawal_transaction = (
-        acc2_eth_withdrawal_transaction_factory(client_address)
+    withdrawal_transaction = acc2_eth_withdrawal_transaction_factory(
+        client_address
     )  # older transaction
-    deposit_transaction = acc2_eth_deposit_transaction_factory(client_address)  # newer transaction
+    deposit_transaction = acc2_eth_deposit_transaction_factory(
+        client_address
+    )  # newer transaction
 
     encoded_jwt = sep10(client, client_address, client_seed)
     # For testing, we make the key `HTTP_AUTHORIZATION`. This is the value that
@@ -398,7 +382,7 @@ def test_no_older_than_filter(
             f"&no_older_than={urlencoded_datetime}"
         ),
         follow=True,
-        **header
+        **header,
     )
     content = json.loads(response.content)
 
@@ -426,9 +410,7 @@ def test_transactions_authenticated_success(
     header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
 
     response = client.get(
-        f"/transactions?asset_code={withdrawal.asset.code}",
-        follow=True,
-        **header,
+        f"/transactions?asset_code={withdrawal.asset.code}", follow=True, **header,
     )
     content = json.loads(response.content)
 
@@ -437,14 +419,11 @@ def test_transactions_authenticated_success(
 
 
 @pytest.mark.django_db
-def test_transactions_no_jwt(
-    client, acc2_eth_withdrawal_transaction_factory
-):
+def test_transactions_no_jwt(client, acc2_eth_withdrawal_transaction_factory):
     """`GET /transactions` fails if a required JWT is not provided."""
     withdrawal = acc2_eth_withdrawal_transaction_factory()
     response = client.get(
-        f"/transactions?asset_code={withdrawal.asset.code}",
-        follow=True,
+        f"/transactions?asset_code={withdrawal.asset.code}", follow=True,
     )
     content = json.loads(response.content)
     assert response.status_code == 400

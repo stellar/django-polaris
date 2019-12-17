@@ -91,7 +91,7 @@ def more_info(request: Request) -> Response:
         return render_error_response(
             "transaction not found",
             status_code=status.HTTP_404_NOT_FOUND,
-            content_type="text/html"
+            content_type="text/html",
         )
 
     serializer = TransactionSerializer(
@@ -103,10 +103,12 @@ def more_info(request: Request) -> Response:
         "tx_json": tx_json,
         "transaction": request_transaction,
         "asset_code": request_transaction.asset.code,
-        "instructions": None
+        "instructions": None,
     }
-    if (request_transaction.kind == Transaction.KIND.deposit and
-            request_transaction.status == Transaction.STATUS.pending_user_transfer_start):
+    if (
+        request_transaction.kind == Transaction.KIND.deposit
+        and request_transaction.status == Transaction.STATUS.pending_user_transfer_start
+    ):
         resp_data["instructions"] = rdi.instructions_for_pending_deposit(transaction)
     return Response(resp_data, template_name="transaction/more_info.html")
 
@@ -122,14 +124,12 @@ def transactions(account: str, request: Request) -> Response:
         limit = _validate_limit(request.GET.get("limit"))
     except ValueError:
         return render_error_response(
-            "invalid limit",
-            status_code=status.HTTP_400_BAD_REQUEST
+            "invalid limit", status_code=status.HTTP_400_BAD_REQUEST
         )
 
     if not request.GET.get("asset_code"):
         return render_error_response(
-            "asset_code is required",
-            status_code=status.HTTP_400_BAD_REQUEST,
+            "asset_code is required", status_code=status.HTTP_400_BAD_REQUEST,
         )
 
     translation_dict = {
