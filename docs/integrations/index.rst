@@ -75,6 +75,16 @@ The `attrs` parameter adds a HTML attribute to the `<input>` tag that Bulma
 uses to add better styling. You may also add more Bulma-supported attributes
 to Polaris forms.
 
+stellar.toml Integration
+------------------------
+Every anchor must define a stellar.toml file to describe the anchors's supported
+currencies, any validators that are run, and other meta data. Polaris provides a
+default function that returns the currency supported by your server, but you'll almost
+certainly need to replace this default to provide more detailed information.
+
+.. autofunction:: polaris.integrations.get_stellar_toml
+
+
 Deposit Instructions
 --------------------
 

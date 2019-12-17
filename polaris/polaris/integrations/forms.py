@@ -8,7 +8,7 @@ class TransactionForm(forms.Form):
     Developers must define subclasses to collect additional information and
     apply additional validation.
 
-    Defines the :class:`.forms.FloatField` `amount` and also has a non-form
+    Defines the :class:`.forms.DecimalField` `amount` and also has a non-form
     attribute `asset`, which will be populated by the `asset_code`
     request parameter used in `/transactions/deposit/webapp` and
     `/transactions/withdraw/webapp` endpoints.
@@ -26,6 +26,10 @@ class TransactionForm(forms.Form):
 
     def clean_amount(self):
         """Validate the provided amount of an asset."""
+        # TODO: do we want all amounts to be rounded?
+        #   0.001 of Bitcoin should not be rounded to 0.00
+        #   but 1.123 USD should be rounded to 1.12 USD.
+        #   Idea: add significant decimal places column to Asset?
         amount = round(self.cleaned_data["amount"], 2)
         if self.asset:
             if amount < self.asset.deposit_min_amount:

@@ -3,7 +3,8 @@ import time
 from typing import List, Dict
 
 from django.db.models import QuerySet
-from polaris.models import Transaction
+from polaris import settings
+from polaris.models import Transaction, Asset
 from polaris.integrations import DepositIntegration, WithdrawalIntegration
 
 
@@ -39,3 +40,20 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
     @classmethod
     def process_withdrawal(cls, response: Dict, transaction: Transaction):
         logger.info(f"Processing transaction {transaction.id}")
+
+
+def get_stellar_toml():
+    return {
+        "DOCUMENTATION": {
+            "ORG_NAME": "Stellar Development Foundation",
+            "ORG_URL": "https://stellar.org",
+            "ORG_DESCRIPTION": "SEP 24 reference server.",
+            "ORG_KEYBASE": "stellar.public",
+            "ORG_TWITTER": "StellarOrg",
+            "ORG_GITHUB": "stellar",
+        },
+        "CURRENCIES": [
+            {"code": asset.code, "issuer": settings.STELLAR_ISSUER_ACCOUNT_ADDRESS}
+            for asset in Asset.objects.all().iterator()
+        ]
+    }
