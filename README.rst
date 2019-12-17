@@ -1,3 +1,4 @@
+=====================
 Polaris Documentation
 =====================
 
@@ -25,6 +26,9 @@ Instead, Polaris provides several base classes for integrating with its
 already-implemented functionality, similar to a framework. This documentation
 focuses on the parts of Polaris you will need to use in order to fully implement
 the SEP-24_ protocol.
+
+Documentation for these base classes can be found in the
+:doc:`Integrations </integrations/index>` section.
 
 For an example on how to use Polaris, see the SDF's stellar-anchor-server_.
 
@@ -100,8 +104,8 @@ Run migrations: ``python manage.py migrate``
 
 You now have Polaris completely integrated into your Django project!
 
-Contributing and Testing
-========================
+Contributing
+============
 To set up the development environment, fork the repository, then:
 ::
 
@@ -111,19 +115,28 @@ To set up the development environment, fork the repository, then:
 
 You should now have a minimal anchor server running on port 8000.
 When you make changes locally, the docker containers will restart with the updated code.
+Your browser may complain about the service using a self-signed certificate for HTTPS.
+You can resolve this by marking the certificate used by the service as trusted.
 
 Testing
 -------
-We don't have a way to run our tests in the docker containers, but you can
-install the dependencies locally in a virtual environment:
+You can install the dependencies locally in a virtual environment:
 ::
 
     pip install pipenv
     cd django-polaris
     pipenv install --dev
-    pipenv run pytest
+    pipenv run pytest -c polaris/pytest.ini
+
+Or, you can simply run the tests from inside the docker container. However,
+this may be slower.
+::
+
+    docker exec -it <image ID> pipenv run pytest
 
 Submit a PR
 -----------
 After you've made your changes, push them to you a remote branch
 and make a Pull Request on the stellar/django-polaris master branch.
+
+
