@@ -2,9 +2,7 @@ version: "3"
 
 services:
   server:
-    build:
-      context: .
-      dockerfile: Dockerfile.dev
+    build: .
     volumes:
       - ./polaris/polaris:/code/polaris
       - ./example/server:/code/server
@@ -14,9 +12,7 @@ services:
       - "8000:8000"
     command: pipenv run watchmedo auto-restart --recursive --pattern="*.py" --directory="." sh run.sh
   watch_transactions:
-    build:
-      context: .
-      dockerfile: Dockerfile.dev
+    build: .
     volumes:
       - ./polaris/polaris:/code/polaris
       - ./example/server:/code/server
@@ -26,9 +22,7 @@ services:
       - server
     command: pipenv run watchmedo auto-restart --recursive --pattern="*.py" --directory="." python manage.py watch_transactions
   check_trustlines:
-    build:
-      context: .
-      dockerfile: Dockerfile.dev
+    build: .
     volumes:
       - ./polaris/polaris:/code/polaris
       - ./example/server:/code/server
@@ -38,9 +32,7 @@ services:
       - server
     command: pipenv run watchmedo auto-restart --recursive --pattern="*.py" --directory="." python manage.py check_trustlines -- --loop
   poll_pending_deposits:
-    build:
-      context: .
-      dockerfile: Dockerfile.dev
+    build: .
     volumes:
       - ./polaris/polaris:/code/polaris
       - ./example/server:/code/server
