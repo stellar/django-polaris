@@ -9,17 +9,19 @@ What is Polaris?
 .. _Stellar Development Foundation: https://www.stellar.org/
 .. _github: https://github.com/stellar/django-polaris
 .. _stellar-anchor-server: https://github.com/stellar/stellar-anchor-server
+.. _django reusable-app: https://docs.djangoproject.com/en/3.0/intro/reusable-apps/
 
-Polaris is an implementation of SEP-24_ maintained by the `Stellar Development
-Foundation`_ (SDF). SEP-24 is a standard defined to make wallets and anchors
-interoperable, meaning any wallet can communicate with any anchor for the
-purpose of withdrawing or depositing assets into the stellar network.
+Polaris is a django reusable-app implementing SEP-24_ maintained by the
+`Stellar Development Foundation`_ (SDF). SEP-24 is a standard defined to make
+wallets and anchors interoperable, meaning any wallet can communicate with any
+anchor for the purpose of withdrawing or depositing assets into the stellar
+network.
 
-Polaris is not a library or a framework; its an extendable django app. Like
-many django apps, it comes with fully-implemented endpoints, templates, and
-database models. As a developer using Polaris, you don't need to know
-everything about how Polaris is implemented, even though the project is
-completely open source and available at the SDF's github_.
+Polaris is not a library or a framework; its an extendable `django
+reusable-app`_.  Like many django apps, it comes with fully-implemented
+endpoints, templates, and database models. As a developer using Polaris, you
+don't need to know everything about how Polaris is implemented, even though the
+project is completely open source and available at the SDF's github_.
 
 Polaris does not aim to give you full control of the SEP-24_ implementation.
 Instead, Polaris provides several base classes for integrating with its
