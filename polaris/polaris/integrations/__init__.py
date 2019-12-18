@@ -2,9 +2,11 @@ import sys
 from typing import Callable
 from polaris.integrations.forms import TransactionForm
 from polaris.integrations.toml import get_stellar_toml, registered_toml_func
-from polaris.integrations.more_info import (
+from polaris.integrations.templates import (
     get_more_info_template,
     registered_more_info_template_func,
+    get_error_template,
+    registered_error_template_func,
 )
 from polaris.integrations.transactions import (
     DepositIntegration,
@@ -19,6 +21,7 @@ def register_integrations(
     withdrawal: WithdrawalIntegration = None,
     toml_func: Callable = None,
     more_info_template_func: Callable = None,
+    error_template_func: Callable = None,
 ):
     """
     Registers instances of user-defined subclasses of
@@ -62,6 +65,9 @@ def register_integrations(
     :param more_info_template_func: a function that returns the file path to use when
         searching for the template and a dictionary of the data to render in the
         template.
+    :param error_template_func: a function that returns the file path to use when
+        searching for the template and a dictionary of the data to render in the
+        template.
     :raises ValueError: missing argument(s)
     :raises TypeError: arguments are not subclasses of DepositIntegration or
         Withdrawal
@@ -78,12 +84,15 @@ def register_integrations(
         raise TypeError("toml_func is not callable")
     elif more_info_template_func and not callable(more_info_template_func):
         raise TypeError("more_info_template_func is not callable")
+    elif error_template_func and not callable(error_template_func):
+        raise TypeError("error_template_func is not callable")
 
     for obj, attr in [
         (deposit, "registered_deposit_integration"),
         (withdrawal, "registered_withdrawal_integration"),
         (toml_func, "registered_toml_func"),
         (more_info_template_func, "registered_more_info_template_func"),
+        (error_template_func, "registered_error_template_func"),
     ]:
         if obj:
             setattr(this, attr, obj)

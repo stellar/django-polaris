@@ -2,9 +2,44 @@ from typing import Tuple, Dict
 from polaris.models import Transaction
 
 
+def get_error_template() -> Tuple[str, Dict]:
+    """
+    .. _polaris_error.html:: https://github.com/stellar/django-polaris/blob/master/polaris/polaris/templates/polaris_error.html
+
+    Returns the default error template path and an empty dictionary. This
+    function should be replaced by anchors who want to use a different template
+    for the error page.
+
+    The data dictionary returned by this function or its replacement will
+    be combined with another dictionary Polaris passes to the error
+    template. The dictionary Polaris uses will have the following key-value
+    pairs:
+
+        * status_code: The HTTP status code to be returned with the response
+        * error: The error message string to be displayed
+
+    Take a look at the polaris_error.html_ default template to see how these
+    arguments are used.
+
+    This function can be replaced by passing the replacement into
+    register_integrations like so:
+    ::
+
+        from myapp.integrations import get_error_template
+
+        register_integrations(
+            error_template_func=get_error_template
+        )
+
+    :return: a tuple of the template path and a dictionary containing the data
+        that should be passed to the template.
+    """
+    return "polaris_error.html", {}
+
+
 def get_more_info_template(transaction: Transaction) -> Tuple[str, Dict]:
     """
-    .. _more_info.html: https://github.com/stellar/django-polaris/blob/master/polaris/polaris/templates/transaction/more_info.html
+    .. _polaris_more_info.html: https://github.com/stellar/django-polaris/blob/master/polaris/polaris/templates/transaction/more_info.html
 
     Returns the default more_info template path and an empty dictionary. This
     function should be replaced by anchors who want to use a different
@@ -20,10 +55,10 @@ def get_more_info_template(transaction: Transaction) -> Tuple[str, Dict]:
         * instructions: an optional string of text or HTML to display to
           the user for guidance on starting the deposit transaction
 
-    Take a look at the more_info.html_ default template to see how these
+    Take a look at the polaris_more_info.html_ default template to see how these
     arguments are used.
 
-    Lastly, any template used in place of more_info.html_ must send a
+    Lastly, any template used in place of polaris_more_info.html_ must send a
     JavaScript ``postMessage`` callback to the window that opened the
     interactive flow. This lets the wallet know that the anchor has finished
     and that the wallet may resume control. The call must contain the `tx_json`
@@ -40,16 +75,15 @@ def get_more_info_template(transaction: Transaction) -> Tuple[str, Dict]:
 
             targetWindow.postMessage(tx_json, "*");
 
-    Again, look at the more_info.html_ template for a reference.
-
+    Again, look at the polaris_more_info.html_ template for a reference.
     This function can be replaced by passing the replacement into
     register_integrations like so:
     ::
 
-        from myapp.integrations import my_more_info_template_func
+        from myapp.integrations import get_more_info_template
 
         register_integrations(
-            more_info_template_func=my_more_info_template_func
+            more_info_template_func=get_more_info_template
         )
 
     :param transaction: a django Transaction model object that will be passed
@@ -57,7 +91,8 @@ def get_more_info_template(transaction: Transaction) -> Tuple[str, Dict]:
     :return: a tuple of the template path and a dictionary containing the data
         that should be passed to the template.
     """
-    return "transaction/more_info.html", {}
+    return "transaction/polaris_more_info.html", {}
 
 
+registered_error_template_func = get_error_template
 registered_more_info_template_func = get_more_info_template

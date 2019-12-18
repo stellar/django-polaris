@@ -174,7 +174,7 @@ class DepositIntegration:
         :return: a tuple containing the template path and a dictionary containing
             arguments to be passed to the template.
         """
-        return "deposit/form.html", {}
+        return "deposit/polaris_form.html", {}
 
 
 class WithdrawalIntegration:
@@ -302,7 +302,7 @@ class WithdrawalIntegration:
         :return: a tuple containing the template path and a dictionary containing
             arguments to be passed to the template.
         """
-        return "withdraw/form.html", {}
+        return "withdraw/polaris_form.html", {}
 
 
 registered_deposit_integration = DepositIntegration()

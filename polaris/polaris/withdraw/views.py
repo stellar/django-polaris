@@ -81,8 +81,9 @@ def interactive_withdraw(request: Request) -> Response:
         )
 
     if request.method == "GET":
-        form_class = rwi.form_for_transaction(transaction)
-        return Response({"form": form_class()}, template_name="withdraw/form.html")
+        form = rwi.form_for_transaction(transaction)()
+        path, extra_data = rwi.template_for_transaction(transaction, form)
+        return Response({"form": form, **extra_data}, template_name=path)
 
     # request.method == "POST"
     form = rwi.form_for_transaction(transaction)(request.POST)
@@ -104,12 +105,9 @@ def interactive_withdraw(request: Request) -> Response:
         form_class = rwi.form_for_transaction(transaction)
 
         if form_class:
-            resp_data = {"form": form_class()}
-            path, extra_data = rwi.template_for_transaction(
-                transaction, resp_data["form"]
-            )
-            resp_data.update(extra_data)
-            return Response(resp_data, template_name=path)
+            form = form_class()
+            path, extra_data = rwi.template_for_transaction(transaction, form)
+            return Response({"form": form, **extra_data}, template_name=path)
         else:  # Last form has been submitted
             invalidate_session(request)
             transaction.status = Transaction.STATUS.pending_user_transfer_start
@@ -117,7 +115,8 @@ def interactive_withdraw(request: Request) -> Response:
             url, args = reverse("more_info"), urlencode({"id": transaction_id})
             return redirect(f"{url}?{args}")
     else:
-        return Response({"form": form}, template_name="withdraw/form.html")
+        path, extra_data = rwi.template_for_transaction(transaction, form)
+        return Response({"form": form, **extra_data}, template_name=path)
 
 
 @api_view(["POST"])

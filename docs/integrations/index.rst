@@ -128,7 +128,8 @@ Deposit Instructions
 `This integration point is no longer needed with the introduction of Template
 Integrations. While they are not technically required, any desired modification
 of the default templates, like adding deposit instructions, should be
-accomplished though providing your own custom template.`
+accomplished though providing your own custom template. This feature will likely
+not be included in the eventual v1.0 release.`
 
 .. autofunction:: polaris.integrations.DepositIntegration.instructions_for_pending_deposit
 

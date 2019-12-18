@@ -5,14 +5,15 @@ import codecs
 import time
 import uuid
 
-from polaris import settings
 import jwt
 from jwt.exceptions import InvalidTokenError
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.request import Request
 
+from polaris import settings
 from polaris.models import Asset, Transaction
+from polaris.integrations import registered_error_template_func
 
 
 def calc_fee(asset: Asset, operation: str, amount: Decimal) -> Decimal:
@@ -47,8 +48,10 @@ def render_error_response(
         "content_type": content_type,
     }
     if content_type == "text/html":
-        resp_data["data"]["status_code"] = status_code
-        resp_data["template_name"] = "error.html"
+        path, extra_data = registered_error_template_func()
+        resp_data["data"]["status_code"] = str(status_code)
+        resp_data["data"].update(extra_data)
+        resp_data["template_name"] = path
     return Response(**resp_data)
 
 
