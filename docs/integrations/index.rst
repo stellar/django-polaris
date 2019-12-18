@@ -111,6 +111,8 @@ assets to use in place of Polaris' defaults, implement the integration points pr
 
 .. autofunction:: polaris.integrations.get_more_info_template
 
+.. autofunction:: polaris.integrations.get_error_template
+
 stellar.toml Integration
 ------------------------
 Every anchor must define a stellar.toml file to describe the anchors's supported

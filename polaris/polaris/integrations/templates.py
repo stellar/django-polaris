@@ -4,7 +4,7 @@ from polaris.models import Transaction
 
 def get_error_template() -> Tuple[str, Dict]:
     """
-    .. _polaris_error.html:: https://github.com/stellar/django-polaris/blob/master/polaris/polaris/templates/polaris_error.html
+    .. _polaris_error.html: https://github.com/stellar/django-polaris/blob/master/polaris/polaris/templates/polaris_error.html
 
     Returns the default error template path and an empty dictionary. This
     function should be replaced by anchors who want to use a different template
