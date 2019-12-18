@@ -158,10 +158,21 @@ class DepositIntegration:
         cls, transaction: Transaction, form: forms.Form
     ) -> Tuple[str, Dict]:
         """
+        Use this function to specify a template path to be used in place of
+        Polaris' default template. You must also return a dictionary of
+        additional parameters to be passed to the template.
 
-        :param transaction:
-        :param form:
-        :return:
+        The path specified must be discoverable, meaning the path exists
+        under an installed app's `/templates` directory, or under a directory
+        specified in ``settings.TEMPLATES["DIRS"]``.
+
+        :param transaction: the :class:`Transaction` django model object
+            representing the transaction being processed.
+        :param form: the :class:`forms.Form` instance initialized from the
+            form class returned by the
+            :func:`DepositIntegration.form_for_transaction` integration.
+        :return: a tuple containing the template path and a dictionary containing
+            arguments to be passed to the template.
         """
         return "deposit/form.html", {}
 
@@ -275,10 +286,21 @@ class WithdrawalIntegration:
         cls, transaction: Transaction, form: forms.Form
     ) -> Tuple[str, Dict]:
         """
+        Use this function to specify a template path to be used in place of
+        Polaris' default template. You must also return a dictionary of
+        additional parameters to be passed to the template.
 
-        :param transaction:
-        :param form:
-        :return:
+        The path specified must be discoverable, meaning the path exists
+        under an installed app's `/templates` directory, or under a directory
+        specified in ``settings.TEMPLATES["DIRS"]``.
+
+        :param transaction: the :class:`Transaction` django model object
+            representing the transaction being processed.
+        :param form: the :class:`forms.Form` instance initialized from the
+            form class returned by the
+            :func:`WithdrawalIntegration.form_for_transaction` integration.
+        :return: a tuple containing the template path and a dictionary containing
+            arguments to be passed to the template.
         """
         return "withdraw/form.html", {}
 

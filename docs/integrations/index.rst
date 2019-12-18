@@ -4,7 +4,6 @@ Integrations
 
 .. _SEP-24: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md
 .. _Django Commands: https://docs.djangoproject.com/en/2.2/howto/custom-management-commands
-.. _stellar-anchor-server: https://github.com/stellar/stellar-anchor-server
 
 Polaris does most of the work implementing SEP-24_. However, some pieces of
 SEP-24 can only be implemented by the anchor. Specifically, anchors need to
@@ -56,11 +55,6 @@ See the :doc:`../forms/index` documentation for the `TransactionForm` definition
 
 .. autofunction:: polaris.integrations.WithdrawalIntegration.after_form_validation
 
-Implementation Example
-^^^^^^^^^^^^^^^^^^^^^^
-The stellar-anchor-server_ implements many of these functions outlined above. For
-reference examples, see the github repository.
-
 Form CSS
 ^^^^^^^^
 Polaris uses default CSS provided by Bulma_ for styling forms. To keep the
@@ -74,6 +68,48 @@ form fields displaying text like so:
 The `attrs` parameter adds a HTML attribute to the `<input>` tag that Bulma
 uses to add better styling. You may also add more Bulma-supported attributes
 to Polaris forms.
+
+Or, if you're taking advantage of Template Integrations, create your own CSS
+rules for forms and add them to your form fields through the `attrs` parameter.
+
+Template Integrations
+---------------------
+
+.. _`Django Templates`: https://docs.djangoproject.com/en/2.2/topics/templates/
+.. _`static files`: https://docs.djangoproject.com/en/3.0/howto/static-files/
+
+Polaris uses `Django Templates`_ for rendering HTML and the static assets
+associated with them during the interactive flow. Polaris provides default templates
+to make it easier to get started, but it is highly recommended that anchors
+use their own templates in order to provide a better user experience.
+
+Combined with Form Integrations, these integrations provide the anchor almost complete
+control over the front end stack.
+
+Integrating your custom templates and static assets such as CSS and JavaScript with
+Polaris is simple. There are a few configuration options that must set in order for
+Polaris to find your templates:
+
+    * ``settings.TEMPLATES["APP_DIRS"]`` must be ``True``
+
+In order for Polaris to find your static assets:
+
+    * `django.contrib.staticfiles` must be listed in ``settings.INSTALLED_APPS``
+    * You must define a value for ``settings.STATIC_URL`` and ``settings.STATIC_ROOT``.
+      Refer to Django's documentation on `static files`_ for more information on these
+      settings.
+    * Paths specified in your custom templates using the ``static`` tag must be
+      present under an installed app's `/static` directory or under a directory
+      listed in ``settings.STATICFILES_DIRS``
+
+Once you've configured your project correctly and have custom templates and/or static
+assets to use in place of Polaris' defaults, implement the integration points provided:
+
+.. autofunction:: polaris.integrations.DepositIntegration.template_for_transaction
+
+.. autofunction:: polaris.integrations.WithdrawalIntegration.template_for_transaction
+
+.. autofunction:: polaris.integrations.get_more_info_template
 
 stellar.toml Integration
 ------------------------

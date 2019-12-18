@@ -1,8 +1,11 @@
 import sys
 from typing import Callable
 from polaris.integrations.forms import TransactionForm
-from polaris.integrations.toml import registered_toml_func
-from polaris.integrations.more_info import registered_more_info_template_func
+from polaris.integrations.toml import get_stellar_toml, registered_toml_func
+from polaris.integrations.more_info import (
+    get_more_info_template,
+    registered_more_info_template_func,
+)
 from polaris.integrations.transactions import (
     DepositIntegration,
     WithdrawalIntegration,

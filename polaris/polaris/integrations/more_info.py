@@ -14,10 +14,11 @@ def get_more_info_template(transaction: Transaction) -> Tuple[str, Dict]:
     be combined with another dictionary Polaris passes to the more_info
     template. The dictionary Polaris uses will have the following key-value
     pairs:
+
         * transaction: the Transaction django model object
         * tx_json: a JSON-serialized representation of `transaction`
         * instructions: an optional string of text or HTML to display to
-            the user for guidance on starting the deposit transaction
+          the user for guidance on starting the deposit transaction
 
     Take a look at the more_info.html_ default template to see how these
     arguments are used.
@@ -45,15 +46,9 @@ def get_more_info_template(transaction: Transaction) -> Tuple[str, Dict]:
     register_integrations like so:
     ::
 
-        from myapp.integrations import (MyDepositIntegration,
-                                        MyWithdrawalIntegration,
-                                        my_toml_func,
-                                        my_more_info_template_func)
+        from myapp.integrations import my_more_info_template_func
 
         register_integrations(
-            deposit=MyDepositIntegration(),
-            withdrawal=MyWithdrawalIntegration(),
-            toml=my_toml_func,
             more_info_template_func=my_more_info_template_func
         )
 

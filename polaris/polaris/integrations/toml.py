@@ -15,8 +15,6 @@ def get_stellar_toml():
         from myapp.integrations import get_toml_data
 
         register_integrations(
-            deposit=DepositIntegration(),
-            withdrawal=WithdrawalIntegration(),
             toml_func=get_toml_data
         )
 
