@@ -40,7 +40,7 @@ def get_more_info_template(transaction: Transaction) -> Tuple[str, Dict]:
 
             targetWindow.postMessage(tx_json, "*");
 
-    Again, look at the more_info.html template for a reference.
+    Again, look at the more_info.html_ template for a reference.
 
     This function can be replaced by passing the replacement into
     register_integrations like so:

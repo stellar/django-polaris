@@ -120,9 +120,15 @@ certainly need to replace this default to provide more detailed information.
 
 .. autofunction:: polaris.integrations.get_stellar_toml
 
-
 Deposit Instructions
 --------------------
+
+**DEPRECATED**
+
+`This integration point is no longer needed with the introduction of Template
+Integrations. While they are not technically required, any desired modification
+of the default templates, like adding deposit instructions, should be
+accomplished though providing your own custom template.`
 
 .. autofunction:: polaris.integrations.DepositIntegration.instructions_for_pending_deposit
 
