@@ -18,7 +18,7 @@ body, html {
 .navbar {
   background: #0abf53;
   min-height: 108px;
-  background-image: url("leaf-bg.svg");
+  background-image: url("polaris-leaf-bg.svg");
   background-repeat: no-repeat;
 }
 
@@ -90,5 +90,5 @@ input[type=text], input[type=number] {
 }
 
 .refresh-icon {
-  background: url("icon-refresh.svg") center center no-repeat;
+  background: url("polaris-icon-refresh.svg") center center no-repeat;
 }
