@@ -165,7 +165,12 @@ def interactive_deposit(request: Request) -> Response:
         form_class = rdi.form_for_transaction(transaction)
 
         if form_class:
-            return Response({"form": form_class()}, template_name="deposit/form.html")
+            resp_data = {"form": form_class()}
+            path, extra_data = rdi.template_for_transaction(
+                transaction, resp_data["form"]
+            )
+            resp_data.update(extra_data)
+            return Response(resp_data, template_name=path)
         else:  # Last form has been submitted
             invalidate_session(request)
             transaction.status = Transaction.STATUS.pending_user_transfer_start

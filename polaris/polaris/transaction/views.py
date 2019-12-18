@@ -16,6 +16,7 @@ from polaris.helpers import render_error_response, validate_sep10_token
 from polaris.models import Transaction
 from polaris.transaction.serializers import TransactionSerializer
 from polaris.integrations import registered_deposit_integration as rdi
+from polaris.integrations import registered_more_info_template_func
 
 
 def _validate_limit(limit):
@@ -105,12 +106,14 @@ def more_info(request: Request) -> Response:
         "asset_code": request_transaction.asset.code,
         "instructions": None,
     }
+    template_path, template_data = registered_more_info_template_func(transaction)
+    resp_data.update(template_data)
     if (
         request_transaction.kind == Transaction.KIND.deposit
         and request_transaction.status == Transaction.STATUS.pending_user_transfer_start
     ):
         resp_data["instructions"] = rdi.instructions_for_pending_deposit(transaction)
-    return Response(resp_data, template_name="transaction/more_info.html")
+    return Response(resp_data, template_name=template_path)
 
 
 @api_view()

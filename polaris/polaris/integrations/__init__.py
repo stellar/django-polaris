@@ -1,7 +1,8 @@
 import sys
 from typing import Callable
 from polaris.integrations.forms import TransactionForm
-from polaris.integrations.toml import get_stellar_toml, registered_toml_func
+from polaris.integrations.toml import registered_toml_func
+from polaris.integrations.more_info import registered_more_info_template_func
 from polaris.integrations.transactions import (
     DepositIntegration,
     WithdrawalIntegration,
@@ -14,6 +15,7 @@ def register_integrations(
     deposit: DepositIntegration = None,
     withdrawal: WithdrawalIntegration = None,
     toml_func: Callable = None,
+    more_info_template_func: Callable = None,
 ):
     """
     Registers instances of user-defined subclasses of
@@ -33,12 +35,14 @@ def register_integrations(
                 from polaris.integrations import register_integrations
                 from myapp.integrations import (MyDepositIntegration,
                                                 MyWithdrawalIntegration,
-                                                get_toml_data)
+                                                get_toml_data,
+                                                get_more_info_template)
 
                 register_integrations(
                     deposit=MyDepositIntegration(),
                     withdrawal=MyWithdrawalIntegration(),
-                    toml_func=get_toml_data
+                    toml_func=get_toml_data,
+                    more_info_template_func=get_more_info_template
                 )
 
     These integration classes provide a structured interface for implementing
@@ -52,6 +56,9 @@ def register_integrations(
     :param withdrawal: the :class:`WithdrawalIntegration` subclass instance to
         be used by Polaris
     :param toml_func: a function that returns stellar.toml data as a dictionary
+    :param more_info_template_func: a function that returns the file path to use when
+        searching for the template and a dictionary of the data to render in the
+        template.
     :raises ValueError: missing argument(s)
     :raises TypeError: arguments are not subclasses of DepositIntegration or
         Withdrawal
@@ -66,11 +73,14 @@ def register_integrations(
         raise TypeError("withdrawal must be a subclass of WithdrawalIntegration")
     elif toml_func and not callable(toml_func):
         raise TypeError("toml_func is not callable")
+    elif more_info_template_func and not callable(more_info_template_func):
+        raise TypeError("more_info_template_func is not callable")
 
     for obj, attr in [
         (deposit, "registered_deposit_integration"),
         (withdrawal, "registered_withdrawal_integration"),
         (toml_func, "registered_toml_func"),
+        (more_info_template_func, "registered_more_info_template_func"),
     ]:
         if obj:
             setattr(this, attr, obj)

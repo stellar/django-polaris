@@ -1,4 +1,4 @@
-from typing import Type, Dict, List, Optional
+from typing import Type, Dict, List, Optional, Tuple
 
 from django.db.models import QuerySet
 from django import forms
@@ -153,6 +153,18 @@ class DepositIntegration:
         """
         pass
 
+    @classmethod
+    def template_for_transaction(
+        cls, transaction: Transaction, form: forms.Form
+    ) -> Tuple[str, Dict]:
+        """
+
+        :param transaction:
+        :param form:
+        :return:
+        """
+        return "deposit/form.html", {}
+
 
 class WithdrawalIntegration:
     """
@@ -257,6 +269,18 @@ class WithdrawalIntegration:
         :param transaction: the :class:`Transaction` database object
         """
         pass
+
+    @classmethod
+    def template_for_transaction(
+        cls, transaction: Transaction, form: forms.Form
+    ) -> Tuple[str, Dict]:
+        """
+
+        :param transaction:
+        :param form:
+        :return:
+        """
+        return "withdraw/form.html", {}
 
 
 registered_deposit_integration = DepositIntegration()
