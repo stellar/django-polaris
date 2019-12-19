@@ -1,13 +1,22 @@
 """This module defines the URL patterns for the `/withdraw` endpoint."""
 from django.urls import path
 from django.views.decorators.csrf import csrf_exempt
-from polaris.withdraw.views import withdraw, interactive_withdraw
+from polaris.withdraw.views import (
+    withdraw,
+    get_interactive_withdraw,
+    post_interactive_withdraw,
+)
 
 urlpatterns = [
     path("transactions/withdraw/interactive", csrf_exempt(withdraw)),
     path(
+        "transactions/withdraw/webapp/submit",
+        post_interactive_withdraw,
+        name="post_interactive_withdraw",
+    ),
+    path(
         "transactions/withdraw/webapp",
-        interactive_withdraw,
-        name="interactive_withdraw",
+        get_interactive_withdraw,
+        name="get_interactive_withdraw",
     ),
 ]

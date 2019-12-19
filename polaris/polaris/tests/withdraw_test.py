@@ -53,7 +53,7 @@ def test_withdraw_no_asset(mock_check, client):
 
 @pytest.mark.django_db
 @patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
-@patch("polaris.helpers.authenticate_session")
+@patch("polaris.helpers.authenticate_session_helper")
 def test_withdraw_interactive_no_txid(
     mock_check, mock_auth, client, acc1_usd_withdrawal_transaction_factory
 ):
@@ -68,7 +68,7 @@ def test_withdraw_interactive_no_txid(
 
 @pytest.mark.django_db
 @patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
-@patch("polaris.helpers.authenticate_session")
+@patch("polaris.helpers.authenticate_session_helper")
 def test_withdraw_interactive_no_asset(
     mock_check, mock_auth, client, acc1_usd_withdrawal_transaction_factory
 ):
@@ -85,7 +85,7 @@ def test_withdraw_interactive_no_asset(
 
 @pytest.mark.django_db
 @patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
-@patch("polaris.helpers.authenticate_session")
+@patch("polaris.helpers.authenticate_session_helper")
 def test_withdraw_interactive_invalid_asset(
     mock_check, mock_auth, client, acc1_usd_withdrawal_transaction_factory
 ):
@@ -128,8 +128,9 @@ def test_withdraw_interactive_failure_no_memotype(
     assert response.status_code == 200
     assert client.session["authenticated"] is True
 
+    url, args_str = url.split("?")
     response = client.post(
-        url,
+        url + "/submit?" + args_str,
         {"amount": 20, "bank_account": "123456", "bank": "Bank", "account": "Account"},
     )
     assert response.status_code == 302
@@ -163,8 +164,9 @@ def test_withdraw_interactive_failure_incorrect_memotype(
     assert response.status_code == 200
     assert client.session["authenticated"] is True
 
+    url, args_str = url.split("?")
     response = client.post(
-        url,
+        url + "/submit?" + args_str,
         {"amount": 20, "bank_account": "123456", "bank": "Bank", "account": "Account"},
     )
     assert response.status_code == 302
@@ -198,8 +200,9 @@ def test_withdraw_interactive_failure_no_memo(
     assert response.status_code == 200
     assert client.session["authenticated"] is True
 
+    url, args_str = url.split("?")
     response = client.post(
-        url,
+        url + "/submit?" + args_str,
         {"amount": 20, "bank_account": "123456", "bank": "Bank", "account": "Account"},
     )
     assert response.status_code == 302
@@ -233,8 +236,9 @@ def test_withdraw_interactive_failure_incorrect_memo(
     assert response.status_code == 200
     assert client.session["authenticated"] is True
 
+    url, args_str = url.split("?")
     response = client.post(
-        url,
+        url + "/submit?" + args_str,
         {"amount": 20, "bank_account": "123456", "bank": "Bank", "account": "Account"},
     )
     assert response.status_code == 302
@@ -265,8 +269,9 @@ def test_withdraw_interactive_success_transaction_unsuccessful(
     assert response.status_code == 200
     assert client.session["authenticated"] is True
 
+    url, args_str = url.split("?")
     response = client.post(
-        url,
+        url + "/submit?" + args_str,
         {"amount": 50, "bank_account": "123456", "bank": "Bank", "account": "Account"},
     )
     assert response.status_code == 302
@@ -306,8 +311,9 @@ def test_withdraw_interactive_success_transaction_successful(
     assert response.status_code == 200
     assert client.session["authenticated"] is True
 
+    url, args_str = url.split("?")
     response = client.post(
-        url,
+        url + "/submit?" + args_str,
         {"amount": 50, "bank_account": "123456", "bank": "Bank", "account": "Account"},
     )
     assert response.status_code == 302
