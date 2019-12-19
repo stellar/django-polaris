@@ -173,7 +173,10 @@ def get_interactive_deposit(request: Request) -> Response:
         return err_resp
 
     form = rdi.form_for_transaction(transaction)()
-    return Response({"form": form}, template_name="deposit/form.html")
+    url_args = {"transaction_id": transaction.id, "asset_code": asset.code}
+    post_url = f"{reverse('post_interactive_deposit')}?{urlencode(url_args)}"
+    resp_data = {"form": form, "post_url": post_url}
+    return Response(resp_data, template_name="deposit/form.html")
 
 
 @api_view(["POST"])

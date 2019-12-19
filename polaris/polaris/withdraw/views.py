@@ -110,7 +110,10 @@ def get_interactive_withdraw(request: Request) -> Response:
         return error_resp
 
     form_class = rwi.form_for_transaction(transaction)
-    return Response({"form": form_class()}, template_name="withdraw/form.html")
+    url_args = {"transaction_id": transaction.id, "asset_code": asset.code}
+    post_url = f"{reverse('post_interactive_withdraw')}?{urlencode(url_args)}"
+    resp_data = {"form": form_class(), "post_url": post_url}
+    return Response(resp_data, template_name="withdraw/form.html")
 
 
 @api_view(["POST"])
