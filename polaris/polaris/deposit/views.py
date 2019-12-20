@@ -15,6 +15,7 @@ from django.urls import reverse
 from django.shortcuts import redirect
 from django.views.decorators.clickjacking import xframe_options_exempt
 from rest_framework import status
+from rest_framework.views import APIView
 from rest_framework.decorators import api_view, renderer_classes
 from rest_framework.response import Response
 from rest_framework.request import Request
@@ -28,9 +29,11 @@ from polaris.helpers import (
     render_error_response,
     create_transaction_id,
     validate_sep10_token,
-    interactive_authentication,
+    check_authentication,
+    authenticate_session,
     invalidate_session,
     generate_interactive_jwt,
+    interactive_args_validation,
 )
 from polaris.models import Asset, Transaction
 from polaris.integrations.forms import TransactionForm
@@ -48,7 +51,7 @@ def _construct_interactive_url(
             "token": generate_interactive_jwt(request, transaction_id, account),
         }
     )
-    url_params = f"{reverse('interactive_deposit')}?{qparams}"
+    url_params = f"{reverse('get_interactive_deposit')}?{qparams}"
     return request.build_absolute_uri(url_params)
 
 
@@ -110,42 +113,16 @@ def check_middleware(content_type: str = "text/html") -> Optional[Response]:
 
 
 @xframe_options_exempt
-@api_view(["GET", "POST"])
+@api_view(["POST"])
 @renderer_classes([TemplateHTMLRenderer])
-@interactive_authentication()
-def interactive_deposit(request: Request) -> Response:
+@check_authentication()
+def post_interactive_deposit(request: Request) -> Response:
     """
     """
-    # Validate query parameters: account, asset_code, transaction_id.
-    asset_code = request.GET.get("asset_code")
-    asset = Asset.objects.filter(code=asset_code).first()
-    transaction_id = request.GET.get("transaction_id")
-    if not (asset_code and asset):
-        err_msg = "invalid 'asset_code'"
-        return render_error_response(err_msg, content_type="text/html")
-    elif not transaction_id:
-        err_msg = "no 'transaction_id' provided"
-        return render_error_response(err_msg, content_type="text/html")
+    transaction, asset, error_resp = interactive_args_validation(request)
+    if error_resp:
+        return error_resp
 
-    # Ensure the transaction exists
-    try:
-        transaction = Transaction.objects.get(id=transaction_id, asset=asset)
-    except Transaction.objects.DoesNotExist:
-        return render_error_response(
-            "Transaction with ID and asset_code not found",
-            content_type="text/html",
-            status_code=status.HTTP_404_NOT_FOUND,
-        )
-
-    if request.method == "GET":
-        err_resp = check_middleware()
-        if err_resp:
-            return err_resp
-
-        form = rdi.form_for_transaction(transaction)()
-        return Response({"form": form}, template_name="deposit/form.html")
-
-    # request.method == "POST"
     form = rdi.form_for_transaction(transaction)(request.POST)
     is_transaction_form = issubclass(form.__class__, TransactionForm)
     if is_transaction_form:
@@ -165,16 +142,41 @@ def interactive_deposit(request: Request) -> Response:
         form_class = rdi.form_for_transaction(transaction)
 
         if form_class:
-            return Response({"form": form_class()}, template_name="deposit/form.html")
+            args = {"transaction_id": transaction.id, "asset_code": asset.code}
+            url = reverse("get_interactive_deposit")
+            return redirect(f"{url}?{urlencode(args)}")
         else:  # Last form has been submitted
             invalidate_session(request)
             transaction.status = Transaction.STATUS.pending_user_transfer_start
             transaction.save()
-            url, args = reverse("more_info"), urlencode({"id": transaction_id})
+            url, args = reverse("more_info"), urlencode({"id": transaction.id})
             return redirect(f"{url}?{args}")
 
     else:
         return Response({"form": form}, template_name="deposit/form.html")
+
+
+@xframe_options_exempt
+@api_view(["GET"])
+@renderer_classes([TemplateHTMLRenderer])
+@authenticate_session()
+def get_interactive_deposit(request: Request) -> Response:
+    """
+    Validates the arguments and serves the next form to process
+    """
+    err_resp = check_middleware()
+    if err_resp:
+        return err_resp
+
+    transaction, asset, err_resp = interactive_args_validation(request)
+    if err_resp:
+        return err_resp
+
+    form = rdi.form_for_transaction(transaction)()
+    url_args = {"transaction_id": transaction.id, "asset_code": asset.code}
+    post_url = f"{reverse('post_interactive_deposit')}?{urlencode(url_args)}"
+    resp_data = {"form": form, "post_url": post_url}
+    return Response(resp_data, template_name="deposit/form.html")
 
 
 @api_view(["POST"])

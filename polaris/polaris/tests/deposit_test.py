@@ -357,7 +357,8 @@ def test_deposit_interactive_confirm_success(
     assert client.session["authenticated"] is True
 
     amount = 20
-    response = client.post(url, {"amount": amount})
+    url, args_str = url.split("?")
+    response = client.post(url + "/submit?" + args_str, {"amount": amount})
     assert response.status_code == 302
     assert (
         Transaction.objects.get(id=transaction_id).status
@@ -550,7 +551,7 @@ def test_interactive_deposit_success(
     assert client.session["authenticated"] is True
 
     response = client.post(
-        "/transactions/deposit/webapp"
+        "/transactions/deposit/webapp/submit"
         f"?transaction_id={deposit.id}"
         f"&asset_code={deposit.asset.code}",
         {"amount": 200.0},

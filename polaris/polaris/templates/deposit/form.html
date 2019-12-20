@@ -11,7 +11,7 @@
     This is the interactive deposit flow. Please enter the amount you would like to deposit.
   </p>
   <br />
-  <form method="post" action="">
+  <form method="post" action="{{ post_url }}">
     {% csrf_token %}
 
     {% for field in form %}

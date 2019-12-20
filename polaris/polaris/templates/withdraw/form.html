@@ -12,7 +12,7 @@
         number, and choose a bank for withdrawal.
     </p>
     <br />
-    <form method="post" action="">
+    <form method="post" action="{{ post_url }}">
         {% csrf_token %}
 
         {% for field in form %}
