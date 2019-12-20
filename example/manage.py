@@ -6,7 +6,7 @@ import sys
 
 def main():
     """Main function for executing arguments."""
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "settings")
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "server.settings")
     try:
         from django.core.management import execute_from_command_line
     except ImportError as exc:

@@ -15,7 +15,7 @@ import environ
 from shutil import copyfile
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PROJECT_ROOT = BASE_DIR
 
 # Load environment variables from .env
@@ -171,3 +171,6 @@ LOGGING = {
 
 # CORS configuration
 CORS_ORIGIN_ALLOW_ALL = True
+
+# Mock banking rails settings
+MOCK_BANK_ACCOUNT_ID = "XXXXXXXXXXXXXXX"
