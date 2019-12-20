@@ -2,10 +2,13 @@ import logging
 import time
 from typing import List, Dict
 
+from django.conf import settings
 from django.db.models import QuerySet
 from polaris import settings
 from polaris.models import Transaction, Asset
 from polaris.integrations import DepositIntegration, WithdrawalIntegration
+
+import example.server.mock_banking_rails as rails
 
 
 logger = logging.getLogger(__name__)
@@ -21,8 +24,17 @@ class MyDepositIntegration(DepositIntegration):
         For the purposes of this reference implementation, we simply return
         all pending deposits.
         """
+        # act like we're doing more work than we are for demo purposes
         time.sleep(10)
-        return list(pending_deposits)
+
+        # interface with mock banking rails
+        ready_deposits = []
+        rails_client = rails.RailsClient(settings.MOCK_BANK_ACCOUNT_ID)
+        for deposit in pending_deposits:
+            rails_deposit = rails_client.get_deposit(memo=deposit.external_extra)
+            if rails_deposit and rails_deposit.status == "complete":
+                ready_deposits.append(deposit)
+        return ready_deposits
 
     @classmethod
     def after_deposit(cls, transaction: Transaction):
@@ -31,6 +43,8 @@ class MyDepositIntegration(DepositIntegration):
     @classmethod
     def instructions_for_pending_deposit(cls, transaction: Transaction):
         return (
+            "Please use this code as the memo when making the deposit: "
+            f"{transaction.external_extra}. "
             "This deposit is automatically confirmed for testing purposes."
             " Please wait."
         )
@@ -40,6 +54,12 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
     @classmethod
     def process_withdrawal(cls, response: Dict, transaction: Transaction):
         logger.info(f"Processing transaction {transaction.id}")
+        rails_client = rails.RailsClient(settings.MOCK_BANK_ACCOUNT_ID)
+        rails_client.send_funds(
+            from_account=rails_client.account,
+            to_account=transaction.to_address,
+            amount=transaction.amount_in - transaction.amount_fee,
+        )
 
 
 def get_stellar_toml():

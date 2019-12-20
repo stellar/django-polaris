@@ -170,3 +170,6 @@ LOGGING = {
 
 # CORS configuration
 CORS_ORIGIN_ALLOW_ALL = True
+
+# Mock banking rails settings
+MOCK_BANK_ACCOUNT_ID = "XXXXXXXXXXXXXXX"
