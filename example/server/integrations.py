@@ -30,10 +30,10 @@ class MyDepositIntegration(DepositIntegration):
 
         # interface with mock banking rails
         ready_deposits = []
-        rails_client = rails.RailsClient(settings.MOCK_BANK_ACCOUNT_ID)
+        client = rails.BankAPIClient(settings.MOCK_BANK_ACCOUNT_ID)
         for deposit in pending_deposits:
-            rails_deposit = rails_client.get_deposit(memo=deposit.external_extra)
-            if rails_deposit and rails_deposit.status == "complete":
+            bank_deposit = client.get_deposit(memo=deposit.external_extra)
+            if bank_deposit and bank_deposit.status == "complete":
                 ready_deposits.append(deposit)
 
         return ready_deposits
@@ -93,8 +93,8 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
     def process_withdrawal(cls, response: Dict, transaction: Transaction):
         logger.info(f"Processing transaction {transaction.id}")
 
-        rails_client = rails.RailsClient(settings.MOCK_BANK_ACCOUNT_ID)
-        rails_client.send_funds(
+        client = rails.BankAPIClient(settings.MOCK_BANK_ACCOUNT_ID)
+        client.send_funds(
             to_account=transaction.to_address,
             amount=transaction.amount_in - transaction.amount_fee,
         )

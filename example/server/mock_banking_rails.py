@@ -8,24 +8,24 @@ from decimal import Decimal
 from polaris.models import Transaction
 
 
-class RailsAccount:
+class BankAccount:
     def __init__(self, account_id: str):
         self.id = account_id
 
 
-class RailsTransaction:
-    def __init__(self, to_account: RailsAccount, amount: Decimal, memo: str):
+class BankTransaction:
+    def __init__(self, to_account: BankAccount, amount: Decimal, memo: str):
         self.id = str(uuid4())
         self.to_account = to_account
-        self.from_account = RailsAccount(str(uuid4()))
+        self.from_account = BankAccount(str(uuid4()))
         self.amount = amount
         self.status = "complete"
         self.memo = memo
 
 
-class RailsClient:
+class BankAPIClient:
     def __init__(self, account_id):
-        self.account = RailsAccount(account_id)
+        self.account = BankAccount(account_id)
 
     def get_deposit(self, memo):
         """
@@ -49,7 +49,7 @@ class RailsClient:
             status=Transaction.STATUS.pending_user_transfer_start,
         ).first()
         if transaction:
-            return RailsTransaction(self.account, transaction.amount_in, memo)
+            return BankTransaction(self.account, transaction.amount_in, memo)
         else:
             return None
 
