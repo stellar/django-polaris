@@ -1,3 +1,8 @@
+"""
+This module contains a fake banking rails interface to use for the purposes of
+this example anchor server. In reality, the anchor should use whatever interface
+connects them with their real bank account.
+"""
 from uuid import uuid4
 from decimal import Decimal
 from polaris.models import Transaction
@@ -48,7 +53,7 @@ class RailsClient:
         else:
             return None
 
-    def send_funds(self, from_account: RailsAccount, to_account: str, amount: Decimal):
+    def send_funds(self, to_account: str, amount: Decimal):
         """
         A fake function to symbolize sending money from an anchor's bank
         account to the user's bank account.
