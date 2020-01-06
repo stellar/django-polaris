@@ -21,6 +21,8 @@ from stellar_sdk.sep.stellar_web_authentication import (
     verify_challenge_transaction,
 )
 from stellar_sdk.sep.exceptions import InvalidSep10ChallengeError
+from stellar_sdk.exceptions import Ed25519PublicKeyInvalidError
+
 
 MIME_URLENCODE, MIME_JSON = "application/x-www-form-urlencoded", "application/json"
 ANCHOR_NAME = "SEP 24 Reference"
@@ -132,7 +134,12 @@ def _get_auth(request):
         return JsonResponse(
             {"error": "no 'account' provided"}, status=status.HTTP_400_BAD_REQUEST
         )
-    transaction = _challenge_transaction(account)
+
+    try:
+        transaction = _challenge_transaction(account)
+    except Ed25519PublicKeyInvalidError as e:
+        return JsonResponse({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
     return JsonResponse(
         {
             "transaction": transaction,
