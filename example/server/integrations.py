@@ -5,7 +5,7 @@ from uuid import uuid4
 
 from django.conf import settings
 from django.db.models import QuerySet
-from polaris import settings
+import polaris.settings
 from polaris.models import Transaction, Asset
 from polaris.integrations import DepositIntegration, WithdrawalIntegration
 
@@ -111,7 +111,11 @@ def get_stellar_toml():
             "ORG_GITHUB": "stellar",
         },
         "CURRENCIES": [
-            {"code": asset.code, "issuer": settings.STELLAR_ISSUER_ACCOUNT_ADDRESS}
+            {
+                "code": asset.code,
+                "issuer": polaris.settings.STELLAR_ISSUER_ACCOUNT_ADDRESS,
+            }
             for asset in Asset.objects.all().iterator()
         ],
+        "SIGNING_KEY": "GCQUFKX3KZ3BQYD56KV2WLJJVBYHNH54N2JPTDGKGRHKRCDSC6R2SQEX",
     }
