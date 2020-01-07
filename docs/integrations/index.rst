@@ -72,8 +72,6 @@ to Polaris forms.
 Use an External Application for the Interactive Flow
 ---------------------------------------------------
 
-.. _described in SEP-24: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md#2-interactive-customer-information-needed
-
 Polaris provides `Form Integrations`_ for collecting and processing information
 about a deposit or withdraw. However if you would rather use another
 application to collect that information, override this function to return the
@@ -82,10 +80,7 @@ URL that should be requested to begin that process.
 Note that if you choose to use another application or set of endpoints,
 you must redirect to the `/transactions/<deposit or withdraw>/interactive/complete?id=`
 endpoint for the relevant transaction when finished. This signals to the wallet that
-the anchor is done processing the transaction and may resume control. If you
-don't want to end by displaying the more info page, you must make a
-``postMessage`` call to the window that opened the interactive flow popup or
-support a callback argument as `described in SEP-24`_.
+the anchor is done processing the transaction and may resume control.
 
 .. autofunction:: polaris.integrations.DepositIntegration.interactive_url
 
