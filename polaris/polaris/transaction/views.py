@@ -109,7 +109,9 @@ def more_info(request: Request) -> Response:
         request_transaction.kind == Transaction.KIND.deposit
         and request_transaction.status == Transaction.STATUS.pending_user_transfer_start
     ):
-        resp_data["instructions"] = rdi.instructions_for_pending_deposit(transaction)
+        resp_data["instructions"] = rdi.instructions_for_pending_deposit(
+            request_transaction
+        )
     return Response(resp_data, template_name="transaction/more_info.html")
 
 
