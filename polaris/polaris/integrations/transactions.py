@@ -1,11 +1,15 @@
 from typing import Type, Dict, List, Optional
+from urllib.parse import urlencode
 
 from django.db.models import QuerySet
+from django.urls import reverse
 from django import forms
+from rest_framework.request import Request
 
 from polaris.models import Transaction
 from polaris.withdraw.forms import WithdrawForm
 from polaris.integrations.forms import TransactionForm
+from polaris.helpers import generate_interactive_jwt
 
 
 class DepositIntegration:
@@ -153,6 +157,27 @@ class DepositIntegration:
         """
         pass
 
+    @classmethod
+    def interactive_url(
+        cls, request: Request, transaction_id: str, account: str, asset_code: str
+    ) -> str:
+        """
+        Override this function to provide the wallet an endpoint external to Polaris
+        for the interactive flow.
+
+        :return: a URL to be used as the entry point for the interactive
+            deposit flow
+        """
+        qparams = urlencode(
+            {
+                "asset_code": asset_code,
+                "transaction_id": transaction_id,
+                "token": generate_interactive_jwt(request, transaction_id, account),
+            }
+        )
+        url_params = f"{reverse('get_interactive_deposit')}?{qparams}"
+        return request.build_absolute_uri(url_params)
+
 
 class WithdrawalIntegration:
     """
@@ -257,6 +282,27 @@ class WithdrawalIntegration:
         :param transaction: the :class:`Transaction` database object
         """
         pass
+
+    @classmethod
+    def interactive_url(
+        cls, request: Request, transaction_id: str, account: str, asset_code: str
+    ) -> str:
+        """
+        Override this function to provide the wallet an endpoint external to Polaris
+        for the interactive flow.
+
+        :return: a URL to be used as the entry point for the interactive
+            withdraw flow
+        """
+        qparams = urlencode(
+            {
+                "asset_code": asset_code,
+                "transaction_id": transaction_id,
+                "token": generate_interactive_jwt(request, transaction_id, account),
+            }
+        )
+        url_params = f"{reverse('get_interactive_withdraw')}?{qparams}"
+        return request.build_absolute_uri(url_params)
 
 
 registered_deposit_integration = DepositIntegration()

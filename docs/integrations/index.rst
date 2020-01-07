@@ -4,7 +4,6 @@ Integrations
 
 .. _SEP-24: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md
 .. _Django Commands: https://docs.djangoproject.com/en/2.2/howto/custom-management-commands
-.. _stellar-anchor-server: https://github.com/stellar/stellar-anchor-server
 
 Polaris does most of the work implementing SEP-24_. However, some pieces of
 SEP-24 can only be implemented by the anchor. Specifically, anchors need to
@@ -56,11 +55,6 @@ See the :doc:`../forms/index` documentation for the `TransactionForm` definition
 
 .. autofunction:: polaris.integrations.WithdrawalIntegration.after_form_validation
 
-Implementation Example
-^^^^^^^^^^^^^^^^^^^^^^
-The stellar-anchor-server_ implements many of these functions outlined above. For
-reference examples, see the github repository.
-
 Form CSS
 ^^^^^^^^
 Polaris uses default CSS provided by Bulma_ for styling forms. To keep the
@@ -75,6 +69,26 @@ The `attrs` parameter adds a HTML attribute to the `<input>` tag that Bulma
 uses to add better styling. You may also add more Bulma-supported attributes
 to Polaris forms.
 
+Use a External Application for the Interactive Flow
+---------------------------------------------------
+
+.. _described in SEP-24: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md#2-interactive-customer-information-needed
+
+Polaris provides `Form Integrations`_ for collecting and processing information
+about a deposit or withdraw. However if you would rather use another
+application to collect that information, override this function to return the
+URL that should be requested to begin that process.
+
+Note that if you choose to use another application or set of endpoints,
+you must make a ``postMessage`` call back to the window that opened the
+popup or iframe for the interactive flow as `described in SEP-24`_. This
+signals to the wallet that the anchor is done processing the
+transaction and may resume control.
+
+.. autofunction:: polaris.integrations.DepositIntegration.interactive_url
+
+.. autofunction:: polaris.integrations.WithdrawalIntegration.interactive_url
+
 stellar.toml Integration
 ------------------------
 Every anchor must define a stellar.toml file to describe the anchors's supported
@@ -83,7 +97,6 @@ default function that returns the currency supported by your server, but you'll 
 certainly need to replace this default to provide more detailed information.
 
 .. autofunction:: polaris.integrations.get_stellar_toml
-
 
 Deposit Instructions
 --------------------
