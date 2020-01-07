@@ -34,6 +34,7 @@ django_apps = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.forms",
 ]
 third_party_apps = ["rest_framework", "corsheaders", "sslserver"]
 INSTALLED_APPS = django_apps + third_party_apps + ["polaris"]
@@ -69,6 +70,8 @@ TEMPLATES = [
         },
     }
 ]
+
+FORM_RENDERER = "django.forms.renderers.TemplatesSetting"
 
 # Database
 # https://docs.djangoproject.com/en/2.2/ref/settings/#databases
