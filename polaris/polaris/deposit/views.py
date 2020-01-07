@@ -131,6 +131,16 @@ def post_interactive_deposit(request: Request) -> Response:
         return Response({"form": form}, template_name="deposit/form.html")
 
 
+@api_view(["GET"])
+@check_authentication
+def complete_interactive_deposit(request: Request) -> Response:
+    transaction_id = request.GET("id")
+    if not transaction_id:
+        render_error_response("Missing id parameter in URL")
+    url, args = reverse("more_info"), urlencode({"id": transaction_id})
+    return redirect(f"{url}?{args}")
+
+
 @xframe_options_exempt
 @api_view(["GET"])
 @renderer_classes([TemplateHTMLRenderer])

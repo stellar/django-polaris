@@ -5,10 +5,16 @@ from polaris.deposit.views import (
     deposit,
     get_interactive_deposit,
     post_interactive_deposit,
+    complete_interactive_deposit,
 )
 
 urlpatterns = [
     path("transactions/deposit/interactive", csrf_exempt(deposit)),
+    path(
+        "transactions/deposit/interactive/complete",
+        complete_interactive_deposit,
+        name="complete_interactive_withdraw",
+    ),
     path(
         "transactions/deposit/webapp/submit",
         post_interactive_deposit,

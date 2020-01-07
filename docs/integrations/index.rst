@@ -80,11 +80,12 @@ application to collect that information, override this function to return the
 URL that should be requested to begin that process.
 
 Note that if you choose to use another application or set of endpoints,
-you must redirect to the `/transaction/more_info` page for the relevant
-transaction. This signals to the wallet that the anchor is done processing the
-transaction and may resume control. If you don't want to end by displaying the
-more info page, you must make a ``postMessage`` call to the window that opened
-the interactive flow popup or support a callback argument as `described in SEP-24`_.
+you must redirect to the `/transactions/<deposit or withdraw>/interactive/complete?id=`
+endpoint for the relevant transaction when finished. This signals to the wallet that
+the anchor is done processing the transaction and may resume control. If you
+don't want to end by displaying the more info page, you must make a
+``postMessage`` call to the window that opened the interactive flow popup or
+support a callback argument as `described in SEP-24`_.
 
 .. autofunction:: polaris.integrations.DepositIntegration.interactive_url
 
