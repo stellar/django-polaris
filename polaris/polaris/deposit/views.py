@@ -15,7 +15,6 @@ from django.urls import reverse
 from django.shortcuts import redirect
 from django.views.decorators.clickjacking import xframe_options_exempt
 from rest_framework import status
-from rest_framework.views import APIView
 from rest_framework.decorators import api_view, renderer_classes
 from rest_framework.response import Response
 from rest_framework.request import Request
@@ -32,27 +31,12 @@ from polaris.helpers import (
     check_authentication,
     authenticate_session,
     invalidate_session,
-    generate_interactive_jwt,
     interactive_args_validation,
 )
 from polaris.models import Asset, Transaction
 from polaris.integrations.forms import TransactionForm
 from polaris.integrations import registered_deposit_integration as rdi
 from polaris.middleware import import_path
-
-
-def _construct_interactive_url(
-    request: Request, transaction_id: str, account: str, asset_code: str
-) -> str:
-    qparams = urlencode(
-        {
-            "asset_code": asset_code,
-            "transaction_id": transaction_id,
-            "token": generate_interactive_jwt(request, transaction_id, account),
-        }
-    )
-    url_params = f"{reverse('get_interactive_deposit')}?{qparams}"
-    return request.build_absolute_uri(url_params)
 
 
 # TODO: The interactive pop-up will be used to retrieve additional info,
@@ -147,6 +131,16 @@ def post_interactive_deposit(request: Request) -> Response:
         return Response({"form": form}, template_name="deposit/form.html")
 
 
+@api_view(["GET"])
+@check_authentication
+def complete_interactive_deposit(request: Request) -> Response:
+    transaction_id = request.GET("id")
+    if not transaction_id:
+        render_error_response("Missing id parameter in URL")
+    url, args = reverse("more_info"), urlencode({"id": transaction_id})
+    return redirect(f"{url}?{args}")
+
+
 @xframe_options_exempt
 @api_view(["GET"])
 @renderer_classes([TemplateHTMLRenderer])
@@ -212,9 +206,7 @@ def deposit(account: str, request: Request) -> Response:
         status=Transaction.STATUS.incomplete,
         to_address=account,
     )
-    url = _construct_interactive_url(
-        request, str(transaction_id), stellar_account, asset_code
-    )
+    url = rdi.interactive_url(request, str(transaction_id), stellar_account, asset_code)
     return Response(
         {"type": "interactive_customer_info_needed", "url": url, "id": transaction_id},
         status=status.HTTP_200_OK,

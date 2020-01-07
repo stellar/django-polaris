@@ -21,28 +21,11 @@ from polaris.helpers import (
     check_authentication,
     authenticate_session,
     invalidate_session,
-    generate_interactive_jwt,
     interactive_args_validation,
 )
 from polaris.models import Asset, Transaction
 from polaris.integrations.forms import TransactionForm
 from polaris.integrations import registered_withdrawal_integration as rwi
-
-
-def _construct_interactive_url(
-    request: Request, transaction_id: str, account: str, asset_code: str
-) -> str:
-    """Constructs the URL for the interactive application for withdrawal info.
-    This is located at `/transactions/withdraw/webapp`."""
-    qparams = urlencode(
-        {
-            "asset_code": asset_code,
-            "transaction_id": transaction_id,
-            "token": generate_interactive_jwt(request, transaction_id, account),
-        }
-    )
-    url_params = f"{reverse('get_interactive_withdraw')}?{qparams}"
-    return request.build_absolute_uri(url_params)
 
 
 @xframe_options_exempt
@@ -86,6 +69,16 @@ def post_interactive_withdraw(request: Request) -> Response:
             return redirect(f"{url}?{args}")
     else:
         return Response({"form": form}, template_name="withdraw/form.html")
+
+
+@api_view(["GET"])
+@check_authentication
+def complete_interactive_withdraw(request: Request) -> Response:
+    transaction_id = request.GET("id")
+    if not transaction_id:
+        render_error_response("Missing id parameter in URL")
+    url, args = reverse("more_info"), urlencode({"id": transaction_id})
+    return redirect(f"{url}?{args}")
 
 
 @xframe_options_exempt
@@ -145,7 +138,7 @@ def withdraw(account: str, request: Request) -> Response:
         withdraw_memo=withdraw_memo,
         withdraw_memo_type=Transaction.MEMO_TYPES.hash,
     )
-    url = _construct_interactive_url(request, str(transaction_id), account, asset_code)
+    url = rwi.interactive_url(request, str(transaction_id), account, asset_code)
     return Response(
         {"type": "interactive_customer_info_needed", "url": url, "id": transaction_id}
     )
