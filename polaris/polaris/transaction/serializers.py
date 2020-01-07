@@ -1,5 +1,9 @@
 """This module defines a serializer for the transaction model."""
+from urllib.parse import urlencode
+
 from rest_framework import serializers
+from rest_framework.request import Request
+from django.urls import reverse
 
 from polaris.models import Transaction
 
@@ -26,7 +30,17 @@ class TransactionSerializer(serializers.ModelSerializer):
     more_info_url = serializers.SerializerMethodField()
 
     def get_more_info_url(self, transaction_instance):
-        return self.context.get("more_info_url")
+        url_from_context = self.context.get("more_info_url")
+        if url_from_context:
+            return url_from_context
+
+        request_from_context = self.context.get("request")
+        if request_from_context:
+            path = reverse("more_info")
+            path_params = f"{path}?id={transaction_instance.id}"
+            return request_from_context.build_absolute_uri(path_params)
+
+        raise ValueError("Unable to construct url for transaction.")
 
     def to_representation(self, instance):
         """

@@ -158,9 +158,7 @@ def transactions(account: str, request: Request) -> Response:
 
     transactions_qset = Transaction.objects.filter(**qset_filter)[:limit]
     serializer = TransactionSerializer(
-        transactions_qset,
-        many=True,
-        context={"more_info_url": _construct_more_info_url(request)},
+        transactions_qset, many=True, context={"request": request},
     )
 
     return Response({"transactions": serializer.data})
