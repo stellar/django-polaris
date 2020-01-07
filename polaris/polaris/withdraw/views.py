@@ -45,15 +45,6 @@ def _construct_interactive_url(
     return request.build_absolute_uri(url_params)
 
 
-def _construct_more_info_url(request):
-    """Constructs the more info URL for a withdraw."""
-    qparams_dict = {"id": request.GET.get("transaction_id")}
-    qparams = urlencode(qparams_dict)
-    path = reverse("more_info")
-    path_params = f"{path}?{qparams}"
-    return request.build_absolute_uri(path_params)
-
-
 @xframe_options_exempt
 @api_view(["POST"])
 @renderer_classes([TemplateHTMLRenderer])

@@ -30,17 +30,13 @@ class TransactionSerializer(serializers.ModelSerializer):
     more_info_url = serializers.SerializerMethodField()
 
     def get_more_info_url(self, transaction_instance):
-        url_from_context = self.context.get("more_info_url")
-        if url_from_context:
-            return url_from_context
-
         request_from_context = self.context.get("request")
-        if request_from_context:
-            path = reverse("more_info")
-            path_params = f"{path}?id={transaction_instance.id}"
-            return request_from_context.build_absolute_uri(path_params)
+        if not request_from_context:
+            raise ValueError("Unable to construct url for transaction.")
 
-        raise ValueError("Unable to construct url for transaction.")
+        path = reverse("more_info")
+        path_params = f"{path}?id={transaction_instance.id}"
+        return request_from_context.build_absolute_uri(path_params)
 
     def to_representation(self, instance):
         """
