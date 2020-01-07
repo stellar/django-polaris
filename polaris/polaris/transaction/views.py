@@ -57,24 +57,6 @@ def _get_transaction_from_request(request, account: str = None):
     return Transaction.objects.get(**qset_filter)
 
 
-def _construct_more_info_url(request):
-    qparams_dict = {}
-    transaction_id = request.GET.get("id")
-    if transaction_id:
-        qparams_dict["id"] = transaction_id
-    stellar_transaction_id = request.GET.get("stellar_transaction_id")
-    if stellar_transaction_id:
-        qparams_dict["stellar_transaction_id"] = stellar_transaction_id
-    external_transaction_id = request.GET.get("external_transaction_id")
-    if external_transaction_id:
-        qparams_dict["external_transaction_id"] = external_transaction_id
-
-    qparams = urlencode(qparams_dict)
-    path = reverse("more_info")
-    path_params = f"{path}?{qparams}"
-    return request.build_absolute_uri(path_params)
-
-
 @xframe_options_exempt
 @api_view()
 @renderer_classes([TemplateHTMLRenderer])
@@ -95,8 +77,7 @@ def more_info(request: Request) -> Response:
         )
 
     serializer = TransactionSerializer(
-        request_transaction,
-        context={"more_info_url": _construct_more_info_url(request)},
+        request_transaction, context={"request": request}
     )
     tx_json = json.dumps({"transaction": serializer.data})
     resp_data = {
@@ -158,9 +139,7 @@ def transactions(account: str, request: Request) -> Response:
 
     transactions_qset = Transaction.objects.filter(**qset_filter)[:limit]
     serializer = TransactionSerializer(
-        transactions_qset,
-        many=True,
-        context={"more_info_url": _construct_more_info_url(request)},
+        transactions_qset, many=True, context={"request": request},
     )
 
     return Response({"transactions": serializer.data})
@@ -182,7 +161,6 @@ def transaction(account: str, request: Request) -> Response:
             "transaction not found", status_code=status.HTTP_404_NOT_FOUND
         )
     serializer = TransactionSerializer(
-        request_transaction,
-        context={"more_info_url": _construct_more_info_url(request)},
+        request_transaction, context={"request": request},
     )
     return Response({"transaction": serializer.data})
