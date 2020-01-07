@@ -7,7 +7,7 @@ from django.conf import settings
 from django.db.models import QuerySet
 from django import forms
 
-from polaris.models import Transaction, Asset
+from polaris.models import Transaction
 from polaris.integrations import (
     DepositIntegration,
     WithdrawalIntegration,
