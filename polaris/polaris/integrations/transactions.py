@@ -162,8 +162,8 @@ class DepositIntegration:
         cls, request: Request, transaction_id: str, account: str, asset_code: str
     ) -> str:
         """
-        Override this function to provide the wallet an endpoint external to Polaris
-        for the interactive flow.
+        Override this function to provide the wallet a non-Polaris endpoint
+        to begin the interactive flow.
 
         :return: a URL to be used as the entry point for the interactive
             deposit flow
@@ -288,8 +288,8 @@ class WithdrawalIntegration:
         cls, request: Request, transaction_id: str, account: str, asset_code: str
     ) -> str:
         """
-        Override this function to provide the wallet an endpoint external to Polaris
-        for the interactive flow.
+        Override this function to provide the wallet a non-Polaris endpoint
+        to begin the interactive flow.
 
         :return: a URL to be used as the entry point for the interactive
             withdraw flow

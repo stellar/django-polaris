@@ -69,7 +69,7 @@ The `attrs` parameter adds a HTML attribute to the `<input>` tag that Bulma
 uses to add better styling. You may also add more Bulma-supported attributes
 to Polaris forms.
 
-Use a External Application for the Interactive Flow
+Use an External Application for the Interactive Flow
 ---------------------------------------------------
 
 .. _described in SEP-24: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md#2-interactive-customer-information-needed
