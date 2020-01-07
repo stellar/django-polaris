@@ -1,18 +1,39 @@
 import logging
 import time
-from typing import List, Dict
+from typing import List, Dict, Optional, Type
 from uuid import uuid4
 
 from django.conf import settings
 from django.db.models import QuerySet
+from django import forms
+
 import polaris.settings
 from polaris.models import Transaction, Asset
-from polaris.integrations import DepositIntegration, WithdrawalIntegration
+from polaris.integrations import (
+    DepositIntegration,
+    WithdrawalIntegration,
+    TransactionForm,
+)
 
 from . import mock_banking_rails as rails
 
 
 logger = logging.getLogger(__name__)
+
+
+class AllFieldsForm(TransactionForm):
+    dropdown = forms.ChoiceField(choices=[(1, "A"), (2, "B")], required=False)
+    date = forms.DateField(required=False)
+    datetime = forms.DateTimeField(required=False)
+    time = forms.TimeField(required=False)
+    email = forms.EmailField(required=False)
+    file = forms.FileField(required=False)
+    mutiple_choice = forms.MultipleChoiceField(
+        choices=[(1, "A"), (2, "B")], required=False
+    )
+    bool = forms.BooleanField(required=False)
+    password = forms.CharField(widget=forms.PasswordInput, required=False)
+    textarea = forms.CharField(widget=forms.Textarea, required=False)
 
 
 class MyDepositIntegration(DepositIntegration):
@@ -86,6 +107,15 @@ class MyDepositIntegration(DepositIntegration):
                 f"automatically confirmed for demonstration purposes. Please "
                 f"wait.)"
             )
+
+    @classmethod
+    def form_for_transaction(
+        cls, transaction: Transaction
+    ) -> Optional[Type[forms.Form]]:
+        if transaction.amount_in is None:
+            return AllFieldsForm
+        else:
+            return None
 
 
 class MyWithdrawalIntegration(WithdrawalIntegration):
