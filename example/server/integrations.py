@@ -66,7 +66,7 @@ def serve_form(transaction: Transaction) -> Optional[Type[forms.Form]]:
     """
     account_qs = PolarisUserAccount.objects.filter(account=transaction.stellar_account)
     if not account_qs.exists():
-        # This is a newly initiated transaction
+        # Unknown stellar account, get KYC info
         return KYCForm
     elif not transaction.amount_in:
         # We have user info, get transaction info
