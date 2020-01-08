@@ -36,7 +36,7 @@ django_apps = [
     "django.contrib.staticfiles",
     "django.forms",
 ]
-third_party_apps = ["rest_framework", "corsheaders", "sslserver"]
+third_party_apps = ["rest_framework", "corsheaders", "sslserver", "sass_processor"]
 INSTALLED_APPS = django_apps + third_party_apps + ["polaris"]
 if os.path.exists(BASE_DIR + "/server"):
     # The server app is present, add it to installed apps
@@ -87,6 +87,12 @@ STATIC_ROOT = os.path.join(BASE_DIR, "polaris/collectstatic")
 STATIC_URL = "/polaris/static/"
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 STATICFILES_DIRS = ()
+STATICFILES_FINDERS = [
+    "django.contrib.staticfiles.finders.FileSystemFinder",
+    "django.contrib.staticfiles.finders.AppDirectoriesFinder",
+    "sass_processor.finders.CssFinder",
+]
+SASS_PROCESSOR_ROOT = STATIC_ROOT
 
 # Django Rest Framework Settings:
 # Attributes to add to parent project's REST_FRAMEWORK

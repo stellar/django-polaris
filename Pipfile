@@ -30,6 +30,9 @@ django-cors-headers = "*"
 toml = "*"
 pyjwt = "*"
 django-sslserver = "*"
+libsass = "*"
+django-compressor = "*"
+django-sass-processor = "*"
 
 [requires]
 python_version = "3.7"
