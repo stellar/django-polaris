@@ -51,14 +51,12 @@ def _get_transaction_urlencode(body):
     if len(body_arr) != 1:
         return 0, "multiple query params provided"
     # The format of the transaction parameter key-value pair should be
-    # `transaction=<AAA...>`.
+    # `transaction=<base-64 encoded transaction>`.
     transaction_param = body_arr[0]
-    [key, value] = transaction_param.split("<")
-    key = key[:-1]  # Remove trailing `=`.
+    [key, value] = transaction_param.split("=")
     if key != "transaction":
         return 0, "no transaction provided"
-    envelope_xdr = value[:-1]  # Remove trailing `>`.
-    return 1, envelope_xdr
+    return 1, value
 
 
 def _get_transaction_json(body):
