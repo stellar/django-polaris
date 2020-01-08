@@ -44,13 +44,13 @@ def track_user_activity(form: forms.Form, transaction: Transaction):
             account=transaction.stellar_account, user=user
         )
     else:
-        account = PolarisUserAccount.objects.filter(
-            account=transaction.stellar_account
-        ).first()
-        if not account:
+        try:
+            account = PolarisUserAccount.objects.get(
+                account=transaction.stellar_account
+            )
+        except PolarisUserAccount.DoesNotExist:
             raise RuntimeError(
-                "KYCForm was not served but there is no "
-                "database record for this account"
+                f"Unknown address: {transaction.stellar_account}," " KYC required."
             )
 
     PolarisUserTransaction.objects.get_or_create(
@@ -155,7 +155,15 @@ class MyDepositIntegration(DepositIntegration):
 
     @classmethod
     def after_form_validation(cls, form: forms.Form, transaction: Transaction):
-        track_user_activity(form, transaction)
+        try:
+            track_user_activity(form, transaction)
+        except RuntimeError:
+            # Since no polaris account exists for this transaction, KYCForm
+            # will be returned from the next form_for_transaction() call
+            logger.exception(
+                f"KYCForm was not served first for unknown account, id: "
+                f"{transaction.stellar_account}"
+            )
 
 
 class MyWithdrawalIntegration(WithdrawalIntegration):
@@ -177,7 +185,15 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
 
     @classmethod
     def after_form_validation(cls, form: forms.Form, transaction: Transaction):
-        track_user_activity(form, transaction)
+        try:
+            track_user_activity(form, transaction)
+        except RuntimeError:
+            # Since no polaris account exists for this transaction, KYCForm
+            # will be returned from the next form_for_transaction() call
+            logger.exception(
+                f"KYCForm was not served first for unknown account, id: "
+                f"{transaction.stellar_account}"
+            )
 
 
 def get_stellar_toml():

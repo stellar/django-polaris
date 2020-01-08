@@ -113,6 +113,7 @@ def post_interactive_deposit(request: Request) -> Response:
 
         # Perform any defined post-validation logic defined by Polaris users
         rdi.after_form_validation(form, transaction)
+
         # Check to see if there is another form to render
         form_class = rdi.form_for_transaction(transaction)
 
