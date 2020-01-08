@@ -3,12 +3,15 @@ import time
 from typing import List, Dict
 from uuid import uuid4
 
+import environ
 from django.conf import settings
 from django.db.models import QuerySet
+
 import polaris.settings
 from polaris.models import Transaction, Asset
 from polaris.integrations import DepositIntegration, WithdrawalIntegration
 
+from .settings import env
 from . import mock_banking_rails as rails
 
 
@@ -118,4 +121,5 @@ def get_stellar_toml():
             for asset in Asset.objects.all().iterator()
         ],
         "SIGNING_KEY": "GCQUFKX3KZ3BQYD56KV2WLJJVBYHNH54N2JPTDGKGRHKRCDSC6R2SQEX",
+        "NETWORK_PASSPHRASE": env("STELLAR_NETWORK_PASSPHRASE"),
     }
