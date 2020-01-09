@@ -1,4 +1,4 @@
-release: pipenv run python manage.py migrate
+release: ./release.sh
 watch_transactions: pipenv run python manage.py watch_transactions
 check_trustlines: pipenv run python manage.py check_trustlines --loop
 poll_pending_deposits: pipenv run python manage.py poll_pending_deposits --loop

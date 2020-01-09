@@ -5,8 +5,6 @@ initiate a deposit of some asset into their Stellar account.
 Note that before the Stellar transaction is submitted, an external agent must
 confirm that the first step of the deposit successfully completed.
 """
-import base64
-import binascii
 from urllib.parse import urlencode
 
 from django.urls import reverse
@@ -35,30 +33,6 @@ from polaris.helpers import (
 from polaris.models import Asset, Transaction
 from polaris.integrations.forms import TransactionForm
 from polaris.integrations import registered_deposit_integration as rdi
-
-
-# TODO: The interactive pop-up will be used to retrieve additional info,
-# so we should not need to validate these parameters. Alternately, we can
-# pass these to the pop-up.
-def _verify_optional_args(request):
-    """Verify the optional arguments to `GET /deposit`."""
-    memo_type = request.POST.get("memo_type")
-    if memo_type and memo_type not in ("text", "id", "hash"):
-        return render_error_response("invalid 'memo_type'")
-
-    memo = request.POST.get("memo")
-    if memo_type and not memo:
-        return render_error_response("'memo_type' provided with no 'memo'")
-
-    if memo and not memo_type:
-        return render_error_response("'memo' provided with no 'memo_type'")
-
-    if memo_type == "hash":
-        try:
-            base64.b64encode(base64.b64decode(memo))
-        except binascii.Error:
-            return render_error_response("'memo' does not match memo_type' hash")
-    return None
 
 
 @xframe_options_exempt
@@ -119,7 +93,7 @@ def post_interactive_deposit(request: Request) -> Response:
 
 
 @api_view(["GET"])
-@check_authentication
+@check_authentication()
 def complete_interactive_deposit(request: Request) -> Response:
     transaction_id = request.GET("id")
     if not transaction_id:
@@ -190,11 +164,6 @@ def deposit(account: str, request: Request) -> Response:
         Keypair.from_public_key(stellar_account)
     except Ed25519PublicKeyInvalidError:
         return render_error_response("invalid 'account'")
-
-    # Verify the optional request arguments.
-    verify_optional_args = _verify_optional_args(request)
-    if verify_optional_args:
-        return verify_optional_args
 
     # Construct interactive deposit pop-up URL.
     transaction_id = create_transaction_id()

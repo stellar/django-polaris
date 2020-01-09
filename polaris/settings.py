@@ -6,7 +6,6 @@ import os
 import environ
 from shutil import copyfile
 
-
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = BASE_DIR
 
@@ -53,6 +52,7 @@ MIDDLEWARE = [
     "polaris.middleware.PolarisSameSiteMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.middleware.locale.LocaleMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
 ]
 
@@ -118,7 +118,7 @@ CORS_ORIGIN_ALLOW_ALL = True
 
 # Internationalization
 # https://docs.djangoproject.com/en/2.2/topics/i18n/
-LANGUAGE_CODE = "en-us"
+LANGUAGE_CODE = "es-mx"
 TIME_ZONE = "UTC"
 USE_I18N = True
 USE_L10N = True

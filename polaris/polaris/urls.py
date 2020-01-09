@@ -23,5 +23,6 @@ urlpatterns = [
     path("", include("polaris.transaction.urls")),
     path("", include("polaris.deposit.urls")),
     path("", include("polaris.withdraw.urls")),
+    path("language", include("polaris.locale.urls")),
     path("auth", include("polaris.sep10auth.urls")),
 ]

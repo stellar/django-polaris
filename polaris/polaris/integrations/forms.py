@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from django import forms
+from django.utils.translation import gettext as _
 from django.forms.widgets import TextInput
 
 
@@ -23,7 +24,7 @@ class CreditCardField(forms.CharField):
         )
 
     default_error_messages = {
-        "invalid": "The credit card number is invalid",
+        "invalid": _("The credit card number is invalid"),
     }
 
     @staticmethod
@@ -83,6 +84,7 @@ class TransactionForm(forms.Form):
         widget=forms.NumberInput(attrs={"class": "input"}),
         max_digits=50,
         decimal_places=25,
+        label=_("Amount"),
     )
     asset = None
 

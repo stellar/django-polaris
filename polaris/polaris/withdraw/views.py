@@ -85,7 +85,7 @@ def post_interactive_withdraw(request: Request) -> Response:
 
 
 @api_view(["GET"])
-@check_authentication
+@check_authentication()
 def complete_interactive_withdraw(request: Request) -> Response:
     transaction_id = request.GET("id")
     if not transaction_id:

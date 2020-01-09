@@ -5,7 +5,7 @@ FROM python:3.7-alpine
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 
-RUN apk update && apk add build-base postgresql-dev libffi-dev
+RUN apk update && apk add build-base postgresql-dev libffi-dev gettext-dev python3-dev
 
 # Copy files to working directory
 RUN mkdir /code
