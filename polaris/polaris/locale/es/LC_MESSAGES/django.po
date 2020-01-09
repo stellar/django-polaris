@@ -1,66 +1,47 @@
-#: deposit/utils.py:40
-#, python-format
-msgid "unexpected transaction status %s for create_stellar_deposit"
+#: deposit/views.py:91 withdraw/views.py:83
+msgid "Missing id parameter in URL"
 msgstr ""
 
-#: deposit/views.py:50 deposit/views.py:52
+#: helpers.py:197 helpers.py:221 helpers.py:239
+msgid "Transaction for account not found"
+msgstr ""
+
+#: helpers.py:204
+msgid "Missing authentication token"
+msgstr ""
+
+#: helpers.py:213
+msgid "Invalid token issuer"
+msgstr ""
+
+#: helpers.py:215
+msgid "Token is not yet valid or is expired"
+msgstr ""
+
+#: helpers.py:233
+msgid "Session is not authenticated"
+msgstr ""
+
+#: helpers.py:263
+msgid "no 'transaction_id' provided"
+msgstr ""
+
+#: helpers.py:270
+msgid "invalid 'asset_code'"
+msgstr ""
+
+#: helpers.py:280
+msgid "Transaction with ID and asset_code not found"
+msgstr ""
+
+#: helpers.py:316 helpers.py:318
 #, python-format
 msgid "%s is not installed"
 msgstr ""
 
-#: deposit/views.py:59
+#: helpers.py:323
 #, python-format
 msgid "%(polaris_mid)s must be listed before %(session_mid)s"
-msgstr ""
-
-#: deposit/views.py:120 withdraw/views.py:82
-msgid "Missing id parameter in URL"
-msgstr ""
-
-#: fee/views.py:46
-#, python-format
-msgid "'operation' should be either '%(deposit)s' or '%(withdraw)s'"
-msgstr ""
-
-#: fee/views.py:53
-msgid "invalid 'amount'"
-msgstr ""
-
-#: fee/views.py:60
-#, python-format
-msgid "the specified operation is not available for '%s'"
-msgstr ""
-
-#: helpers.py:195 helpers.py:219 helpers.py:237
-msgid "Transaction for account not found"
-msgstr ""
-
-#: helpers.py:202
-msgid "Missing authentication token"
-msgstr ""
-
-#: helpers.py:211
-msgid "Invalid token issuer"
-msgstr ""
-
-#: helpers.py:213
-msgid "Token is not yet valid or is expired"
-msgstr ""
-
-#: helpers.py:231
-msgid "Session is not authenticated"
-msgstr ""
-
-#: helpers.py:261
-msgid "no 'transaction_id' provided"
-msgstr ""
-
-#: helpers.py:268
-msgid "invalid 'asset_code'"
-msgstr ""
-
-#: helpers.py:278
-msgid "Transaction with ID and asset_code not found"
 msgstr ""
 
 #: integrations/forms.py:26
@@ -77,25 +58,25 @@ msgstr ""
 msgid "Amount is above maximum for asset %s"
 msgstr ""
 
-#: transaction/views.py:49
+#: transaction/views.py:50
 msgid ""
 "at least one of id, stellar_transaction_id, or external_transaction_id must "
 "be provided"
 msgstr ""
 
-#: transaction/views.py:73 transaction/views.py:160
+#: transaction/views.py:75 transaction/views.py:162
 msgid "transaction not found"
 msgstr ""
 
-#: transaction/views.py:109
+#: transaction/views.py:111
 msgid "invalid limit"
 msgstr ""
 
-#: transaction/views.py:114
+#: transaction/views.py:116
 msgid "asset_code is required"
 msgstr ""
 
-#: transaction/views.py:135
+#: transaction/views.py:137
 msgid "invalid paging_id"
 msgstr ""
 

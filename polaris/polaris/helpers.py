@@ -7,13 +7,13 @@ import time
 import uuid
 
 import jwt
-from django.conf import settings as django_settings
 from jwt.exceptions import InvalidTokenError
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.request import Request
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext as _
+from django.conf import settings as django_settings
 
 from polaris import settings
 from polaris.middleware import import_path
@@ -315,20 +315,21 @@ def check_middleware(content_type: str = "text/html") -> Optional[Response]:
     Ensures the Django app running Polaris has the correct middleware
     configuration for GET /webapp requests.
     """
-    err_msg = None
+    err_msg, err_args = None, None
     session_middleware_path = "django.contrib.sessions.middleware.SessionMiddleware"
     if import_path not in django_settings.MIDDLEWARE:
-        err_msg = f"{import_path} is not installed"
+        err_msg, err_args = _("%s is not installed"), import_path
     elif session_middleware_path not in django_settings.MIDDLEWARE:
-        err_msg = f"{session_middleware_path} is not installed"
+        err_msg, err_args = _("%s is not installed"), session_middleware_path
     elif django_settings.MIDDLEWARE.index(
         import_path
     ) > django_settings.MIDDLEWARE.index(session_middleware_path):
-        err_msg = f"{import_path} must be listed before {session_middleware_path}"
+        err_args = {"polaris_mid": import_path, "session_mid": session_middleware_path}
+        err_msg = _("%(polaris_mid)s must be listed before %(session_mid)s")
 
     if err_msg:
         return render_error_response(
-            err_msg, content_type=content_type, status_code=501
+            err_msg % err_args, content_type=content_type, status_code=501
         )
     else:
         return None

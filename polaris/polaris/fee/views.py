@@ -43,22 +43,21 @@ def fee(account: str, request: Request) -> Response:
     operation = request.GET.get("operation")
     if operation not in (OPERATION_DEPOSIT, OPERATION_WITHDRAWAL):
         return render_error_response(
-            _("'operation' should be either '%(deposit)s' or '%(withdraw)s'")
-            % (OPERATION_DEPOSIT, OPERATION_WITHDRAWAL)
+            f"'operation' should be either '{OPERATION_DEPOSIT}' or '{OPERATION_WITHDRAWAL}'"
         )
     # Verify that amount is provided, and that it is parseable into a float:
     amount_str = request.GET.get("amount")
     try:
         amount = Decimal(amount_str)
     except (DecimalException, TypeError):
-        return render_error_response(_("invalid 'amount'"))
+        return render_error_response("invalid 'amount'")
 
     # Validate that the operation, and the specified type (if provided)
     # are applicable to the given asset:
     op_type = request.GET.get("type", "")
     if not _op_type_is_valid(asset_code, operation, op_type):
         return render_error_response(
-            _("the specified operation is not available for '%s'") % asset_code
+            f"the specified operation is not available for '{asset_code}'"
         )
 
     return Response({"fee": calc_fee(asset, operation, amount)})
