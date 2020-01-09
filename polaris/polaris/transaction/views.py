@@ -1,6 +1,5 @@
 """This module defines the logic for the `/transaction` endpoint."""
 import json
-from urllib.parse import urlencode
 
 from rest_framework.decorators import api_view, renderer_classes
 from rest_framework.response import Response
@@ -9,8 +8,8 @@ from rest_framework.renderers import TemplateHTMLRenderer
 from rest_framework import status
 
 from django.conf import settings
-from django.urls import reverse
 from django.views.decorators.clickjacking import xframe_options_exempt
+from django.utils.translation import gettext as _
 
 from polaris.helpers import render_error_response, validate_sep10_token
 from polaris.models import Transaction
@@ -47,8 +46,10 @@ def _get_transaction_from_request(request, account: str = None):
     qset_filter = _compute_qset_filters(request.GET, translation_dict)
     if not qset_filter:
         raise AttributeError(
-            "at least one of id, stellar_transaction_id, or "
-            "external_transaction_id must be provided"
+            _(
+                "at least one of id, stellar_transaction_id, or "
+                "external_transaction_id must be provided"
+            )
         )
 
     if account:
@@ -71,7 +72,7 @@ def more_info(request: Request) -> Response:
         return render_error_response(str(exc), content_type="text/html")
     except Transaction.DoesNotExist:
         return render_error_response(
-            "transaction not found",
+            _("transaction not found"),
             status_code=status.HTTP_404_NOT_FOUND,
             content_type="text/html",
         )
@@ -107,12 +108,12 @@ def transactions(account: str, request: Request) -> Response:
         limit = _validate_limit(request.GET.get("limit"))
     except ValueError:
         return render_error_response(
-            "invalid limit", status_code=status.HTTP_400_BAD_REQUEST
+            _("invalid limit"), status_code=status.HTTP_400_BAD_REQUEST
         )
 
     if not request.GET.get("asset_code"):
         return render_error_response(
-            "asset_code is required", status_code=status.HTTP_400_BAD_REQUEST,
+            _("asset_code is required"), status_code=status.HTTP_400_BAD_REQUEST,
         )
 
     translation_dict = {
@@ -133,7 +134,7 @@ def transactions(account: str, request: Request) -> Response:
             start_transaction = Transaction.objects.get(id=paging_id)
         except Transaction.DoesNotExist:
             return render_error_response(
-                "invalid paging_id", status_code=status.HTTP_400_BAD_REQUEST
+                _("invalid paging_id"), status_code=status.HTTP_400_BAD_REQUEST
             )
         qset_filter["started_at__lt"] = start_transaction.started_at
 
@@ -158,7 +159,7 @@ def transaction(account: str, request: Request) -> Response:
         return render_error_response(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
     except Transaction.DoesNotExist:
         return render_error_response(
-            "transaction not found", status_code=status.HTTP_404_NOT_FOUND
+            _("transaction not found"), status_code=status.HTTP_404_NOT_FOUND
         )
     serializer = TransactionSerializer(
         request_transaction, context={"request": request},

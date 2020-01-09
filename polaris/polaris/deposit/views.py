@@ -10,6 +10,8 @@ from urllib.parse import urlencode
 from django.urls import reverse
 from django.shortcuts import redirect
 from django.views.decorators.clickjacking import xframe_options_exempt
+from django.utils.translation import gettext as _
+
 from rest_framework import status
 from rest_framework.decorators import api_view, renderer_classes
 from rest_framework.response import Response
@@ -93,11 +95,14 @@ def post_interactive_deposit(request: Request) -> Response:
 
 
 @api_view(["GET"])
+@renderer_classes([TemplateHTMLRenderer])
 @check_authentication()
 def complete_interactive_deposit(request: Request) -> Response:
     transaction_id = request.GET("id")
     if not transaction_id:
-        render_error_response("Missing id parameter in URL")
+        render_error_response(
+            _("Missing id parameter in URL"), content_type="text/html"
+        )
     url, args = reverse("more_info"), urlencode({"id": transaction_id})
     return redirect(f"{url}?{args}")
 

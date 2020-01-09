@@ -1,6 +1,8 @@
 import logging
 
 from django.utils.timezone import now
+from django.utils.translation import gettext as _
+
 from stellar_sdk.transaction_builder import TransactionBuilder
 from stellar_sdk.exceptions import BaseHorizonError
 from stellar_sdk.xdr.StellarXDR_type import TransactionResult
@@ -35,10 +37,8 @@ def create_stellar_deposit(transaction_id: str) -> bool:
         Transaction.STATUS.pending_anchor,
         Transaction.STATUS.pending_trust,
     ]:
-        raise ValueError(
-            f"unexpected transaction status {transaction.status} for "
-            "create_stellar_deposit",
-        )
+        err = _("unexpected transaction status %s for create_stellar_deposit")
+        raise ValueError(err % transaction.status)
     transaction.status = Transaction.STATUS.pending_stellar
     transaction.save()
 

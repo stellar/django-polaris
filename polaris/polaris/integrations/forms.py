@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from django import forms
-from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy as _
 from django.forms.widgets import TextInput
 
 
@@ -98,10 +98,10 @@ class TransactionForm(forms.Form):
         if self.asset:
             if amount < self.asset.deposit_min_amount:
                 raise forms.ValidationError(
-                    f"Amount is below minimum for asset {self.asset.code}"
+                    _("Amount is below minimum for asset %s") % self.asset.code
                 )
             elif amount > self.asset.deposit_max_amount:
                 raise forms.ValidationError(
-                    f"Amount is above maximum for asset {self.asset.code}"
+                    _("Amount is above maximum for asset %s") % self.asset.code
                 )
         return amount

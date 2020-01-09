@@ -4,15 +4,16 @@ withdraw some asset from their Stellar account into a non Stellar based asset.
 """
 from urllib.parse import urlencode
 
-from polaris import settings
 from django.urls import reverse
 from django.views.decorators.clickjacking import xframe_options_exempt
 from django.shortcuts import redirect
+from django.utils.translation import gettext as _
 from rest_framework.decorators import api_view, renderer_classes
 from rest_framework.response import Response
 from rest_framework.request import Request
 from rest_framework.renderers import TemplateHTMLRenderer, JSONRenderer
 
+from polaris import settings
 from polaris.helpers import (
     render_error_response,
     create_transaction_id,
@@ -85,11 +86,14 @@ def post_interactive_withdraw(request: Request) -> Response:
 
 
 @api_view(["GET"])
+@renderer_classes([TemplateHTMLRenderer])
 @check_authentication()
 def complete_interactive_withdraw(request: Request) -> Response:
     transaction_id = request.GET("id")
     if not transaction_id:
-        render_error_response("Missing id parameter in URL")
+        render_error_response(
+            _("Missing id parameter in URL"), content_type="text/html"
+        )
     url, args = reverse("more_info"), urlencode({"id": transaction_id})
     return redirect(f"{url}?{args}")
 

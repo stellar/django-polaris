@@ -1,6 +1,8 @@
 """This module defines the `/fee` view."""
 from decimal import Decimal, DecimalException
 
+from django.utils.translation import gettext as _
+
 from polaris import settings
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -41,21 +43,22 @@ def fee(account: str, request: Request) -> Response:
     operation = request.GET.get("operation")
     if operation not in (OPERATION_DEPOSIT, OPERATION_WITHDRAWAL):
         return render_error_response(
-            f"'operation' should be either '{OPERATION_DEPOSIT}' or '{OPERATION_WITHDRAWAL}'"
+            _("'operation' should be either '%(deposit)s' or '%(withdraw)s'")
+            % (OPERATION_DEPOSIT, OPERATION_WITHDRAWAL)
         )
     # Verify that amount is provided, and that it is parseable into a float:
     amount_str = request.GET.get("amount")
     try:
         amount = Decimal(amount_str)
     except (DecimalException, TypeError):
-        return render_error_response("invalid 'amount'")
+        return render_error_response(_("invalid 'amount'"))
 
     # Validate that the operation, and the specified type (if provided)
     # are applicable to the given asset:
     op_type = request.GET.get("type", "")
     if not _op_type_is_valid(asset_code, operation, op_type):
         return render_error_response(
-            f"the specified operation is not available for '{asset_code}'"
+            _("the specified operation is not available for '%s'") % asset_code
         )
 
     return Response({"fee": calc_fee(asset, operation, amount)})
