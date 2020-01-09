@@ -6,7 +6,6 @@ verify_ssl = true
 [dev-packages]
 pylint = "*"
 pylint-django = "*"
-black = "*"
 pytest = "*"
 pytest-django = "*"
 pytest-cov = "*"
@@ -33,6 +32,3 @@ django-sslserver = "*"
 
 [requires]
 python_version = "3.7"
-
-[pipenv]
-allow_prereleases = true
