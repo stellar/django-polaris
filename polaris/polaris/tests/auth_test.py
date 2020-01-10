@@ -91,7 +91,7 @@ def test_auth_post_urlencode_success(client):
 
     response = client.post(
         "/auth",
-        data=f"transaction=<{client_signed_envelope_xdr}>",
+        data=f"transaction={client_signed_envelope_xdr}",
         content_type="application/x-www-form-urlencoded",
     )
     content = json.loads(response.content)
