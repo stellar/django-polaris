@@ -38,10 +38,11 @@ def sep10(client, address, seed):
 
 
 def mock_load_not_exist_account(account_id):
-    if (
-        account_id != settings.STELLAR_ISSUER_ACCOUNT_ADDRESS
-        and account_id != settings.STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS
-    ):
+    accounts = []
+    for vals in settings.ASSETS.values():
+        accounts.extend(vals.values())
+
+    if account_id not in accounts:
         raise NotFoundError(
             response=Response(
                 status_code=404, headers={}, url="", text=json.dumps(dict(status=404))

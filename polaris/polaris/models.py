@@ -25,10 +25,7 @@ class Asset(TimeStampedModel):
     code = models.TextField(validators=[MinLengthValidator(1)], default="USD")
     """The asset code as defined on the Stellar network."""
 
-    issuer = models.TextField(
-        validators=[MinLengthValidator(56)],
-        default=settings.STELLAR_ISSUER_ACCOUNT_ADDRESS,
-    )
+    issuer = models.TextField(validators=[MinLengthValidator(56)])
     """The issuing Stellar account address."""
 
     # Deposit-related info

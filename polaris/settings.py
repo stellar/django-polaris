@@ -3,6 +3,7 @@ Django settings for app project.
 """
 # pylint: disable=invalid-name
 import os
+import yaml
 import environ
 from shutil import copyfile
 
@@ -11,19 +12,26 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = BASE_DIR
 
 # Load environment variables from .env
-env = environ.Env()
-env_file = os.path.join(PROJECT_ROOT, ".env")
-if not os.path.exists(env_file):
-    example_env_file = os.path.join(PROJECT_ROOT, ".env.example")
-    if not os.path.exists(example_env_file):
-        raise FileNotFoundError("Couldn't find .env or .env.example")
-    copyfile(os.path.join(PROJECT_ROOT, ".env.example"), env_file)
-environ.Env.read_env(env_file)
+config_filepath = os.path.join(PROJECT_ROOT, "config.yml")
+try:
+    config = yaml.safe_load(open(config_filepath).read())
+except FileNotFoundError:
+    example_config = os.path.join(PROJECT_ROOT, "config-example.yml")
+    try:
+        config = yaml.safe_load(open(example_config).read())
+    except FileNotFoundError:
+        raise FileNotFoundError("Couldn't find config.yml or config-example.yml")
+    except yaml.YAMLError as e:
+        raise ValueError(f"Error parsing yaml file: {str(e)}")
+    else:
+        copyfile(example_config, config_filepath)
+except yaml.YAMLError as e:
+    raise ValueError(f"Error parsing yaml file: {str(e)}")
 
-SECRET_KEY = env("DJANGO_SECRET_KEY")
-DEBUG = env.bool("DJANGO_DEBUG", False)
-ALLOWED_HOSTS = env.list(
-    "DJANGO_ALLOWED_HOSTS", default=["localhost", "127.0.0.1", "[::1]", "0.0.0.0"]
+SECRET_KEY = config["django_secret_key"]
+DEBUG = config.get("django_debug", False)
+ALLOWED_HOSTS = config.get(
+    "django_allowed_hosts", ["localhost", "127.0.0.1", "[::1]", "0.0.0.0"]
 )
 
 # Apps to add to parent project's INSTALLED_APPS
@@ -72,9 +80,18 @@ TEMPLATES = [
 
 # Database
 # https://docs.djangoproject.com/en/2.2/ref/settings/#databases
+#
+# Using Env.db() because it transforms the DB string into the dictionary
+# django expects. This also allows DATABASE_URL to still be defined as an
+# environment variable, or it can be listed in the config.yml file.
+Env = environ.Env()
 DATABASES = {
-    "default": env.db(
-        "DATABASE_URL", default="sqlite:////" + os.path.join(PROJECT_ROOT, "db.sqlite3")
+    "default": Env.db(
+        "DATABASE_URL",
+        default=(
+            config.get("database_url")
+            or "sqlite:////" + os.path.join(PROJECT_ROOT, "db.sqlite3")
+        ),
     )
 }
 
