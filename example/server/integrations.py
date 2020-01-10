@@ -17,7 +17,7 @@ from polaris.integrations import (
 
 from .settings import env
 from . import mock_banking_rails as rails
-from .models import PolarisUser, PolarisUserAccount, PolarisUserTransaction
+from .models import PolarisUser, PolarisStellarAccount, PolarisUserTransaction
 from .forms import KYCForm
 
 
@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 def track_user_activity(form: forms.Form, transaction: Transaction):
     """
     Creates a PolarisUserTransaction object, and depending on the form
-    passed, also creates a new PolarisUserAccount and potentially a
+    passed, also creates a new PolarisStellarAccount and potentially a
     new PolarisUser. This function ensures an accurate record of a
     particular person's activity.
     """
@@ -40,15 +40,15 @@ def track_user_activity(form: forms.Form, transaction: Transaction):
                 last_name=data.get("last_name"),
                 email=data.get("email"),
             )
-        account = PolarisUserAccount.objects.create(
+        account = PolarisStellarAccount.objects.create(
             account=transaction.stellar_account, user=user
         )
     else:
         try:
-            account = PolarisUserAccount.objects.get(
+            account = PolarisStellarAccount.objects.get(
                 account=transaction.stellar_account
             )
-        except PolarisUserAccount.DoesNotExist:
+        except PolarisStellarAccount.DoesNotExist:
             raise RuntimeError(
                 f"Unknown address: {transaction.stellar_account}," " KYC required."
             )
@@ -64,7 +64,9 @@ def serve_form(transaction: Transaction) -> Optional[Type[forms.Form]]:
     a TransactionForm if the amount needs to be collected. Otherwise returns
     None.
     """
-    account_qs = PolarisUserAccount.objects.filter(account=transaction.stellar_account)
+    account_qs = PolarisStellarAccount.objects.filter(
+        account=transaction.stellar_account
+    )
     if not account_qs.exists():
         # Unknown stellar account, get KYC info
         return KYCForm
