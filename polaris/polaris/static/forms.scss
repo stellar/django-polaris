@@ -1,0 +1,161 @@
+@import "form-styles/theme.scss";
+
+@import "form-styles/select-list.scss";
+
+$border-radius: 0.75rem;
+
+$input-main-color: $light_-2;
+$input-focus-color: $primary_0;
+$input-color: $alpha-dark_2;
+$input-placeholder-color: $dark_-2;
+
+$radio-bullet-color: $dark_-2;
+$radio-bg-color: $input-color;
+$radio-size: 2rem;
+$bullet-size: 1rem;
+$radio-font-size: 18/16 + rem;
+
+.radio-group {
+  display: flex;
+  flex-direction: column;
+}
+
+::placeholder {
+  color: $input-placeholder-color;
+}
+
+.control {
+  cursor: pointer;
+
+  input[type="text"],
+  input[type="number"],
+  input[type="email"] {
+    background-color: $input-color;
+    border-radius: $border-radius;
+    border: none;
+    color: $input-main-color;
+    padding: 1rem 1.125rem;
+    outline: none;
+
+    &:focus {
+      box-shadow: 0 0 .5rem rgba($input-focus-color, 0.6),
+        0 0 .125rem $input-focus-color;
+    }
+
+    &:invalid {
+      color: $danger_0;
+      box-shadow: 0 0 .25rem rgba($danger_0, 0.6), 0 0 .125rem $danger_0;
+    }
+  }
+
+  select {
+    display: block;
+    -moz-appearance: none;
+    -webkit-appearance: none;
+    appearance: none;
+    outline: none;
+    padding: 15px 40px 15px 18px;
+    margin: 0;
+    background-color: $input-color;
+    border-radius: $input-main-color;
+    border: none;
+    color: $white;
+    background-image: url("../assets/chevron-down.svg");
+    background-repeat: no-repeat;
+    background-position: right 1em top 50%, 0 0;
+
+    &:focus {
+      box-shadow: 0 0 8px rgba($input-focus-color, 0.6),
+        0 0 1px $input-focus-color;
+    }
+
+    &:invalid {
+      color: $input-placeholder-color;
+    }
+  }
+
+  input[type="radio"] {
+    opacity: 0;
+    width: 0px;
+    display: absolute;
+
+    & + label {
+      font-size: $radio-font-size;
+      line-height: $radio-size;
+      margin: 5px 0;
+      padding-left: 3rem;
+      position: relative;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+
+      &:before {
+        content: "";
+        display: block;
+        position: absolute;
+        left: 0;
+        background-color: $radio-bg-color;
+        width: $radio-size;
+        height: $radio-size;
+        border-radius: $radio-size;
+      }
+      &:after {
+        content: "";
+        display: block;
+        position: absolute;
+        opacity: 0;
+        transform: scale(0.8);
+        transition: all 0.3s ease-out;
+        background-color: $radio-bullet-color;
+        width: $bullet-size;
+        height: $bullet-size;
+        left: ($radio-size - $bullet-size)/2;
+        top: ($radio-size - $bullet-size)/2;
+        border-radius: $bullet-size;
+      }
+    }
+
+    &:checked + label {
+      &:after {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+  }
+}
+
+.label {
+  font-size: 15/16 + rem;
+  color: $white;
+  padding: 20px 0 7px 5px;
+}
+
+.button {
+  cursor: pointer;
+  background-color: $dark-gray;
+  border: none;
+  border-radius: $border-radius;
+  color: $white;
+  padding: 20px 30px;
+  width: 90%;
+  max-width: 250px;
+  transition: background-color 0.2s ease-out;
+
+  &:focus {
+    outline: none;
+    box-shadow: 0 0 8px #0dbb9c, 0 0 1px #0dbb9c;
+  }
+
+  &:hover {
+    background-color: lighten($dark-gray, 5%);
+  }
+
+  &:disabled {
+    background-color: desaturate($dark-gray, 100%);
+    opacity: 0.4;
+  }
+
+  &:active {
+    background-color: $dark-gray;
+  }
+}
