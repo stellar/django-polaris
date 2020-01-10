@@ -1,89 +1,90 @@
 #: deposit/views.py:91 withdraw/views.py:83
 msgid "Missing id parameter in URL"
-msgstr ""
+msgstr "O parâmetro id está faltando na URL"
 
 #: helpers.py:197 helpers.py:221 helpers.py:239
 msgid "Transaction for account not found"
-msgstr ""
+msgstr "Transação para conta não encontrada"
 
 #: helpers.py:204
 msgid "Missing authentication token"
-msgstr ""
+msgstr "Faltando o token de autenticação"
 
 #: helpers.py:213
 msgid "Invalid token issuer"
-msgstr ""
+msgstr "Token de emissor inválido"
 
 #: helpers.py:215
 msgid "Token is not yet valid or is expired"
-msgstr ""
+msgstr "Token ainda não é valido ou expirou"
 
 #: helpers.py:233
 msgid "Session is not authenticated"
-msgstr ""
+msgstr "A sessão não está autenticada"
 
 #: helpers.py:263
 msgid "no 'transaction_id' provided"
-msgstr ""
+msgstr "o 'transaction_id' não foi disponibilizado"
 
 #: helpers.py:270
 msgid "invalid 'asset_code'"
-msgstr ""
+msgstr "'asset_code' inválido"
 
 #: helpers.py:280
 msgid "Transaction with ID and asset_code not found"
-msgstr ""
+msgstr "Transação com ID e asset_code não encontrada"
 
 #: helpers.py:316 helpers.py:318
 #, python-format
 msgid "%s is not installed"
-msgstr ""
+msgstr "%s não está instalado"
 
 #: helpers.py:323
 #, python-format
 msgid "%(polaris_mid)s must be listed before %(session_mid)s"
-msgstr ""
+msgstr "%(polaris_mid)s deve ser listado antes de %(session_mid)s"
 
 #: integrations/forms.py:26
 msgid "Amount"
-msgstr ""
+msgstr "Valor"
 
 #: integrations/forms.py:40
 #, python-format
 msgid "Amount is below minimum for asset %s"
-msgstr ""
+msgstr "Valor é menor que o mínimo para esse ativo"
 
 #: integrations/forms.py:44
 #, python-format
 msgid "Amount is above maximum for asset %s"
-msgstr ""
+msgstr "Valor é maior que o máximo para esse ativo"
 
 #: transaction/views.py:50
 msgid ""
 "at least one of id, stellar_transaction_id, or external_transaction_id must "
 "be provided"
 msgstr ""
+"pelo menos um desses valores deve ser disponibilizado: id, stellar_transaction_id ou external_transaction_id "
 
 #: transaction/views.py:75 transaction/views.py:162
 msgid "transaction not found"
-msgstr ""
+msgstr "transação não encontrada"
 
 #: transaction/views.py:111
 msgid "invalid limit"
-msgstr ""
+msgstr "limite inválido"
 
 #: transaction/views.py:116
 msgid "asset_code is required"
-msgstr ""
+msgstr "asset_code é necessário"
 
 #: transaction/views.py:137
 msgid "invalid paging_id"
-msgstr ""
+msgstr "paging_id inválido"
 
 #: withdraw/forms.py:13
 msgid "Enter the bank account number for withdrawal."
-msgstr ""
+msgstr "Insira o número da conta bancária para saque"
 
 #: withdraw/forms.py:19
 msgid "Enter the bank to withdraw from."
-msgstr ""
+msgstr "Insira o bank no qual será realizado o saque"
