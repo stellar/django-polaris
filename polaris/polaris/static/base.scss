@@ -1,0 +1,65 @@
+@import "reset.scss";
+@import "normalize.scss";
+@import "forms.scss";
+
+html {
+  box-sizing: border-box;
+  font-size: 16px;
+  background-image: linear-gradient(to bottom, $gradient-start, $gradient-end);
+  color: $text-color;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body,
+html {
+  font-family: $main-typeface;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+*,
+*:before,
+*:after {
+  box-sizing: inherit;
+}
+
+.main-content {
+  flex-grow: 1;
+}
+
+.bottom-section {
+  flex-grow: 0;
+  margin: auto;
+  padding-bottom: 2rem;
+  width: calc(100% - 3rem);
+}
+
+.navbar {
+  padding: 2rem 0;
+  display: flex;
+  justify-content: center;
+}
+
+.navbar-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.section {
+  padding: 1rem;
+  max-width: 35rem;
+  margin: auto;
+}
+
+.control .icon {
+  margin-top: 0.25rem;
+}
+
+.receipt label {
+  font-variant: small-caps;
+  font-weight: bold;
+}
+

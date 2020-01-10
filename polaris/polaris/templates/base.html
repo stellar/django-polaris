@@ -1,4 +1,4 @@
-{% load static %}
+{% load sass_tags %} {% load static %}
 <!DOCTYPE html>
 <html>
   <head>
@@ -9,11 +9,8 @@
     <title>SEP24 reference server</title>
     {% endblock %}
 
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.7.5/css/bulma.min.css"
-    />
-    <link rel="stylesheet" href="{% static "base.css" %}" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Cabin&display=swap">
+    <link rel="stylesheet" href="{% sass_src 'base.scss' %}" />
     <script
       defer
       src="https://use.fontawesome.com/releases/v5.3.1/js/all.js"
@@ -23,8 +20,9 @@
     {% block "header" %}
     <nav class="navbar" role="navigation" aria-label="main navigation">
       <div class="navbar-brand">
-        <a class="navbar-item" href="#">
-          Loanly Bay Leaf Bank Corp
+        <img width="60" height="60" src="{% static 'company-icon.svg' %}" alt="" />
+        <a class="title" href="#">
+          Company Name
         </a>
       </div>
     </nav>
