@@ -70,7 +70,7 @@ uses to add better styling. You may also add more Bulma-supported attributes
 to Polaris forms.
 
 Use an External Application for the Interactive Flow
----------------------------------------------------
+----------------------------------------------------
 
 Polaris provides `Form Integrations`_ for collecting and processing information
 about a deposit or withdraw. However if you would rather use another

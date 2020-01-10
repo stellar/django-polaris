@@ -55,9 +55,7 @@ class DepositIntegration:
         :return: a list of Transaction database objects which correspond to
             successful user deposits to the anchor's account.
         """
-        raise NotImplementedError(
-            "`poll_transactions` must be implemented to process deposits"
-        )
+        return list(pending_deposits)
 
     @classmethod
     def after_deposit(cls, transaction: Transaction):
