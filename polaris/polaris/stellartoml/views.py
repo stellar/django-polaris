@@ -17,7 +17,9 @@ def generate_toml(request):
     toml_dict = {
         "TRANSFER_SERVER": request.build_absolute_uri("/"),
         "WEB_AUTH_ENDPOINT": request.build_absolute_uri("/auth"),
-        "ACCOUNTS": [settings.STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS],
+        "ACCOUNTS": [
+            asset["DISTRIBUTION_ACCOUNT_ADDRESS"] for asset in settings.ASSETS
+        ],
         "VERSION": "0.1.0",
     }
     toml_dict.update(registered_toml_func())

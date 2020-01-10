@@ -1,0 +1,20 @@
+title: Polaris Configuration Variables
+
+django_debug: true
+django_secret_key: "secretkeykeysecret"
+
+assets:
+  usd:
+    distribution_account_seed: ""
+    issuer_account_address: ""
+
+# STELLAR_NETWORK_PASSPHRASE can either be "Test SDF Network ; September 2015" or
+# "Public Global Stellar Network ; September 2015" or a custom passphrase
+# if you're using a private network.
+stellar_network_passphrase: "Test SDF Network ; September 2015"
+
+# HORIZON_URI can point to a custom Horizon URI. It currently points
+# to the testnet URL.
+horizon_uri: "https://horizon-testnet.stellar.org/"
+
+secret_jwt_key: "secret"
