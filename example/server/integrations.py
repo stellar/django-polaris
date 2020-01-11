@@ -1,21 +1,80 @@
 import logging
 import time
-from typing import List, Dict
+from typing import List, Dict, Optional, Type
 from uuid import uuid4
 
-import environ
 from django.conf import settings
 from django.db.models import QuerySet
+from django import forms
 
 import polaris.settings
 from polaris.models import Transaction, Asset
-from polaris.integrations import DepositIntegration, WithdrawalIntegration
+from polaris.integrations import (
+    DepositIntegration,
+    WithdrawalIntegration,
+    TransactionForm,
+)
 
 from .settings import env
 from . import mock_banking_rails as rails
+from .models import PolarisUser, PolarisStellarAccount, PolarisUserTransaction
+from .forms import KYCForm
 
 
 logger = logging.getLogger(__name__)
+
+
+def track_user_activity(form: forms.Form, transaction: Transaction):
+    """
+    Creates a PolarisUserTransaction object, and depending on the form
+    passed, also creates a new PolarisStellarAccount and potentially a
+    new PolarisUser. This function ensures an accurate record of a
+    particular person's activity.
+    """
+    if isinstance(form, KYCForm):
+        data = form.cleaned_data
+        user = PolarisUser.objects.filter(email=data.get("email")).first()
+        if not user:
+            user = PolarisUser.objects.create(
+                first_name=data.get("first_name"),
+                last_name=data.get("last_name"),
+                email=data.get("email"),
+            )
+        account = PolarisStellarAccount.objects.create(
+            account=transaction.stellar_account, user=user
+        )
+    else:
+        try:
+            account = PolarisStellarAccount.objects.get(
+                account=transaction.stellar_account
+            )
+        except PolarisStellarAccount.DoesNotExist:
+            raise RuntimeError(
+                f"Unknown address: {transaction.stellar_account}," " KYC required."
+            )
+
+    PolarisUserTransaction.objects.get_or_create(
+        account=account, transaction=transaction
+    )
+
+
+def serve_form(transaction: Transaction) -> Optional[Type[forms.Form]]:
+    """
+    Returns a KYCForm if there is no record of this stellar account or
+    a TransactionForm if the amount needs to be collected. Otherwise returns
+    None.
+    """
+    account_qs = PolarisStellarAccount.objects.filter(
+        account=transaction.stellar_account
+    )
+    if not account_qs.exists():
+        # Unknown stellar account, get KYC info
+        return KYCForm
+    elif not transaction.amount_in:
+        # We have user info, get transaction info
+        return TransactionForm
+    else:
+        return None
 
 
 class MyDepositIntegration(DepositIntegration):
@@ -90,6 +149,24 @@ class MyDepositIntegration(DepositIntegration):
                 f"wait.)"
             )
 
+    @classmethod
+    def form_for_transaction(
+        cls, transaction: Transaction
+    ) -> Optional[Type[forms.Form]]:
+        return serve_form(transaction)
+
+    @classmethod
+    def after_form_validation(cls, form: forms.Form, transaction: Transaction):
+        try:
+            track_user_activity(form, transaction)
+        except RuntimeError:
+            # Since no polaris account exists for this transaction, KYCForm
+            # will be returned from the next form_for_transaction() call
+            logger.exception(
+                f"KYCForm was not served first for unknown account, id: "
+                f"{transaction.stellar_account}"
+            )
+
 
 class MyWithdrawalIntegration(WithdrawalIntegration):
     @classmethod
@@ -101,6 +178,24 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
             to_account=transaction.to_address,
             amount=transaction.amount_in - transaction.amount_fee,
         )
+
+    @classmethod
+    def form_for_transaction(
+        cls, transaction: Transaction
+    ) -> Optional[Type[forms.Form]]:
+        return serve_form(transaction)
+
+    @classmethod
+    def after_form_validation(cls, form: forms.Form, transaction: Transaction):
+        try:
+            track_user_activity(form, transaction)
+        except RuntimeError:
+            # Since no polaris account exists for this transaction, KYCForm
+            # will be returned from the next form_for_transaction() call
+            logger.exception(
+                f"KYCForm was not served first for unknown account, id: "
+                f"{transaction.stellar_account}"
+            )
 
 
 def get_stellar_toml():

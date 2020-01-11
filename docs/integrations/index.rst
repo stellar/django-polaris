@@ -2,6 +2,8 @@
 Integrations
 ==========================================
 
+.. _SDF: https://www.stellar.org/foundation/
+.. _github: https://github.com/stellar/django-polaris/tree/master/example
 .. _SEP-24: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md
 .. _Django Commands: https://docs.djangoproject.com/en/2.2/howto/custom-management-commands
 
@@ -12,6 +14,9 @@ Integrations classes come in
 
 These classes should be subclassed and its methods overridden by Polaris
 developers to fill in the gaps in Polaris's functionality.
+
+The SDF_ also maintains an reference implementation of an anchor server using
+Polaris. The source can be found in the Polaris github_ repository.
 
 Banking Rails
 -------------

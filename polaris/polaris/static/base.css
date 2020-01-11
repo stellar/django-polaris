@@ -35,7 +35,7 @@ button[type="submit"] {
   color: white;
 }
 
-input[type=text], input[type=number] {
+input[type=text], input[type=number], input[type=email]{
   height: 44px;
   width: 100%;
   border-radius: 2px;
