@@ -17,13 +17,56 @@ $radio-size: 2rem;
 $bullet-size: 1rem;
 $radio-font-size: 18/16 + rem;
 
-.radio-group {
-  display: flex;
-  flex-direction: column;
+.field {
+  margin: 1rem 0;
+}
+
+.label {
+  display: block;
+  font-size: 15/16 + rem;
+  color: $light_-2;
+  padding: 0.25rem 0 0.5rem 0.25rem;
+}
+
+.button {
+  display: block;
+  cursor: pointer;
+  background-color: $dark_2;
+  border: none;
+  border-radius: $border-radius;
+  color: $light_-2;
+  padding: 20px 30px;
+  margin: 0 auto;
+  width: 90%;
+  max-width: 250px;
+  transition: background-color 0.2s ease-out;
+
+  &:focus {
+    outline: none;
+    box-shadow: 0 0 8px #0dbb9c, 0 0 1px #0dbb9c;
+  }
+
+  &:hover {
+    background-color: lighten($dark-gray, 5%);
+  }
+
+  &:disabled {
+    background-color: desaturate($dark-gray, 100%);
+    opacity: 0.4;
+  }
+
+  &:active {
+    background-color: $dark-gray;
+  }
 }
 
 ::placeholder {
   color: $input-placeholder-color;
+}
+
+.radio-group {
+  display: flex;
+  flex-direction: column;
 }
 
 .control {
@@ -67,9 +110,9 @@ $radio-font-size: 18/16 + rem;
     padding: 15px 40px 15px 18px;
     margin: 0;
     background-color: $input-color;
-    border-radius: $input-main-color;
+    border-radius: $border-radius;
     border: none;
-    color: $white;
+    color: $light_-2;
     background-image: url("../assets/chevron-down.svg");
     background-repeat: no-repeat;
     background-position: right 1em top 50%, 0 0;
@@ -131,42 +174,5 @@ $radio-font-size: 18/16 + rem;
         transform: scale(1);
       }
     }
-  }
-}
-
-.label {
-  display: block;
-  font-size: 15/16 + rem;
-  color: $white;
-  padding: 1.25rem 0 0.5rem 0.25rem;
-}
-
-.button {
-  cursor: pointer;
-  background-color: $dark-gray;
-  border: none;
-  border-radius: $border-radius;
-  color: $white;
-  padding: 20px 30px;
-  width: 90%;
-  max-width: 250px;
-  transition: background-color 0.2s ease-out;
-
-  &:focus {
-    outline: none;
-    box-shadow: 0 0 8px #0dbb9c, 0 0 1px #0dbb9c;
-  }
-
-  &:hover {
-    background-color: lighten($dark-gray, 5%);
-  }
-
-  &:disabled {
-    background-color: desaturate($dark-gray, 100%);
-    opacity: 0.4;
-  }
-
-  &:active {
-    background-color: $dark-gray;
   }
 }

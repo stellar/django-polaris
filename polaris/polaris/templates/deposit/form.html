@@ -15,27 +15,31 @@
     {% csrf_token %}
 
     {% for field in form %}
-    <div class="field">
-      {% if field.name == 'amount' %}
-      <label class="label">{{ field.label }}</label>
-      <div class="control has-icons-left">
-        <div class="icon">$</div>
-        {{ field }}
+      <div class="field">
+        {% if field.name == 'amount' %}
+          <label>
+            <div class="label">{{ field.label }}</div>
+            <div class="control has-icons-left">
+              <div class="icon">$</div>
+              {{ field }}
+            </div>
+          </label>
+        {% else %}
+          <label>
+            <div class="label">{{ field.label }}</div>
+            <div class="control"> {{ field }} </div>
+          </label>
+        {% endif %}
+
+        {% if field.errors %}
+        <p class="help is-danger">
+          {% for error in field.errors %}
+          {{ error }}
+          {% endfor %}
+        </p>
+        {% endif %}
+
       </div>
-      {% else %}
-      <label class="label"> {{ field.label }}</label>
-      <div class="control"> {{ field }} </div>
-      {% endif %}
-
-      {% if field.errors %}
-      <p class="help is-danger">
-        {% for error in field.errors %}
-        {{ error }}
-        {% endfor %}
-      </p>
-      {% endif %}
-
-    </div>
     {% endfor %}
 
     <div class="field at-bottom">

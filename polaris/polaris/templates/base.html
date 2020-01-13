@@ -12,9 +12,13 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Cabin&display=swap">
     <link rel="stylesheet" href="{% sass_src 'base.scss' %}" />
     <script
-      defer
-      src="https://use.fontawesome.com/releases/v5.3.1/js/all.js"
+      async
+      src="https://unpkg.com/flatpickr@4.6.3/dist/flatpickr.min.js"
     ></script>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/flatpickr@4.6.3/dist/flatpickr.min.css"
+    ></link>
   </head>
   <body>
     {% block "header" %}
@@ -31,9 +35,46 @@
       {% block "content" %}
       {% endblock %}
     </div>
-    <div class="bottom-section">
+    <div class="bottom section">
       {% block "footer" %}
       {% endblock %}
     </div>
+    <script type="text/javascript">
+"use strict";
+function _instanceof(left, right) { if (right != null && typeof Symbol !== "undefined" && right[Symbol.hasInstance]) { return !!right[Symbol.hasInstance](left); } else { return left instanceof right; } }
+
+// Manually babel-ized helper. Generic helper to wait until conditions are right.
+var waitFor = function waitFor(predicate) {
+  var pollInterval = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 100;
+  return new Promise(function (resolve) {
+    var check = function check() {
+      var result = predicate();
+      if (_instanceof(result, Promise)) {
+        result.then(function (isFinished) {
+          if (isFinished) {
+            resolve();
+            return;
+          }
+          setTimeout(check, pollInterval);
+        });
+      } else {
+        if (result) {
+          resolve();
+          return;
+        }
+        setTimeout(check, pollInterval);
+      }
+    };
+    check();
+  });
+};
+
+// Date/time pickers
+waitFor(function() {return !!window.flatpickr}).then(function () {
+  window.flatpickr('input.date');
+  window.flatpickr('input.date-time', {enableTime: true});
+  window.flatpickr('input.time', {noCalendar: true, enableTime: true});
+})
+    </script>
   </body>
 </html>
