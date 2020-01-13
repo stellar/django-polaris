@@ -25,11 +25,16 @@ $radio-font-size: 18/16 + rem;
 }
 
 .control {
+  position: relative;
   cursor: pointer;
 
   input[type="text"],
   input[type="number"],
+  input[type="date"],
+  input[type="time"],
+  input[type="password"],
   input[type="email"] {
+    width: 100%;
     background-color: $input-color;
     border-radius: $border-radius;
     border: none;
@@ -38,17 +43,18 @@ $radio-font-size: 18/16 + rem;
     outline: none;
 
     &:focus {
-      box-shadow: 0 0 .5rem rgba($input-focus-color, 0.6),
-        0 0 .125rem $input-focus-color;
+      box-shadow: 0 0 0.5rem rgba($input-focus-color, 0.6),
+        0 0 0.125rem $input-focus-color;
     }
 
-    &:invalid {
+    &:invalid:not(:placeholder-shown) {
       color: $danger_0;
-      box-shadow: 0 0 .25rem rgba($danger_0, 0.6), 0 0 .125rem $danger_0;
+      box-shadow: 0 0 0.25rem rgba($danger_0, 0.6), 0 0 0.125rem $danger_0;
     }
   }
 
   select {
+    width: 100%;
     display: block;
     -moz-appearance: none;
     -webkit-appearance: none;
@@ -69,7 +75,7 @@ $radio-font-size: 18/16 + rem;
         0 0 1px $input-focus-color;
     }
 
-    &:invalid {
+    &:invalid:not(:placeholder-shown) {
       color: $input-placeholder-color;
     }
   }
@@ -125,9 +131,10 @@ $radio-font-size: 18/16 + rem;
 }
 
 .label {
+  display: block;
   font-size: 15/16 + rem;
   color: $white;
-  padding: 20px 0 7px 5px;
+  padding: 1.25rem 0 0.5rem 0.25rem;
 }
 
 .button {
