@@ -26,7 +26,6 @@ def execute_deposit(transaction: Transaction) -> bool:
             f"Unexpected transaction status: {transaction.status}, expecting "
             f"{transaction.STATUS.pending_user_transfer_start}"
         )
-    print("Setting to pending_anchor")
     transaction.status = Transaction.STATUS.pending_anchor
     transaction.status_eta = 5  # Ledger close time.
     transaction.save()
