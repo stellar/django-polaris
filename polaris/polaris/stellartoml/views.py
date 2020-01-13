@@ -18,7 +18,7 @@ def generate_toml(request):
         "TRANSFER_SERVER": request.build_absolute_uri("/"),
         "WEB_AUTH_ENDPOINT": request.build_absolute_uri("/auth"),
         "ACCOUNTS": [
-            asset["DISTRIBUTION_ACCOUNT_ADDRESS"] for asset in settings.ASSETS
+            asset["DISTRIBUTION_ACCOUNT_ADDRESS"] for asset in settings.ASSETS.values()
         ],
         "VERSION": "0.1.0",
     }

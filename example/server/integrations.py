@@ -91,7 +91,8 @@ class MyDepositIntegration(DepositIntegration):
 
         # interface with mock banking rails
         ready_deposits = []
-        client = rails.BankAPIClient(settings.MOCK_BANK_ACCOUNT_ID)
+        mock_bank_account_id = "XXXXXXXXXXXXX"
+        client = rails.BankAPIClient(mock_bank_account_id)
         for deposit in pending_deposits:
             bank_deposit = client.get_deposit(memo=deposit.external_extra)
             if bank_deposit and bank_deposit.status == "complete":
@@ -208,8 +209,10 @@ def get_stellar_toml():
             "ORG_GITHUB": "stellar",
         },
         "CURRENCIES": [
-            {"code": asset.code, "issuer": env("STELLAR_ISSUER_ACCOUNT_ADDRESS"),}
-            for asset in Asset.objects.all().iterator()
+            {
+                "code": "USD",
+                "issuer": "GBHJFK4LOLMYV34P25WBKDPVX75ANB3QQJCRBYO4MGWGFTUE7DBBW2PI",
+            }
         ],
         "SIGNING_KEY": "GCQUFKX3KZ3BQYD56KV2WLJJVBYHNH54N2JPTDGKGRHKRCDSC6R2SQEX",
         "NETWORK_PASSPHRASE": env("STELLAR_NETWORK_PASSPHRASE"),

@@ -39,6 +39,7 @@ def create_stellar_deposit(transaction_id: str) -> bool:
             f"unexpected transaction status {transaction.status} for "
             "create_stellar_deposit",
         )
+    print("Setting to pending_stellar")
     transaction.status = Transaction.STATUS.pending_stellar
     transaction.save()
 
