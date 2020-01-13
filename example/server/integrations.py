@@ -7,7 +7,6 @@ from django.conf import settings
 from django.db.models import QuerySet
 from django import forms
 
-import polaris.settings
 from polaris.models import Transaction, Asset
 from polaris.integrations import (
     DepositIntegration,
@@ -209,10 +208,7 @@ def get_stellar_toml():
             "ORG_GITHUB": "stellar",
         },
         "CURRENCIES": [
-            {
-                "code": asset.code,
-                "issuer": polaris.settings.STELLAR_ISSUER_ACCOUNT_ADDRESS,
-            }
+            {"code": asset.code, "issuer": env("STELLAR_ISSUER_ACCOUNT_ADDRESS"),}
             for asset in Asset.objects.all().iterator()
         ],
         "SIGNING_KEY": "GCQUFKX3KZ3BQYD56KV2WLJJVBYHNH54N2JPTDGKGRHKRCDSC6R2SQEX",
