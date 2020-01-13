@@ -4,9 +4,9 @@ django_debug: true
 django_secret_key: "secretkeykeysecret"
 
 assets:
-  usd:
-    distribution_account_seed: ""
-    issuer_account_address: ""
+  myusd:
+    distribution_account_seed: "SBHSEGABIZI5HW75P2CEYVWLFNTMWTNRB7PGDA4SSMWTXCCQQGPKESJL"
+    issuer_account_address: "GBH7AACZJUQBX4LN6NJP6HL3S6S3AAOIHNBQZHSSYOCCTSLEUQ54BTLG"
 
 # STELLAR_NETWORK_PASSPHRASE can either be "Test SDF Network ; September 2015" or
 # "Public Global Stellar Network ; September 2015" or a custom passphrase
