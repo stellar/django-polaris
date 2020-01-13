@@ -43,7 +43,7 @@ def test_deposit_success(mock_check, client, acc1_usd_deposit_transaction_factor
     del mock_check
     deposit = acc1_usd_deposit_transaction_factory()
     response = client.post(
-        DEPOSIT_PATH, {"asset_code": "USD", "account": deposit.stellar_account},
+        DEPOSIT_PATH, {"asset_code": "MYUSD", "account": deposit.stellar_account},
     )
     content = json.loads(response.content)
     assert content["type"] == "interactive_customer_info_needed"
@@ -58,7 +58,7 @@ def test_deposit_success_memo(mock_check, client, acc1_usd_deposit_transaction_f
     response = client.post(
         DEPOSIT_PATH,
         {
-            "asset_code": "USD",
+            "asset_code": "MYUSD",
             "account": deposit.stellar_account,
             "memo_type": "text",
             "memo": "foo",
@@ -121,7 +121,7 @@ def test_deposit_invalid_account(
     response = client.post(
         DEPOSIT_PATH,
         {
-            "asset_code": "USD",
+            "asset_code": "MYUSD",
             "account": "GBSH7WNSDU5FEIED2JQZIOQPZXREO3YNH2M5DIBE8L2X5OOAGZ7N2QI6",
         },
         follow=True,
@@ -161,7 +161,11 @@ def test_deposit_invalid_memo_type(
     deposit = acc1_usd_deposit_transaction_factory()
     response = client.post(
         DEPOSIT_PATH,
-        {"asset_code": "USD", "account": deposit.stellar_account, "memo_type": "test"},
+        {
+            "asset_code": "MYUSD",
+            "account": deposit.stellar_account,
+            "memo_type": "test",
+        },
         follow=True,
     )
     content = json.loads(response.content)
@@ -178,7 +182,11 @@ def test_deposit_no_memo(mock_check, client, acc1_usd_deposit_transaction_factor
     deposit = acc1_usd_deposit_transaction_factory()
     response = client.post(
         DEPOSIT_PATH,
-        {"asset_code": "USD", "account": deposit.stellar_account, "memo_type": "text"},
+        {
+            "asset_code": "MYUSD",
+            "account": deposit.stellar_account,
+            "memo_type": "text",
+        },
         follow=True,
     )
     content = json.loads(response.content)
@@ -194,7 +202,7 @@ def test_deposit_no_memo_type(mock_check, client, acc1_usd_deposit_transaction_f
     deposit = acc1_usd_deposit_transaction_factory()
     response = client.post(
         DEPOSIT_PATH,
-        {"asset_code": "USD", "account": deposit.stellar_account, "memo": "text"},
+        {"asset_code": "MYUSD", "account": deposit.stellar_account, "memo": "text"},
         follow=True,
     )
     content = json.loads(response.content)
@@ -214,7 +222,7 @@ def test_deposit_invalid_hash_memo(
     response = client.post(
         DEPOSIT_PATH,
         {
-            "asset_code": "USD",
+            "asset_code": "MYUSD",
             "account": deposit.stellar_account,
             "memo_type": "hash",
             "memo": "foo",
@@ -341,7 +349,7 @@ def test_deposit_interactive_confirm_success(
 
     response = client.post(
         DEPOSIT_PATH,
-        {"asset_code": "USD", "account": deposit.stellar_account},
+        {"asset_code": "MYUSD", "account": deposit.stellar_account},
         follow=True,
         **header,
     )
@@ -383,7 +391,7 @@ def test_deposit_interactive_confirm_success(
 )
 @patch(
     "stellar_sdk.call_builder.accounts_call_builder.AccountsCallBuilder.call",
-    return_value={"sequence": 1, "balances": [{"asset_code": "USD"}]},
+    return_value={"sequence": 1, "balances": [{"asset_code": "MYUSD"}]},
 )
 def test_deposit_check_trustlines_success(
     mock_account,
@@ -438,7 +446,7 @@ def test_deposit_authenticated_success(client, acc1_usd_deposit_transaction_fact
     header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
     response = client.post(
         DEPOSIT_PATH,
-        {"asset_code": "USD", "account": deposit.stellar_account},
+        {"asset_code": "MYUSD", "account": deposit.stellar_account},
         follow=True,
         **header,
     )
@@ -454,7 +462,7 @@ def test_deposit_no_jwt(client, acc1_usd_deposit_transaction_factory):
     response = client.post(
         DEPOSIT_PATH,
         {
-            "asset_code": "USD",
+            "asset_code": "MYUSD",
             "account": deposit.stellar_account,
             "memo_type": "text",
             "memo": "foo",

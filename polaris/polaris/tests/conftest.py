@@ -23,7 +23,7 @@ def fixture_usd_asset_factory():
         to https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md#response-2
         """
         usd_asset = Asset.objects.create(
-            code="USD",
+            code="MYUSD",
             # Deposit Info
             deposit_enabled=True,
             deposit_fee_fixed=5,

@@ -20,7 +20,7 @@ def _get_expected_response(settings):
     return f"""
     {{
         "deposit": {{
-            "USD": {{
+            "MYUSD": {{
                 "enabled": true,
                 "fee_fixed": 5.0,
                 "fee_percent": 1.0,
@@ -36,7 +36,7 @@ def _get_expected_response(settings):
             }}
         }},
         "withdraw": {{
-            "USD": {{
+            "MYUSD": {{
                 "enabled": true,
                 "fee_fixed": 5.0,
                 "fee_percent": 0.0,

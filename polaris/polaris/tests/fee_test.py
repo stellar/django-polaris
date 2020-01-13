@@ -39,7 +39,7 @@ def test_fee_no_operation(mock_check, client, usd_asset_factory):
     """Fails with no `operation` provided."""
     del mock_check
     usd_asset_factory()
-    response = client.get(f"/fee?asset_code=USD", follow=True)
+    response = client.get(f"/fee?asset_code=MYUSD", follow=True)
     content = json.loads(response.content)
 
     assert response.status_code == 400
@@ -52,7 +52,7 @@ def test_fee_invalid_operation(mock_check, client, usd_asset_factory):
     """Fails with an invalid `operation` provided."""
     del mock_check
     usd_asset_factory()
-    response = client.get(f"/fee?asset_code=USD&operation=generate", follow=True)
+    response = client.get(f"/fee?asset_code=MYUSD&operation=generate", follow=True)
     content = json.loads(response.content)
 
     assert response.status_code == 400
@@ -65,7 +65,7 @@ def test_fee_no_amount(mock_check, client, usd_asset_factory):
     """Fails with no amount provided."""
     del mock_check
     usd_asset_factory()
-    response = client.get(f"/fee?asset_code=USD&operation=withdraw", follow=True)
+    response = client.get(f"/fee?asset_code=MYUSD&operation=withdraw", follow=True)
     content = json.loads(response.content)
 
     assert response.status_code == 400
@@ -79,7 +79,7 @@ def test_fee_invalid_amount(mock_check, client, usd_asset_factory):
     del mock_check
     usd_asset_factory()
     response = client.get(
-        f"/fee?asset_code=USD&operation=withdraw&amount=TEXT", follow=True
+        f"/fee?asset_code=MYUSD&operation=withdraw&amount=TEXT", follow=True
     )
     content = json.loads(response.content)
 
@@ -94,12 +94,12 @@ def test_fee_invalid_operation_type_deposit(mock_check, client, usd_asset_factor
     del mock_check
     usd_asset_factory()
     response = client.get(
-        f"/fee?asset_code=USD&operation=deposit&amount=100.0&type=IBAN", follow=True
+        f"/fee?asset_code=MYUSD&operation=deposit&amount=100.0&type=IBAN", follow=True
     )
     content = json.loads(response.content)
 
     assert response.status_code == 400
-    assert content == {"error": "the specified operation is not available for 'USD'"}
+    assert content == {"error": "the specified operation is not available for 'MYUSD'"}
 
 
 @pytest.mark.django_db
@@ -109,12 +109,12 @@ def test_fee_invalid_operation_type_withdraw(mock_check, client, usd_asset_facto
     del mock_check
     usd_asset_factory()
     response = client.get(
-        f"/fee?asset_code=USD&operation=withdraw&amount=100.0&type=IBAN", follow=True
+        f"/fee?asset_code=MYUSD&operation=withdraw&amount=100.0&type=IBAN", follow=True
     )
     content = json.loads(response.content)
 
     assert response.status_code == 400
-    assert content == {"error": "the specified operation is not available for 'USD'"}
+    assert content == {"error": "the specified operation is not available for 'MYUSD'"}
 
 
 @pytest.mark.django_db
@@ -159,7 +159,7 @@ def test_fee_valid_deposit(mock_check, client, usd_asset_factory):
     usd_asset_factory()
 
     response = client.get(
-        f"/fee?asset_code=USD&operation=deposit&amount=200.0", follow=True
+        f"/fee?asset_code=MYUSD&operation=deposit&amount=200.0", follow=True
     )
     content = json.loads(response.content)
 
@@ -176,7 +176,7 @@ def test_fee_valid_withdrawal(mock_check, client, usd_asset_factory):
     usd_asset_factory()
 
     response = client.get(
-        f"/fee?asset_code=USD&operation=withdraw&amount=100.0", follow=True
+        f"/fee?asset_code=MYUSD&operation=withdraw&amount=100.0", follow=True
     )
     content = json.loads(response.content)
 
@@ -216,7 +216,7 @@ def test_fee_authenticated_success(client, usd_asset_factory):
     header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
 
     response = client.get(
-        f"/fee?asset_code=USD&operation=withdraw&amount=100.0", follow=True, **header
+        f"/fee?asset_code=MYUSD&operation=withdraw&amount=100.0", follow=True, **header
     )
     content = json.loads(response.content)
 
@@ -229,7 +229,7 @@ def test_fee_no_jwt(client, usd_asset_factory):
     """`GET /fee` fails if a required JWT is not provided."""
     usd_asset_factory()
     response = client.get(
-        f"/fee?asset_code=USD&operation=withdraw&amount=100.0", follow=True
+        f"/fee?asset_code=MYUSD&operation=withdraw&amount=100.0", follow=True
     )
     content = json.loads(response.content)
     assert response.status_code == 400

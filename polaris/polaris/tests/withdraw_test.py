@@ -8,7 +8,7 @@ from stellar_sdk.transaction_envelope import TransactionEnvelope
 
 from polaris import settings
 from polaris.helpers import format_memo_horizon
-from polaris.management.commands.watch_transactions import update_transaction
+from polaris.management.commands.watch_transactions import Command
 from polaris.models import Transaction
 from polaris.tests.helpers import mock_check_auth_success
 
@@ -21,7 +21,7 @@ def test_withdraw_success(mock_check, client, acc1_usd_withdrawal_transaction_fa
     """`GET /withdraw` succeeds with no optional arguments."""
     del mock_check
     acc1_usd_withdrawal_transaction_factory()
-    response = client.post(WITHDRAW_PATH, {"asset_code": "USD"}, follow=True)
+    response = client.post(WITHDRAW_PATH, {"asset_code": "MYUSD"}, follow=True)
     content = json.loads(response.content)
     assert content["type"] == "interactive_customer_info_needed"
 
@@ -105,20 +105,16 @@ def test_withdraw_interactive_invalid_asset(
 
 
 @pytest.mark.django_db
-@patch(
-    "polaris.management.commands.watch_transactions.stream_transactions",
-    return_value=[{}],
-)
 @patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
 def test_withdraw_interactive_failure_no_memotype(
-    mock_check, mock_transactions, client, acc1_usd_withdrawal_transaction_factory
+    mock_check, client, acc1_usd_withdrawal_transaction_factory
 ):
     """
     `GET /transactions/withdraw/webapp` fails with no `memo_type` in Horizon response.
     """
-    del mock_check, mock_transactions
+    del mock_check
     acc1_usd_withdrawal_transaction_factory()
-    response = client.post(WITHDRAW_PATH, {"asset_code": "USD"}, follow=True)
+    response = client.post(WITHDRAW_PATH, {"asset_code": "MYUSD"}, follow=True)
     content = json.loads(response.content)
     assert content["type"] == "interactive_customer_info_needed"
 
@@ -141,20 +137,16 @@ def test_withdraw_interactive_failure_no_memotype(
 
 
 @pytest.mark.django_db
-@patch(
-    "polaris.management.commands.watch_transactions.stream_transactions",
-    return_value=[{"memo_type": "not_hash"}],
-)
 @patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
 def test_withdraw_interactive_failure_incorrect_memotype(
-    mock_check, mock_transactions, client, acc1_usd_withdrawal_transaction_factory
+    mock_check, client, acc1_usd_withdrawal_transaction_factory
 ):
     """
     `GET /transactions/withdraw/webapp` fails with incorrect `memo_type` in Horizon response.
     """
-    del mock_check, mock_transactions
+    del mock_check
     acc1_usd_withdrawal_transaction_factory()
-    response = client.post(WITHDRAW_PATH, {"asset_code": "USD"}, follow=True)
+    response = client.post(WITHDRAW_PATH, {"asset_code": "MYUSD"}, follow=True)
     content = json.loads(response.content)
     assert content["type"] == "interactive_customer_info_needed"
 
@@ -177,20 +169,16 @@ def test_withdraw_interactive_failure_incorrect_memotype(
 
 
 @pytest.mark.django_db
-@patch(
-    "polaris.management.commands.watch_transactions.stream_transactions",
-    return_value=[{"memo_type": "hash"}],
-)
 @patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
 def test_withdraw_interactive_failure_no_memo(
-    mock_check, mock_transactions, client, acc1_usd_withdrawal_transaction_factory
+    mock_check, client, acc1_usd_withdrawal_transaction_factory
 ):
     """
     `GET /transactions/withdraw/webapp` fails with no `memo` in Horizon response.
     """
-    del mock_check, mock_transactions
+    del mock_check
     acc1_usd_withdrawal_transaction_factory()
-    response = client.post(WITHDRAW_PATH, {"asset_code": "USD"}, follow=True)
+    response = client.post(WITHDRAW_PATH, {"asset_code": "MYUSD"}, follow=True)
     content = json.loads(response.content)
     assert content["type"] == "interactive_customer_info_needed"
 
@@ -213,20 +201,16 @@ def test_withdraw_interactive_failure_no_memo(
 
 
 @pytest.mark.django_db
-@patch(
-    "polaris.management.commands.watch_transactions.stream_transactions",
-    return_value=[{"memo_type": "hash", "memo": "wrong_memo"}],
-)
 @patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
 def test_withdraw_interactive_failure_incorrect_memo(
-    mock_check, mock_transactions, client, acc1_usd_withdrawal_transaction_factory
+    mock_check, client, acc1_usd_withdrawal_transaction_factory
 ):
     """
     `GET /transactions/withdraw/webapp` fails with incorrect `memo` in Horizon response.
     """
-    del mock_check, mock_transactions
+    del mock_check
     acc1_usd_withdrawal_transaction_factory()
-    response = client.post(WITHDRAW_PATH, {"asset_code": "USD"}, follow=True)
+    response = client.post(WITHDRAW_PATH, {"asset_code": "MYUSD"}, follow=True)
     content = json.loads(response.content)
     assert content["type"] == "interactive_customer_info_needed"
 
@@ -259,7 +243,7 @@ def test_withdraw_interactive_success_transaction_unsuccessful(
     """
     del mock_check
     acc1_usd_withdrawal_transaction_factory()
-    response = client.post(WITHDRAW_PATH, {"asset_code": "USD"}, follow=True)
+    response = client.post(WITHDRAW_PATH, {"asset_code": "MYUSD"}, follow=True)
     content = json.loads(response.content)
     assert content["type"] == "interactive_customer_info_needed"
 
@@ -286,7 +270,7 @@ def test_withdraw_interactive_success_transaction_unsuccessful(
         "id": "c5e8ada72c0e3c248ac7e1ec0ec97e204c06c295113eedbe632020cd6dc29ff8",
         "envelope_xdr": "AAAAAEU1B1qeJrucdqkbk1mJsnuFaNORfrOAzJyaAy1yzW8TAAAAZAAE2s4AAAABAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAAoUKq+1Z2GGB98qurLSmocHafvG6S+YzKNE6oiHIXo6kAAAABVVNEAAAAAACnUE2lfwuFZ+G+dkc+qiL0MwxB0CoR0au324j+JC9exQAAAAAdzWUAAAAAAAAAAAA=",
     }
-    update_transaction(mock_response, transaction)
+    Command.update_transaction(mock_response, transaction)
     assert Transaction.objects.get(id=transaction_id).status == Transaction.STATUS.error
 
 
@@ -301,7 +285,7 @@ def test_withdraw_interactive_success_transaction_successful(
     """
     del mock_check
     acc1_usd_withdrawal_transaction_factory()
-    response = client.post(WITHDRAW_PATH, {"asset_code": "USD"}, follow=True)
+    response = client.post(WITHDRAW_PATH, {"asset_code": "MYUSD"}, follow=True)
     content = json.loads(response.content)
     assert content["type"] == "interactive_customer_info_needed"
 
@@ -328,7 +312,7 @@ def test_withdraw_interactive_success_transaction_successful(
         "id": "c5e8ada72c0e3c248ac7e1ec0ec97e204c06c295113eedbe632020cd6dc29ff8",
         "envelope_xdr": "AAAAAEU1B1qeJrucdqkbk1mJsnuFaNORfrOAzJyaAy1yzW8TAAAAZAAE2s4AAAABAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAAoUKq+1Z2GGB98qurLSmocHafvG6S+YzKNE6oiHIXo6kAAAABVVNEAAAAAACnUE2lfwuFZ+G+dkc+qiL0MwxB0CoR0au324j+JC9exQAAAAAdzWUAAAAAAAAAAAA=",
     }
-    update_transaction(mock_response, transaction)
+    Command.update_transaction(mock_response, transaction)
 
     assert transaction.status == Transaction.STATUS.completed
     assert transaction.completed_at
@@ -365,7 +349,9 @@ def test_withdraw_authenticated_success(
     assert encoded_jwt
 
     header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
-    response = client.post(WITHDRAW_PATH, {"asset_code": "USD"}, follow=True, **header)
+    response = client.post(
+        WITHDRAW_PATH, {"asset_code": "MYUSD"}, follow=True, **header
+    )
     content = json.loads(response.content)
     assert content["type"] == "interactive_customer_info_needed"
 
@@ -374,7 +360,7 @@ def test_withdraw_authenticated_success(
 def test_withdraw_no_jwt(client, acc1_usd_withdrawal_transaction_factory):
     """`GET /withdraw` fails if a required JWT isn't provided."""
     acc1_usd_withdrawal_transaction_factory()
-    response = client.post(WITHDRAW_PATH, {"asset_code": "USD"}, follow=True)
+    response = client.post(WITHDRAW_PATH, {"asset_code": "MYUSD"}, follow=True)
     content = json.loads(response.content)
     assert response.status_code == 400
     assert content == {"error": "JWT must be passed as 'Authorization' header"}
