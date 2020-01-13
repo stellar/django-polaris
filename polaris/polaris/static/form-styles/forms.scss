@@ -1,6 +1,8 @@
-@import "form-styles/theme.scss";
+@import "./theme.scss";
 
-@import "form-styles/select-list.scss";
+@import "./file-picker.scss";
+@import "./select-list.scss";
+@import "./toggle.scss";
 
 $border-radius: 0.75rem;
 
@@ -31,6 +33,7 @@ $radio-font-size: 18/16 + rem;
   input[type="text"],
   input[type="number"],
   input[type="date"],
+  input[type="datetime-local"],
   input[type="time"],
   input[type="password"],
   input[type="email"] {
@@ -53,7 +56,8 @@ $radio-font-size: 18/16 + rem;
     }
   }
 
-  select {
+  select,
+  textarea {
     width: 100%;
     display: block;
     -moz-appearance: none;
