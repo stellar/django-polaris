@@ -34,7 +34,6 @@ django_apps = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "django.forms",
 ]
 third_party_apps = ["rest_framework", "corsheaders", "sslserver", "sass_processor"]
 INSTALLED_APPS = django_apps + third_party_apps + ["polaris"]
