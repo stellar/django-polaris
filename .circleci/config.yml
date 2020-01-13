@@ -27,7 +27,7 @@ jobs: # A basic unit of work in a run
             - "/usr/local/lib/python3.7/site-packages"
       - run:
           command: |
-            cp polaris/config-example.yml polaris/config.yml
+            cp polaris/.env.example polaris/.env
             pipenv run pytest --cov -c polaris/pytest.ini
             pipenv run codecov
             pipenv --rm
