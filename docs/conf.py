@@ -31,9 +31,9 @@ copyright = '2019, Jake Urban'
 author = 'Jake Urban'
 
 # The short X.Y version
-version = '0.9.12'
+version = '0.9.13'
 # The full version, including alpha/beta/rc tags
-release = '0.9.12'
+release = '0.9.13'
 
 
 # -- General configuration ---------------------------------------------------
