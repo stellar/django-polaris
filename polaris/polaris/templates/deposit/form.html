@@ -19,14 +19,12 @@
       {% if field.name == 'amount' %}
       <label class="label">{{ field.label }}</label>
       <div class="control has-icons-left">
+        <div class="icon">$</div>
         {{ field }}
-        <span class="icon is-left">
-          <i class="fas fa-dollar-sign"></i>
-        </span>
       </div>
       {% else %}
       <label class="label"> {{ field.label }}</label>
-      <div> {{ field }} </div>
+      <div class="control"> {{ field }} </div>
       {% endif %}
 
       {% if field.errors %}
