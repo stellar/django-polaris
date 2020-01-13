@@ -1,10 +1,9 @@
 @import "reset.scss";
 @import "normalize.scss";
 @import "colors.scss";
-@import "forms.scss";
+@import "form-styles/forms.scss";
 
 html {
-  box-sizing: border-box;
   font-size: 16px;
   background-image: linear-gradient(to bottom, $gradient-start, $gradient-end);
   color: $text-color;
@@ -12,35 +11,33 @@ html {
   -moz-osx-font-smoothing: grayscale;
 }
 
-body,
-html {
+body {
+  min-width: 20rem;
+  box-sizing: border-box;
   font-family: $main-typeface;
-  min-height: 100%;
-  display: flex;
-  flex-direction: column;
+
+  & *,
+  & *:before,
+  & *:after {
+    box-sizing: inherit;
+  }
 }
 
-*,
-*:before,
-*:after {
-  box-sizing: inherit;
+.bottom {
+  padding-bottom: 2rem;
+  margin: auto;
 }
 
 .main-content {
-  flex-grow: 1;
-}
-
-.bottom-section {
-  flex-grow: 0;
-  margin: auto;
-  padding-bottom: 2rem;
-  width: calc(100% - 3rem);
+  margin: 0 0.5rem;
+  overflow-x: hidden;
 }
 
 .navbar {
   padding: 2rem 0;
   display: flex;
   justify-content: center;
+  margin: auto;
 }
 
 .navbar-brand {
@@ -51,8 +48,10 @@ html {
 
 .section {
   padding: 1rem;
-  max-width: 35rem;
+  max-width: 25rem;
   margin: auto;
+  background-color: $alpha-dark_1;
+  border-radius: 0.75rem;
 }
 
 .control .icon {
