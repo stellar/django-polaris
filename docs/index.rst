@@ -160,7 +160,7 @@ Your browser may complain about the service using a self-signed certificate for 
 You can resolve this by marking the certificate used by the service as trusted.
 
 Testing
--------
+^^^^^^^
 You can install the dependencies locally in a virtual environment:
 ::
 
@@ -176,7 +176,7 @@ this may be slower.
     docker exec -it <image ID> pipenv run pytest
 
 Submit a PR
------------
+^^^^^^^^^^^
 After you've made your changes, push them to you a remote branch
 and make a Pull Request on the stellar/django-polaris master branch.
 
