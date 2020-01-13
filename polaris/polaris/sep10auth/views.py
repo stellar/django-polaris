@@ -34,9 +34,7 @@ def _challenge_transaction(client_account):
     This is used in `GET <auth>`, as per SEP 10.
     Returns the XDR encoding of that transaction.
     """
-    # TODO: server_secret should not be one of the distribution or
-    #   issuer account private keys, but for now we'll use the first
-    #   assets distribution account private key.
+    # TODO: https://github.com/stellar/django-polaris/issues/81
     default_asset = list(settings.ASSETS)[0]
     challenge_tx_xdr = build_challenge_transaction(
         server_secret=settings.ASSETS[default_asset]["DISTRIBUTION_ACCOUNT_SEED"],
