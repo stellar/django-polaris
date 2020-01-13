@@ -110,6 +110,3 @@ TIME_ZONE = "UTC"
 USE_I18N = True
 USE_L10N = True
 USE_TZ = True
-
-# Mock banking rails settings
-MOCK_BANK_ACCOUNT_ID = "XXXXXXXXXXXXXXX"
