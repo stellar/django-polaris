@@ -75,6 +75,13 @@ waitFor(function() {return !!window.flatpickr}).then(function () {
   window.flatpickr('input.date-time', {enableTime: true});
   window.flatpickr('input.time', {noCalendar: true, enableTime: true});
 })
+
+// File picker
+document.querySelectorAll('.file-upload-field').forEach(f => {
+  f.addEventListener('change', (e) => {
+     e.target.parentElement.setAttribute('data-text', e.target.value.replace(/.*(\/|\\)/, ''))
+  })
+})
     </script>
   </body>
 </html>
