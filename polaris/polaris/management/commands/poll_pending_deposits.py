@@ -81,4 +81,6 @@ class Command(BaseCommand):
                 logger.error(f"poll_pending_transactions: {str(e)}")
                 continue
             if success:
+                # Get updated status
+                transaction.refresh_from_db()
                 rdi.after_deposit(transaction)
