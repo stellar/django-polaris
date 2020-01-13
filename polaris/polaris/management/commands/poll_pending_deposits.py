@@ -59,7 +59,6 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         if options.get("loop"):
             while True:
-                print("Running execute_deposits()")
                 self.execute_deposits()
                 time.sleep(options.get("interval") or 10)
         else:
