@@ -36,10 +36,15 @@ django_apps = [
     "django.contrib.staticfiles",
 ]
 third_party_apps = ["rest_framework", "corsheaders", "sslserver", "sass_processor"]
-INSTALLED_APPS = django_apps + third_party_apps + ["polaris"]
+INSTALLED_APPS = django_apps + third_party_apps
 if os.path.exists(BASE_DIR + "/server"):
-    # The server app is present, add it to installed apps
+    # The server app is present, add it to installed apps.
+    #
+    # By adding it before 'polaris', 'server's static assets
+    # will be used in place of conflicting 'polaris' assets.
+    # Example: company-icon.svg
     INSTALLED_APPS.append("server")
+INSTALLED_APPS.append("polaris")
 
 # Modules to add to parent project's MIDDLEWARE
 MIDDLEWARE = [

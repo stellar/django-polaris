@@ -84,7 +84,7 @@ class DepositIntegration:
         Polaris will detect the form used is a :class:`TransactionForm` subclass
         and update the ``amount_in`` column with the amount specified in form.
 
-        The form will be rendered inside a django template that also has several
+        The form will be rendered inside a django template that has several
         pieces of content that can and should be replaced by also returning a
         dictionary containing the key-value pairs as shown below.
         ::
@@ -237,7 +237,7 @@ class WithdrawalIntegration:
         This function should return the next form class to render for the user
         given the state of the interactive flow.
 
-        The form will be rendered inside a django template that also has several
+        The form will be rendered inside a django template that has several
         pieces of content that can and should be replaced by also returning a
         dictionary containing the key-value pairs as shown below.
         ::

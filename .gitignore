@@ -33,6 +33,7 @@ MANIFEST
 # Static files
 polaris/polaris/collectstatic/*
 !polaris/polaris/collectstatic/__init__.py
+polaris/polaris/static/base.css
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
