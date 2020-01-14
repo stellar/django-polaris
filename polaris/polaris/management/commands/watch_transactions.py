@@ -170,6 +170,7 @@ class Command(BaseCommand):
     def _check_payment_op(
         operation: Operation, want_asset: str, want_amount: float
     ) -> bool:
+        # TODO: Add test cases!
         issuer = operation.asset.issuer
         code = operation.asset.code
         asset = settings.ASSETS.get(code, {})
