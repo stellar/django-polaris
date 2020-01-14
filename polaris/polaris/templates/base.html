@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
     {% block 'title' %}
-    <title>SEP24 reference server</title>
+    <title>{% if title %} {{ title }} {% else %} SEP24 reference server {% endif %}</title>
     {% endblock %}
 
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Cabin&display=swap">
@@ -18,7 +18,7 @@
     <link
       rel="stylesheet"
       href="https://unpkg.com/flatpickr@4.6.3/dist/flatpickr.min.css"
-    ></link>
+    />
     <style>
       {% comment %}
       Due to the static image, can't put the background in .scss
@@ -35,9 +35,11 @@
     <nav class="navbar" role="navigation" aria-label="main navigation">
       <div class="navbar-brand">
         <img width="60" height="60" src="{% static 'company-icon.svg' %}" alt="" />
+        {% if icon_label %}
         <a class="title" href="#">
-          Company Name
+            {{ icon_label }}
         </a>
+        {% endif %}
       </div>
     </nav>
     {% endblock %}

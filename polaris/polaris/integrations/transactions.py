@@ -1,4 +1,4 @@
-from typing import Type, Dict, List, Optional
+from typing import Type, Dict, List, Optional, Tuple
 from urllib.parse import urlencode
 
 from django.db.models import QuerySet
@@ -74,7 +74,7 @@ class DepositIntegration:
     @classmethod
     def form_for_transaction(
         cls, transaction: Transaction
-    ) -> Optional[Type[forms.Form]]:
+    ) -> Optional[Tuple[Type[forms.Form], Dict]]:
         """
         This function should return the next form class to render for the user
         given the state of the interactive flow.
@@ -83,6 +83,22 @@ class DepositIntegration:
         get the amount that should be transferred. Once the form is submitted,
         Polaris will detect the form used is a :class:`TransactionForm` subclass
         and update the ``amount_in`` column with the amount specified in form.
+
+        The form will be rendered inside a django template that also has several
+        pieces of content that can and should be replaced by also returning a
+        dictionary containing the key-value pairs as shown below.
+        ::
+
+            def form_for_transaction(cls, transaction):
+                ...
+                return TransactionForm, {
+                    "title": "Deposit Transaction Form",
+                    "guidance": "Please enter the amount you would like to deposit.",
+                    "icon_label": "Stellar Development Foundation"
+                }
+
+        The icon image displayed can be replaced by adding a ``company-icon.svg``
+        in the top level of your app's static files directory.
 
         After a form is submitted and validated, Polaris will call
         :func:`DepositlIntegration.after_form_validation` with the populated
@@ -115,7 +131,7 @@ class DepositIntegration:
             # and don't implement KYC by default
             return
 
-        return TransactionForm
+        return TransactionForm, {}
 
     @classmethod
     def after_form_validation(cls, form: forms.Form, transaction: Transaction):
@@ -216,10 +232,26 @@ class WithdrawalIntegration:
     @classmethod
     def form_for_transaction(
         cls, transaction: Transaction
-    ) -> Optional[Type[forms.Form]]:
+    ) -> Optional[Tuple[Type[forms.Form], Dict]]:
         """
         This function should return the next form class to render for the user
         given the state of the interactive flow.
+
+        The form will be rendered inside a django template that also has several
+        pieces of content that can and should be replaced by also returning a
+        dictionary containing the key-value pairs as shown below.
+        ::
+
+            def form_for_transaction(cls, transaction):
+                ...
+                return TransactionForm, {
+                    "title": "Deposit Transaction Form",
+                    "guidance": "Please enter the amount you would like to deposit.",
+                    "icon_label": "Stellar Development Foundation"
+                }
+
+        The icon image displayed can be replaced by adding a ``company-icon.svg``
+        in the top level of your app's static files directory.
 
         For example, this function should return a :class:`TransactionForm` to
         get the amount that should be transferred. Once the form is submitted,
@@ -254,7 +286,7 @@ class WithdrawalIntegration:
             # and don't implement KYC by default
             return
 
-        return WithdrawForm
+        return WithdrawForm, {}
 
     @classmethod
     def after_form_validation(cls, form: TransactionForm, transaction: Transaction):

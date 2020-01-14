@@ -1,17 +1,17 @@
 {% extends "base.html" %}
 
 {% block "title" %}
-<title>Interactive Withdraw Info Form</title>
+<title>{% if title %} {{ title }} {% else %} Interactive Withdraw Info Form {% endif %}</title>
 {% endblock %}
 
 
 {% block "content" %}
 <section class="section">
-    <p>
-        This is the interactive Withdraw flow. Please enter the amount you would like to withdraw and the bank account
-        number, and choose a bank for withdrawal.
-    </p>
-    <br />
+    {% if guidance %}
+      <i>{{ guidance|safe }}</i>
+    {% else %}
+      <i>Please fill out the fields below.</i>
+    {% endif %}
     <form method="post" action="{{ post_url }}">
         {% csrf_token %}
 

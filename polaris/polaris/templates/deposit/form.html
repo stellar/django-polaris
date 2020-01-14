@@ -1,16 +1,18 @@
 {% extends "base.html" %}
 
 {% block "title" %}
-<title>Interactive Deposit Info Form</title>
+<title>{% if title %} {{ title }} {% else %} Interactive Deposit Info Form {% endif %}</title>
 {% endblock %}
 
 
 {% block "content" %}
 <section class="section">
-  <p>
-    Please fill out the fields below.
-  </p>
-  <br />
+  {% if guidance %}
+    <i>{{ guidance|safe }}</i>
+  {% else %}
+    <i>Please fill out the fields below.</i>
+  {% endif %}
+
   <form method="post" action="{{ post_url }}">
     {% csrf_token %}
 
