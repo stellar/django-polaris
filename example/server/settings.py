@@ -22,9 +22,6 @@ PROJECT_ROOT = BASE_DIR
 env = environ.Env()
 env_file = os.path.join(PROJECT_ROOT, ".env")
 if not os.path.exists(env_file):
-    example_env_file = os.path.join(PROJECT_ROOT, ".env.example")
-    if not os.path.exists(example_env_file):
-        raise FileNotFoundError("Couldn't find .env or .env.example")
     copyfile(os.path.join(PROJECT_ROOT, ".env.example"), env_file)
 environ.Env.read_env(env_file)
 
