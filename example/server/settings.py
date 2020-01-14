@@ -21,9 +21,8 @@ PROJECT_ROOT = BASE_DIR
 # Load environment variables from .env
 env = environ.Env()
 env_file = os.path.join(PROJECT_ROOT, ".env")
-if not os.path.exists(env_file):
-    copyfile(os.path.join(PROJECT_ROOT, ".env.example"), env_file)
-environ.Env.read_env(env_file)
+if os.path.exists(env_file):
+    environ.Env.read_env(env_file)
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = env("DJANGO_SECRET_KEY")
