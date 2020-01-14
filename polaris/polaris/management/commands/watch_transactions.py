@@ -170,13 +170,15 @@ class Command(BaseCommand):
     def _check_payment_op(
         operation: Operation, want_asset: str, want_amount: float
     ) -> bool:
+        issuer = operation.asset.issuer
+        code = operation.asset.code
+        asset = settings.ASSETS.get(code, {})
         return (
             operation.type_code() == Xdr.const.PAYMENT
-            and str(operation.destination)
-            == settings.STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS
-            and str(operation.asset.code) == want_asset
+            and str(operation.destination) == asset.get("DISTRIBUTION_ACCOUNT_ADDRESS")
+            and str(code) == want_asset
             and
             # TODO: Handle multiple possible asset issuance accounts
-            str(operation.asset.issuer) == settings.STELLAR_ISSUER_ACCOUNT_ADDRESS
+            str(issuer) == asset.get("ISSUER_ACCOUNT_ADDRESS")
             and float(operation.amount) == want_amount
         )

@@ -208,10 +208,13 @@ def get_stellar_toml():
             "ORG_TWITTER": "StellarOrg",
             "ORG_GITHUB": "stellar",
         },
+        # Hard-coding for now because iterating over multiple assets while
+        # using the same issuer is nonsensical. Once the mutliple assets
+        # support is released we'll update this.
         "CURRENCIES": [
             {
-                "code": "USD",
-                "issuer": "GBHJFK4LOLMYV34P25WBKDPVX75ANB3QQJCRBYO4MGWGFTUE7DBBW2PI",
+                "code": "SRT",
+                "issuer": "GDLEW56O4FGU5LJS24GBEAHGION4CMPQN4X537I3SJOTXRBKIOEHVIIB",
             }
         ],
         "SIGNING_KEY": "GCQUFKX3KZ3BQYD56KV2WLJJVBYHNH54N2JPTDGKGRHKRCDSC6R2SQEX",
