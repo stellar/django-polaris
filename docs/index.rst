@@ -74,15 +74,22 @@ Paste the text below into ``PROJECT_ROOT/.env``.
 
     DJANGO_SECRET_KEY="yoursupersecretkey"
     DJANGO_DEBUG=True
-    STELLAR_DISTRIBUTION_ACCOUNT_SEED=""
-    STELLAR_ISSUER_ACCOUNT_ADDRESS=""
+
+    ASSETS="USD"
+    USD_STELLAR_DISTRIBUTION_ACCOUNT_SEED=""
+    USD_STELLAR_ISSUER_ACCOUNT_ADDRESS=""
+
     STELLAR_NETWORK_PASSPHRASE="Test SDF Network ; September 2015"
     HORIZON_URI="https://horizon-testnet.stellar.org/"
     SERVER_JWT_KEY="yoursupersecretjwtkey"
 
-You'll need to set up your distribution and issuer accounts on the Stellar
-network and add them to the file above. Luckily, another engineer at Stellar
-has built a `CLI tool`_ to do this for you.
+Polaris supports anchoring one or multiple assets on the Stellar network. ``ASSETS``
+should be a comma-separated list of asset codes such as "USD", "ETH", or "MYCOIN".
+
+For every asset code listed, you should add a pair of variables for the distribution
+account's private key and issuer account's public key. Note that each pair of variable
+names should be prepended with the asset code. The SDF has built a small `CLI tool`_
+for creating these accounts on testnet.
 
 Add the Polaris endpoints in ``urls.py``
 ::
@@ -153,7 +160,7 @@ Your browser may complain about the service using a self-signed certificate for 
 You can resolve this by marking the certificate used by the service as trusted.
 
 Testing
--------
+^^^^^^^
 You can install the dependencies locally in a virtual environment:
 ::
 
@@ -169,7 +176,7 @@ this may be slower.
     docker exec -it <image ID> pipenv run pytest
 
 Submit a PR
------------
+^^^^^^^^^^^
 After you've made your changes, push them to you a remote branch
 and make a Pull Request on the stellar/django-polaris master branch.
 

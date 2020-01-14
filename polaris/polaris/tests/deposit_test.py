@@ -161,7 +161,7 @@ def test_deposit_invalid_memo_type(
     deposit = acc1_usd_deposit_transaction_factory()
     response = client.post(
         DEPOSIT_PATH,
-        {"asset_code": "USD", "account": deposit.stellar_account, "memo_type": "test"},
+        {"asset_code": "USD", "account": deposit.stellar_account, "memo_type": "test",},
         follow=True,
     )
     content = json.loads(response.content)
@@ -178,7 +178,7 @@ def test_deposit_no_memo(mock_check, client, acc1_usd_deposit_transaction_factor
     deposit = acc1_usd_deposit_transaction_factory()
     response = client.post(
         DEPOSIT_PATH,
-        {"asset_code": "USD", "account": deposit.stellar_account, "memo_type": "text"},
+        {"asset_code": "USD", "account": deposit.stellar_account, "memo_type": "text",},
         follow=True,
     )
     content = json.loads(response.content)

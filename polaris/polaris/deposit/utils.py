@@ -55,7 +55,12 @@ def create_stellar_deposit(transaction_id: str) -> bool:
 
     server = settings.HORIZON_SERVER
     starting_balance = settings.ACCOUNT_STARTING_BALANCE
-    server_account = server.load_account(settings.STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS)
+    asset_code = transaction.asset.code.upper()
+    try:
+        asset_config = settings.ASSETS[asset_code]
+    except KeyError:
+        raise ValueError(f"Asset config not found for {asset_code}")
+    server_account = server.load_account(asset_config["DISTRIBUTION_ACCOUNT_ADDRESS"])
     base_fee = server.fetch_base_fee()
     builder = TransactionBuilder(
         source_account=server_account,
@@ -77,9 +82,9 @@ def create_stellar_deposit(transaction_id: str) -> bool:
         transaction_envelope = builder.append_create_account_op(
             destination=stellar_account,
             starting_balance=starting_balance,
-            source=settings.STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS,
+            source=asset_config["DISTRIBUTION_ACCOUNT_ADDRESS"],
         ).build()
-        transaction_envelope.sign(settings.STELLAR_DISTRIBUTION_ACCOUNT_SEED)
+        transaction_envelope.sign(asset_config["DISTRIBUTION_ACCOUNT_SEED"])
         try:
             server.submit_transaction(transaction_envelope)
         except BaseHorizonError as submit_exc:
@@ -103,10 +108,10 @@ def create_stellar_deposit(transaction_id: str) -> bool:
     transaction_envelope = builder.append_payment_op(
         destination=stellar_account,
         asset_code=asset,
-        asset_issuer=settings.STELLAR_ISSUER_ACCOUNT_ADDRESS,
+        asset_issuer=asset_config["ISSUER_ACCOUNT_ADDRESS"],
         amount=str(payment_amount),
     ).build()
-    transaction_envelope.sign(settings.STELLAR_DISTRIBUTION_ACCOUNT_SEED)
+    transaction_envelope.sign(asset_config["DISTRIBUTION_ACCOUNT_SEED"])
     try:
         response = server.submit_transaction(transaction_envelope)
     # Functional errors at this stage are Horizon errors.

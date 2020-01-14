@@ -7,7 +7,6 @@ from django.conf import settings
 from django.db.models import QuerySet
 from django import forms
 
-import polaris.settings
 from polaris.models import Transaction, Asset
 from polaris.integrations import (
     DepositIntegration,
@@ -92,7 +91,8 @@ class MyDepositIntegration(DepositIntegration):
 
         # interface with mock banking rails
         ready_deposits = []
-        client = rails.BankAPIClient(settings.MOCK_BANK_ACCOUNT_ID)
+        mock_bank_account_id = "XXXXXXXXXXXXX"
+        client = rails.BankAPIClient(mock_bank_account_id)
         for deposit in pending_deposits:
             bank_deposit = client.get_deposit(memo=deposit.external_extra)
             if bank_deposit and bank_deposit.status == "complete":
@@ -208,12 +208,14 @@ def get_stellar_toml():
             "ORG_TWITTER": "StellarOrg",
             "ORG_GITHUB": "stellar",
         },
+        # Hard-coding for now because iterating over multiple assets while
+        # using the same issuer is nonsensical. Once the mutliple assets
+        # support is released we'll update this.
         "CURRENCIES": [
             {
-                "code": asset.code,
-                "issuer": polaris.settings.STELLAR_ISSUER_ACCOUNT_ADDRESS,
+                "code": "SRT",
+                "issuer": "GDLEW56O4FGU5LJS24GBEAHGION4CMPQN4X537I3SJOTXRBKIOEHVIIB",
             }
-            for asset in Asset.objects.all().iterator()
         ],
         "SIGNING_KEY": "GCQUFKX3KZ3BQYD56KV2WLJJVBYHNH54N2JPTDGKGRHKRCDSC6R2SQEX",
         "NETWORK_PASSPHRASE": env("STELLAR_NETWORK_PASSPHRASE"),

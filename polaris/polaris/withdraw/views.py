@@ -118,6 +118,9 @@ def withdraw(account: str, request: Request) -> Response:
     asset = Asset.objects.filter(code=asset_code).first()
     if not asset or not asset.withdrawal_enabled:
         return render_error_response(f"invalid operation for asset {asset_code}")
+    elif asset.code not in settings.ASSETS:
+        return render_error_response(f"unsupported asset type: {asset_code}")
+    distribution_address = settings.ASSETS[asset.code]["DISTRIBUTION_ACCOUNT_ADDRESS"]
 
     # We use the transaction ID as a memo on the Stellar transaction for the
     # payment in the withdrawal. This lets us identify that as uniquely
@@ -134,7 +137,7 @@ def withdraw(account: str, request: Request) -> Response:
         asset=asset,
         kind=Transaction.KIND.withdrawal,
         status=Transaction.STATUS.incomplete,
-        withdraw_anchor_account=settings.STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS,
+        withdraw_anchor_account=distribution_address,
         withdraw_memo=withdraw_memo,
         withdraw_memo_type=Transaction.MEMO_TYPES.hash,
     )

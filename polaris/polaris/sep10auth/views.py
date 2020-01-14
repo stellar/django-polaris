@@ -34,8 +34,10 @@ def _challenge_transaction(client_account):
     This is used in `GET <auth>`, as per SEP 10.
     Returns the XDR encoding of that transaction.
     """
+    # TODO: https://github.com/stellar/django-polaris/issues/81
+    default_asset = list(settings.ASSETS)[0]
     challenge_tx_xdr = build_challenge_transaction(
-        server_secret=settings.STELLAR_DISTRIBUTION_ACCOUNT_SEED,
+        server_secret=settings.ASSETS[default_asset]["DISTRIBUTION_ACCOUNT_SEED"],
         client_account_id=client_account,
         anchor_name=ANCHOR_NAME,
         network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
@@ -92,10 +94,13 @@ def _validate_envelope_xdr(envelope_xdr):
     Validate the provided TransactionEnvelope XDR (base64 string). Return the
     appropriate error if it fails, else the empty string.
     """
+    default_asset = list(settings.ASSETS)[0]
     try:
         verify_challenge_transaction(
             challenge_transaction=envelope_xdr,
-            server_account_id=settings.STELLAR_DISTRIBUTION_ACCOUNT_ADDRESS,
+            server_account_id=settings.ASSETS[default_asset][
+                "DISTRIBUTION_ACCOUNT_ADDRESS"
+            ],
             network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
         )
     except InvalidSep10ChallengeError as err:
