@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block "title" %}
-<title>{% if title %} {{ title }} {% else %} Interactive Deposit Info Form {% endif %}</title>
+<title>{% if title %} {{ title|safe }} {% else %} Interactive Deposit Info Form {% endif %}</title>
 {% endblock %}
 
 

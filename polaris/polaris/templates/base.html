@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
     {% block 'title' %}
-    <title>{% if title %} {{ title }} {% else %} SEP24 reference server {% endif %}</title>
+    <title>{% if title %} {{ title|safe }} {% else %} SEP24 reference server {% endif %}</title>
     {% endblock %}
 
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Cabin&display=swap">
@@ -37,7 +37,7 @@
         <img width="60" height="60" src="{% static 'company-icon.svg' %}" alt="" />
         {% if icon_label %}
         <a class="title" href="#">
-            {{ icon_label }}
+            {{ icon_label|safe }}
         </a>
         {% endif %}
       </div>

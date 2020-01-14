@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block "title" %}
-<title>{% if title %} {{ title }} {% else %} Interactive Withdraw Info Form {% endif %}</title>
+<title>{% if title %} {{ title|safe }} {% else %} Interactive Withdraw Info Form {% endif %}</title>
 {% endblock %}
 
 
