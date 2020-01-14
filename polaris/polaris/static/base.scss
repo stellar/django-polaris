@@ -12,7 +12,7 @@ html {
 }
 
 body {
-  min-width: 20rem;
+  min-width: 15rem;
   box-sizing: border-box;
   font-family: $main-typeface;
 
@@ -29,7 +29,6 @@ body {
 }
 
 .main-content {
-  margin: 0 0.5rem;
   overflow-x: hidden;
 }
 
@@ -50,8 +49,6 @@ body {
   padding: 1rem;
   max-width: 25rem;
   margin: auto;
-  background-color: $alpha-dark_1;
-  border-radius: 0.75rem;
 }
 
 .control .icon {
