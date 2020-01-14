@@ -113,9 +113,6 @@ $radio-font-size: 18/16 + rem;
     border-radius: $border-radius;
     border: none;
     color: $light_-2;
-    background-image: url("../assets/chevron-down.svg");
-    background-repeat: no-repeat;
-    background-position: right 1em top 50%, 0 0;
 
     &:focus {
       box-shadow: 0 0 8px rgba($input-focus-color, 0.6),
