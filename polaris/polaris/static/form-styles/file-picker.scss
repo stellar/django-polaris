@@ -1,6 +1,6 @@
+// Modified from https://codepen.io/adamlaki/details/VYpewx
 .file-upload-wrapper {
-  $defaultColor: #4daf7c;
-  $height: 60px;
+  $height: 3rem;
 
   position: relative;
   width: 100%;
@@ -8,58 +8,33 @@
 
   &:after {
     content: attr(data-text);
-    font-size: 18px;
     position: absolute;
     top: 0;
     left: 0;
-    background: #fff;
-    padding: 10px 15px;
+    background: $input-color;
+    padding: 1rem 1.125rem;
     display: block;
-    width: calc(100% - 40px);
+    width: calc(100%);
     pointer-events: none;
     z-index: 20;
-    height: $height - 20px;
-    line-height: $height - 20px;
-    color: #999;
-    border-radius: 5px 10px 10px 5px;
+    height: $height;
+    line-height: 1.15;
+    border-radius: $border-radius;
     font-weight: 300;
-  }
-
-  &:before {
-    content: "Upload";
-    position: absolute;
-    top: 0;
-    right: 0;
-    display: inline-block;
-    height: 60px;
-    background: $defaultColor;
-    color: #fff;
-    font-weight: 700;
-    z-index: 25;
-    font-size: 16px;
-    line-height: $height;
-    padding: 0 15px;
-    text-transform: uppercase;
-    pointer-events: none;
-    border-radius: 0 5px 5px 0;
+    cursor: pointer;
   }
 
   &:hover {
     &:before {
-      background: darken($defaultColor, 10%);
+      background: darken($success_0, 10%);
     }
   }
   input {
     opacity: 0;
-    position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    left: 0;
+    padding: 1rem 1.125rem;
     z-index: 99;
-    height: $height - 20px;
+    height: 1.15rem;
     margin: 0;
-    padding: 0;
     display: block;
     cursor: pointer;
     width: 100%;

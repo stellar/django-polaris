@@ -89,9 +89,10 @@ waitFor(function() {return !!window.flatpickr}).then(function () {
 })
 
 // File picker
-document.querySelectorAll('.file-upload-field').forEach(f => {
-  f.addEventListener('change', (e) => {
-     e.target.parentElement.setAttribute('data-text', e.target.value.replace(/.*(\/|\\)/, ''))
+document.querySelectorAll('.file-upload-field').forEach(function(f) {
+  f.addEventListener('change', function(e) {
+    var filename = e.target.value.replace(/.*(\/|\\)/, '') || 'Select a file';
+    e.target.parentElement.setAttribute('data-text', filename);
   })
 })
     </script>
