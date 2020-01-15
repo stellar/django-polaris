@@ -1,0 +1,4 @@
+{% if widget.name == 'amount' %}
+<div class="icon">$</div>
+{% endif %}
+<input class="form-control {% if widget.name == 'amount' %}amount-input{% endif %} {{widget.class}}" type="{{ widget.type }}" name="{{ widget.name }}" placeholder="{% if widget.name == 'amount' and widget.placeholder == None %}0{% else %}{{widget.placeholder|stringformat:'s'}}{% endif %}" {% if widget.value != None %} value="{{ widget.value|stringformat:'s' }}" {% endif %} {% include "django/forms/widgets/attrs.html" %} >

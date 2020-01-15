@@ -1,0 +1,65 @@
+$loader-height: 0.25rem;
+
+.progress {
+  margin: 1.25rem auto 2rem;
+  align-self: center;
+  display: block;
+  height: $loader-height;
+  width: 100%;
+  max-width: 16.5rem;
+  border-radius: $loader-height;
+  background: linear-gradient(
+    90deg,
+    $primary_0,
+    rgba($primary_0, 0.1),
+    $primary_0
+  );
+  animation: gradientAnimation 2.5s linear infinite,
+    glowAnimation 2.5s linear infinite;
+  background-size: 200%;
+}
+
+$shadow0: rgba($primary_0, 0.6);
+$shadow25: rgba($primary_0, 0.3);
+$shadow50: rgba($primary_0, 0.6);
+$shadow75: rgba($primary_0, 0.8);
+$shadow100: rgba($primary_0, 0.6);
+
+@keyframes glowAnimation {
+  0% {
+    box-shadow: 0 0 1.25rem shadow $shadow0;
+    opacity: 0.9;
+  }
+
+  25% {
+    box-shadow: 0 0 1rem shadow $shadow25;
+    opacity: 0.5;
+  }
+
+  50% {
+    box-shadow: 0 0 1rem shadow $shadow50;
+    opacity: 0.6;
+  }
+
+  75% {
+    box-shadow: 0 0 1.5rem shadow $shadow75;
+    opacity: 1;
+  }
+
+  100% {
+    box-shadow: 0 0 1.25rem shadow $shadow100;
+    opacity: 0.9;
+  }
+}
+
+@keyframes gradientAnimation {
+  0% {
+    background-position: 100% 50%;
+  }
+  50% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: -100% 50%;
+  }
+}

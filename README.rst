@@ -35,6 +35,7 @@ Installation and Configuration
 ==============================
 
 .. _CLI tool: https://github.com/msfeldstein/create-stellar-token
+.. _Static Files: https://docs.djangoproject.com/en/2.2/howto/static-files/
 
 First make sure you have ``cd``'ed into your django project's main directory
 and then run
@@ -42,27 +43,33 @@ and then run
 
     pip install django-polaris
 
-Add it to ``INSTALLED_APPS`` in settings.py
+Configuring settings.py
+^^^^^^^^^^^^^^^^^^^^^^^
+
+Add the following to ``INSTALLED_APPS`` in settings.py. Any app that overrides
+a static asset in Polaris should be listed `before` "polaris". This ensures that
+django will find your asset before the Polaris default.
 ::
 
     INSTALLED_APPS = [
         ...,
+        "django.contrib.staticfiles",
+        "corsheaders",
+        "rest_framework",
+        "sass_processor",
         "polaris",
     ]
 
-Add Polaris' ``PolarisSameSiteMiddleware`` to your
-``settings.MIDDLEWARE``. Make sure its listed `above` ``SessionMiddleware``.
+Add Polaris' ``PolarisSameSiteMiddleware`` and ``CorsMiddleware`` to your
+``settings.MIDDLEWARE``. The former must be listed `above` ``SessionMiddleware``.
 ::
 
     MIDDLEWARE = [
-        'django.middleware.security.SecurityMiddleware',
+        ...,
         'polaris.middleware.PolarisSameSiteMiddleware',
         'django.contrib.sessions.middleware.SessionMiddleware',
-        'django.middleware.common.CommonMiddleware',
-        'django.middleware.csrf.CsrfViewMiddleware',
-        'django.contrib.auth.middleware.AuthenticationMiddleware',
-        'django.contrib.messages.middleware.MessageMiddleware',
-        'django.middleware.clickjacking.XFrameOptionsMiddleware',
+        'corsheaders.middleware.CorsMiddleware',
+        ...
     ]
 
 
@@ -72,15 +79,38 @@ find your ``.env`` file.
 
     PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-Paste the text below into ``PROJECT_ROOT/.env``.
+Add the following to your settings.py as well:
+::
+
+    FORM_RENDERER = "django.forms.renderers.TemplatesSetting"
+    STATIC_ROOT = os.path.join(BASE_DIR, "<your static root directory>")
+    STATIC_URL = "<your static url path>"
+    STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+    STATICFILES_FINDERS = [
+        "django.contrib.staticfiles.finders.FileSystemFinder",
+        "django.contrib.staticfiles.finders.AppDirectoriesFinder",
+        "sass_processor.finders.CssFinder",
+    ]
+    SASS_PROCESSOR_ROOT = STATIC_ROOT
+    DEFAULT_PAGE_SIZE = <your default page size>
+
+This allows Polaris to override django's default HTML widgets to provide
+a great UI out of the box. See the `Static Files`_ django page for more
+information.
+
+Environment Variables
+^^^^^^^^^^^^^^^^^^^^^
+
+Polaris uses several environment variables that should be defined in the
+environment or included in ``PROJECT_ROOT/.env``.
 ::
 
     DJANGO_SECRET_KEY="yoursupersecretkey"
     DJANGO_DEBUG=True
 
     ASSETS="USD"
-    USD_STELLAR_DISTRIBUTION_ACCOUNT_SEED=""
-    USD_STELLAR_ISSUER_ACCOUNT_ADDRESS=""
+    USD_DISTRIBUTION_ACCOUNT_SEED=""
+    USD_ISSUER_ACCOUNT_ADDRESS=""
 
     STELLAR_NETWORK_PASSPHRASE="Test SDF Network ; September 2015"
     HORIZON_URI="https://horizon-testnet.stellar.org/"
@@ -94,6 +124,9 @@ account's private key and issuer account's public key. Note that each pair of va
 names should be prepended with the asset code. The SDF has built a small `CLI tool`_
 for creating these accounts on testnet.
 
+Python Code and Bash Commands
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 Add the Polaris endpoints in ``urls.py``
 ::
 
@@ -105,9 +138,19 @@ Add the Polaris endpoints in ``urls.py``
         path("", include(polaris.urls)),
     ]
 
-Run migrations: ``python manage.py migrate``
+| Run migrations: ``python manage.py migrate``
+| Compile static assets: ``python manage.py compilescss``
+| Collect static assets: ``python manage.py collectstatic --no-input``
 
-You now have Polaris completely integrated into your Django project!
+The last step is to add an ``Asset`` database object for the token you
+intend to anchor. Get into the django python shell like so:
+``python manage.py shell``, then:
+::
+
+    from polaris.models import Asset
+    Asset.objects.create(code="USD", issuer="<the issuer address>")
+
+You are now ready to run the Polaris anchor server!
 
 Running the Server Locally
 ^^^^^^^^^^^^^^^^^^^^^^^^^^

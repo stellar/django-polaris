@@ -1,0 +1,42 @@
+// Modified from https://codepen.io/adamlaki/details/VYpewx
+.file-upload-wrapper {
+  $height: 3rem;
+
+  position: relative;
+  width: 100%;
+  height: $height;
+
+  &:after {
+    content: attr(data-text);
+    position: absolute;
+    top: 0;
+    left: 0;
+    background: $input-color;
+    padding: 1rem 1.125rem;
+    display: block;
+    width: calc(100%);
+    pointer-events: none;
+    z-index: 20;
+    height: $height;
+    line-height: 1.15;
+    border-radius: $border-radius;
+    font-weight: 300;
+    cursor: pointer;
+  }
+
+  &:hover {
+    &:before {
+      background: darken($success_0, 10%);
+    }
+  }
+  input {
+    opacity: 0;
+    padding: 1rem 1.125rem;
+    z-index: 99;
+    height: 1.15rem;
+    margin: 0;
+    display: block;
+    cursor: pointer;
+    width: 100%;
+  }
+}

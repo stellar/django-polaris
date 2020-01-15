@@ -1,0 +1,2 @@
+<input class="form-control {{widget.class}}" type="checkbox" name="{{ widget.name }}" placeholder="" {% if widget.value != None %} value="{{ widget.value|stringformat:'s' }}" {% endif %} {% include "django/forms/widgets/attrs.html" %} >
+<div class="tgl-btn"></div>

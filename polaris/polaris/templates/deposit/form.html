@@ -1,43 +1,37 @@
 {% extends "base.html" %}
 
 {% block "title" %}
-<title>Interactive Deposit Info Form</title>
+<title>{% if title %} {{ title|safe }} {% else %} Interactive Deposit Info Form {% endif %}</title>
 {% endblock %}
 
 
 {% block "content" %}
 <section class="section">
-  <p>
-    Please fill out the fields below.
-  </p>
-  <br />
+  {% if guidance %}
+    <i>{{ guidance|safe }}</i>
+  {% else %}
+    <i>Please fill out the fields below.</i>
+  {% endif %}
+
   <form method="post" action="{{ post_url }}">
     {% csrf_token %}
 
     {% for field in form %}
-    <div class="field">
-      {% if field.name == 'amount' %}
-      <label class="label">{{ field.label }}</label>
-      <div class="control has-icons-left">
-        {{ field }}
-        <span class="icon is-left">
-          <i class="fas fa-dollar-sign"></i>
-        </span>
+      <div class="field">
+        <label>
+          <div class="label">{{ field.label }}</div>
+          <div class="control"> {{ field }} </div>
+        </label>
+
+        {% if field.errors %}
+        <p class="help is-danger">
+          {% for error in field.errors %}
+          {{ error }}
+          {% endfor %}
+        </p>
+        {% endif %}
+
       </div>
-      {% else %}
-      <label class="label"> {{ field.label }}</label>
-      <div> {{ field }} </div>
-      {% endif %}
-
-      {% if field.errors %}
-      <p class="help is-danger">
-        {% for error in field.errors %}
-        {{ error }}
-        {% endfor %}
-      </p>
-      {% endif %}
-
-    </div>
     {% endfor %}
 
     <div class="field at-bottom">

@@ -33,7 +33,6 @@ integration functions for anchors to override.
 Form Integrations
 -----------------
 
-.. _Bulma: https://bulma.io/documentation
 .. _Django Forms: https://docs.djangoproject.com/en/2.2/topics/forms/#forms-in-django
 
 Polaris uses `Django Forms`_ for collecting users' information, such as their
@@ -59,20 +58,6 @@ See the :doc:`../forms/index` documentation for the `TransactionForm` definition
 .. autofunction:: polaris.integrations.WithdrawalIntegration.form_for_transaction
 
 .. autofunction:: polaris.integrations.WithdrawalIntegration.after_form_validation
-
-Form CSS
-^^^^^^^^
-Polaris uses default CSS provided by Bulma_ for styling forms. To keep the
-UX consistent, make sure to pass in a modified `widget` parameter to all
-form fields displaying text like so:
-
-::
-
-    widget=forms.widgets.TextInput(attrs={"class": "input"})
-
-The `attrs` parameter adds a HTML attribute to the `<input>` tag that Bulma
-uses to add better styling. You may also add more Bulma-supported attributes
-to Polaris forms.
 
 Use an External Application for the Interactive Flow
 ----------------------------------------------------

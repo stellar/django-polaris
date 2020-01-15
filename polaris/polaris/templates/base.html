@@ -1,4 +1,4 @@
-{% load static %}
+{% load sass_tags %} {% load static %}
 <!DOCTYPE html>
 <html>
   <head>
@@ -6,26 +6,40 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
     {% block 'title' %}
-    <title>SEP24 reference server</title>
+    <title>{% if title %} {{ title|safe }} {% else %} SEP24 reference server {% endif %}</title>
     {% endblock %}
 
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Cabin&display=swap">
+    <link rel="stylesheet" href="{% sass_src 'base.scss' %}" />
+    <script
+      async
+      src="https://unpkg.com/flatpickr@4.6.3/dist/flatpickr.min.js"
+    ></script>
     <link
       rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.7.5/css/bulma.min.css"
+      href="https://unpkg.com/flatpickr@4.6.3/dist/flatpickr.min.css"
     />
-    <link rel="stylesheet" href="{% static "base.css" %}" />
-    <script
-      defer
-      src="https://use.fontawesome.com/releases/v5.3.1/js/all.js"
-    ></script>
+    <style>
+      {% comment %}
+      Due to the static image, can't put the background in .scss
+      {% endcomment %}
+      .control select:not([multiple]) {
+        background-image: url("{% static "chevron-down.svg" %}");
+        background-repeat: no-repeat;
+        background-position: right 1em top 50%, 0 0;
+      }
+    </style>
   </head>
   <body>
     {% block "header" %}
     <nav class="navbar" role="navigation" aria-label="main navigation">
       <div class="navbar-brand">
-        <a class="navbar-item" href="#">
-          Loanly Bay Leaf Bank Corp
+        <img width="60" height="60" src="{% static 'company-icon.svg' %}" alt="" />
+        {% if icon_label %}
+        <a class="title" href="#">
+            {{ icon_label|safe }}
         </a>
+        {% endif %}
       </div>
     </nav>
     {% endblock %}
@@ -33,9 +47,56 @@
       {% block "content" %}
       {% endblock %}
     </div>
-    <div class="bottom-section">
+    <div class="bottom section">
       {% block "footer" %}
       {% endblock %}
     </div>
+    <script type="text/javascript">
+"use strict";
+function _instanceof(left, right) { if (right != null && typeof Symbol !== "undefined" && right[Symbol.hasInstance]) { return !!right[Symbol.hasInstance](left); } else { return left instanceof right; } }
+
+{% comment %}
+Manually babel-ized helper. Generic helper to wait until conditions are right.
+{% endcomment %}
+var waitFor = function waitFor(predicate) {
+  var pollInterval = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 100;
+  return new Promise(function (resolve) {
+    var check = function check() {
+      var result = predicate();
+      if (_instanceof(result, Promise)) {
+        result.then(function (isFinished) {
+          if (isFinished) {
+            resolve();
+            return;
+          }
+          setTimeout(check, pollInterval);
+        });
+      } else {
+        if (result) {
+          resolve();
+          return;
+        }
+        setTimeout(check, pollInterval);
+      }
+    };
+    check();
+  });
+};
+
+// Date/time pickers
+waitFor(function() {return !!window.flatpickr}).then(function () {
+  window.flatpickr('input.date');
+  window.flatpickr('input.date-time', {enableTime: true});
+  window.flatpickr('input.time', {noCalendar: true, enableTime: true});
+})
+
+// File picker
+document.querySelectorAll('.file-upload-field').forEach(function(f) {
+  f.addEventListener('change', function(e) {
+    var filename = e.target.value.replace(/.*(\/|\\)/, '') || 'Select a file';
+    e.target.parentElement.setAttribute('data-text', filename);
+  })
+})
+    </script>
   </body>
 </html>

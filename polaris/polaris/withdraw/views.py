@@ -39,7 +39,8 @@ def post_interactive_withdraw(request: Request) -> Response:
     if error_resp:
         return error_resp
 
-    form = rwi.form_for_transaction(transaction)(request.POST)
+    form_class, _ = rwi.form_for_transaction(transaction)
+    form = form_class(request.POST)
     is_transaction_form = issubclass(form.__class__, TransactionForm)
     if is_transaction_form:
         form.asset = asset
@@ -55,9 +56,9 @@ def post_interactive_withdraw(request: Request) -> Response:
         # Perform any defined post-validation logic defined by Polaris users
         rwi.after_form_validation(form, transaction)
         # Check to see if there is another form to render
-        form_class = rwi.form_for_transaction(transaction)
+        form_data = rwi.form_for_transaction(transaction)
 
-        if form_class:
+        if form_data:
             args = {"transaction_id": transaction.id, "asset_code": asset.code}
             url = reverse("get_interactive_withdraw")
             return redirect(f"{url}?{urlencode(args)}")
@@ -93,10 +94,19 @@ def get_interactive_withdraw(request: Request) -> Response:
     if error_resp:
         return error_resp
 
-    form_class = rwi.form_for_transaction(transaction)
+    try:
+        form_class, context = rwi.form_for_transaction(transaction)
+    except TypeError:
+        return render_error_response(
+            "The anchor did not provide a form, unable to serve page.",
+            status_code=500,
+            content_type="text/html",
+        )
+
     url_args = {"transaction_id": transaction.id, "asset_code": asset.code}
     post_url = f"{reverse('post_interactive_withdraw')}?{urlencode(url_args)}"
     resp_data = {"form": form_class(), "post_url": post_url}
+    resp_data.update(context)
     return Response(resp_data, template_name="withdraw/form.html")
 
 

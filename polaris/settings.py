@@ -35,11 +35,16 @@ django_apps = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
 ]
-third_party_apps = ["rest_framework", "corsheaders", "sslserver"]
-INSTALLED_APPS = django_apps + third_party_apps + ["polaris"]
+third_party_apps = ["rest_framework", "corsheaders", "sslserver", "sass_processor"]
+INSTALLED_APPS = django_apps + third_party_apps
 if os.path.exists(BASE_DIR + "/server"):
-    # The server app is present, add it to installed apps
+    # The server app is present, add it to installed apps.
+    #
+    # By adding it before 'polaris', 'server's static assets
+    # will be used in place of conflicting 'polaris' assets.
+    # Example: company-icon.svg
     INSTALLED_APPS.append("server")
+INSTALLED_APPS.append("polaris")
 
 # Modules to add to parent project's MIDDLEWARE
 MIDDLEWARE = [
@@ -70,6 +75,8 @@ TEMPLATES = [
     }
 ]
 
+FORM_RENDERER = "django.forms.renderers.TemplatesSetting"
+
 # Database
 # https://docs.djangoproject.com/en/2.2/ref/settings/#databases
 DATABASES = {
@@ -84,6 +91,12 @@ STATIC_ROOT = os.path.join(BASE_DIR, "polaris/collectstatic")
 STATIC_URL = "/polaris/static/"
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 STATICFILES_DIRS = ()
+STATICFILES_FINDERS = [
+    "django.contrib.staticfiles.finders.FileSystemFinder",
+    "django.contrib.staticfiles.finders.AppDirectoriesFinder",
+    "sass_processor.finders.CssFinder",
+]
+SASS_PROCESSOR_ROOT = STATIC_ROOT
 
 # Django Rest Framework Settings:
 # Attributes to add to parent project's REST_FRAMEWORK

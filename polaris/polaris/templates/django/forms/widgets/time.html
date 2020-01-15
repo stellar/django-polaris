@@ -1,0 +1,1 @@
+<input class="form-control time" type="date" name="{{ widget.name }}" placeholder="" {% if widget.value != None %} value="{{ widget.value|stringformat:'s' }}" {% endif %} {% include "django/forms/widgets/attrs.html" %} >

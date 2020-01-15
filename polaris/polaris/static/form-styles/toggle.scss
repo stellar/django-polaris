@@ -1,0 +1,66 @@
+// From https://codepen.io/mallendeo/details/eLIiG
+// MIT licensed by Mauricio Allende
+
+.control {
+  input[type="checkbox"] {
+    display: none;
+
+    // add default box-sizing for this scope
+    &,
+    &:after,
+    &:before,
+    & *,
+    & *:after,
+    & *:before,
+    & + .tgl-btn {
+      box-sizing: border-box;
+      &::selection {
+        background: none;
+      }
+    }
+
+    + .tgl-btn {
+      outline: 0;
+      display: block;
+      width: 4em;
+      height: 2em;
+      position: relative;
+      cursor: pointer;
+      user-select: none;
+      background: $alpha-dark_-2;
+      border-radius: 2em;
+      padding: 2px;
+      transition: all 0.4s ease;
+      &:after {
+        border-radius: 50%;
+        background: $dark_1;
+        transition: all 0.2s ease;
+      }
+
+      &:after,
+      &:before {
+        position: relative;
+        display: block;
+        content: "";
+        width: 50%;
+        height: 100%;
+      }
+
+      &:after {
+        left: 0;
+      }
+
+      &:before {
+        display: none;
+      }
+    }
+
+    &:checked + .tgl-btn {
+      background: $success_0;
+
+      &:after {
+        left: 50%;
+      }
+    }
+  }
+}
