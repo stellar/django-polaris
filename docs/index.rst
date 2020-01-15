@@ -32,6 +32,7 @@ Installation and Configuration
 ==============================
 
 .. _CLI tool: https://github.com/msfeldstein/create-stellar-token
+.. _Static Files: https://docs.djangoproject.com/en/2.2/howto/static-files/
 
 First make sure you have ``cd``'ed into your django project's main directory
 and then run
@@ -67,7 +68,6 @@ Add Polaris' :doc:`PolarisSameSiteMiddleware </middleware/index>` to your
         ...
     ]
 
-
 Define ``PROJECT_ROOT`` in your project's settings.py. Polaris uses this to
 find your ``.env`` file.
 ::
@@ -78,9 +78,18 @@ Add the following to your settings.py as well:
 ::
 
     FORM_RENDERER = "django.forms.renderers.TemplatesSetting"
+    STATIC_ROOT = os.path.join(BASE_DIR, "<your static root directory>")
+    STATIC_URL = "<your static url path>"
+    STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+    STATICFILES_FINDERS = [
+        "django.contrib.staticfiles.finders.FileSystemFinder",
+        "django.contrib.staticfiles.finders.AppDirectoriesFinder",
+        "sass_processor.finders.CssFinder",
+    ]
 
 This allows Polaris to override django's default HTML widgets to provide
-a great UI out of the box.
+a great UI out of the box. See the `Static Files`_ django page for more
+information.
 
 Environment Variables
 ^^^^^^^^^^^^^^^^^^^^^
