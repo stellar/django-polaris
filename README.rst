@@ -60,14 +60,15 @@ django will find your asset before the Polaris default.
         "polaris",
     ]
 
-Add Polaris' ``PolarisSameSiteMiddleware`` to your
-``settings.MIDDLEWARE``. Make sure its listed `above` ``SessionMiddleware``.
+Add Polaris' ``PolarisSameSiteMiddleware`` and ``CorsMiddleware`` to your
+``settings.MIDDLEWARE``. The former must be listed `above` ``SessionMiddleware``.
 ::
 
     MIDDLEWARE = [
         ...,
         'polaris.middleware.PolarisSameSiteMiddleware',
         'django.contrib.sessions.middleware.SessionMiddleware',
+        'corsheaders.middleware.CorsMiddleware',
         ...
     ]
 
@@ -91,6 +92,7 @@ Add the following to your settings.py as well:
         "sass_processor.finders.CssFinder",
     ]
     SASS_PROCESSOR_ROOT = STATIC_ROOT
+    DEFAULT_PAGE_SIZE = <your default page size>
 
 This allows Polaris to override django's default HTML widgets to provide
 a great UI out of the box. See the `Static Files`_ django page for more
@@ -107,8 +109,8 @@ environment or included in ``PROJECT_ROOT/.env``.
     DJANGO_DEBUG=True
 
     ASSETS="USD"
-    USD_STELLAR_DISTRIBUTION_ACCOUNT_SEED=""
-    USD_STELLAR_ISSUER_ACCOUNT_ADDRESS=""
+    USD_DISTRIBUTION_ACCOUNT_SEED=""
+    USD_ISSUER_ACCOUNT_ADDRESS=""
 
     STELLAR_NETWORK_PASSPHRASE="Test SDF Network ; September 2015"
     HORIZON_URI="https://horizon-testnet.stellar.org/"
@@ -140,7 +142,15 @@ Add the Polaris endpoints in ``urls.py``
 | Compile static assets: ``python manage.py compilescss``
 | Collect static assets: ``python manage.py collectstatic --no-input``
 
-You now have Polaris completely integrated into your Django project!
+The last step is to add an ``Asset`` database object for the token you
+intend to anchor. Get into the django python shell like so:
+``python manage.py shell``, then:
+::
+
+    from polaris.models import Asset
+    Asset.objects.create(code="USD", issuer="<the issuer address>")
+
+You are now ready to run the Polaris anchor server!
 
 Running the Server Locally
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
