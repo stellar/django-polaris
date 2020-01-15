@@ -7,64 +7,64 @@
 {% block "content" %}
 <section class="section receipt">
     {% if instructions is not none %}
-    <div class="field">
-        <label>
+    <div class="info-item">
+        <div class="info-label">
             instructions
-        </label>
+        </div>
         <div class="field-value">
             {{ instructions|safe }}
         </div>
     </div>
     {% endif %}
-    <div class="field">
-        <label>
+    <div class="info-item">
+        <div class="info-label">
             kind
-        </label>
+        </div>
         <div class="field-value">
             {{ transaction.kind }}
         </div>
     </div>
-    
-    <div class="field">
-        <label>
+
+    <div class="info-item">
+        <div class="info-label">
             id
-        </label>
+        </div>
         <div class="field-value">
             {{ transaction.id }}
         </div>
     </div>
 
-    <div class="field">
-        <label>
+    <div class="info-item">
+        <div class="info-label">
             amount
-        </label>
+        </div>
         <div class="field-value">
             {{ transaction.amount_in|floatformat }}
         </div>
     </div>
 
-    <div class="field">
-        <label>
+    <div class="info-item">
+        <div class="info-label">
             status
-        </label>
+        </div>
         <div class="field-value">
             {{ transaction.status }}
         </div>
     </div>
 
-    <div class="field">
-        <label>
+    <div class="info-item">
+        <div class="info-label">
             start
-        </label>
+        </div>
         <div class="field-value">
             {{ transaction.started_at }}
         </div>
     </div>
 
-    <div class="field">
-        <label>
+    <div class="info-item">
+        <div class="info-label">
             completed
-        </label>
+        </div>
         <div class="field-value">
             {{ transaction.completed_at }}
         </div>
