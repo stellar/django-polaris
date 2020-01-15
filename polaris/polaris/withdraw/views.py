@@ -39,7 +39,8 @@ def post_interactive_withdraw(request: Request) -> Response:
     if error_resp:
         return error_resp
 
-    form = rwi.form_for_transaction(transaction)(request.POST)
+    form_class, _ = rwi.form_for_transaction(transaction)
+    form = form_class(request.POST)
     is_transaction_form = issubclass(form.__class__, TransactionForm)
     if is_transaction_form:
         form.asset = asset
