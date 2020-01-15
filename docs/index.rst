@@ -86,6 +86,7 @@ Add the following to your settings.py as well:
         "django.contrib.staticfiles.finders.AppDirectoriesFinder",
         "sass_processor.finders.CssFinder",
     ]
+    SASS_PROCESSOR_ROOT = STATIC_ROOT
 
 This allows Polaris to override django's default HTML widgets to provide
 a great UI out of the box. See the `Static Files`_ django page for more
