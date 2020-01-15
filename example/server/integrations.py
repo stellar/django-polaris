@@ -1,6 +1,6 @@
 import logging
 import time
-from typing import List, Dict, Optional, Type
+from typing import List, Dict, Optional, Type, Tuple
 from uuid import uuid4
 
 from django.conf import settings
@@ -57,21 +57,31 @@ def track_user_activity(form: forms.Form, transaction: Transaction):
     )
 
 
-def serve_form(transaction: Transaction) -> Optional[Type[forms.Form]]:
+def serve_form(transaction: Transaction) -> Optional[Tuple[Type[forms.Form], Dict]]:
     """
     Returns a KYCForm if there is no record of this stellar account or
     a TransactionForm if the amount needs to be collected. Otherwise returns
     None.
     """
+    context = {"icon_label": "Stellar Development Foundation"}
     account_qs = PolarisStellarAccount.objects.filter(
         account=transaction.stellar_account
     )
     if not account_qs.exists():
         # Unknown stellar account, get KYC info
-        return KYCForm
+        return KYCForm, {
+            "title": "Polaris KYC Information",
+            "guidance": ("We're legally required to know our customers. "
+                         "Please enter the information requested."),
+            **context
+        }
     elif not transaction.amount_in:
         # We have user info, get transaction info
-        return TransactionForm
+        return TransactionForm, {
+            "title": "Polaris Transaction Information",
+            "guidance": "Please enter the amount you would like to transfer.",
+            **context
+        }
     else:
         return None
 
@@ -152,7 +162,7 @@ class MyDepositIntegration(DepositIntegration):
     @classmethod
     def form_for_transaction(
         cls, transaction: Transaction
-    ) -> Optional[Type[forms.Form]]:
+    ) -> Optional[Tuple[Type[forms.Form], Dict]]:
         return serve_form(transaction)
 
     @classmethod
@@ -182,7 +192,7 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
     @classmethod
     def form_for_transaction(
         cls, transaction: Transaction
-    ) -> Optional[Type[forms.Form]]:
+    ) -> Optional[Tuple[Type[forms.Form], Dict]]:
         return serve_form(transaction)
 
     @classmethod
