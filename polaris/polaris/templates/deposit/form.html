@@ -18,20 +18,10 @@
 
     {% for field in form %}
       <div class="field">
-        {% if field.name == 'amount' %}
-          <label>
-            <div class="label">{{ field.label }}</div>
-            <div class="control has-icons-left">
-              <div class="icon">$</div>
-              {{ field }}
-            </div>
-          </label>
-        {% else %}
-          <label>
-            <div class="label">{{ field.label }}</div>
-            <div class="control"> {{ field }} </div>
-          </label>
-        {% endif %}
+        <label>
+          <div class="label">{{ field.label }}</div>
+          <div class="control"> {{ field }} </div>
+        </label>
 
         {% if field.errors %}
         <p class="help is-danger">

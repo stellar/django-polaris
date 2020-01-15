@@ -60,6 +60,14 @@
   position: relative;
   cursor: pointer;
 
+  & .icon {
+    position: absolute;
+    padding: 1rem 0;
+    line-height: 1.125rem;
+    padding-left: 1rem;
+    font-weight: $bold-weight;
+  }
+
   input[type="text"],
   input[type="number"],
   input[type="date"],
@@ -72,7 +80,7 @@
     border-radius: $border-radius;
     border: none;
     color: $input-main-color;
-    padding: 1rem 1.125rem;
+    padding: 1rem 1rem;
     outline: none;
 
     &:focus {
@@ -83,6 +91,10 @@
     &:invalid:not(:placeholder-shown) {
       color: $danger_0;
       box-shadow: 0 0 0.25rem rgba($danger_0, 0.6), 0 0 0.125rem $danger_0;
+    }
+
+    &.amount-input {
+      padding-left: 1.75rem;
     }
   }
 
