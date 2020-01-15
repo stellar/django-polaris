@@ -42,11 +42,20 @@ and then run
 
     pip install django-polaris
 
-Add it to ``INSTALLED_APPS`` in settings.py
+Configuring settings.py
+^^^^^^^^^^^^^^^^^^^^^^^
+
+Add the following to ``INSTALLED_APPS`` in settings.py. Any app that overrides
+a static asset in Polaris should be listed `before` "polaris". This ensures that
+django will find your asset before the Polaris default.
 ::
 
     INSTALLED_APPS = [
         ...,
+        "django.contrib.staticfiles",
+        "corsheaders",
+        "rest_framework",
+        "sass_processor",
         "polaris",
     ]
 
@@ -55,14 +64,10 @@ Add Polaris' ``PolarisSameSiteMiddleware`` to your
 ::
 
     MIDDLEWARE = [
-        'django.middleware.security.SecurityMiddleware',
+        ...,
         'polaris.middleware.PolarisSameSiteMiddleware',
         'django.contrib.sessions.middleware.SessionMiddleware',
-        'django.middleware.common.CommonMiddleware',
-        'django.middleware.csrf.CsrfViewMiddleware',
-        'django.contrib.auth.middleware.AuthenticationMiddleware',
-        'django.contrib.messages.middleware.MessageMiddleware',
-        'django.middleware.clickjacking.XFrameOptionsMiddleware',
+        ...
     ]
 
 
@@ -72,7 +77,19 @@ find your ``.env`` file.
 
     PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-Paste the text below into ``PROJECT_ROOT/.env``.
+Add the following to your settings.py as well:
+::
+
+    FORM_RENDERER = "django.forms.renderers.TemplatesSetting"
+
+This allows Polaris to override django's default HTML widgets to provide
+a great UI out of the box.
+
+Environment Variables
+^^^^^^^^^^^^^^^^^^^^^
+
+Polaris uses several environment variables that should be defined in the
+environment or included in ``PROJECT_ROOT/.env``.
 ::
 
     DJANGO_SECRET_KEY="yoursupersecretkey"
@@ -94,6 +111,9 @@ account's private key and issuer account's public key. Note that each pair of va
 names should be prepended with the asset code. The SDF has built a small `CLI tool`_
 for creating these accounts on testnet.
 
+Python Code and Bash Commands
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 Add the Polaris endpoints in ``urls.py``
 ::
 
@@ -105,7 +125,9 @@ Add the Polaris endpoints in ``urls.py``
         path("", include(polaris.urls)),
     ]
 
-Run migrations: ``python manage.py migrate``
+| Run migrations: ``python manage.py migrate``
+| Compile static assets: ``python manage.py compilescss``
+| Collect static assets: ``python manage.py collectstatic --no-input``
 
 You now have Polaris completely integrated into your Django project!
 

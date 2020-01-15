@@ -197,11 +197,6 @@ class WithdrawalIntegration:
     """
     The container class for withdrawal integration functions
 
-    Accepts an optional :class:`django.forms.Form` class to render for the
-    response to Polaris' `/transactions/withdraw/webapp` endpoint. By default,
-    Polaris' base ``DepositForm`` is used. See the `Form Integrations`_ section
-    for more information.
-
     Subclasses must be registered with Polaris by passing it to
     :func:`polaris.integrations.register_integrations`.
     """
@@ -234,48 +229,12 @@ class WithdrawalIntegration:
         cls, transaction: Transaction
     ) -> Optional[Tuple[Type[forms.Form], Dict]]:
         """
-        This function should return the next form class to render for the user
-        given the state of the interactive flow.
+        Same as :func:`DepositIntegration.form_for_transaction`, except:
 
-        The form will be rendered inside a django template that has several
-        pieces of content that can and should be replaced by also returning a
-        dictionary containing the key-value pairs as shown below.
-        ::
-
-            def form_for_transaction(cls, transaction):
-                ...
-                return TransactionForm, {
-                    "title": "Deposit Transaction Form",
-                    "guidance": "Please enter the amount you would like to deposit.",
-                    "icon_label": "Stellar Development Foundation"
-                }
-
-        The icon image displayed can be replaced by adding a ``company-icon.svg``
-        in the top level of your app's static files directory.
-
-        For example, this function should return a :class:`TransactionForm` to
-        get the amount that should be transferred. Once the form is submitted,
-        Polaris will detect the form used is a :class:`TransactionForm` subclass
-        and update the ``amount_in`` column with the amount specified in form.
-
-        After a form is submitted and validated, Polaris will call
-        :func:`WithdrawalIntegration.after_form_validation` with the populated
-        form and transaction. This is where developers should update their own
-        state-tracking constructs or do any processing with the data submitted
-        in the form.
-
-        Finally, Polaris will call this function again to check if there is
-        another form that needs to be rendered to the user. If you are
-        collecting KYC data, return a :class:`forms.Form` with the fields you
-        need.
-
-        This loop of submitting a form, validating & processing it, and checking
-        for the next form will continue until this function returns ``None``.
-
-        When that happens, Polaris will update the Transaction status to
-        ``pending_external``. Once the wallet submits the withdrawal transaction
-        to the stellar network, Polaris will detect the event and mark the
-        transaction status as ``complete``.
+        When this function returns ``None``, Polaris will update the Transaction
+        status to ``pending_external``. Once the wallet submits the
+        withdrawal transaction to the stellar network, Polaris will detect the
+        event and mark the transaction status as ``complete``.
 
         :param transaction: the :class:`Transaction` database object
         :return: an uninitialized :class:`forms.Form` subclass. For transaction
@@ -291,22 +250,7 @@ class WithdrawalIntegration:
     @classmethod
     def after_form_validation(cls, form: TransactionForm, transaction: Transaction):
         """
-        Use this function to process the data collected with `form` and to update
-        the state of the interactive flow so that the next call to
-        :func:`WithdrawalIntegration.form_for_transaction` returns the next form
-        to render to the user, or None.
-
-        Keep in mind that if a :class:`TransactionForm` is submitted, Polaris will
-        update the `amount_in` and `amount_fee` with the information collected.
-        There is no need to implement that yourself.
-
-        DO NOT update `transaction.status` here or in any other function for
-        that matter. This column is managed by Polaris and is expected to have
-        particular values at different points in the flow.
-
-        If you need to store some data to determine which form to return next when
-        :func:`WithdrawalIntegration.form_for_transaction` is called, store this
-        data in a model not used by Polaris.
+        Same as :func:`DepositIntegration.after_form_validation`
 
         :param form: the completed :class:`forms.Form` submitted by the user
         :param transaction: the :class:`Transaction` database object
