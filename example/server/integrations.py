@@ -9,6 +9,7 @@ from django import forms
 
 import polaris.settings
 from polaris.models import Transaction, Asset
+from polaris.integrations.forms import CreditCardForm
 from polaris.integrations import (
     DepositIntegration,
     WithdrawalIntegration,
@@ -113,7 +114,7 @@ class MyDepositIntegration(DepositIntegration):
         cls, transaction: Transaction
     ) -> Optional[Type[forms.Form]]:
         if transaction.amount_in is None:
-            return AllFieldsForm
+            return CreditCardForm
         else:
             return None
 
