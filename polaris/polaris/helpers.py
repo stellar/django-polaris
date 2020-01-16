@@ -188,7 +188,22 @@ def authenticate_session_helper(r: Request):
     """
     token = r.GET.get("token")
     if not token:
-        raise ValueError("Missing authentication token")
+        # If there is no token, check if this session has already been authenticated
+        # and that the session's account is the one that initiated the transaction.
+        if r.session.get("authenticated") and r.session.get("account", ""):
+            transaction_qs = Transaction.objects.filter(
+                id=r.GET.get("transaction_id"), stellar_account=r.session["account"]
+            )
+            if not transaction_qs.exists():
+                raise ValueError(
+                    "Not authenticated for transaction ID: "
+                    f"{r.GET.get('transaction_id')}"
+                )
+            else:
+                # client has been authenticated for the requested transaction
+                return
+        else:
+            raise ValueError("Missing authentication token")
 
     try:
         jwt_dict = jwt.decode(token, settings.SERVER_JWT_KEY, algorithms=["HS256"])
