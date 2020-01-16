@@ -186,16 +186,6 @@ def authenticate_session_helper(r: Request):
         for any transaction
     - account: the stellar account address associated with the token
     """
-    if r.session.get("authenticated") and r.session.get("account", ""):
-        transaction_qs = Transaction.objects.filter(
-            id=r.GET.get("transaction_id"), stellar_account=r.session["account"]
-        )
-        if not transaction_qs.exists():
-            raise ValueError("Transaction for account not found")
-        else:
-            # client has been authenticated for the requested transaction
-            return
-
     token = r.GET.get("token")
     if not token:
         raise ValueError("Missing authentication token")
