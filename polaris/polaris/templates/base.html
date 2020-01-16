@@ -11,14 +11,6 @@
 
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Cabin&display=swap">
     <link rel="stylesheet" href="{% sass_src 'base.scss' %}" />
-    <script
-      async
-      src="https://unpkg.com/flatpickr@4.6.3/dist/flatpickr.min.js"
-    ></script>
-    <link
-      rel="stylesheet"
-      href="https://unpkg.com/flatpickr@4.6.3/dist/flatpickr.min.css"
-    />
     <style>
       {% comment %}
       Due to the static image, can't put the background in .scss
@@ -84,11 +76,27 @@ var waitFor = function waitFor(predicate) {
 };
 
 // Date/time pickers
-waitFor(function() {return !!window.flatpickr}).then(function () {
-  window.flatpickr('input.date');
-  window.flatpickr('input.date-time', {enableTime: true});
-  window.flatpickr('input.time', {noCalendar: true, enableTime: true});
-})
+if (
+  document.querySelector('input.date') !== null ||
+  document.querySelector('input.date-time') !== null ||
+  document.querySelector('input.time') !== null
+) {
+  var datepickerScript = document.createElement('script');
+  datepickerScript.src = "https://unpkg.com/flatpickr@4.6.3/dist/flatpickr.min.js";
+  datepickerScript.async = true;
+  document.body.append(datepickerScript)
+
+  var datepickerScript = document.createElement('link');
+  datepickerScript.href = "https://unpkg.com/flatpickr@4.6.3/dist/flatpickr.min.css";
+  datepickerScript.rel = "stylesheet";
+  document.head.append(datepickerScript)
+
+  waitFor(function() {return !!window.flatpickr}).then(function () {
+    window.flatpickr('input.date');
+    window.flatpickr('input.date-time', {enableTime: true});
+    window.flatpickr('input.time', {noCalendar: true, enableTime: true});
+  })
+}
 
 // File picker
 document.querySelectorAll('.file-upload-field').forEach(function(f) {
