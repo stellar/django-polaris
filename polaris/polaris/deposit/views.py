@@ -98,7 +98,15 @@ def post_interactive_deposit(request: Request) -> Response:
     if error_resp:
         return error_resp
 
-    form_class, _ = rdi.form_for_transaction(transaction)
+    content = rdi.content_for_transaction(transaction)
+    if not (content and "form" in content):
+        return render_error_response(
+            "The anchor did not provide a content, unable to serve page.",
+            status_code=500,
+            content_type="text/html",
+        )
+
+    form_class = content.pop("form")
     form = form_class(request.POST)
     is_transaction_form = issubclass(form.__class__, TransactionForm)
     if is_transaction_form:
@@ -116,7 +124,7 @@ def post_interactive_deposit(request: Request) -> Response:
         rdi.after_form_validation(form, transaction)
 
         # Check to see if there is another form to render
-        form_data = rdi.form_for_transaction(transaction)
+        content = rdi.content_for_transaction(transaction)
 
         if form_data:
             args = {"transaction_id": transaction.id, "asset_code": asset.code}
@@ -159,20 +167,23 @@ def get_interactive_deposit(request: Request) -> Response:
     if err_resp:
         return err_resp
 
-    try:
-        form_class, context = rdi.form_for_transaction(transaction)
-    except TypeError:
+    content = rdi.content_for_transaction(transaction)
+    if not (content and content.get("form")):
         return render_error_response(
-            "The anchor did not provide a form, unable to serve page.",
+            "The anchor did not provide a content, unable to serve page.",
             status_code=500,
             content_type="text/html",
         )
 
+    form_class = content.pop("form")
+    # form_class could be None
+    form = form_class() if form_class else None
+
     url_args = {"transaction_id": transaction.id, "asset_code": asset.code}
     post_url = f"{reverse('post_interactive_deposit')}?{urlencode(url_args)}"
-    resp_data = {"form": form_class(), "post_url": post_url}
-    resp_data.update(context)
-    return Response(resp_data, template_name="deposit/form.html")
+
+    content.update({"form": form, "post_url": post_url})
+    return Response(content, template_name="deposit/form.html")
 
 
 @api_view(["POST"])
