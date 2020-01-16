@@ -124,7 +124,8 @@ def get_interactive_withdraw(request: Request) -> Response:
 
     url_args = {"transaction_id": transaction.id, "asset_code": asset.code}
     post_url = f"{reverse('post_interactive_withdraw')}?{urlencode(url_args)}"
-    content.update(post_url=post_url)
+    get_url = f"{reverse('get_interactive_withdraw')}?{urlencode(url_args)}"
+    content.update(post_url=post_url, get_url=get_url)
 
     return Response(content, template_name="withdraw/form.html")
 
@@ -148,6 +149,7 @@ def withdraw(account: str, request: Request) -> Response:
     if not asset or not asset.withdrawal_enabled:
         return render_error_response(f"invalid operation for asset {asset_code}")
     elif asset.code not in settings.ASSETS:
+        print(settings.ASSETS)
         return render_error_response(f"unsupported asset type: {asset_code}")
     distribution_address = settings.ASSETS[asset.code]["DISTRIBUTION_ACCOUNT_ADDRESS"]
 

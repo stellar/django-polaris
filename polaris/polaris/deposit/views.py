@@ -158,7 +158,8 @@ def get_interactive_deposit(request: Request) -> Response:
 
     url_args = {"transaction_id": transaction.id, "asset_code": asset.code}
     post_url = f"{reverse('post_interactive_deposit')}?{urlencode(url_args)}"
-    content.update(post_url=post_url)
+    get_url = f"{reverse('get_interactive_deposit')}?{urlencode(url_args)}"
+    content.update(post_url=post_url, get_url=get_url)
 
     return Response(content, template_name="deposit/form.html")
 
