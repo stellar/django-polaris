@@ -149,7 +149,6 @@ def withdraw(account: str, request: Request) -> Response:
     if not asset or not asset.withdrawal_enabled:
         return render_error_response(f"invalid operation for asset {asset_code}")
     elif asset.code not in settings.ASSETS:
-        print(settings.ASSETS)
         return render_error_response(f"unsupported asset type: {asset_code}")
     distribution_address = settings.ASSETS[asset.code]["DISTRIBUTION_ACCOUNT_ADDRESS"]
 
