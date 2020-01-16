@@ -3,16 +3,11 @@ import time
 from typing import List, Dict, Optional, Type, Tuple
 from uuid import uuid4
 
-from django.conf import settings
 from django.db.models import QuerySet
 from django import forms
 
 from polaris.models import Transaction
-from polaris.integrations import (
-    DepositIntegration,
-    WithdrawalIntegration,
-    TransactionForm,
-)
+from polaris.integrations import DepositIntegration, WithdrawalIntegration
 
 from .settings import env
 from . import mock_banking_rails as rails
@@ -57,31 +52,27 @@ def track_user_activity(form: forms.Form, transaction: Transaction):
     )
 
 
-def serve_form(transaction: Transaction) -> Optional[Tuple[Type[forms.Form], Dict]]:
+def check_kyc(transaction: Transaction) -> Optional[Tuple[Type[forms.Form], Dict]]:
     """
-    Returns a KYCForm if there is no record of this stellar account or
-    a TransactionForm if the amount needs to be collected. Otherwise returns
-    None.
+    Returns a KYCForm if there is no record of this stellar account,
+    otherwise returns None.
     """
-    context = {"icon_label": "Stellar Development Foundation"}
     account_qs = PolarisStellarAccount.objects.filter(
         account=transaction.stellar_account
     )
     if not account_qs.exists():
         # Unknown stellar account, get KYC info
-        return KYCForm, {
-            "title": "Polaris KYC Information",
-            "guidance": ("We're legally required to know our customers. "
-                         "Please enter the information requested."),
-            **context
-        }
-    elif not transaction.amount_in:
-        # We have user info, get transaction info
-        return TransactionForm, {
-            "title": "Polaris Transaction Information",
-            "guidance": "Please enter the amount you would like to transfer.",
-            **context
-        }
+        return (
+            KYCForm,
+            {
+                "icon_label": "Stellar Development Foundation",
+                "title": "Polaris KYC Information",
+                "guidance": (
+                    "We're legally required to know our customers. "
+                    "Please enter the information requested."
+                ),
+            },
+        )
     else:
         return None
 
@@ -163,7 +154,27 @@ class MyDepositIntegration(DepositIntegration):
     def form_for_transaction(
         cls, transaction: Transaction
     ) -> Optional[Tuple[Type[forms.Form], Dict]]:
-        return serve_form(transaction)
+        try:
+            form_class, context = check_kyc(transaction)
+        except TypeError:
+            # KYC has already been collected
+            pass
+        else:
+            return form_class, context
+
+        try:
+            form_class, _ = super().form_for_transaction(transaction)
+        except TypeError:
+            return None
+
+        return (
+            form_class,
+            {
+                "title": "Polaris Transaction Information",
+                "guidance": "Please enter the amount you would like to transfer.",
+                "icon_label": "Stellar Development Foundation",
+            },
+        )
 
     @classmethod
     def after_form_validation(cls, form: forms.Form, transaction: Transaction):
@@ -194,7 +205,29 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
     def form_for_transaction(
         cls, transaction: Transaction
     ) -> Optional[Tuple[Type[forms.Form], Dict]]:
-        return serve_form(transaction)
+        try:
+            form_class, context = check_kyc(transaction)
+        except TypeError:
+            # KYC has already been collected
+            pass
+        else:
+            return form_class, context
+
+        try:
+            form_class, _ = super().form_for_transaction(transaction)
+        except TypeError:
+            return None
+
+        return (
+            form_class,
+            {
+                "title": "Polaris Transaction Information",
+                "guidance": (
+                    "Please enter the banking details for the account "
+                    "you would like to receive your funds."
+                ),
+            },
+        )
 
     @classmethod
     def after_form_validation(cls, form: forms.Form, transaction: Transaction):
