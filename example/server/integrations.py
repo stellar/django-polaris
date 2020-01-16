@@ -183,7 +183,8 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
     def process_withdrawal(cls, response: Dict, transaction: Transaction):
         logger.info(f"Processing transaction {transaction.id}")
 
-        client = rails.BankAPIClient(settings.MOCK_BANK_ACCOUNT_ID)
+        mock_bank_account_id = "XXXXXXXXXXXXX"
+        client = rails.BankAPIClient(mock_bank_account_id)
         client.send_funds(
             to_account=transaction.to_address,
             amount=transaction.amount_in - transaction.amount_fee,
