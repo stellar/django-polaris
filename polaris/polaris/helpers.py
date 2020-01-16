@@ -6,14 +6,16 @@ import codecs
 import time
 import uuid
 
-from polaris import settings
 import jwt
+from django.conf import settings as django_settings
 from django.core.exceptions import ValidationError
 from jwt.exceptions import InvalidTokenError
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.request import Request
 
+from polaris import settings
+from polaris.middleware import import_path
 from polaris.models import Asset, Transaction
 
 
@@ -300,3 +302,27 @@ def generate_interactive_jwt(
     }
     encoded_jwt = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256")
     return encoded_jwt.decode("ascii")
+
+
+def check_middleware(content_type: str = "text/html") -> Optional[Response]:
+    """
+    Ensures the Django app running Polaris has the correct middleware
+    configuration for GET /webapp requests.
+    """
+    err_msg = None
+    session_middleware_path = "django.contrib.sessions.middleware.SessionMiddleware"
+    if import_path not in django_settings.MIDDLEWARE:
+        err_msg = f"{import_path} is not installed"
+    elif session_middleware_path not in django_settings.MIDDLEWARE:
+        err_msg = f"{session_middleware_path} is not installed"
+    elif django_settings.MIDDLEWARE.index(
+        import_path
+    ) > django_settings.MIDDLEWARE.index(session_middleware_path):
+        err_msg = f"{import_path} must be listed before {session_middleware_path}"
+
+    if err_msg:
+        return render_error_response(
+            err_msg, content_type=content_type, status_code=501
+        )
+    else:
+        return None

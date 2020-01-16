@@ -8,9 +8,7 @@ confirm that the first step of the deposit successfully completed.
 import base64
 import binascii
 from urllib.parse import urlencode
-from typing import Optional
 
-from django.conf import settings as django_settings
 from django.urls import reverse
 from django.shortcuts import redirect
 from django.views.decorators.clickjacking import xframe_options_exempt
@@ -32,11 +30,11 @@ from polaris.helpers import (
     authenticate_session,
     invalidate_session,
     interactive_args_validation,
+    check_middleware,
 )
 from polaris.models import Asset, Transaction
 from polaris.integrations.forms import TransactionForm
 from polaris.integrations import registered_deposit_integration as rdi
-from polaris.middleware import import_path
 
 
 # TODO: The interactive pop-up will be used to retrieve additional info,
@@ -63,30 +61,6 @@ def _verify_optional_args(request):
     return None
 
 
-def check_middleware(content_type: str = "text/html") -> Optional[Response]:
-    """
-    Ensures the Django app running Polaris has the correct middleware
-    configuration for GET /webapp requests.
-    """
-    err_msg = None
-    session_middleware_path = "django.contrib.sessions.middleware.SessionMiddleware"
-    if import_path not in django_settings.MIDDLEWARE:
-        err_msg = f"{import_path} is not installed"
-    elif session_middleware_path not in django_settings.MIDDLEWARE:
-        err_msg = f"{session_middleware_path} is not installed"
-    elif django_settings.MIDDLEWARE.index(
-        import_path
-    ) > django_settings.MIDDLEWARE.index(session_middleware_path):
-        err_msg = f"{import_path} must be listed before {session_middleware_path}"
-
-    if err_msg:
-        return render_error_response(
-            err_msg, content_type=content_type, status_code=501
-        )
-    else:
-        return None
-
-
 @xframe_options_exempt
 @api_view(["POST"])
 @renderer_classes([TemplateHTMLRenderer])
@@ -98,17 +72,18 @@ def post_interactive_deposit(request: Request) -> Response:
     if error_resp:
         return error_resp
 
+    # Get the content served for the previous request
     content = rdi.content_for_transaction(transaction)
-    if not (content and "form" in content):
+    if not (content and content.get("form")):
         return render_error_response(
             "The anchor did not provide a content, unable to serve page.",
             status_code=500,
             content_type="text/html",
         )
 
-    form_class = content.pop("form")
+    form_class = content.get("form")
     form = form_class(request.POST)
-    is_transaction_form = issubclass(form.__class__, TransactionForm)
+    is_transaction_form = issubclass(form_class, TransactionForm)
     if is_transaction_form:
         form.asset = asset
 
@@ -120,13 +95,15 @@ def post_interactive_deposit(request: Request) -> Response:
             )
             transaction.save()
 
-        # Perform any defined post-validation logic defined by Polaris users
+        # Perform any defined post-validation logic defined by Polaris users.
+        # If the anchor wants to return another form, this function should
+        # change the application state such that the next call to
+        # content_for_transaction() returns the next form.
         rdi.after_form_validation(form, transaction)
 
         # Check to see if there is another form to render
         content = rdi.content_for_transaction(transaction)
-
-        if form_data:
+        if content:
             args = {"transaction_id": transaction.id, "asset_code": asset.code}
             url = reverse("get_interactive_deposit")
             return redirect(f"{url}?{urlencode(args)}")
@@ -168,21 +145,21 @@ def get_interactive_deposit(request: Request) -> Response:
         return err_resp
 
     content = rdi.content_for_transaction(transaction)
-    if not (content and content.get("form")):
+    if not content:
         return render_error_response(
             "The anchor did not provide a content, unable to serve page.",
             status_code=500,
             content_type="text/html",
         )
 
-    form_class = content.pop("form")
-    # form_class could be None
-    form = form_class() if form_class else None
+    if content.get("form"):
+        form_class = content.pop("form")
+        content["form"] = form_class()
 
     url_args = {"transaction_id": transaction.id, "asset_code": asset.code}
     post_url = f"{reverse('post_interactive_deposit')}?{urlencode(url_args)}"
+    content.update(post_url=post_url)
 
-    content.update({"form": form, "post_url": post_url})
     return Response(content, template_name="deposit/form.html")
 
 
