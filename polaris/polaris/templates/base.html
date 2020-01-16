@@ -97,6 +97,26 @@ document.querySelectorAll('.file-upload-field').forEach(function(f) {
     e.target.parentElement.setAttribute('data-text', filename);
   })
 })
+
+// Card inputs
+if (document.querySelector('.cc-number') !== null) {
+  {% comment %} https://github.com/nosir/cleave.js {% endcomment %}
+  var cleaveScript = document.createElement('script');
+  cleaveScript.src = "https://unpkg.com/cleave.js@1.5.3/dist/cleave.min.js";
+  cleaveScript.async = true;
+  document.body.append(cleaveScript)
+
+  waitFor(function() { return window.Cleave }).then(function() {
+    new Cleave('.cc-number', { creditCard: true })
+    new Cleave('.cc-expiration', { date: true, datePattern: ['m', 'y'] })
+    new Cleave('.cc-cvv', {
+      numeral: true,
+      numeralThousandsGroupStyle: 'none',
+      numericOnly: true,
+
+    })
+  })
+}
     </script>
   </body>
 </html>
