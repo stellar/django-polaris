@@ -59,7 +59,7 @@ function _instanceof(left, right) { if (right != null && typeof Symbol !== "unde
 Manually babel-ized helper. Generic helper to wait until conditions are right.
 {% endcomment %}
 var waitFor = function waitFor(predicate) {
-  var pollInterval = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 100;
+  var pollInterval = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 500;
   return new Promise(function (resolve) {
     var check = function check() {
       var result = predicate();
