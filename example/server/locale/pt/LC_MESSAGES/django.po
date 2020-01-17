@@ -20,55 +20,58 @@ msgstr ""
 
 #: integrations.py:69 integrations.py:176
 msgid "Stellar Development Foundation"
-msgstr ""
+msgstr "Stellar Development Foundation"
 
 #: integrations.py:70
 msgid "Polaris KYC Information"
-msgstr ""
+msgstr "Informações de KYC do Polaris"
 
 #: integrations.py:72
 msgid ""
 "We're legally required to know our customers. Please enter the information "
 "requested."
 msgstr ""
+"Para seguir regulações, temos que conhecer nossos usuários. Por favor forneça"
+"as seguintes informaçõe."
 
 #: integrations.py:147
 msgid "Include this code as the memo when making the deposit: "
-msgstr ""
+msgstr "Inclua este código como um "memo" quando for realizar o depósito: "
 
 #: integrations.py:174 integrations.py:225
 msgid "Polaris Transaction Information"
-msgstr ""
+msgstr "Informações de Transações do Polaris"
 
 #: integrations.py:175
 msgid "Please enter the amount you would like to transfer."
-msgstr ""
+msgstr "Por favor informe o valor que você quer transferir."
 
 #: integrations.py:227
 msgid ""
 "Please enter the banking details for the account you would like to receive "
 "your funds."
 msgstr ""
+"Por favor informe os detalhes bancários da conta que vai receber os fundos."
 
 #: settings.py:116
 msgid "English"
-msgstr ""
+msgstr "Inglês"
 
 #: settings.py:116
 msgid "Spanish"
-msgstr ""
+msgstr "Espanhol"
 
 #: settings.py:116
 msgid "Portuguese"
-msgstr ""
+msgstr "Português"
 
 #: templates/readonly_login.html:21
 msgid "Please correct the error below."
-msgstr ""
+msgstr "Por favor corrija o erro a baixo."
 
 #: templates/readonly_login.html:21
 msgid "Please correct the errors below."
-msgstr ""
+msgstr "Por favor corrija os erros a baixo."
 
 #: templates/readonly_login.html:37
 #, python-format
@@ -76,11 +79,13 @@ msgid ""
 "You are authenticated as %(username)s, but are not authorized to access this "
 "page. Would you like to login to a different account?"
 msgstr ""
+"Você está autenticado como %(username)s, mas não está autorizaado a acessar essa página."
+"Você gostaria de realizar o acesso com outra conta?"
 
 #: templates/readonly_login.html:61
 msgid "Forgotten your password or username?"
-msgstr ""
+msgstr "Esqueceu a senha ou usuário?"
 
 #: templates/readonly_login.html:65
 msgid "Log in"
-msgstr ""
+msgstr "Entrar"
