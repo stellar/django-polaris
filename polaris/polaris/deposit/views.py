@@ -35,6 +35,7 @@ from polaris.helpers import (
 from polaris.models import Asset, Transaction
 from polaris.integrations.forms import TransactionForm
 from polaris.integrations import registered_deposit_integration as rdi
+from polaris.locale.views import validate_language
 
 
 @xframe_options_exempt
@@ -153,6 +154,11 @@ def deposit(account: str, request: Request) -> Response:
     """
     asset_code = request.POST.get("asset_code")
     stellar_account = request.POST.get("account")
+    lang = request.POST.get("lang")
+    if lang:
+        err_resp = validate_language(lang)
+        if err_resp:
+            return err_resp
 
     # Verify that the request is valid.
     if not all([asset_code, stellar_account]):
