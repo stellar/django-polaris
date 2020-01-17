@@ -5,20 +5,23 @@ from django.utils.translation import gettext_lazy as _
 from django.forms.widgets import TextInput
 
 
-class TelephoneInput(TextInput):
-    """
-    Switch input type to type 'tel' so that the numeric keyboard shows
-    on mobile devices.
-    """
+class CardNumberInput(TextInput):
+    template_name = "widgets/card_number.html"
 
-    input_type = "tel"
+
+class CardExpirationInput(TextInput):
+    template_name = "widgets/card_expiration.html"
+
+
+class CardCvvInput(TextInput):
+    template_name = "widgets/card_cvv.html"
 
 
 class CreditCardField(forms.CharField):
     def __init__(self, placeholder=None, *args, **kwargs):
         super().__init__(
             # override default widget
-            widget=TelephoneInput(attrs={"placeholder": placeholder}),
+            widget=CardNumberInput(attrs={"placeholder": placeholder}),
             *args,
             **kwargs,
         )
@@ -55,12 +58,8 @@ class CreditCardField(forms.CharField):
 class CreditCardForm(forms.Form):
     name = forms.CharField()
     card_number = CreditCardField()
-    month = forms.ChoiceField(choices=[(n, str(n)) for n in range(1, 13)])
-    _year = datetime.now().year
-    year = forms.ChoiceField(
-        choices=[(y, str(y)) for y in reversed(range(_year, _year + 10))]
-    )
-    cvv = forms.CharField(max_length=4)
+    expiration = forms.Field(widget=CardExpirationInput)
+    cvv = forms.Field(widget=CardCvvInput)
 
 
 class TransactionForm(forms.Form):
