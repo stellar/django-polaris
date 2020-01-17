@@ -6,7 +6,7 @@ with open("README.rst") as f:
 
 setup(
     name="django-polaris",
-    version="0.9.14",
+    version="0.9.15",
     description="A SEP-24-compliant Django anchor server",
     long_description=long_description,
     long_description_content_type="text/markdown",
