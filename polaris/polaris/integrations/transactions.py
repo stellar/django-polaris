@@ -110,6 +110,11 @@ class DepositIntegration:
         collecting KYC data, return a :class:`forms.Form` with the fields you
         need.
 
+        You can also return a dictionary without a ``form`` key. You should do
+        this if you are waiting on the user to take some action, like confirming
+        their email. Once confirmed, the next call to this function should return
+        the next form.
+
         This loop of submitting a form, validating & processing it, and checking
         for the next form will continue until this function returns ``None``.
 
