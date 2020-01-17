@@ -114,7 +114,7 @@ CORS_ORIGIN_ALLOW_ALL = True
 
 # Internationalization
 # https://docs.djangoproject.com/en/2.2/topics/i18n/
-LANGUAGE_CODE = "pt"  # testing
+LANGUAGE_CODE = "en-us"  # testing
 TIME_ZONE = "UTC"
 USE_I18N = True
 USE_L10N = True
