@@ -18,7 +18,7 @@ pipenv-to-requirements = "*"
 watchdog = "*"
 
 [packages]
-django = "==2.2.8"
+django = "==2.2.9"
 django-environ = "*"
 django-model-utils = "*"
 djangorestframework = "*"

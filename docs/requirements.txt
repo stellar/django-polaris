@@ -16,7 +16,7 @@ django-environ
 django-model-utils
 django-sass-processor
 django-sslserver
-django==2.2.8
+django==2.2.9
 djangorestframework
 libsass
 psycopg2-binary

@@ -3,14 +3,18 @@ from datetime import datetime
 from django import forms
 from django.forms.widgets import TextInput
 
+
 class CardNumberInput(TextInput):
     template_name = "widgets/card_number.html"
+
 
 class CardExpirationInput(TextInput):
     template_name = "widgets/card_expiration.html"
 
+
 class CardCvvInput(TextInput):
     template_name = "widgets/card_cvv.html"
+
 
 class CreditCardField(forms.CharField):
     def __init__(self, placeholder=None, *args, **kwargs):
