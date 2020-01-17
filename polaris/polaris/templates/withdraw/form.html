@@ -8,9 +8,9 @@
 {% block "content" %}
 <section class="section">
     {% if guidance %}
-      <i>{{ guidance|safe }}</i>
+      <center><i>{{ guidance|safe }}</i></center>
     {% else %}
-      <i>Please fill out the fields below.</i>
+      <center><i>Please fill out the fields below.</i></center>
     {% endif %}
 
     {% if form is not None %}
