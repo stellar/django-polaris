@@ -36,8 +36,10 @@ def create_stellar_deposit(transaction_id: str) -> bool:
         Transaction.STATUS.pending_anchor,
         Transaction.STATUS.pending_trust,
     ]:
-        err = "unexpected transaction status %s for create_stellar_deposit"
-        raise ValueError(err % transaction.status)
+        raise ValueError(
+            f"unexpected transaction status {transaction.status} for "
+            "create_stellar_deposit",
+        )
     transaction.status = Transaction.STATUS.pending_stellar
     transaction.save()
 

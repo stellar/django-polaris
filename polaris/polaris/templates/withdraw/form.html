@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block "title" %}
-<title>{% if title %} {{ title|safe }} {% else %} Interactive Withdraw Info Form {% endif %}</title>
+<title>{% if title %} {{ title|safe }} {% else %} {% Interactive Withdraw Info Form %} {% endif %}</title>
 {% endblock %}
 
 
@@ -10,7 +10,7 @@
     {% if guidance %}
       <center><i>{{ guidance|safe }}</i></center>
     {% else %}
-      <center><i>Please fill out the fields below.</i></center>
+      <center><i>{% trans Please fill out the fields below. %}</i></center>
     {% endif %}
 
     {% if form is not None %}
@@ -35,13 +35,13 @@
 
             <div class="field">
                 <div class="control">
-                    <button class="button is-link" type="submit">Continue</button>
+                    <button class="button is-link" type="submit">{% trans Continue %}</button>
                 </div>
             </div>
         </form>
     {% else %}
         <br><br>
-        <button class="button" onClick="location.href='{{ get_url }}'">Refresh</button>
+        <button class="button" onClick="location.href='{{ get_url }}'">{% trans Refresh %}</button>
     {% endif %}
 </section>
 {% endblock %}

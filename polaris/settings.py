@@ -13,12 +13,8 @@ PROJECT_ROOT = BASE_DIR
 # Load environment variables from .env
 env = environ.Env()
 env_file = os.path.join(PROJECT_ROOT, ".env")
-if not os.path.exists(env_file):
-    example_env_file = os.path.join(PROJECT_ROOT, ".env.example")
-    if not os.path.exists(example_env_file):
-        raise FileNotFoundError("Couldn't find .env or .env.example")
-    copyfile(os.path.join(PROJECT_ROOT, ".env.example"), env_file)
-environ.Env.read_env(env_file)
+if os.path.exists(env_file):
+    environ.Env.read_env(env_file)
 
 SECRET_KEY = env("DJANGO_SECRET_KEY")
 DEBUG = env.bool("DJANGO_DEBUG", False)
@@ -119,7 +115,7 @@ CORS_ORIGIN_ALLOW_ALL = True
 
 # Internationalization
 # https://docs.djangoproject.com/en/2.2/topics/i18n/
-LANGUAGE_CODE = "es-mx"
+LANGUAGE_CODE = "es-mx"  # testing
 TIME_ZONE = "UTC"
 USE_I18N = True
 USE_L10N = True

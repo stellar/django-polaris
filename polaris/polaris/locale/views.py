@@ -35,17 +35,32 @@ def is_supported_language(lang: str) -> bool:
     """
     .. _settings: https://docs.djangoproject.com/en/2.2/ref/settings/#std:setting-LANGUAGES
 
-    If anchors want to support a language not supported by Django out of the
-    box, they can add the tuple to the LANGUAGES list in their settings.py. Refer
-    to the settings_ documentation for more information.
+    Polaris supports English, Spanish, and Portuguese.
 
-    Note this would require anchors to provide translations for all text
-    rendered to the frontend in a .po file. This is already necessary for
-    any frontend content defined by the anchor, i.e. the forms used for the
-    interactive flow.
+    To enable this support, add the following to your settings.py:
+    ::
 
-    All rendered content defined by Polaris has translation files for
-    spanish and portuguese.
+        from django.utils.translation import gettext_lazy as _
+
+        LANGUAGES = [
+            ("en", _("English")),
+            ("es", _("Spanish")),
+            ("pt", _("Portuguese"))
+        ]
+
+    Note that adding the LANGUAGE setting is **required**. Without this,
+    Django assumes your application supports every language Django itself
+    supports.
+
+    All text content rendered to users from your application should support
+    translation. Otherwise, Spanish users will see some English in their
+    mostly-Spanish page. Supporting translation is easy, as shown in the
+    code sample above. Just use ``gettext`` or ``gettext_lazy`` on any text
+    that could be rendered to the user.
+
+    If you'd like Polaris content to render in a different language,
+    make a pull request containing the `.po` file. This file should contain
+    translations for all text rendered to the frontend by Polaris.
     """
     from django.conf.global_settings import LANGUAGES
 

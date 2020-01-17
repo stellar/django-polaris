@@ -44,7 +44,7 @@ def post_interactive_withdraw(request: Request) -> Response:
     content = rwi.content_for_transaction(transaction)
     if not (content and content.get("form")):
         return render_error_response(
-            "The anchor did not provide a content, unable to serve page.",
+            _("The anchor did not provide a content, unable to serve page."),
             status_code=500,
             content_type="text/html",
         )
@@ -117,7 +117,7 @@ def get_interactive_withdraw(request: Request) -> Response:
     content = rwi.content_for_transaction(transaction)
     if not content:
         return render_error_response(
-            "The anchor did not provide a form, unable to serve page.",
+            _("The anchor did not provide a form, unable to serve page."),
             status_code=500,
             content_type="text/html",
         )

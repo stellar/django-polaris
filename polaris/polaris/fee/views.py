@@ -1,8 +1,6 @@
 """This module defines the `/fee` view."""
 from decimal import Decimal, DecimalException
 
-from django.utils.translation import gettext as _
-
 from polaris import settings
 from rest_framework.decorators import api_view
 from rest_framework.response import Response

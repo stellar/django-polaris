@@ -108,12 +108,12 @@ def transactions(account: str, request: Request) -> Response:
         limit = _validate_limit(request.GET.get("limit"))
     except ValueError:
         return render_error_response(
-            _("invalid limit"), status_code=status.HTTP_400_BAD_REQUEST
+            "invalid limit", status_code=status.HTTP_400_BAD_REQUEST
         )
 
     if not request.GET.get("asset_code"):
         return render_error_response(
-            _("asset_code is required"), status_code=status.HTTP_400_BAD_REQUEST,
+            "asset_code is required", status_code=status.HTTP_400_BAD_REQUEST,
         )
 
     translation_dict = {
@@ -134,7 +134,7 @@ def transactions(account: str, request: Request) -> Response:
             start_transaction = Transaction.objects.get(id=paging_id)
         except Transaction.DoesNotExist:
             return render_error_response(
-                _("invalid paging_id"), status_code=status.HTTP_400_BAD_REQUEST
+                "invalid paging_id", status_code=status.HTTP_400_BAD_REQUEST
             )
         qset_filter["started_at__lt"] = start_transaction.started_at
 
@@ -159,7 +159,7 @@ def transaction(account: str, request: Request) -> Response:
         return render_error_response(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
     except Transaction.DoesNotExist:
         return render_error_response(
-            _("transaction not found"), status_code=status.HTTP_404_NOT_FOUND
+            "transaction not found", status_code=status.HTTP_404_NOT_FOUND
         )
     serializer = TransactionSerializer(
         request_transaction, context={"request": request},
