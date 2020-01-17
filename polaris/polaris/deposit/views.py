@@ -5,13 +5,13 @@ initiate a deposit of some asset into their Stellar account.
 Note that before the Stellar transaction is submitted, an external agent must
 confirm that the first step of the deposit successfully completed.
 """
-import base64
-import binascii
 from urllib.parse import urlencode
 
 from django.urls import reverse
 from django.shortcuts import redirect
 from django.views.decorators.clickjacking import xframe_options_exempt
+from django.utils.translation import gettext as _
+
 from rest_framework import status
 from rest_framework.decorators import api_view, renderer_classes
 from rest_framework.response import Response
@@ -35,30 +35,7 @@ from polaris.helpers import (
 from polaris.models import Asset, Transaction
 from polaris.integrations.forms import TransactionForm
 from polaris.integrations import registered_deposit_integration as rdi
-
-
-# TODO: The interactive pop-up will be used to retrieve additional info,
-# so we should not need to validate these parameters. Alternately, we can
-# pass these to the pop-up.
-def _verify_optional_args(request):
-    """Verify the optional arguments to `GET /deposit`."""
-    memo_type = request.POST.get("memo_type")
-    if memo_type and memo_type not in ("text", "id", "hash"):
-        return render_error_response("invalid 'memo_type'")
-
-    memo = request.POST.get("memo")
-    if memo_type and not memo:
-        return render_error_response("'memo_type' provided with no 'memo'")
-
-    if memo and not memo_type:
-        return render_error_response("'memo' provided with no 'memo_type'")
-
-    if memo_type == "hash":
-        try:
-            base64.b64encode(base64.b64decode(memo))
-        except binascii.Error:
-            return render_error_response("'memo' does not match memo_type' hash")
-    return None
+from polaris.locale.views import validate_language, activate_lang_for_request
 
 
 @xframe_options_exempt
@@ -76,7 +53,7 @@ def post_interactive_deposit(request: Request) -> Response:
     content = rdi.content_for_transaction(transaction)
     if not (content and content.get("form")):
         return render_error_response(
-            "The anchor did not provide a content, unable to serve page.",
+            _("The anchor did not provide a content, unable to serve page."),
             status_code=500,
             content_type="text/html",
         )
@@ -119,11 +96,14 @@ def post_interactive_deposit(request: Request) -> Response:
 
 
 @api_view(["GET"])
-@check_authentication
+@renderer_classes([TemplateHTMLRenderer])
+@check_authentication()
 def complete_interactive_deposit(request: Request) -> Response:
     transaction_id = request.GET("id")
     if not transaction_id:
-        render_error_response("Missing id parameter in URL")
+        render_error_response(
+            _("Missing id parameter in URL"), content_type="text/html"
+        )
     url, args = reverse("more_info"), urlencode({"id": transaction_id})
     return redirect(f"{url}?{args}")
 
@@ -147,7 +127,7 @@ def get_interactive_deposit(request: Request) -> Response:
     content = rdi.content_for_transaction(transaction)
     if not content:
         return render_error_response(
-            "The anchor did not provide a content, unable to serve page.",
+            _("The anchor did not provide a content, unable to serve page."),
             status_code=500,
             content_type="text/html",
         )
@@ -174,27 +154,28 @@ def deposit(account: str, request: Request) -> Response:
     """
     asset_code = request.POST.get("asset_code")
     stellar_account = request.POST.get("account")
+    lang = request.POST.get("lang")
+    if lang:
+        err_resp = validate_language(lang)
+        if err_resp:
+            return err_resp
+        activate_lang_for_request(lang)
 
     # Verify that the request is valid.
     if not all([asset_code, stellar_account]):
         return render_error_response(
-            "`asset_code` and `account` are required parameters"
+            _("`asset_code` and `account` are required parameters")
         )
 
     # Verify that the asset code exists in our database, with deposit enabled.
     asset = Asset.objects.filter(code=asset_code).first()
     if not asset or not asset.deposit_enabled:
-        return render_error_response(f"invalid operation for asset {asset_code}")
+        return render_error_response(_("invalid operation for asset %s") % asset_code)
 
     try:
         Keypair.from_public_key(stellar_account)
     except Ed25519PublicKeyInvalidError:
-        return render_error_response("invalid 'account'")
-
-    # Verify the optional request arguments.
-    verify_optional_args = _verify_optional_args(request)
-    if verify_optional_args:
-        return verify_optional_args
+        return render_error_response(_("invalid 'account'"))
 
     # Construct interactive deposit pop-up URL.
     transaction_id = create_transaction_id()

@@ -4,8 +4,7 @@ Django settings for app project.
 # pylint: disable=invalid-name
 import os
 import environ
-from shutil import copyfile
-
+from django.utils.translation import gettext_lazy as _
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = BASE_DIR
@@ -13,12 +12,8 @@ PROJECT_ROOT = BASE_DIR
 # Load environment variables from .env
 env = environ.Env()
 env_file = os.path.join(PROJECT_ROOT, ".env")
-if not os.path.exists(env_file):
-    example_env_file = os.path.join(PROJECT_ROOT, ".env.example")
-    if not os.path.exists(example_env_file):
-        raise FileNotFoundError("Couldn't find .env or .env.example")
-    copyfile(os.path.join(PROJECT_ROOT, ".env.example"), env_file)
-environ.Env.read_env(env_file)
+if os.path.exists(env_file):
+    environ.Env.read_env(env_file)
 
 SECRET_KEY = env("DJANGO_SECRET_KEY")
 DEBUG = env.bool("DJANGO_DEBUG", False)
@@ -53,6 +48,7 @@ MIDDLEWARE = [
     "polaris.middleware.PolarisSameSiteMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.middleware.locale.LocaleMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
 ]
 
@@ -123,3 +119,5 @@ TIME_ZONE = "UTC"
 USE_I18N = True
 USE_L10N = True
 USE_TZ = True
+USE_THOUSAND_SEPARATOR = True
+LANGUAGES = [("en", _("English")), ("pt", _("Portuguese"))]

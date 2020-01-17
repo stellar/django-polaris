@@ -4,15 +4,16 @@ withdraw some asset from their Stellar account into a non Stellar based asset.
 """
 from urllib.parse import urlencode
 
-from polaris import settings
 from django.urls import reverse
 from django.views.decorators.clickjacking import xframe_options_exempt
 from django.shortcuts import redirect
+from django.utils.translation import gettext as _
 from rest_framework.decorators import api_view, renderer_classes
 from rest_framework.response import Response
 from rest_framework.request import Request
 from rest_framework.renderers import TemplateHTMLRenderer, JSONRenderer
 
+from polaris import settings
 from polaris.helpers import (
     render_error_response,
     create_transaction_id,
@@ -27,6 +28,7 @@ from polaris.helpers import (
 from polaris.models import Asset, Transaction
 from polaris.integrations.forms import TransactionForm
 from polaris.integrations import registered_withdrawal_integration as rwi
+from polaris.locale.views import validate_language, activate_lang_for_request
 
 
 @xframe_options_exempt
@@ -43,7 +45,7 @@ def post_interactive_withdraw(request: Request) -> Response:
     content = rwi.content_for_transaction(transaction)
     if not (content and content.get("form")):
         return render_error_response(
-            "The anchor did not provide a content, unable to serve page.",
+            _("The anchor did not provide a content, unable to serve page."),
             status_code=500,
             content_type="text/html",
         )
@@ -85,11 +87,14 @@ def post_interactive_withdraw(request: Request) -> Response:
 
 
 @api_view(["GET"])
-@check_authentication
+@renderer_classes([TemplateHTMLRenderer])
+@check_authentication()
 def complete_interactive_withdraw(request: Request) -> Response:
     transaction_id = request.GET("id")
     if not transaction_id:
-        render_error_response("Missing id parameter in URL")
+        render_error_response(
+            _("Missing id parameter in URL"), content_type="text/html"
+        )
     url, args = reverse("more_info"), urlencode({"id": transaction_id})
     return redirect(f"{url}?{args}")
 
@@ -113,7 +118,7 @@ def get_interactive_withdraw(request: Request) -> Response:
     content = rwi.content_for_transaction(transaction)
     if not content:
         return render_error_response(
-            "The anchor did not provide a form, unable to serve page.",
+            _("The anchor did not provide a form, unable to serve page."),
             status_code=500,
             content_type="text/html",
         )
@@ -138,18 +143,22 @@ def withdraw(account: str, request: Request) -> Response:
     `POST /transactions/withdraw` initiates the withdrawal and returns an
     interactive withdrawal form to the user.
     """
+    lang = request.POST.get("lang")
     asset_code = request.POST.get("asset_code")
+    if lang:
+        err_resp = validate_language(lang)
+        if err_resp:
+            return err_resp
+        activate_lang_for_request(lang)
     if not asset_code:
-        return render_error_response("'asset_code' is required")
-
-    # TODO: Verify optional arguments.
+        return render_error_response(_("'asset_code' is required"))
 
     # Verify that the asset code exists in our database, with withdraw enabled.
     asset = Asset.objects.filter(code=asset_code).first()
     if not asset or not asset.withdrawal_enabled:
-        return render_error_response(f"invalid operation for asset {asset_code}")
+        return render_error_response(_("invalid operation for asset %s") % asset_code)
     elif asset.code not in settings.ASSETS:
-        return render_error_response(f"unsupported asset type: {asset_code}")
+        return render_error_response(_("unsupported asset type: %s") % asset_code)
     distribution_address = settings.ASSETS[asset.code]["DISTRIBUTION_ACCOUNT_ADDRESS"]
 
     # We use the transaction ID as a memo on the Stellar transaction for the

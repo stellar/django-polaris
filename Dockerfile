@@ -5,7 +5,7 @@ FROM python:3.7-alpine
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 
-RUN apk update && apk add build-base postgresql-dev libffi-dev
+RUN apk update && apk add build-base postgresql-dev libffi-dev gettext-dev
 
 # Copy files to working directory
 RUN mkdir /code
@@ -19,5 +19,11 @@ WORKDIR /code
 RUN pip install pipenv
 RUN pipenv lock --clear
 RUN pipenv install --dev
+
+# Create .po and .mo translation files
+WORKDIR /code/polaris
+RUN pipenv run django-admin makemessages -l pt --no-obsolete
+RUN pipenv run django-admin compilemessages
+WORKDIR /code
 
 CMD run.sh

@@ -9,6 +9,7 @@ from rest_framework import status
 
 from django.conf import settings
 from django.views.decorators.clickjacking import xframe_options_exempt
+from django.utils.translation import gettext as _
 from django.core.exceptions import ValidationError
 
 from polaris.helpers import render_error_response, validate_sep10_token
@@ -46,8 +47,10 @@ def _get_transaction_from_request(request, account: str = None):
     qset_filter = _compute_qset_filters(request.GET, translation_dict)
     if not qset_filter:
         raise AttributeError(
-            "at least one of id, stellar_transaction_id, or "
-            "external_transaction_id must be provided"
+            _(
+                "at least one of id, stellar_transaction_id, or "
+                "external_transaction_id must be provided"
+            )
         )
 
     if account:
@@ -70,7 +73,7 @@ def more_info(request: Request) -> Response:
         return render_error_response(str(exc), content_type="text/html")
     except Transaction.DoesNotExist:
         return render_error_response(
-            "transaction not found",
+            _("transaction not found"),
             status_code=status.HTTP_404_NOT_FOUND,
             content_type="text/html",
         )

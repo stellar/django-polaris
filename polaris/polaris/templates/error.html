@@ -1,12 +1,12 @@
-{% extends "base.html" %}
+{% extends "base.html" %} {% load i18n %}
 
 {% block "title" %}
-<title>Error: {{ status_code }}</title>
+<title>{% blocktrans %}Error: {{ status_code }}{% endblocktrans %}</title>
 {% endblock %}
 
 {% block "content" %}
 <section class="section">
-    <h2>Error: {{ status_code }}</h2>
+    <h2>{% blocktrans %}Error: {{ status_code }}{% endblocktrans %}</h2>
     <p>{{ error }}</p>
 </section>
 {% endblock %}

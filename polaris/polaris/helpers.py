@@ -7,12 +7,13 @@ import time
 import uuid
 
 import jwt
-from django.conf import settings as django_settings
-from django.core.exceptions import ValidationError
 from jwt.exceptions import InvalidTokenError
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.request import Request
+from django.core.exceptions import ValidationError
+from django.utils.translation import gettext as _
+from django.conf import settings as django_settings
 
 from polaris import settings
 from polaris.middleware import import_path
@@ -214,15 +215,15 @@ def authenticate_session_helper(r: Request):
 
     now = time.time()
     if jwt_dict["iss"] != r.build_absolute_uri("interactive"):
-        raise ValueError("Invalid token issuer")
+        raise ValueError(_("Invalid token issuer"))
     elif jwt_dict["iat"] > now or jwt_dict["exp"] < now:
-        raise ValueError("Token is not yet valid or is expired")
+        raise ValueError(_("Token is not yet valid or is expired"))
 
     transaction_qs = Transaction.objects.filter(
         id=jwt_dict["jti"], stellar_account=jwt_dict["sub"]
     )
     if not transaction_qs.exists():
-        raise ValueError("Transaction for account not found")
+        raise ValueError(_("Transaction for account not found"))
 
     # JWT is valid, authenticate session
     r.session["authenticated"] = True
@@ -234,13 +235,13 @@ def check_authentication_helper(r: Request):
     Checks that the session associated with the request is authenticated
     """
     if not r.session.get("authenticated"):
-        raise ValueError("Session is not authenticated")
+        raise ValueError(_("Session is not authenticated"))
 
     transaction_qs = Transaction.objects.filter(
         id=r.GET.get("transaction_id"), stellar_account=r.session.get("account")
     )
     if not transaction_qs.exists():
-        raise ValueError("Transaction for account not found")
+        raise ValueError(_("Transaction for account not found"))
 
 
 def invalidate_session(request: Request):
@@ -264,14 +265,14 @@ def interactive_args_validation(
             None,
             None,
             render_error_response(
-                "no 'transaction_id' provided", content_type="text/html"
+                _("no 'transaction_id' provided"), content_type="text/html"
             ),
         )
     elif not (asset_code and asset):
         return (
             None,
             None,
-            render_error_response("invalid 'asset_code'", content_type="text/html"),
+            render_error_response(_("invalid 'asset_code'"), content_type="text/html"),
         )
 
     try:
@@ -281,7 +282,7 @@ def interactive_args_validation(
             None,
             None,
             render_error_response(
-                "Transaction with ID and asset_code not found",
+                _("Transaction with ID and asset_code not found"),
                 content_type="text/html",
                 status_code=status.HTTP_404_NOT_FOUND,
             ),
@@ -314,20 +315,21 @@ def check_middleware(content_type: str = "text/html") -> Optional[Response]:
     Ensures the Django app running Polaris has the correct middleware
     configuration for GET /webapp requests.
     """
-    err_msg = None
+    err_msg, err_args = None, None
     session_middleware_path = "django.contrib.sessions.middleware.SessionMiddleware"
     if import_path not in django_settings.MIDDLEWARE:
-        err_msg = f"{import_path} is not installed"
+        err_msg, err_args = _("%s is not installed"), import_path
     elif session_middleware_path not in django_settings.MIDDLEWARE:
-        err_msg = f"{session_middleware_path} is not installed"
+        err_msg, err_args = _("%s is not installed"), session_middleware_path
     elif django_settings.MIDDLEWARE.index(
         import_path
     ) > django_settings.MIDDLEWARE.index(session_middleware_path):
-        err_msg = f"{import_path} must be listed before {session_middleware_path}"
+        err_args = {"polaris_mid": import_path, "session_mid": session_middleware_path}
+        err_msg = _("%(polaris_mid)s must be listed before %(session_mid)s")
 
     if err_msg:
         return render_error_response(
-            err_msg, content_type=content_type, status_code=501
+            err_msg % err_args, content_type=content_type, status_code=501
         )
     else:
         return None

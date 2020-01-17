@@ -1,0 +1,205 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: gettext-tools 0.18.3\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-01-17 20:09+0000\n"
+"PO-Revision-Date: 2014-01-07 15:19+0900\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"Language: en@quot\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: deposit/views.py:56 deposit/views.py:130 withdraw/views.py:48
+msgid "The anchor did not provide a content, unable to serve page."
+msgstr "A âncora não retornou um conteúdo, não é possível mostrar a página."
+
+#: deposit/views.py:105 withdraw/views.py:96
+msgid "Missing id parameter in URL"
+msgstr "O parâmetro id está faltando na URL"
+
+#: deposit/views.py:167
+msgid "`asset_code` and `account` are required parameters"
+msgstr "Os parâmetros `asset_code` e `account` são necessários"
+
+#: deposit/views.py:173 withdraw/views.py:159
+#, fuzzy, python-format
+#| msgid "Amount is above maximum for asset %s"
+msgid "invalid operation for asset %s"
+msgstr "Valor é maior que o máximo para esse ativo: %s"
+
+#: deposit/views.py:178
+#, fuzzy
+#| msgid "invalid 'asset_code'"
+msgid "invalid 'account'"
+msgstr "'asset_code' inválido"
+
+#: helpers.py:218
+msgid "Invalid token issuer"
+msgstr "Token de emissor inválido"
+
+#: helpers.py:220
+msgid "Token is not yet valid or is expired"
+msgstr "Token ainda não é valido ou expirou"
+
+#: helpers.py:226 helpers.py:244
+msgid "Transaction for account not found"
+msgstr "Transação para conta não encontrada"
+
+#: helpers.py:238
+msgid "Session is not authenticated"
+msgstr "A sessão não está autenticada"
+
+#: helpers.py:268
+msgid "no 'transaction_id' provided"
+msgstr "o 'transaction_id' não foi disponibilizado"
+
+#: helpers.py:275
+msgid "invalid 'asset_code'"
+msgstr "'asset_code' inválido"
+
+#: helpers.py:285
+msgid "Transaction with ID and asset_code not found"
+msgstr "Transação com ID e asset_code não encontrada"
+
+#: helpers.py:321 helpers.py:323
+#, python-format
+msgid "%s is not installed"
+msgstr "%s não está instalado"
+
+#: helpers.py:328
+#, python-format
+msgid "%(polaris_mid)s must be listed before %(session_mid)s"
+msgstr "%(polaris_mid)s deve ser listado antes de %(session_mid)s"
+
+#: integrations/forms.py:27
+msgid "The credit card number is invalid"
+msgstr "O número do cartão de crédito é inválido"
+
+#: integrations/forms.py:87
+msgid "Amount"
+msgstr "Valor"
+
+#: integrations/forms.py:101
+#, python-format
+msgid "Amount is below minimum for asset %s"
+msgstr "Valor é menor que o mínimo para esse ativo: %s"
+
+#: integrations/forms.py:105
+#, python-format
+msgid "Amount is above maximum for asset %s"
+msgstr "Valor é maior que o máximo para esse ativo: %s"
+
+#: templates/base.html:9
+msgid "SEP24 reference server"
+msgstr "Servidor de Referência da SEP24"
+
+#: templates/deposit/form.html:4
+msgid "Interactive Deposit Info Form"
+msgstr "Formulário de Informações de Depósito Interativo"
+
+#: templates/deposit/form.html:13 templates/withdraw/form.html:13
+msgid "Please fill out the fields below."
+msgstr "Por favor preencha os campos a baixo."
+
+#: templates/deposit/form.html:40
+msgid "Submit"
+msgstr "Enviar"
+
+#: templates/deposit/form.html:46 templates/withdraw/form.html:44
+msgid "Refresh"
+msgstr "Atualizar"
+
+#: templates/django/forms/widgets/clearable_file_input.html:2
+#: templates/django/forms/widgets/file.html:2
+msgid "Select a file"
+msgstr "Selecione um arquivo"
+
+#: templates/error.html:4 templates/error.html:9
+#, python-format
+msgid "Error: %(status_code)s"
+msgstr "Erro: %(status_code)s"
+
+#: templates/transaction/more_info.html:4
+#, fuzzy
+#| msgid "transaction not found"
+msgid "Transaction More Info"
+msgstr "transação não encontrada"
+
+#: templates/transaction/more_info.html:12
+msgid "instructions"
+msgstr "instruções"
+
+#: templates/transaction/more_info.html:21
+msgid "kind"
+msgstr "tipo"
+
+#: templates/transaction/more_info.html:30
+msgid "ID"
+msgstr "ID"
+
+#: templates/transaction/more_info.html:39
+#, fuzzy
+#| msgid "Amount"
+msgid "amount"
+msgstr "Valor"
+
+#: templates/transaction/more_info.html:48
+msgid "status"
+msgstr "estado"
+
+#: templates/transaction/more_info.html:57
+msgid "start"
+msgstr "começar"
+
+#: templates/transaction/more_info.html:66
+msgid "completed"
+msgstr "finalizado"
+
+#: templates/withdraw/form.html:4
+msgid "Interactive Withdraw Info Form"
+msgstr "Formulário de Informações de Saque Interativo"
+
+#: templates/withdraw/form.html:38
+msgid "Continue"
+msgstr "Continuar"
+
+#: transaction/views.py:50
+msgid ""
+"at least one of id, stellar_transaction_id, or external_transaction_id must "
+"be provided"
+msgstr ""
+"pelo menos um desses valores deve ser disponibilizado: id, "
+"stellar_transaction_id ou external_transaction_id"
+
+#: transaction/views.py:75
+msgid "transaction not found"
+msgstr "transação não encontrada"
+
+#: withdraw/forms.py:13
+msgid "Enter the bank account number for withdrawal."
+msgstr "Insira o número da conta bancária para saque"
+
+#: withdraw/forms.py:19
+msgid "Enter the bank to withdraw from."
+msgstr "Insira o bank no qual será realizado o saque"
+
+#: withdraw/views.py:121
+msgid "The anchor did not provide a form, unable to serve page."
+msgstr "A âncora não retornou um formulário, não é possível mostrar a página."
+
+#: withdraw/views.py:154
+msgid "'asset_code' is required"
+msgstr "'asset_code' é necessário"
+
+#: withdraw/views.py:161
+#, python-format
+msgid "unsupported asset type: %s"
+msgstr "Tipo de ativo não suportado: %s"
