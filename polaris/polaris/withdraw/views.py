@@ -28,6 +28,7 @@ from polaris.helpers import (
 from polaris.models import Asset, Transaction
 from polaris.integrations.forms import TransactionForm
 from polaris.integrations import registered_withdrawal_integration as rwi
+from polaris.locale.views import validate_language, activate_lang_for_request
 
 
 @xframe_options_exempt
@@ -142,18 +143,22 @@ def withdraw(account: str, request: Request) -> Response:
     `POST /transactions/withdraw` initiates the withdrawal and returns an
     interactive withdrawal form to the user.
     """
+    lang = request.POST.get("lang")
     asset_code = request.POST.get("asset_code")
+    if lang:
+        err_resp = validate_language(lang)
+        if err_resp:
+            return err_resp
+        activate_lang_for_request(lang)
     if not asset_code:
-        return render_error_response("'asset_code' is required")
-
-    # TODO: Verify optional arguments.
+        return render_error_response(_("'asset_code' is required"))
 
     # Verify that the asset code exists in our database, with withdraw enabled.
     asset = Asset.objects.filter(code=asset_code).first()
     if not asset or not asset.withdrawal_enabled:
-        return render_error_response(f"invalid operation for asset {asset_code}")
+        return render_error_response(_("invalid operation for asset %s") % asset_code)
     elif asset.code not in settings.ASSETS:
-        return render_error_response(f"unsupported asset type: {asset_code}")
+        return render_error_response(_("unsupported asset type: %s") % asset_code)
     distribution_address = settings.ASSETS[asset.code]["DISTRIBUTION_ACCOUNT_ADDRESS"]
 
     # We use the transaction ID as a memo on the Stellar transaction for the

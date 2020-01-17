@@ -11,22 +11,21 @@ from rest_framework import status
 from polaris.helpers import render_error_response, check_authentication
 
 
-def validate_language(lang: str,
-                      content_type: str = "application/json"
-                      ) -> Optional[Response]:
+def validate_language(
+    lang: str, content_type: str = "application/json"
+) -> Optional[Response]:
     if not lang:
         return render_error_response(
-            _("Missing language code in request body"),
-            content_type=content_type
+            _("Missing language code in request"), content_type=content_type
         )
     elif not is_supported_language(lang):
         return render_error_response(
-            _("Unsupported language: %s" % lang),
-            content_type=content_type
+            _("Unsupported language: %s" % lang), content_type=content_type
         )
 
 
-def activate_lang_for_session(request)
+def activate_lang_for_request(lang: str):
+    translation.activate(lang)
 
 
 @api_view(["GET", "POST"])
@@ -42,8 +41,7 @@ def language(request: Request) -> Response:
         return err_resp
     elif not request.session.get("authenticated"):
         return render_error_response(
-            _("Request session not found"),
-            status_code=status.HTTP_404_NOT_FOUND,
+            _("Request session not found"), status_code=status.HTTP_404_NOT_FOUND,
         )
 
     translation.activate(lang)

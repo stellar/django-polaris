@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gettext-tools 0.18.3\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-01-17 19:07+0000\n"
+"POT-Creation-Date: 2020-01-17 20:09+0000\n"
 "PO-Revision-Date: 2014-01-07 15:19+0900\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -17,13 +17,29 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: deposit/views.py:55 deposit/views.py:129 withdraw/views.py:47
+#: deposit/views.py:56 deposit/views.py:130 withdraw/views.py:48
 msgid "The anchor did not provide a content, unable to serve page."
 msgstr ""
 
-#: deposit/views.py:104 withdraw/views.py:95
+#: deposit/views.py:105 withdraw/views.py:96
 msgid "Missing id parameter in URL"
 msgstr "O parâmetro id está faltando na URL"
+
+#: deposit/views.py:167
+msgid "`asset_code` and `account` are required parameters"
+msgstr ""
+
+#: deposit/views.py:173 withdraw/views.py:159
+#, fuzzy, python-format
+#| msgid "Amount is above maximum for asset %s"
+msgid "invalid operation for asset %s"
+msgstr "Valor é maior que o máximo para esse ativo: %s"
+
+#: deposit/views.py:178
+#, fuzzy
+#| msgid "invalid 'asset_code'"
+msgid "invalid 'account'"
+msgstr "'asset_code' inválido"
 
 #: helpers.py:218
 msgid "Invalid token issuer"
@@ -175,6 +191,15 @@ msgstr "Insira o número da conta bancária para saque"
 msgid "Enter the bank to withdraw from."
 msgstr "Insira o bank no qual será realizado o saque"
 
-#: withdraw/views.py:120
+#: withdraw/views.py:121
 msgid "The anchor did not provide a form, unable to serve page."
+msgstr ""
+
+#: withdraw/views.py:154
+msgid "'asset_code' is required"
+msgstr ""
+
+#: withdraw/views.py:161
+#, python-format
+msgid "unsupported asset type: %s"
 msgstr ""

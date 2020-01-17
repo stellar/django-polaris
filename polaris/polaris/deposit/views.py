@@ -35,7 +35,7 @@ from polaris.helpers import (
 from polaris.models import Asset, Transaction
 from polaris.integrations.forms import TransactionForm
 from polaris.integrations import registered_deposit_integration as rdi
-from polaris.locale.views import validate_language
+from polaris.locale.views import validate_language, activate_lang_for_request
 
 
 @xframe_options_exempt
@@ -159,22 +159,23 @@ def deposit(account: str, request: Request) -> Response:
         err_resp = validate_language(lang)
         if err_resp:
             return err_resp
+        activate_lang_for_request(lang)
 
     # Verify that the request is valid.
     if not all([asset_code, stellar_account]):
         return render_error_response(
-            "`asset_code` and `account` are required parameters"
+            _("`asset_code` and `account` are required parameters")
         )
 
     # Verify that the asset code exists in our database, with deposit enabled.
     asset = Asset.objects.filter(code=asset_code).first()
     if not asset or not asset.deposit_enabled:
-        return render_error_response(f"invalid operation for asset {asset_code}")
+        return render_error_response(_("invalid operation for asset %s") % asset_code)
 
     try:
         Keypair.from_public_key(stellar_account)
     except Ed25519PublicKeyInvalidError:
-        return render_error_response("invalid 'account'")
+        return render_error_response(_("invalid 'account'"))
 
     # Construct interactive deposit pop-up URL.
     transaction_id = create_transaction_id()
