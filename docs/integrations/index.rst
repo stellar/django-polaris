@@ -35,27 +35,22 @@ Form Integrations
 
 .. _Django Forms: https://docs.djangoproject.com/en/2.2/topics/forms/#forms-in-django
 
-Polaris uses `Django Forms`_ for collecting users' information, such as their
-email or how much of their asset they want to deposit. Polaris comes out of
-the box with forms for deposit and withdrawal flows.
+Polaris provides a set of integration functions that allow you to collect,
+validate, and process the information you need to collect from users with
+`Django Forms`_.
 
-However, the data collected may not be sufficient for your needs. Maybe you
-need to collect additional fields and do some validation or processing with
-the data that Polaris doesn't already do. Maybe you need to serve more forms
-than just the one to collect transaction information.
+For example, you'll need to collect the amount the user would like to deposit
+or withdraw. Polaris provides a `TransactionForm` that can be subclassed to
+add additional fields for this purpose. The definition can be found in the
+:doc:`../forms/index` documentation.
 
-That is why Polaris provides a set of integration functions that allow you
-to collect, validate, and process the information you need with as many forms
-as you want. The set of functions documented below outline how Polaris
-supports a customizable interactive flow.
+The functions below facilitate the process of collecting the information needed.
 
-See the :doc:`../forms/index` documentation for the `TransactionForm` definition.
-
-.. autofunction:: polaris.integrations.DepositIntegration.form_for_transaction
+.. autofunction:: polaris.integrations.DepositIntegration.content_for_transaction
 
 .. autofunction:: polaris.integrations.DepositIntegration.after_form_validation
 
-.. autofunction:: polaris.integrations.WithdrawalIntegration.form_for_transaction
+.. autofunction:: polaris.integrations.WithdrawalIntegration.content_for_transaction
 
 .. autofunction:: polaris.integrations.WithdrawalIntegration.after_form_validation
 

@@ -72,12 +72,10 @@ class DepositIntegration:
         pass
 
     @classmethod
-    def form_for_transaction(
-        cls, transaction: Transaction
-    ) -> Optional[Tuple[Type[forms.Form], Dict]]:
+    def content_for_transaction(cls, transaction: Transaction) -> Optional[Dict]:
         """
-        This function should return the next form class to render for the user
-        given the state of the interactive flow.
+        This function should return a dictionary containing the next form class
+        to render for the user given the state of the interactive flow.
 
         For example, this function should return a :class:`TransactionForm` to
         get the amount that should be transferred. Once the form is submitted,
@@ -85,13 +83,14 @@ class DepositIntegration:
         and update the ``amount_in`` column with the amount specified in form.
 
         The form will be rendered inside a django template that has several
-        pieces of content that can and should be replaced by also returning a
+        pieces of content that can be replaced by also returning a
         dictionary containing the key-value pairs as shown below.
         ::
 
-            def form_for_transaction(cls, transaction):
+            def content_for_transaction(cls, transaction):
                 ...
-                return TransactionForm, {
+                return {
+                    "form": TransactionForm,
                     "title": "Deposit Transaction Form",
                     "guidance": "Please enter the amount you would like to deposit.",
                     "icon_label": "Stellar Development Foundation"
@@ -110,6 +109,11 @@ class DepositIntegration:
         another form that needs to be rendered to the user. If you are
         collecting KYC data, return a :class:`forms.Form` with the fields you
         need.
+
+        You can also return a dictionary without a ``form`` key. You should do
+        this if you are waiting on the user to take some action, like confirming
+        their email. Once confirmed, the next call to this function should return
+        the next form.
 
         This loop of submitting a form, validating & processing it, and checking
         for the next form will continue until this function returns ``None``.
@@ -131,15 +135,15 @@ class DepositIntegration:
             # and don't implement KYC by default
             return
 
-        return TransactionForm, {}
+        return {"form": TransactionForm}
 
     @classmethod
     def after_form_validation(cls, form: forms.Form, transaction: Transaction):
         """
         Use this function to process the data collected with `form` and to update
         the state of the interactive flow so that the next call to
-        :func:`DepositIntegration.form_for_transaction` returns the next form
-        to render to the user, or None.
+        :func:`DepositIntegration.content_for_transaction` returns a dictionary
+        containing the next form to render to the user, or returns None.
 
         Keep in mind that if a :class:`TransactionForm` is submitted, Polaris will
         update the `amount_in` and `amount_fee` with the information collected.
@@ -150,7 +154,7 @@ class DepositIntegration:
         particular values at different points in the flow.
 
         If you need to store some data to determine which form to return next when
-        :func:`DepositIntegration.form_for_transaction` is called, store this
+        :func:`DepositIntegration.content_for_transaction` is called, store this
         data in a model not used by Polaris.
 
         :param form: the completed :class:`forms.Form` submitted by the user
@@ -225,11 +229,9 @@ class WithdrawalIntegration:
         )
 
     @classmethod
-    def form_for_transaction(
-        cls, transaction: Transaction
-    ) -> Optional[Tuple[Type[forms.Form], Dict]]:
+    def content_for_transaction(cls, transaction: Transaction) -> Optional[Dict]:
         """
-        Same as :func:`DepositIntegration.form_for_transaction`, except:
+        Same as :func:`DepositIntegration.content_for_transaction`, except:
 
         When this function returns ``None``, Polaris will update the Transaction
         status to ``pending_external``. Once the wallet submits the
@@ -245,7 +247,7 @@ class WithdrawalIntegration:
             # and don't implement KYC by default
             return
 
-        return WithdrawForm, {}
+        return {"form": WithdrawForm}
 
     @classmethod
     def after_form_validation(cls, form: TransactionForm, transaction: Transaction):
