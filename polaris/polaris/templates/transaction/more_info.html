@@ -1,7 +1,7 @@
-{% extends "base.html" %}
+{% extends "base.html" %} {% load i18n %}
 
 {% block "title" %}
-<title>{% trans Transaction More Info %}</title>
+<title>{% trans "Transaction More Info" %}</title>
 {% endblock %}
 
 {% block "content" %}
@@ -9,7 +9,7 @@
     {% if instructions is not none %}
     <div class="info-item">
         <div class="info-label">
-            {% trans instructions %}
+            {% trans "instructions" %}
         </div>
         <div class="field-value">
             {{ instructions|safe }}
@@ -18,7 +18,7 @@
     {% endif %}
     <div class="info-item">
         <div class="info-label">
-            {% trans kind %}
+            {% trans "kind" %}
         </div>
         <div class="field-value">
             {{ transaction.kind }}
@@ -27,7 +27,7 @@
 
     <div class="info-item">
         <div class="info-label">
-            {% trans ID %}
+            {% trans "ID" %}
         </div>
         <div class="field-value">
             {{ transaction.id }}
@@ -36,7 +36,7 @@
 
     <div class="info-item">
         <div class="info-label">
-            {% trans amount %}
+            {% trans "amount" %}
         </div>
         <div class="field-value">
             {{ transaction.amount_in|floatformat }}
@@ -45,7 +45,7 @@
 
     <div class="info-item">
         <div class="info-label">
-            {% trans status %}
+            {% trans "status" %}
         </div>
         <div class="field-value">
             {{ transaction.status }}
@@ -54,7 +54,7 @@
 
     <div class="info-item">
         <div class="info-label">
-            {% trans start %}
+            {% trans "start" %}
         </div>
         <div class="field-value">
             {{ transaction.started_at }}
@@ -63,7 +63,7 @@
 
     <div class="info-item">
         <div class="info-label">
-            {% trans completed %}
+            {% trans "completed" %}
         </div>
         <div class="field-value">
             {{ transaction.completed_at }}

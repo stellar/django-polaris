@@ -4,6 +4,7 @@ from typing import List, Dict, Optional, Type, Tuple
 from uuid import uuid4
 
 from django.db.models import QuerySet
+from django.utils.translation import gettext as _
 from django import forms
 
 from polaris.models import Transaction
@@ -65,11 +66,13 @@ def check_kyc(transaction: Transaction) -> Optional[Tuple[Type[forms.Form], Dict
         return (
             KYCForm,
             {
-                "icon_label": "Stellar Development Foundation",
-                "title": "Polaris KYC Information",
+                "icon_label": _("Stellar Development Foundation"),
+                "title": _("Polaris KYC Information"),
                 "guidance": (
-                    "We're legally required to know our customers. "
-                    "Please enter the information requested."
+                    _(
+                        "We're legally required to know our customers. "
+                        "Please enter the information requested."
+                    )
                 ),
             },
         )
@@ -143,11 +146,14 @@ class MyDepositIntegration(DepositIntegration):
             transaction.save()
 
             return (
-                "Include this code as the memo when making the deposit: "
-                f"<strong>{transaction.external_extra}</strong>. We will use "
-                f"this memo to identify you as the sender.\n(This deposit is "
-                f"automatically confirmed for demonstration purposes. Please "
-                f"wait.)"
+                _(
+                    "Include this code as the memo when making the deposit: "
+                    f"<strong>%s</strong>. We will use "
+                    f"this memo to identify you as the sender.\n(This deposit is "
+                    f"automatically confirmed for demonstration purposes. Please "
+                    f"wait.)"
+                )
+                % transaction.external_extra
             )
 
     @classmethod
@@ -170,9 +176,9 @@ class MyDepositIntegration(DepositIntegration):
         return (
             form_class,
             {
-                "title": "Polaris Transaction Information",
-                "guidance": "Please enter the amount you would like to transfer.",
-                "icon_label": "Stellar Development Foundation",
+                "title": _("Polaris Transaction Information"),
+                "guidance": _("Please enter the amount you would like to transfer."),
+                "icon_label": _("Stellar Development Foundation"),
             },
         )
 
@@ -221,10 +227,12 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
         return (
             form_class,
             {
-                "title": "Polaris Transaction Information",
+                "title": _("Polaris Transaction Information"),
                 "guidance": (
-                    "Please enter the banking details for the account "
-                    "you would like to receive your funds."
+                    _(
+                        "Please enter the banking details for the account "
+                        "you would like to receive your funds."
+                    )
                 ),
             },
         )

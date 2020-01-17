@@ -1,3 +1,4 @@
-<div class="file-upload-wrapper" data-text="{% trans Select a file %}">
+{% load i18n %}
+<div class="file-upload-wrapper" data-text="{% trans 'Select a file' %}">
   <input type="file" class="file-upload-field" value="" class="form-control {{widget.class}}" type="{{ widget.type }}" name="{{ widget.name }}" {% include "django/forms/widgets/attrs.html" %} />
 </div>

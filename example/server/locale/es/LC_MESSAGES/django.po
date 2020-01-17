@@ -1,0 +1,86 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-01-17 19:08+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: integrations.py:69 integrations.py:176
+msgid "Stellar Development Foundation"
+msgstr ""
+
+#: integrations.py:70
+msgid "Polaris KYC Information"
+msgstr ""
+
+#: integrations.py:72
+msgid ""
+"We're legally required to know our customers. Please enter the information "
+"requested."
+msgstr ""
+
+#: integrations.py:147
+msgid "Include this code as the memo when making the deposit: "
+msgstr ""
+
+#: integrations.py:174 integrations.py:225
+msgid "Polaris Transaction Information"
+msgstr ""
+
+#: integrations.py:175
+msgid "Please enter the amount you would like to transfer."
+msgstr ""
+
+#: integrations.py:227
+msgid ""
+"Please enter the banking details for the account you would like to receive "
+"your funds."
+msgstr ""
+
+#: settings.py:116
+msgid "English"
+msgstr ""
+
+#: settings.py:116
+msgid "Spanish"
+msgstr ""
+
+#: settings.py:116
+msgid "Portuguese"
+msgstr ""
+
+#: templates/readonly_login.html:21
+msgid "Please correct the error below."
+msgstr ""
+
+#: templates/readonly_login.html:21
+msgid "Please correct the errors below."
+msgstr ""
+
+#: templates/readonly_login.html:37
+#, python-format
+msgid ""
+"You are authenticated as %(username)s, but are not authorized to access this "
+"page. Would you like to login to a different account?"
+msgstr ""
+
+#: templates/readonly_login.html:61
+msgid "Forgotten your password or username?"
+msgstr ""
+
+#: templates/readonly_login.html:65
+msgid "Log in"
+msgstr ""
