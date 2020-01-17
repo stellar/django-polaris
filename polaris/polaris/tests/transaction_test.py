@@ -269,3 +269,14 @@ def test_transaction_no_jwt(client, acc2_eth_withdrawal_transaction_factory):
 
     assert response.status_code == 400
     assert content == {"error": "JWT must be passed as 'Authorization' header"}
+
+
+@pytest.mark.django_db
+def test_transaction_bad_uuid(client):
+    encoded_jwt = sep10(client, client_address, client_seed)
+    header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
+    response = client.get(f"/transaction?id=NOTAREALID", follow=True, **header)
+    content = json.loads(response.content)
+
+    assert response.status_code == 400
+    assert content == {"error": "[\"'NOTAREALID' is not a valid UUID.\"]"}

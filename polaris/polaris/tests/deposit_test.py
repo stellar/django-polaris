@@ -346,6 +346,7 @@ def test_deposit_interactive_confirm_success(
         **header,
     )
     content = json.loads(response.content)
+    print(content)
     assert response.status_code == 200
     assert content["type"] == "interactive_customer_info_needed"
 

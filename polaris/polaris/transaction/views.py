@@ -1,6 +1,5 @@
 """This module defines the logic for the `/transaction` endpoint."""
 import json
-from urllib.parse import urlencode
 
 from rest_framework.decorators import api_view, renderer_classes
 from rest_framework.response import Response
@@ -9,8 +8,8 @@ from rest_framework.renderers import TemplateHTMLRenderer
 from rest_framework import status
 
 from django.conf import settings
-from django.urls import reverse
 from django.views.decorators.clickjacking import xframe_options_exempt
+from django.core.exceptions import ValidationError
 
 from polaris.helpers import render_error_response, validate_sep10_token
 from polaris.models import Transaction
@@ -67,7 +66,7 @@ def more_info(request: Request) -> Response:
     """
     try:
         request_transaction = _get_transaction_from_request(request)
-    except AttributeError as exc:
+    except (AttributeError, ValidationError) as exc:
         return render_error_response(str(exc), content_type="text/html")
     except Transaction.DoesNotExist:
         return render_error_response(
@@ -154,7 +153,7 @@ def transaction(account: str, request: Request) -> Response:
     """
     try:
         request_transaction = _get_transaction_from_request(request, account=account)
-    except AttributeError as exc:
+    except (AttributeError, ValidationError) as exc:
         return render_error_response(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
     except Transaction.DoesNotExist:
         return render_error_response(
