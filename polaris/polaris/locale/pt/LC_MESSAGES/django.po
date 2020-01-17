@@ -19,7 +19,7 @@ msgstr ""
 
 #: deposit/views.py:56 deposit/views.py:130 withdraw/views.py:48
 msgid "The anchor did not provide a content, unable to serve page."
-msgstr ""
+msgstr "A âncora não retornou um conteúdo, não é possível mostrar a página."
 
 #: deposit/views.py:105 withdraw/views.py:96
 msgid "Missing id parameter in URL"
@@ -27,7 +27,7 @@ msgstr "O parâmetro id está faltando na URL"
 
 #: deposit/views.py:167
 msgid "`asset_code` and `account` are required parameters"
-msgstr ""
+msgstr "Os parâmetros `asset_code` e `account` são necessários"
 
 #: deposit/views.py:173 withdraw/views.py:159
 #, fuzzy, python-format
@@ -81,7 +81,7 @@ msgstr "%(polaris_mid)s deve ser listado antes de %(session_mid)s"
 
 #: integrations/forms.py:27
 msgid "The credit card number is invalid"
-msgstr ""
+msgstr "O número do cartão de crédito é inválido"
 
 #: integrations/forms.py:87
 msgid "Amount"
@@ -99,33 +99,33 @@ msgstr "Valor é maior que o máximo para esse ativo: %s"
 
 #: templates/base.html:9
 msgid "SEP24 reference server"
-msgstr ""
+msgstr "Servidor de Referência da SEP24"
 
 #: templates/deposit/form.html:4
 msgid "Interactive Deposit Info Form"
-msgstr ""
+msgstr "Formulário de Informações de Depósito Interativo"
 
 #: templates/deposit/form.html:13 templates/withdraw/form.html:13
 msgid "Please fill out the fields below."
-msgstr ""
+msgstr "Por favor preencha os campos a baixo."
 
 #: templates/deposit/form.html:40
 msgid "Submit"
-msgstr ""
+msgstr "Enviar"
 
 #: templates/deposit/form.html:46 templates/withdraw/form.html:44
 msgid "Refresh"
-msgstr ""
+msgstr "Atualizar"
 
 #: templates/django/forms/widgets/clearable_file_input.html:2
 #: templates/django/forms/widgets/file.html:2
 msgid "Select a file"
-msgstr ""
+msgstr "Selecione um arquivo"
 
 #: templates/error.html:4 templates/error.html:9
 #, python-format
 msgid "Error: %(status_code)s"
-msgstr ""
+msgstr "Erro: %(status_code)s"
 
 #: templates/transaction/more_info.html:4
 #, fuzzy
@@ -135,15 +135,15 @@ msgstr "transação não encontrada"
 
 #: templates/transaction/more_info.html:12
 msgid "instructions"
-msgstr ""
+msgstr "instruções"
 
 #: templates/transaction/more_info.html:21
 msgid "kind"
-msgstr ""
+msgstr "tipo"
 
 #: templates/transaction/more_info.html:30
 msgid "ID"
-msgstr ""
+msgstr "ID"
 
 #: templates/transaction/more_info.html:39
 #, fuzzy
@@ -153,23 +153,23 @@ msgstr "Valor"
 
 #: templates/transaction/more_info.html:48
 msgid "status"
-msgstr ""
+msgstr "estado"
 
 #: templates/transaction/more_info.html:57
 msgid "start"
-msgstr ""
+msgstr "começar"
 
 #: templates/transaction/more_info.html:66
 msgid "completed"
-msgstr ""
+msgstr "finalizado"
 
 #: templates/withdraw/form.html:4
 msgid "Interactive Withdraw Info Form"
-msgstr ""
+msgstr "Formulário de Informações de Saque Interativo"
 
 #: templates/withdraw/form.html:38
 msgid "Continue"
-msgstr ""
+msgstr "Continuar"
 
 #: transaction/views.py:50
 msgid ""
@@ -193,13 +193,13 @@ msgstr "Insira o bank no qual será realizado o saque"
 
 #: withdraw/views.py:121
 msgid "The anchor did not provide a form, unable to serve page."
-msgstr ""
+msgstr "A âncora não retornou um formulário, não é possível mostrar a página."
 
 #: withdraw/views.py:154
 msgid "'asset_code' is required"
-msgstr ""
+msgstr "'asset_code' é necessário"
 
 #: withdraw/views.py:161
 #, python-format
 msgid "unsupported asset type: %s"
-msgstr ""
+msgstr "Tipo de ativo não suportado: %s"
