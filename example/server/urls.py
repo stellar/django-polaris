@@ -16,6 +16,7 @@ from django.contrib import admin
 from django.contrib.auth import views
 from django.urls import path, re_path, include
 import polaris.urls
+from .views import all_fields_form_view
 
 urlpatterns = [
     re_path(
@@ -24,5 +25,6 @@ urlpatterns = [
         name="login",
     ),
     path("admin", admin.site.urls),
+    path("all-fields", all_fields_form_view),
     path("", include(polaris.urls)),
 ]
