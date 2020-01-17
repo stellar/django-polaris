@@ -85,6 +85,7 @@ class TransactionForm(forms.Form):
         max_digits=50,
         decimal_places=25,
         label=_("Amount"),
+        localize=True,
     )
     asset = None
 
