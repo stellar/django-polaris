@@ -60,18 +60,34 @@ django will find your asset before the Polaris default.
         "polaris",
     ]
 
-Add Polaris' ``PolarisSameSiteMiddleware`` and ``CorsMiddleware`` to your
-``settings.MIDDLEWARE``. The former must be listed `above` ``SessionMiddleware``.
+Add Polaris' :doc:`PolarisSameSiteMiddleware </middleware/index>`,
+``CorsMiddleware``, and ``LocaleMiddleware`` to your ``settings.MIDDLEWARE``.
+``SessionMiddleware`` must be listed `below` ``PolarisSameSiteMiddleware`` and
+`above` ``LocaleMiddleware``.
 ::
 
     MIDDLEWARE = [
         ...,
         'polaris.middleware.PolarisSameSiteMiddleware',
         'django.contrib.sessions.middleware.SessionMiddleware',
+        'django.middleware.locale.LocaleMiddleware',
         'corsheaders.middleware.CorsMiddleware',
         ...
     ]
 
+Add the variables necessary for internationalization in settings.py:
+::
+
+    USE_I18N = True
+    USE_L10N = True
+    USE_THOUSAND_SEPARATOR = True
+    LANGUAGES = [("en", _("English"))]
+
+Polaris supports English and Portuguese out of the box. If you'd like to add
+support for another language, make a pull request to Polaris with the necessary
+translation files. If Polaris supports the language you wish to provide, make
+sure the text content rendered from your app supports translation to that language,
+and add it to ``LANGUAGES``.
 
 Define ``PROJECT_ROOT`` in your project's settings.py. Polaris uses this to
 find your ``.env`` file.
@@ -141,6 +157,7 @@ Add the Polaris endpoints in ``urls.py``
 | Run migrations: ``python manage.py migrate``
 | Compile static assets: ``python manage.py compilescss``
 | Collect static assets: ``python manage.py collectstatic --no-input``
+| Compile translation files: ``python manage.py compilemessages``
 
 The last step is to add an ``Asset`` database object for the token you
 intend to anchor. Get into the django python shell like so:

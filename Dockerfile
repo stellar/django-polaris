@@ -21,9 +21,9 @@ RUN pipenv lock --clear
 RUN pipenv install --dev
 
 # Create .po and .mo translation files
-# WORKDIR /code/polaris
-# RUN pipenv run django-admin makemessages -l es -l pt --no-obsolete
-# RUN pipenv run django-admin compilemessages
-# WORKDIR /code
+WORKDIR /code/polaris
+RUN pipenv run django-admin makemessages -l pt --no-obsolete
+RUN pipenv run django-admin compilemessages
+WORKDIR /code
 
 CMD run.sh
