@@ -53,23 +53,27 @@ def language(request: Request) -> Response:
 def is_supported_language(lang: str) -> bool:
     """
     .. _settings: https://docs.djangoproject.com/en/2.2/ref/settings/#std:setting-LANGUAGES
+    .. _gettext: https://www.gnu.org/software/gettext
 
-    Polaris supports English, Spanish, and Portuguese.
+    Polaris currently supports English and Portuguese. Note that this feature depends
+    on the GNU gettext_ library.
 
     To enable this support, add the following to your settings.py:
     ::
 
         from django.utils.translation import gettext_lazy as _
 
-        LANGUAGES = [
-            ("en", _("English")),
-            ("es", _("Spanish")),
-            ("pt", _("Portuguese"))
-        ]
+        USE_I18N = True
+        USE_L10N = True
+        USE_THOUSAND_SEPARATOR = True
+        LANGUAGES = [("en", _("English"))]
 
-    Note that adding the LANGUAGE setting is **required**. Without this,
+    Note that adding the ``LANGUAGE`` setting is **required**. Without this,
     Django assumes your application supports every language Django itself
     supports.
+
+    You must also add ``django.middleware.locale.LocaleMiddleware`` to your
+    ``settings.MIDDLEWARE`` `after` ``SessionMiddleware``.
 
     All text content rendered to users from your application should support
     translation. Otherwise, Spanish users will see some English in their

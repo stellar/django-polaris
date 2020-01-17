@@ -2,17 +2,15 @@ django-polaris documentation contents
 ==========================================
 
 .. toctree::
-
-    index
-
-.. toctree::
     :maxdepth: 2
     :caption: Contents:
 
+    index
     integrations/index
     models/index
     forms/index
     middleware/index
+    internationalization/index
 
 
 Indices and tables
