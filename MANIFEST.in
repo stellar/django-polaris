@@ -4,3 +4,4 @@ include Pipfile
 include .env.example
 recursive-include polaris/polaris/templates *
 recursive-include polaris/polaris/static *
+recursive-include polaris/polaris/locale *
