@@ -156,17 +156,12 @@ class MyDepositIntegration(DepositIntegration):
 
     @classmethod
     def content_for_transaction(cls, transaction: Transaction) -> Optional[Dict]:
-        try:
-            kyc_content = check_kyc(transaction)
-        except TypeError:
-            # KYC has already been collected
-            pass
-        else:
+        kyc_content = check_kyc(transaction)
+        if kyc_content:
             return kyc_content
 
-        try:
-            form_content = super().content_for_transaction(transaction)
-        except TypeError:
+        form_content = super().content_for_transaction(transaction)
+        if not form_content:
             return None
 
         return {
@@ -203,17 +198,12 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
 
     @classmethod
     def content_for_transaction(cls, transaction: Transaction) -> Optional[Dict]:
-        try:
-            kyc_content = check_kyc(transaction)
-        except TypeError:
-            # KYC has already been collected
-            pass
-        else:
+        kyc_content = check_kyc(transaction)
+        if kyc_content:
             return kyc_content
 
-        try:
-            content = super().content_for_transaction(transaction)
-        except TypeError:
+        content = super().content_for_transaction(transaction)
+        if not content:
             return None
 
         return {
