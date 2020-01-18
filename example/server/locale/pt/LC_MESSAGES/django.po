@@ -36,7 +36,7 @@ msgstr ""
 
 #: integrations.py:147
 msgid "Include this code as the memo when making the deposit: "
-msgstr "Inclua este código como um "memo" quando for realizar o depósito: "
+msgstr "Inclua este código como um 'memo' quando for realizar o depósito: "
 
 #: integrations.py:174 integrations.py:225
 msgid "Polaris Transaction Information"
