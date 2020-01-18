@@ -155,9 +155,7 @@ class MyDepositIntegration(DepositIntegration):
             )
 
     @classmethod
-    def content_for_transaction(
-        cls, transaction: Transaction
-    ) -> Optional[Dict]:
+    def content_for_transaction(cls, transaction: Transaction) -> Optional[Dict]:
         try:
             kyc_content = check_kyc(transaction)
         except TypeError:
@@ -204,9 +202,7 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
         )
 
     @classmethod
-    def content_for_transaction(
-        cls, transaction: Transaction
-    ) -> Optional[Dict]:
+    def content_for_transaction(cls, transaction: Transaction) -> Optional[Dict]:
         try:
             kyc_content = check_kyc(transaction)
         except TypeError:
