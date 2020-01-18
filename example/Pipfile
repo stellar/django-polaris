@@ -10,13 +10,13 @@ pytest-cov = "*"
 codecov = "*"
 
 [packages]
-django = "==2.2.8"
+django = "==2.2.9"
 django-environ = "*"
 gunicorn = "*"
 whitenoise = "*"
 psycopg2-binary = "*"
 django-cors-headers = "*"
-django-polaris = "==0.9.14"
+django-polaris = "==0.9.15"
 
 [requires]
 python_version = "3.7"

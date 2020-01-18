@@ -53,7 +53,7 @@ def track_user_activity(form: forms.Form, transaction: Transaction):
     )
 
 
-def check_kyc(transaction: Transaction) -> Optional[Tuple[Type[forms.Form], Dict]]:
+def check_kyc(transaction: Transaction) -> Optional[Dict]:
     """
     Returns a KYCForm if there is no record of this stellar account,
     otherwise returns None.
@@ -63,19 +63,17 @@ def check_kyc(transaction: Transaction) -> Optional[Tuple[Type[forms.Form], Dict
     )
     if not account_qs.exists():
         # Unknown stellar account, get KYC info
-        return (
-            KYCForm,
-            {
-                "icon_label": _("Stellar Development Foundation"),
-                "title": _("Polaris KYC Information"),
-                "guidance": (
-                    _(
-                        "We're legally required to know our customers. "
-                        "Please enter the information requested."
-                    )
-                ),
-            },
-        )
+        return {
+            "form": KYCForm,
+            "icon_label": _("Stellar Development Foundation"),
+            "title": _("Polaris KYC Information"),
+            "guidance": (
+                _(
+                    "We're legally required to know our customers. "
+                    "Please enter the information requested."
+                )
+            ),
+        }
     else:
         return None
 
@@ -157,30 +155,28 @@ class MyDepositIntegration(DepositIntegration):
             )
 
     @classmethod
-    def form_for_transaction(
+    def content_for_transaction(
         cls, transaction: Transaction
-    ) -> Optional[Tuple[Type[forms.Form], Dict]]:
+    ) -> Optional[Dict]:
         try:
-            form_class, context = check_kyc(transaction)
+            kyc_content = check_kyc(transaction)
         except TypeError:
             # KYC has already been collected
             pass
         else:
-            return form_class, context
+            return kyc_content
 
         try:
-            form_class, _ = super().form_for_transaction(transaction)
+            form_content = super().content_for_transaction(transaction)
         except TypeError:
             return None
 
-        return (
-            form_class,
-            {
-                "title": _("Polaris Transaction Information"),
-                "guidance": _("Please enter the amount you would like to transfer."),
-                "icon_label": _("Stellar Development Foundation"),
-            },
-        )
+        return {
+            "form": form_content.get("form"),
+            "title": _("Polaris Transaction Information"),
+            "guidance": _("Please enter the amount you would like to transfer."),
+            "icon_label": _("Stellar Development Foundation"),
+        }
 
     @classmethod
     def after_form_validation(cls, form: forms.Form, transaction: Transaction):
@@ -208,34 +204,32 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
         )
 
     @classmethod
-    def form_for_transaction(
+    def content_for_transaction(
         cls, transaction: Transaction
-    ) -> Optional[Tuple[Type[forms.Form], Dict]]:
+    ) -> Optional[Dict]:
         try:
-            form_class, context = check_kyc(transaction)
+            kyc_content = check_kyc(transaction)
         except TypeError:
             # KYC has already been collected
             pass
         else:
-            return form_class, context
+            return kyc_content
 
         try:
-            form_class, _ = super().form_for_transaction(transaction)
+            content = super().content_for_transaction(transaction)
         except TypeError:
             return None
 
-        return (
-            form_class,
-            {
-                "title": _("Polaris Transaction Information"),
-                "guidance": (
-                    _(
-                        "Please enter the banking details for the account "
-                        "you would like to receive your funds."
-                    )
-                ),
-            },
-        )
+        return {
+            "form": content.get("form"),
+            "title": _("Polaris Transaction Information"),
+            "guidance": (
+                _(
+                    "Please enter the banking details for the account "
+                    "you would like to receive your funds."
+                )
+            ),
+        }
 
     @classmethod
     def after_form_validation(cls, form: forms.Form, transaction: Transaction):
