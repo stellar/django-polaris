@@ -44,11 +44,8 @@ def test_auth_get_account(client):
     assert len(signatures) == 1
     server_signature = signatures[0]
 
-    default_asset = list(settings.ASSETS)[0]
     tx_hash = envelope_object.hash()
-    server_public_key = Keypair.from_public_key(
-        settings.ASSETS[default_asset]["DISTRIBUTION_ACCOUNT_ADDRESS"]
-    )
+    server_public_key = Keypair.from_public_key(settings.SIGNING_KEY)
     server_public_key.verify(tx_hash, server_signature.signature)
 
 
