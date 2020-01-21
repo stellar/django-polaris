@@ -21,6 +21,8 @@ def generate_toml(request):
             asset["DISTRIBUTION_ACCOUNT_ADDRESS"] for asset in settings.ASSETS.values()
         ],
         "VERSION": "0.1.0",
+        "SIGNING_KEY": settings.SIGNING_KEY,
+        "NETWORK_PASSPHRASE": settings.STELLAR_NETWORK_PASSPHRASE,
     }
     toml_dict.update(registered_toml_func())
 

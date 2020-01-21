@@ -37,7 +37,7 @@ def _challenge_transaction(client_account):
     # TODO: https://github.com/stellar/django-polaris/issues/81
     default_asset = list(settings.ASSETS)[0]
     challenge_tx_xdr = build_challenge_transaction(
-        server_secret=settings.ASSETS[default_asset]["DISTRIBUTION_ACCOUNT_SEED"],
+        server_secret=settings.SIGNING_SEED,
         client_account_id=client_account,
         anchor_name=ANCHOR_NAME,
         network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
