@@ -9,6 +9,7 @@ from django import forms
 
 from polaris.models import Transaction
 from polaris.integrations import DepositIntegration, WithdrawalIntegration
+from polaris import settings
 
 from .settings import env
 from . import mock_banking_rails as rails
@@ -240,15 +241,11 @@ def get_stellar_toml():
             "ORG_TWITTER": "StellarOrg",
             "ORG_GITHUB": "stellar",
         },
-        # Hard-coding for now because iterating over multiple assets while
-        # using the same issuer is nonsensical. Once the mutliple assets
-        # support is released we'll update this.
         "CURRENCIES": [
             {
-                "code": "SRT",
-                "issuer": "GCDNJUBQSX7AJWLJACMJ7I4BC3Z47BQUTMHEICZLE6MU4KQBRYG5JY6B",
+                "code": code.upper(),
+                "issuer": settings.ASSETS[code]["ISSUER_ACCOUNT_ADDRESS"],
             }
+            for code in settings.ASSETS
         ],
-        "SIGNING_KEY": "GCSGSR6KQQ5BP2FXVPWRL6SWPUSFWLVONLIBJZUKTVQB5FYJFVL6XOXE",
-        "NETWORK_PASSPHRASE": env("STELLAR_NETWORK_PASSPHRASE"),
     }
