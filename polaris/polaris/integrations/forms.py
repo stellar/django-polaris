@@ -90,12 +90,8 @@ class TransactionForm(forms.Form):
 
     def clean_amount(self):
         """Validate the provided amount of an asset."""
-        # TODO: do we want all amounts to be rounded?
-        #   0.001 of Bitcoin should not be rounded to 0.00
-        #   but 1.123 USD should be rounded to 1.12 USD.
-        #   Idea: add significant decimal places column to Asset?
-        amount = round(self.cleaned_data["amount"], 2)
         if self.asset:
+            amount = round(self.cleaned_data["amount"], self.asset.significant_decimals)
             if amount < self.asset.deposit_min_amount:
                 raise forms.ValidationError(
                     _("Amount is below minimum for asset %s") % self.asset.code
