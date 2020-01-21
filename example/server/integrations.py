@@ -147,10 +147,10 @@ class MyDepositIntegration(DepositIntegration):
             return (
                 _(
                     "Include this code as the memo when making the deposit: "
-                    f"<strong>%s</strong>. We will use "
-                    f"this memo to identify you as the sender.\n(This deposit is "
-                    f"automatically confirmed for demonstration purposes. Please "
-                    f"wait.)"
+                    "<strong>%s</strong>. We will use "
+                    "this memo to identify you as the sender.\n(This deposit is "
+                    "automatically confirmed for demonstration purposes. Please "
+                    "wait.)"
                 )
                 % transaction.external_extra
             )

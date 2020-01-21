@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gettext-tools 0.18.3\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-01-17 20:09+0000\n"
+"POT-Creation-Date: 2020-01-21 18:02+0000\n"
 "PO-Revision-Date: 2014-01-07 15:19+0900\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -30,14 +30,11 @@ msgid "`asset_code` and `account` are required parameters"
 msgstr "Os parâmetros `asset_code` e `account` são necessários"
 
 #: deposit/views.py:173 withdraw/views.py:159
-#, fuzzy, python-format
-#| msgid "Amount is above maximum for asset %s"
+#, python-format
 msgid "invalid operation for asset %s"
 msgstr "Valor é maior que o máximo para esse ativo: %s"
 
 #: deposit/views.py:178
-#, fuzzy
-#| msgid "invalid 'asset_code'"
 msgid "invalid 'account'"
 msgstr "'asset_code' inválido"
 
@@ -79,20 +76,36 @@ msgstr "%s não está instalado"
 msgid "%(polaris_mid)s must be listed before %(session_mid)s"
 msgstr "%(polaris_mid)s deve ser listado antes de %(session_mid)s"
 
-#: integrations/forms.py:27
+#: integrations/forms.py:28
 msgid "The credit card number is invalid"
 msgstr "O número do cartão de crédito é inválido"
 
-#: integrations/forms.py:87
+#: integrations/forms.py:57
+msgid "Name"
+msgstr "Nome"
+
+#: integrations/forms.py:58
+msgid "Card Number"
+msgstr "Cartão de crédito"
+
+#: integrations/forms.py:59
+msgid "Expiration"
+msgstr "Expiração"
+
+#: integrations/forms.py:60
+msgid "CVV"
+msgstr "CVV"
+
+#: integrations/forms.py:84
 msgid "Amount"
 msgstr "Valor"
 
-#: integrations/forms.py:101
+#: integrations/forms.py:99
 #, python-format
 msgid "Amount is below minimum for asset %s"
 msgstr "Valor é menor que o mínimo para esse ativo: %s"
 
-#: integrations/forms.py:105
+#: integrations/forms.py:103
 #, python-format
 msgid "Amount is above maximum for asset %s"
 msgstr "Valor é maior que o máximo para esse ativo: %s"
@@ -128,8 +141,6 @@ msgid "Error: %(status_code)s"
 msgstr "Erro: %(status_code)s"
 
 #: templates/transaction/more_info.html:4
-#, fuzzy
-#| msgid "transaction not found"
 msgid "Transaction More Info"
 msgstr "transação não encontrada"
 
@@ -146,8 +157,6 @@ msgid "ID"
 msgstr "ID"
 
 #: templates/transaction/more_info.html:39
-#, fuzzy
-#| msgid "Amount"
 msgid "amount"
 msgstr "Valor"
 
@@ -171,15 +180,11 @@ msgstr "Formulário de Informações de Saque Interativo"
 msgid "Continue"
 msgstr "Continuar"
 
-#: transaction/views.py:50
-msgid ""
-"at least one of id, stellar_transaction_id, or external_transaction_id must "
-"be provided"
-msgstr ""
-"pelo menos um desses valores deve ser disponibilizado: id, "
-"stellar_transaction_id ou external_transaction_id"
+#: transaction/views.py:51
+msgid "at least one of id, stellar_transaction_id, or external_transaction_id must be provided"
+msgstr "pelo menos um desses valores deve ser disponibilizado: id, stellar_transaction_id ou external_transaction_id"
 
-#: transaction/views.py:75
+#: transaction/views.py:76
 msgid "transaction not found"
 msgstr "transação não encontrada"
 

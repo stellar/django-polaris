@@ -1,5 +1,3 @@
-from datetime import datetime
-
 from django import forms
 from django.utils.translation import gettext_lazy as _
 from django.forms.widgets import TextInput
@@ -56,10 +54,10 @@ class CreditCardField(forms.CharField):
 
 
 class CreditCardForm(forms.Form):
-    name = forms.CharField()
-    card_number = CreditCardField()
-    expiration = forms.Field(widget=CardExpirationInput)
-    cvv = forms.Field(widget=CardCvvInput)
+    name = forms.CharField(label=_("Name"))
+    card_number = CreditCardField(label=_("Card Number"))
+    expiration = forms.Field(widget=CardExpirationInput, label=_("Expiration"))
+    cvv = forms.Field(widget=CardCvvInput, label=_("CVV"))
 
 
 class TransactionForm(forms.Form):

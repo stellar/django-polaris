@@ -1,67 +1,123 @@
-# SOME DESCRIPTIVE TITLE.
+# Example Polaris Server Portuguese Translations.
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
 #
-#, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: PACKAGE VERSION\n"
+"Project-Id-Version: 1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-01-17 19:08+0000\n"
+"POT-Creation-Date: 2020-01-21 18:02+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
-"Language: \n"
+"Language: pt\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: integrations.py:69 integrations.py:176
+#: forms.py:9
+msgid "First Name"
+msgstr "Primeiro Nome"
+
+#: forms.py:14
+msgid "Last Name"
+msgstr "Último nome"
+
+#: forms.py:18
+msgid "Email"
+msgstr "O email"
+
+#: forms.py:23
+msgid "Text"
+msgstr "Texto"
+
+#: forms.py:24
+msgid "Checkbox"
+msgstr "Caixa de seleção"
+
+#: forms.py:26 forms.py:31
+msgid "Option 1"
+msgstr "Opção 1"
+
+#: forms.py:26 forms.py:31
+msgid "Option 2"
+msgstr "Opção 2"
+
+#: forms.py:26 forms.py:31
+msgid "Option 3"
+msgstr "Opção 3"
+
+#: forms.py:28
+msgid "Select"
+msgstr "Selecione"
+
+#: forms.py:33
+msgid "Multiple Choice"
+msgstr "Múltipla escolha"
+
+#: forms.py:35
+msgid "Datetime"
+msgstr "Data hora"
+
+#: forms.py:36
+msgid "Date"
+msgstr "Data"
+
+#: forms.py:37
+msgid "Time"
+msgstr "Hora"
+
+#: forms.py:38
+msgid "File"
+msgstr "Arquivo"
+
+#: forms.py:39
+msgid "Textarea"
+msgstr "Textarea"
+
+#: forms.py:40
+msgid "Password"
+msgstr "Senha"
+
+#: integrations.py:68 integrations.py:171
 msgid "Stellar Development Foundation"
 msgstr "Stellar Development Foundation"
 
-#: integrations.py:70
+#: integrations.py:69
 msgid "Polaris KYC Information"
 msgstr "Informações de KYC do Polaris"
 
 #: integrations.py:72
+msgid "We're legally required to know our customers. Please enter the information requested."
+msgstr "Para seguir regulações, temos que conhecer nossos usuários. Por favor forneça as seguintes informaçõe."
+
+#: integrations.py:148
 msgid ""
-"We're legally required to know our customers. Please enter the information "
-"requested."
-msgstr ""
-"Para seguir regulações, temos que conhecer nossos usuários. Por favor forneça"
-"as seguintes informaçõe."
+"Include this code as the memo when making the deposit: "
+"<strong>%s</strong>. We will use "
+"this memo to identify you as the sender.\n(This deposit is "
+"automatically confirmed for demonstration purposes. Please wait.)"
+msgstr "Inclua este código como um 'memo' quando for realizar o depósito: <strong>%s</strong>"
 
-#: integrations.py:147
-msgid "Include this code as the memo when making the deposit: "
-msgstr "Inclua este código como um 'memo' quando for realizar o depósito: "
-
-#: integrations.py:174 integrations.py:225
+#: integrations.py:169 integrations.py:211
 msgid "Polaris Transaction Information"
 msgstr "Informações de Transações do Polaris"
 
-#: integrations.py:175
+#: integrations.py:170
 msgid "Please enter the amount you would like to transfer."
 msgstr "Por favor informe o valor que você quer transferir."
 
-#: integrations.py:227
-msgid ""
-"Please enter the banking details for the account you would like to receive "
-"your funds."
-msgstr ""
-"Por favor informe os detalhes bancários da conta que vai receber os fundos."
+#: integrations.py:214
+msgid "Please enter the banking details for the account you would like to receive your funds."
+msgstr "Por favor informe os detalhes bancários da conta que vai receber os fundos."
 
-#: settings.py:116
+#: settings.py:118
 msgid "English"
 msgstr "Inglês"
 
-#: settings.py:116
-msgid "Spanish"
-msgstr "Espanhol"
-
-#: settings.py:116
+#: settings.py:118
 msgid "Portuguese"
 msgstr "Português"
 
@@ -75,12 +131,8 @@ msgstr "Por favor corrija os erros a baixo."
 
 #: templates/readonly_login.html:37
 #, python-format
-msgid ""
-"You are authenticated as %(username)s, but are not authorized to access this "
-"page. Would you like to login to a different account?"
-msgstr ""
-"Você está autenticado como %(username)s, mas não está autorizaado a acessar essa página."
-"Você gostaria de realizar o acesso com outra conta?"
+msgid "You are authenticated as %(username)s, but are not authorized to access this page. Would you like to login to a different account?"
+msgstr "Você está autenticado como %(username)s, mas não está autorizaado a acessar essa página. Você gostaria de realizar o acesso com outra conta?"
 
 #: templates/readonly_login.html:61
 msgid "Forgotten your password or username?"
