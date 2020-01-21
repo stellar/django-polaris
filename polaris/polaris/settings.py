@@ -45,12 +45,10 @@ for asset_code in assets:
 
 # The SIGNING_KEY should probably be independent of the assets being anchored,
 # but if they are not specified we can use the first distribution account.
-SIGNING_KEY = env(
-    "SIGNING_KEY", default=list(ASSETS.values())[0]["DISTRIBUTION_ACCOUNT_ADDRESS"]
-)
 SIGNING_SEED = env(
     "SIGNING_SEED", default=list(ASSETS.values())[0]["DISTRIBUTION_ACCOUNT_SEED"]
 )
+SIGNING_KEY = Keypair.from_secret(SIGNING_SEED).public_key
 
 STELLAR_NETWORK_PASSPHRASE = env(
     "STELLAR_NETWORK_PASSPHRASE", default="Test SDF Network ; September 2015"
