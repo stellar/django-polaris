@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gettext-tools 0.18.3\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-01-21 18:02+0000\n"
+"POT-Creation-Date: 2020-01-21 18:30+0000\n"
 "PO-Revision-Date: 2014-01-07 15:19+0900\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -181,8 +181,12 @@ msgid "Continue"
 msgstr "Continuar"
 
 #: transaction/views.py:51
-msgid "at least one of id, stellar_transaction_id, or external_transaction_id must be provided"
-msgstr "pelo menos um desses valores deve ser disponibilizado: id, stellar_transaction_id ou external_transaction_id"
+msgid ""
+"at least one of id, stellar_transaction_id, or external_transaction_id must "
+"be provided"
+msgstr ""
+"pelo menos um desses valores deve ser disponibilizado: id, "
+"stellar_transaction_id ou external_transaction_id"
 
 #: transaction/views.py:76
 msgid "transaction not found"
@@ -192,9 +196,17 @@ msgstr "transação não encontrada"
 msgid "Enter the bank account number for withdrawal."
 msgstr "Insira o número da conta bancária para saque"
 
-#: withdraw/forms.py:19
+#: withdraw/forms.py:15
+msgid "Bank Account"
+msgstr "conta bancária"
+
+#: withdraw/forms.py:20
 msgid "Enter the bank to withdraw from."
 msgstr "Insira o bank no qual será realizado o saque"
+
+#: withdraw/forms.py:22
+msgid "Bank"
+msgstr "Banco"
 
 #: withdraw/views.py:121
 msgid "The anchor did not provide a form, unable to serve page."

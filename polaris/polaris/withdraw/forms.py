@@ -12,10 +12,12 @@ class WithdrawForm(TransactionForm):
         min_length=0,
         help_text=_("Enter the bank account number for withdrawal."),
         widget=forms.widgets.TextInput(attrs={"class": "input"}),
+        label=_("Bank Account"),
     )
     # TODO: Replace the bank with a ChoiceField.
     bank = forms.CharField(
         min_length=0,
         help_text=_("Enter the bank to withdraw from."),
         widget=forms.widgets.TextInput(attrs={"class": "input"}),
+        label=_("Bank"),
     )

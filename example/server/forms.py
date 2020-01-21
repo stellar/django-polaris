@@ -6,16 +6,15 @@ class KYCForm(forms.Form):
     first_name = forms.CharField(
         max_length=254,
         widget=forms.TextInput(attrs={"class": "input"}),
-        label=_("First Name")
+        label=_("First Name"),
     )
     last_name = forms.CharField(
         max_length=254,
         widget=forms.TextInput(attrs={"class": "input"}),
-        label=_("Last Name")
+        label=_("Last Name"),
     )
     email = forms.EmailField(
-        widget=forms.TextInput(attrs={"class": "input"}),
-        label=_("Email")
+        widget=forms.TextInput(attrs={"class": "input"}), label=_("Email")
     )
 
 
@@ -25,16 +24,20 @@ class AllFieldsForm(forms.Form):
     select = forms.ChoiceField(
         choices=[(1, _("Option 1")), (2, _("Option 2")), (3, _("Option 3"))],
         required=False,
-        label=_("Select")
+        label=_("Select"),
     )
     multiple_choice = forms.MultipleChoiceField(
         choices=[(1, _("Option 1")), (2, _("Option 2")), (3, _("Option 3"))],
         required=False,
-        label=_("Multiple Choice")
+        label=_("Multiple Choice"),
     )
     datetime = forms.DateTimeField(required=False, label=_("Datetime"))
     date = forms.DateField(required=False, label=_("Date"))
     time = forms.TimeField(required=False, label=_("Time"))
     file = forms.FileField(required=False, label=_("File"))
-    textarea = forms.CharField(widget=forms.Textarea, required=False, label=_("Textarea"))
-    password = forms.CharField(widget=forms.PasswordInput, required=False, label=_("Password"))
+    textarea = forms.CharField(
+        widget=forms.Textarea, required=False, label=_("Textarea")
+    )
+    password = forms.CharField(
+        widget=forms.PasswordInput, required=False, label=_("Password")
+    )
