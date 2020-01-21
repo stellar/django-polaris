@@ -245,7 +245,19 @@ def get_stellar_toml():
             {
                 "code": code.upper(),
                 "issuer": settings.ASSETS[code]["ISSUER_ACCOUNT_ADDRESS"],
+                "status": "test",
+                "is_anchored_asset": False,
+                "anchored_asset_type": "other",
+                "desc": "A fake anchored asset to use with this example anchor server.",
             }
             for code in settings.ASSETS
+        ],
+        "PRINCIPALS": [
+            {
+                "name": "Jacob Urban",
+                "email": "jake@stellar.org",
+                "keybase": "jakeurban",
+                "github": "https://www.github.com/JakeUrban",
+            }
         ],
     }
