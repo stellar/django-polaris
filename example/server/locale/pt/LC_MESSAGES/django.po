@@ -23,11 +23,11 @@ msgstr "Primeiro Nome"
 
 #: forms.py:14
 msgid "Last Name"
-msgstr "Último nome"
+msgstr "Sobrenome"
 
 #: forms.py:18
 msgid "Email"
-msgstr "O email"
+msgstr "Email"
 
 #: forms.py:23
 msgid "Text"
@@ -55,7 +55,7 @@ msgstr "Selecione"
 
 #: forms.py:33
 msgid "Multiple Choice"
-msgstr "Múltipla escolha"
+msgstr "Múltiplas Escolhas"
 
 #: forms.py:35
 msgid "Datetime"
@@ -67,7 +67,7 @@ msgstr "Data"
 
 #: forms.py:37
 msgid "Time"
-msgstr "Hora"
+msgstr "Tempo"
 
 #: forms.py:38
 msgid "File"
@@ -75,7 +75,7 @@ msgstr "Arquivo"
 
 #: forms.py:39
 msgid "Textarea"
-msgstr "Textarea"
+msgstr "Área de Texto"
 
 #: forms.py:40
 msgid "Password"
@@ -105,8 +105,9 @@ msgid ""
 "(This deposit is automatically confirmed for demonstration purposes. Please "
 "wait.)"
 msgstr ""
-"Inclua este código como um 'memo' quando for realizar o depósito: <strong>"
-"%s</strong>"
+"Inclua este código como um 'memo' quando for realizar o depósito: <strong>%s</strong>. "
+"Nós usaremos este memo para te identificar como o remetente.\n(Este depósito "
+"é automaticamente confirmado para fins de demonstração. Por favor aguarde.)"
 
 #: integrations.py:169 integrations.py:211
 msgid "Polaris Transaction Information"

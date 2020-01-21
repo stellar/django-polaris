@@ -86,11 +86,11 @@ msgstr "Nome"
 
 #: integrations/forms.py:58
 msgid "Card Number"
-msgstr "Cartão de crédito"
+msgstr "Número do Cartão"
 
 #: integrations/forms.py:59
 msgid "Expiration"
-msgstr "Expiração"
+msgstr "Validade"
 
 #: integrations/forms.py:60
 msgid "CVV"
@@ -198,7 +198,7 @@ msgstr "Insira o número da conta bancária para saque"
 
 #: withdraw/forms.py:15
 msgid "Bank Account"
-msgstr "conta bancária"
+msgstr "Conta do Banco"
 
 #: withdraw/forms.py:20
 msgid "Enter the bank to withdraw from."
