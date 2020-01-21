@@ -33,7 +33,10 @@ def calc_fee(asset: Asset, operation: str, amount: Decimal) -> Decimal:
     # `op_type` is not used in this context, since there is no fee variation
     # based on operation type in this example implementation, but that can
     # occur in real-life applications.
-    return fee_fixed + (fee_percent / Decimal("100.0")) * amount
+    return round(
+        fee_fixed + (fee_percent / Decimal("100.0")) * amount,
+        asset.significant_decimals,
+    )
 
 
 def render_error_response(

@@ -28,11 +28,14 @@ class Asset(TimeStampedModel):
     issuer = models.TextField(validators=[MinLengthValidator(56)])
     """The issuing Stellar account address."""
 
+    significant_decimals = models.IntegerField(default=2)
+    """The number of decimal places Polaris should save when collecting input amounts"""
+
     # Deposit-related info
     deposit_enabled = models.BooleanField(null=False, default=True)
     """``True`` if SEP-6 deposit for this asset is supported."""
     deposit_fee_fixed = models.DecimalField(
-        default=1.0, blank=True, max_digits=50, decimal_places=25
+        default=1.0, blank=True, max_digits=30, decimal_places=7
     )
     """
     Optional fixed (base) fee for deposit. In units of the deposited asset. 
@@ -40,7 +43,7 @@ class Asset(TimeStampedModel):
     schedule is complex.
     """
     deposit_fee_percent = models.DecimalField(
-        default=0.01, blank=True, max_digits=50, decimal_places=25
+        default=0.01, blank=True, max_digits=30, decimal_places=7
     )
     """
     Optional percentage fee for deposit. In percentage points. This is in 
@@ -48,11 +51,11 @@ class Asset(TimeStampedModel):
     is complex.
     """
     deposit_min_amount = models.DecimalField(
-        default=10.0, blank=True, max_digits=50, decimal_places=25
+        default=10.0, blank=True, max_digits=30, decimal_places=7
     )
     """Optional minimum amount. No limit if not specified."""
     deposit_max_amount = models.DecimalField(
-        default=10000.0, blank=True, max_digits=50, decimal_places=25
+        default=10000.0, blank=True, max_digits=30, decimal_places=7
     )
     """Optional maximum amount. No limit if not specified."""
 
@@ -60,25 +63,25 @@ class Asset(TimeStampedModel):
     withdrawal_enabled = models.BooleanField(null=False, default=True)
     """``True`` if SEP-6 withdrawal for this asset is supported."""
     withdrawal_fee_fixed = models.DecimalField(
-        default=1.0, blank=True, max_digits=50, decimal_places=25
+        default=1.0, blank=True, max_digits=30, decimal_places=7
     )
     """
     Optional fixed (base) fee for withdraw. In units of the withdrawn asset. 
     This is in addition to any ``fee_percent``.
     """
     withdrawal_fee_percent = models.DecimalField(
-        default=0.01, blank=True, max_digits=50, decimal_places=25
+        default=0.01, blank=True, max_digits=30, decimal_places=7
     )
     """
     Optional percentage fee for withdraw in percentage points. This is in 
     addition to any ``fee_fixed``.
     """
     withdrawal_min_amount = models.DecimalField(
-        default=10.0, blank=True, max_digits=50, decimal_places=25
+        default=10.0, blank=True, max_digits=30, decimal_places=7
     )
     """Optional minimum amount. No limit if not specified."""
     withdrawal_max_amount = models.DecimalField(
-        default=10000.0, blank=True, max_digits=50, decimal_places=25
+        default=10000.0, blank=True, max_digits=30, decimal_places=7
     )
     """Optional maximum amount. No limit if not specified."""
 
