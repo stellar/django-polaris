@@ -20,6 +20,7 @@ Polaris. The source can be found in the Polaris github_ repository.
 
 Banking Rails
 -------------
+
 Polaris simply doesn't have the information it needs to interface with an
 anchor's partner financial entities. That is why Polaris provides a set of
 integration functions for anchors to override.
@@ -73,6 +74,7 @@ the anchor is done processing the transaction and may resume control.
 
 stellar.toml Integration
 ------------------------
+
 Every anchor must define a stellar.toml file to describe the anchors's supported
 currencies, any validators that are run, and other meta data. Polaris provides a
 default function that returns the currency supported by your server, but you'll almost
@@ -84,6 +86,11 @@ Deposit Instructions
 --------------------
 
 .. autofunction:: polaris.integrations.DepositIntegration.instructions_for_pending_deposit
+
+Javascript Integration
+----------------------
+
+.. autofunction:: polaris.integrations.scripts
 
 Registering Integrations
 ------------------------

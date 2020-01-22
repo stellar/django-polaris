@@ -17,6 +17,19 @@ def scripts() -> List[str]:
     `example reference server`_ uses this functionality to inject Google
     Analytics into our deployment of Polaris.
 
+    Replace this function with another by passing it to
+    :func:`polaris.integrations.register_integrations` like so:
+    ::
+
+        from myapp.integrations import scripts, get_toml_data
+
+        register_integrations(
+            deposit=DepositIntegration(),
+            withdrawal=WithdrawalIntegration(),
+            toml_func=get_toml_data,
+            javascript_func=scripts
+        )
+
     Note that the scripts will be executed in the order in which they are
     returned.
     """
