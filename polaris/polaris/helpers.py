@@ -348,7 +348,7 @@ class Logger:
     """
 
     def __init__(self, namespace):
-        self.logger = logging.getLogger(namespace)
+        self.logger = logging.getLogger("polaris")
         self.namespace = namespace
 
     def fmt(self, msg):
