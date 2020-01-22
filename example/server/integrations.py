@@ -210,6 +210,7 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
         return {
             "form": content.get("form"),
             "title": _("Polaris Transaction Information"),
+            "icon_label": _("Stellar Development Foundation"),
             "guidance": (
                 _(
                     "Please enter the banking details for the account "

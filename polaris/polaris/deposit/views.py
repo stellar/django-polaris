@@ -92,7 +92,8 @@ def post_interactive_deposit(request: Request) -> Response:
             return redirect(f"{url}?{args}")
 
     else:
-        return Response({"form": form}, template_name="deposit/form.html")
+        content.update(form=form)
+        return Response(content, template_name="deposit/form.html")
 
 
 @api_view(["GET"])

@@ -82,8 +82,10 @@ def post_interactive_withdraw(request: Request) -> Response:
             transaction.save()
             url, args = reverse("more_info"), urlencode({"id": transaction.id})
             return redirect(f"{url}?{args}")
+
     else:
-        return Response({"form": form}, template_name="withdraw/form.html")
+        content.update(form=form)
+        return Response(content, template_name="withdraw/form.html")
 
 
 @api_view(["GET"])
