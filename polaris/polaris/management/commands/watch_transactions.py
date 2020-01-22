@@ -1,5 +1,4 @@
 """This module defines custom management commands for the app admin."""
-import logging
 import asyncio
 from typing import Dict
 
@@ -15,10 +14,9 @@ from stellar_sdk.client.aiohttp_client import AiohttpClient
 from polaris import settings
 from polaris.models import Transaction
 from polaris.integrations import registered_withdrawal_integration as rwi
-from polaris.helpers import format_memo_horizon
+from polaris.helpers import format_memo_horizon, Logger
 
-
-logger = logging.getLogger(__file__)
+logger = Logger(__name__)
 
 
 class Command(BaseCommand):

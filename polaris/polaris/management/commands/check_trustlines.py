@@ -1,5 +1,4 @@
 import time
-import logging
 
 from polaris import settings
 from django.core.management.base import BaseCommand, CommandError
@@ -7,8 +6,9 @@ from django.core.management import call_command
 from stellar_sdk.exceptions import BaseHorizonError
 
 from polaris.models import Transaction
+from polaris.helpers import Logger
 
-logger = logging.getLogger(__name__)
+logger = Logger(__name__)
 
 
 class Command(BaseCommand):

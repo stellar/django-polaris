@@ -370,3 +370,6 @@ class Logger:
 
     def critical(self, msg):
         self.logger.critical(self.fmt(msg))
+
+    def exception(self, msg):
+        self.logger.exception(self.fmt(msg))

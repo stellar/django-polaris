@@ -1,12 +1,13 @@
-import logging
 import time
+
 from django.core.management import BaseCommand, CommandError
+
 from polaris.deposit.utils import create_stellar_deposit
 from polaris.integrations import registered_deposit_integration as rdi
 from polaris.models import Transaction
+from polaris.helpers import Logger
 
-
-logger = logging.getLogger(__name__)
+logger = Logger(__name__)
 
 
 def execute_deposit(transaction: Transaction) -> bool:

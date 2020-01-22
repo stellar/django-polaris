@@ -1,5 +1,3 @@
-import logging
-
 from django.utils.timezone import now
 
 from stellar_sdk.transaction_builder import TransactionBuilder
@@ -8,9 +6,10 @@ from stellar_sdk.xdr.StellarXDR_type import TransactionResult
 
 from polaris import settings
 from polaris.models import Transaction
+from polaris.helpers import Logger
 
 
-logger = logging.getLogger(__name__)
+logger = Logger(__name__)
 TRUSTLINE_FAILURE_XDR = "AAAAAAAAAGT/////AAAAAQAAAAAAAAAB////+gAAAAA="
 SUCCESS_XDR = "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA="
 
