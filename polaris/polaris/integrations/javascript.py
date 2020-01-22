@@ -1,7 +1,7 @@
 from typing import List
 
 
-def javascript_for_templates() -> List[str]:
+def scripts() -> List[str]:
     """
     .. _`example reference server`: https://github.com/stellar/django-polaris/tree/master/example
 
@@ -18,11 +18,9 @@ def javascript_for_templates() -> List[str]:
     Analytics into our deployment of Polaris.
 
     Note that the scripts will be executed in the order in which they are
-    returned. This may be relevant if your javascript code has the possibility
-    of interacting with other scripts.
+    returned.
     """
-    print("IN DEFAULT JAVASCRIPT FUNC")
     return []
 
 
-registered_javascript_func = javascript_for_templates
+registered_javascript_func = scripts

@@ -2,10 +2,7 @@ import sys
 from typing import Callable
 from polaris.integrations.forms import TransactionForm
 from polaris.integrations.toml import get_stellar_toml, registered_toml_func
-from polaris.integrations.javascript import (
-    javascript_for_templates,
-    registered_javascript_func,
-)
+from polaris.integrations.javascript import scripts, registered_javascript_func
 from polaris.integrations.transactions import (
     DepositIntegration,
     WithdrawalIntegration,

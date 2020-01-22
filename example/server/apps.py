@@ -10,12 +10,12 @@ class AnchorConfig(AppConfig):
             MyDepositIntegration,
             MyWithdrawalIntegration,
             get_stellar_toml,
-            javascript,
+            scripts,
         )
 
         register_integrations(
             deposit=MyDepositIntegration(),
             withdrawal=MyWithdrawalIntegration(),
             toml_func=get_stellar_toml,
-            javascript_func=javascript,
+            javascript_func=scripts,
         )

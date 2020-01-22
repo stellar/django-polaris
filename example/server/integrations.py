@@ -262,8 +262,7 @@ def get_stellar_toml():
     }
 
 
-def javascript():
-    print("IN example JAVASCRIPT FUNC")
+def scripts():
     return [
         """
         <!-- Global site tag (gtag.js) - Google Analytics -->
