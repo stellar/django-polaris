@@ -11,7 +11,6 @@ from polaris.models import Transaction
 from polaris.integrations import DepositIntegration, WithdrawalIntegration
 from polaris import settings
 
-from .settings import env
 from . import mock_banking_rails as rails
 from .models import PolarisUser, PolarisStellarAccount, PolarisUserTransaction
 from .forms import KYCForm
@@ -262,3 +261,19 @@ def get_stellar_toml():
             }
         ],
     }
+
+
+def scripts():
+    return [
+        """
+        <!-- Global site tag (gtag.js) - Google Analytics -->
+        <script async src="https://www.googletagmanager.com/gtag/js?id=UA-156697585-1"></script>
+        <script>
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+
+          gtag('config', 'UA-156697585-1');
+        </script>
+        """
+    ]

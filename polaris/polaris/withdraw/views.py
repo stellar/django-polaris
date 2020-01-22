@@ -27,8 +27,11 @@ from polaris.helpers import (
 )
 from polaris.models import Asset, Transaction
 from polaris.integrations.forms import TransactionForm
-from polaris.integrations import registered_withdrawal_integration as rwi
 from polaris.locale.views import validate_language, activate_lang_for_request
+from polaris.integrations import (
+    registered_withdrawal_integration as rwi,
+    registered_javascript_func,
+)
 
 
 @xframe_options_exempt
@@ -132,7 +135,9 @@ def get_interactive_withdraw(request: Request) -> Response:
     url_args = {"transaction_id": transaction.id, "asset_code": asset.code}
     post_url = f"{reverse('post_interactive_withdraw')}?{urlencode(url_args)}"
     get_url = f"{reverse('get_interactive_withdraw')}?{urlencode(url_args)}"
-    content.update(post_url=post_url, get_url=get_url)
+    content.update(
+        post_url=post_url, get_url=get_url, scripts=registered_javascript_func()
+    )
 
     return Response(content, template_name="withdraw/form.html")
 

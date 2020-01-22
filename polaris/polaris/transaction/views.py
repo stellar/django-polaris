@@ -15,7 +15,10 @@ from django.core.exceptions import ValidationError
 from polaris.helpers import render_error_response, validate_sep10_token
 from polaris.models import Transaction
 from polaris.transaction.serializers import TransactionSerializer
-from polaris.integrations import registered_deposit_integration as rdi
+from polaris.integrations import (
+    registered_deposit_integration as rdi,
+    registered_javascript_func,
+)
 
 
 def _validate_limit(limit):
@@ -86,6 +89,7 @@ def more_info(request: Request) -> Response:
         "tx_json": tx_json,
         "transaction": request_transaction,
         "asset_code": request_transaction.asset.code,
+        "scripts": registered_javascript_func(),
         "instructions": None,
     }
     if (
