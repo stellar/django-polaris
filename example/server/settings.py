@@ -146,32 +146,25 @@ REST_FRAMEWORK = {
 DEFAULT_PAGE_SIZE = 10
 
 
-# Logging config
+# CORS configuration
+CORS_ORIGIN_ALLOW_ALL = True
 
+# Logging
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
     "formatters": {
-        "verbose": {
-            "format": (
-                "%(asctime)s [%(process)d] [%(levelname)s] "
-                + "pathname=%(pathname)s lineno=%(lineno)s "
-                + "funcname=%(funcName)s %(message)s"
-            ),
-            "datefmt": "%Y-%m-%d %H:%M:%S",
-        },
-        "simple": {"format": "%(levelname)s %(message)s"},
+        "verbose": {"format": "{asctime} - {levelname} - {message}", "style": "{",},
     },
     "handlers": {
-        "null": {"level": "DEBUG", "class": "logging.NullHandler"},
         "console": {
-            "level": "DEBUG",
             "class": "logging.StreamHandler",
+            "level": "DEBUG",
             "formatter": "verbose",
         },
     },
-    "loggers": {"testlogger": {"handlers": ["console"], "level": "INFO"}},
+    "loggers": {
+        "django": {"handlers": ["console"], "propogate": False, "level": "INFO"},
+        "app": {"handlers": ["console"], "propogate": False, "level": "DEBUG"},
+    },
 }
-
-# CORS configuration
-CORS_ORIGIN_ALLOW_ALL = True

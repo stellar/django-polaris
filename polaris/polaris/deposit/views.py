@@ -31,11 +31,14 @@ from polaris.helpers import (
     invalidate_session,
     interactive_args_validation,
     check_middleware,
+    Logger,
 )
 from polaris.models import Asset, Transaction
 from polaris.integrations.forms import TransactionForm
 from polaris.integrations import registered_deposit_integration as rdi
 from polaris.locale.views import validate_language, activate_lang_for_request
+
+logger = Logger(__name__)
 
 
 @xframe_options_exempt
@@ -45,6 +48,7 @@ from polaris.locale.views import validate_language, activate_lang_for_request
 def post_interactive_deposit(request: Request) -> Response:
     """
     """
+    logger.info(f"From {__name__}")
     transaction, asset, error_resp = interactive_args_validation(request)
     if error_resp:
         return error_resp
