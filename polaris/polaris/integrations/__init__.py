@@ -71,7 +71,7 @@ def register_integrations(
     elif toml_func and not callable(toml_func):
         raise TypeError("toml_func is not callable")
     elif javascript_func and not callable(javascript_func):
-        raise TypeError("toml_func is not callable")
+        raise TypeError("javascript_func is not callable")
 
     for obj, attr in [
         (deposit, "registered_deposit_integration"),
