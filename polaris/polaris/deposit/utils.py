@@ -1,5 +1,3 @@
-import logging
-
 from django.utils.timezone import now
 
 from stellar_sdk.transaction_builder import TransactionBuilder
@@ -8,9 +6,10 @@ from stellar_sdk.xdr.StellarXDR_type import TransactionResult
 
 from polaris import settings
 from polaris.models import Transaction
+from polaris.helpers import Logger
 
 
-logger = logging.getLogger(__name__)
+logger = Logger(__name__)
 TRUSTLINE_FAILURE_XDR = "AAAAAAAAAGT/////AAAAAQAAAAAAAAAB////+gAAAAA="
 SUCCESS_XDR = "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA="
 
@@ -42,6 +41,7 @@ def create_stellar_deposit(transaction_id: str) -> bool:
         )
     transaction.status = Transaction.STATUS.pending_stellar
     transaction.save()
+    logger.info(f"Transaction {transaction_id} now pending_stellar")
 
     # We can assume transaction has valid stellar_account, amount_in, and asset
     # because this task is only called after those parameters are validated.
@@ -73,13 +73,16 @@ def create_stellar_deposit(transaction_id: str) -> bool:
     except BaseHorizonError as address_exc:
         # 404 code corresponds to Resource Missing.
         if address_exc.status != 404:
-            transaction.status = Transaction.STATUS.error
-            transaction.status_message = (
+            msg = (
                 "Horizon error when loading stellar account: " f"{address_exc.message}"
             )
+            logger.error(msg)
+            transaction.status_message = msg
+            transaction.status = Transaction.STATUS.error
             transaction.save()
             return False
 
+        logger.info(f"Stellar account {stellar_account} does not exist. Creating.")
         transaction_envelope = builder.append_create_account_op(
             destination=stellar_account,
             starting_balance=starting_balance,
@@ -89,16 +92,19 @@ def create_stellar_deposit(transaction_id: str) -> bool:
         try:
             server.submit_transaction(transaction_envelope)
         except BaseHorizonError as submit_exc:
-            transaction.status = Transaction.STATUS.error
-            transaction.status_message = (
+            msg = (
                 "Horizon error when submitting create account to horizon: "
                 f"{submit_exc.message}"
             )
+            logger.error(msg)
+            transaction.status_message = msg
+            transaction.status = Transaction.STATUS.error
             transaction.save()
             return False
 
         transaction.status = Transaction.STATUS.pending_trust
         transaction.save()
+        logger.info(f"Transaction for account {stellar_account} now pending_trust.")
         return False
 
     # If the account does exist, deposit the desired amount of the given
@@ -118,26 +124,31 @@ def create_stellar_deposit(transaction_id: str) -> bool:
     # Functional errors at this stage are Horizon errors.
     except BaseHorizonError as exception:
         if TRUSTLINE_FAILURE_XDR not in exception.result_xdr:
-            transaction.status = Transaction.STATUS.error
-            transaction.status_message = (
+            msg = (
                 "Unable to submit payment to horizon, "
                 f"non-trustline failure: {exception.message}"
             )
+            logger.error(msg)
+            transaction.status_message = msg
+            transaction.status = Transaction.STATUS.error
             transaction.save()
             return False
-        transaction.status_message = (
-            "trustline error when submitting transaction to horizon"
-        )
+        msg = "trustline error when submitting transaction to horizon"
+        logger.error(msg)
+        transaction.status_message = msg
         transaction.status = Transaction.STATUS.pending_trust
         transaction.save()
         return False
 
     if response["result_xdr"] != SUCCESS_XDR:
         transaction_result = TransactionResult.from_xdr(response["result_xdr"])
-        transaction.status_message = (
+        msg = (
             "Stellar transaction failed when submitted to horizon: "
             f"{transaction_result.result}"
         )
+        logger.error(msg)
+        transaction.status_message = msg
+        transaction.status = Transaction.STATUS.error
         transaction.save()
         return False
 
@@ -147,4 +158,5 @@ def create_stellar_deposit(transaction_id: str) -> bool:
     transaction.status_eta = 0  # No more status change.
     transaction.amount_out = payment_amount
     transaction.save()
+    logger.info(f"Transaction {transaction.id} completed.")
     return True

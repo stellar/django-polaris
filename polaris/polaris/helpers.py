@@ -1,10 +1,10 @@
 """This module defines helpers for various endpoints."""
-from decimal import Decimal
-from typing import Callable, Tuple, Optional
-
+import logging
 import codecs
 import time
 import uuid
+from decimal import Decimal
+from typing import Callable, Tuple, Optional
 
 import jwt
 from jwt.exceptions import InvalidTokenError
@@ -336,3 +336,40 @@ def check_middleware(content_type: str = "text/html") -> Optional[Response]:
         )
     else:
         return None
+
+
+class Logger:
+    """
+    Additional log message pre-processing.
+
+    Right now this class allows loggers to be defined with additional
+    meta-data that can be used to pre-process log statements. This
+    could be done using a logging.Handler.
+    """
+
+    def __init__(self, namespace):
+        self.logger = logging.getLogger("polaris")
+        self.namespace = namespace
+
+    def fmt(self, msg):
+        return f'{self.namespace}: "{msg}"'
+
+    # typical logging.Logger mock methods
+
+    def debug(self, msg):
+        self.logger.debug(self.fmt(msg))
+
+    def info(self, msg):
+        self.logger.info(self.fmt(msg))
+
+    def warning(self, msg):
+        self.logger.warning(self.fmt(msg))
+
+    def error(self, msg):
+        self.logger.error(self.fmt(msg))
+
+    def critical(self, msg):
+        self.logger.critical(self.fmt(msg))
+
+    def exception(self, msg):
+        self.logger.exception(self.fmt(msg))

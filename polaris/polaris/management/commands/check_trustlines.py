@@ -1,14 +1,14 @@
 import time
-import logging
 
 from polaris import settings
-from django.core.management.base import BaseCommand, CommandError
+from django.core.management.base import BaseCommand
 from django.core.management import call_command
 from stellar_sdk.exceptions import BaseHorizonError
 
 from polaris.models import Transaction
+from polaris.helpers import Logger
 
-logger = logging.getLogger(__name__)
+logger = Logger(__name__)
 
 
 class Command(BaseCommand):
@@ -43,18 +43,29 @@ class Command(BaseCommand):
                     server.accounts().account_id(transaction.stellar_account).call()
                 )
             except BaseHorizonError:
-                logger.debug("could not load account using provided horizon URL")
+                logger.warning(
+                    f"could not load account {transaction.stellar_account} using provided horizon URL"
+                )
                 continue
             try:
                 balances = account["balances"]
             except KeyError:
-                logger.debug("horizon account response had no balances")
+                logger.debug(
+                    f"horizon account {transaction.stellar_account} response had no balances"
+                )
                 continue
             for balance in balances:
                 try:
                     asset_code = balance["asset_code"]
                 except KeyError:
-                    logger.debug("horizon balances had no asset_code")
+                    if balance.get("asset_type") != "native":
+                        logger.debug(
+                            f"horizon balance had no asset_code for account {account['id']}"
+                        )
                     continue
                 if asset_code == transaction.asset.code:
+                    logger.info(
+                        f"Account {account['id']} has established a trustline for {asset_code}, "
+                        f"initiating deposit for {transaction.id}"
+                    )
                     call_command("create_stellar_deposit", transaction.id)

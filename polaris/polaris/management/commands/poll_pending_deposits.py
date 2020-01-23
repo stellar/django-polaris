@@ -1,12 +1,13 @@
-import logging
 import time
+
 from django.core.management import BaseCommand, CommandError
+
 from polaris.deposit.utils import create_stellar_deposit
 from polaris.integrations import registered_deposit_integration as rdi
 from polaris.models import Transaction
+from polaris.helpers import Logger
 
-
-logger = logging.getLogger(__name__)
+logger = Logger(__name__)
 
 
 def execute_deposit(transaction: Transaction) -> bool:
@@ -29,6 +30,7 @@ def execute_deposit(transaction: Transaction) -> bool:
     transaction.status = Transaction.STATUS.pending_anchor
     transaction.status_eta = 5  # Ledger close time.
     transaction.save()
+    logger.info(f"Transaction {transaction.id} now pending_anchor, initiating deposit")
     # launch the deposit Stellar transaction.
     return create_stellar_deposit(transaction.id)
 
@@ -73,14 +75,29 @@ class Command(BaseCommand):
         try:
             ready_transactions = rdi.poll_pending_deposits(pending_deposits)
         except NotImplementedError as e:
+            # Let the process crash because the anchor needs to implement the
+            # integration function.
             raise CommandError(e)
+        except Exception:
+            # We don't know if poll_pending_deposits() will raise an exception
+            # every time its called, but we're going to assume it was a special
+            # case and allow the process to continue running by returning instead
+            # of re-raising the error. The anchor should see the log messages and
+            # fix the issue if it is reoccuring.
+            logger.exception("poll_pending_deposits() threw an unexpected exception")
+            return
         for transaction in ready_transactions:
             try:
                 success = execute_deposit(transaction)
             except ValueError as e:
-                logger.error(f"poll_pending_transactions: {str(e)}")
+                logger.error(str(e))
                 continue
             if success:
                 # Get updated status
                 transaction.refresh_from_db()
-                rdi.after_deposit(transaction)
+                try:
+                    rdi.after_deposit(transaction)
+                except Exception:
+                    # Same situation as poll_pending_deposits(), we should assume
+                    # this won't happen every time, so we don't stop the loop.
+                    logger.exception("after_deposit() threw an unexpected exception")

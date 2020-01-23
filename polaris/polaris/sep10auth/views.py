@@ -10,11 +10,9 @@ import json
 import time
 import jwt
 
-from polaris import settings
 from django.http import JsonResponse
 from rest_framework import status
 from rest_framework.decorators import api_view
-
 from stellar_sdk.transaction_envelope import TransactionEnvelope
 from stellar_sdk.sep.stellar_web_authentication import (
     build_challenge_transaction,
@@ -23,9 +21,12 @@ from stellar_sdk.sep.stellar_web_authentication import (
 from stellar_sdk.sep.exceptions import InvalidSep10ChallengeError
 from stellar_sdk.exceptions import Ed25519PublicKeyInvalidError
 
+from polaris import settings
+from polaris.helpers import Logger
 
 MIME_URLENCODE, MIME_JSON = "application/x-www-form-urlencoded", "application/json"
 ANCHOR_NAME = "SEP 24 Reference"
+logger = Logger(__name__)
 
 
 def _challenge_transaction(client_account):
@@ -115,6 +116,10 @@ def _generate_jwt(request, envelope_xdr):
         envelope_xdr, network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE
     )
     transaction = transaction_envelope.transaction
+    source_account = transaction.operations[0].source
+    logger.info(
+        f"Challenge verified, generating SEP-10 token for account {source_account}"
+    )
     hash_hex = binascii.hexlify(transaction_envelope.hash()).decode()
     jwt_dict = {
         "iss": request.build_absolute_uri("/auth"),
@@ -136,6 +141,7 @@ def _get_auth(request):
 
     try:
         transaction = _challenge_transaction(account)
+        logger.info(f"Returning SEP-10 challenge for account {account}")
     except Ed25519PublicKeyInvalidError as e:
         return JsonResponse({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
