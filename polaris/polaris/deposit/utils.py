@@ -41,6 +41,7 @@ def create_stellar_deposit(transaction_id: str) -> bool:
         )
     transaction.status = Transaction.STATUS.pending_stellar
     transaction.save()
+    logger.info(f"Transaction {transaction_id} now pending_stellar")
 
     # We can assume transaction has valid stellar_account, amount_in, and asset
     # because this task is only called after those parameters are validated.
@@ -81,6 +82,7 @@ def create_stellar_deposit(transaction_id: str) -> bool:
             transaction.save()
             return False
 
+        logger.info(f"Stellar account {stellar_account} does not exist. Creating.")
         transaction_envelope = builder.append_create_account_op(
             destination=stellar_account,
             starting_balance=starting_balance,
@@ -102,6 +104,7 @@ def create_stellar_deposit(transaction_id: str) -> bool:
 
         transaction.status = Transaction.STATUS.pending_trust
         transaction.save()
+        logger.info(f"Transaction for account {stellar_account} now pending_trust.")
         return False
 
     # If the account does exist, deposit the desired amount of the given
@@ -155,4 +158,5 @@ def create_stellar_deposit(transaction_id: str) -> bool:
     transaction.status_eta = 0  # No more status change.
     transaction.amount_out = payment_amount
     transaction.save()
+    logger.info(f"Transaction {transaction.id} completed.")
     return True

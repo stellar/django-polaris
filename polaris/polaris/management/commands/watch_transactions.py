@@ -58,6 +58,8 @@ class Command(BaseCommand):
                 # Ensure the distribution account actually exists
                 await server.load_account(account)
             except NotFoundError:
+                # This exception will crash the process, but the anchor needs
+                # to provide valid accounts to watch.
                 raise RuntimeError(
                     "Stellar distribution account does not exist in horizon"
                 )

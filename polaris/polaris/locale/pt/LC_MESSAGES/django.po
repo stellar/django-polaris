@@ -18,7 +18,7 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 #: deposit/views.py:56 deposit/views.py:130 withdraw/views.py:48
-msgid "The anchor did not provide a content, unable to serve page."
+msgid "The anchor did not provide form content, unable to serve page."
 msgstr "A âncora não retornou um conteúdo, não é possível mostrar a página."
 
 #: deposit/views.py:105 withdraw/views.py:96

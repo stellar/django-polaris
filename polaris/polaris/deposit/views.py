@@ -58,9 +58,9 @@ def post_interactive_deposit(request: Request) -> Response:
         # django-admin makemessages doesn't detect translation strings if they're
         # stored in a variable prior to translation, and we don't want to log non-english,
         # so we going to... duplicate code! dun dun dun
-        logger.error("The anchor did not provide a content, unable to serve page.")
+        logger.error("The anchor did not provide form content, unable to serve page.")
         return render_error_response(
-            _("The anchor did not provide a content, unable to serve page."),
+            _("The anchor did not provide form content, unable to serve page."),
             status_code=500,
             content_type="text/html",
         )
@@ -97,6 +97,9 @@ def post_interactive_deposit(request: Request) -> Response:
             url = reverse("get_interactive_deposit")
             return redirect(f"{url}?{urlencode(args)}")
         else:  # Last form has been submitted
+            logger.info(
+                f"Finished data collection and processing for transaction {transaction.id}"
+            )
             invalidate_session(request)
             transaction.status = Transaction.STATUS.pending_user_transfer_start
             transaction.save()
@@ -117,6 +120,7 @@ def complete_interactive_deposit(request: Request) -> Response:
         render_error_response(
             _("Missing id parameter in URL"), content_type="text/html"
         )
+    logger.info(f"Hands-off interactive flow complete for transaction {transaction_id}")
     url, args = reverse("more_info"), urlencode({"id": transaction_id})
     return redirect(f"{url}?{args}")
 

@@ -50,7 +50,7 @@ class Command(BaseCommand):
             try:
                 balances = account["balances"]
             except KeyError:
-                logger.warning(
+                logger.debug(
                     f"horizon account {transaction.stellar_account} response had no balances"
                 )
                 continue
@@ -58,7 +58,14 @@ class Command(BaseCommand):
                 try:
                     asset_code = balance["asset_code"]
                 except KeyError:
-                    logger.warning("horizon balances had no asset_code")
+                    if balance.get("asset_type") != "native":
+                        logger.debug(
+                            f"horizon balance had no asset_code for account {account['id']}"
+                        )
                     continue
                 if asset_code == transaction.asset.code:
+                    logger.info(
+                        f"Account {account['id']} has established a trustline for {asset_code}, "
+                        f"initiating deposit for {transaction.id}"
+                    )
                     call_command("create_stellar_deposit", transaction.id)
