@@ -5,16 +5,16 @@ from django.utils.translation import gettext_lazy as _
 class KYCForm(forms.Form):
     first_name = forms.CharField(
         max_length=254,
-        widget=forms.TextInput(attrs={"class": "input"}),
+        widget=forms.TextInput(attrs={"class": "input", "test-value": "Albert"}),
         label=_("First Name"),
     )
     last_name = forms.CharField(
         max_length=254,
-        widget=forms.TextInput(attrs={"class": "input"}),
+        widget=forms.TextInput(attrs={"class": "input", "test-value": "Einstein"}),
         label=_("Last Name"),
     )
     email = forms.EmailField(
-        widget=forms.TextInput(attrs={"class": "input"}), label=_("Email")
+        widget=forms.TextInput(attrs={"class": "input", "test-value": "clerk@patentoffice.gov"}), label=_("Email")
     )
 
 
