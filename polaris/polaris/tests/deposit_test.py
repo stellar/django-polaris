@@ -308,7 +308,7 @@ def test_deposit_interactive_confirm_success(
 )
 @patch(
     "stellar_sdk.call_builder.accounts_call_builder.AccountsCallBuilder.call",
-    return_value={"sequence": 1, "balances": [{"asset_code": "USD"}]},
+    return_value={"id": 1, "sequence": 1, "balances": [{"asset_code": "USD"}]},
 )
 def test_deposit_check_trustlines_success(
     mock_account,
