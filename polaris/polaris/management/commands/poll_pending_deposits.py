@@ -75,13 +75,27 @@ class Command(BaseCommand):
             ready_transactions = rdi.poll_pending_deposits(pending_deposits)
         except NotImplementedError as e:
             raise CommandError(e)
+        except Exception:
+            # We don't know if poll_pending_deposits() will raise an exception
+            # every time its called, but we're going to assume it was a special
+            # case and allow the process to continue running by returning instead
+            # of re-raising the error. The anchor should see the log messages and
+            # fix the issue if it is reoccuring.
+            logger.exception("poll_pending_deposits() threw an unexpected exception")
+            return
         for transaction in ready_transactions:
             try:
                 success = execute_deposit(transaction)
             except ValueError as e:
-                logger.error(f"poll_pending_transactions: {str(e)}")
+                logger.error(str(e))
                 continue
             if success:
                 # Get updated status
                 transaction.refresh_from_db()
-                rdi.after_deposit(transaction)
+                try:
+                    rdi.after_deposit(transaction)
+                except Exception:
+                    # Same situation as poll_pending_deposits(), we should assume
+                    # this won't happen every time.
+                    logger.exception("after_deposit() threw an unexpected exception")
+                    pass

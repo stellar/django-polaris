@@ -41,13 +41,16 @@ logger = Logger(__name__)
 def post_interactive_withdraw(request: Request) -> Response:
     """
     """
-    logger.info(f"From {__name__}")
     transaction, asset, error_resp = interactive_args_validation(request)
     if error_resp:
         return error_resp
 
     content = rwi.content_for_transaction(transaction)
     if not (content and content.get("form")):
+        # django-admin makemessages doesn't detect translation strings if they're
+        # stored in a variable prior to translation, and we don't want to log non-english,
+        # so we going to... duplicate code! dun dun dun
+        logger.error("The anchor did not provide a content, unable to serve page.")
         return render_error_response(
             _("The anchor did not provide a content, unable to serve page."),
             status_code=500,
@@ -72,6 +75,11 @@ def post_interactive_withdraw(request: Request) -> Response:
         # If the anchor wants to return another form, this function should
         # change the application state such that the next call to
         # content_for_transaction() returns the next form.
+        #
+        # Note that we're not catching exceptions, even though one could be raised.
+        # If the anchor raises an exception during the request/response cycle, we're
+        # going to let that fail with with a 500 status. Same goes for the calls
+        # to content_for_transaction().
         rwi.after_form_validation(form, transaction)
 
         # Check to see if there is another form to render
@@ -123,6 +131,7 @@ def get_interactive_withdraw(request: Request) -> Response:
 
     content = rwi.content_for_transaction(transaction)
     if not content:
+        logger.error("The anchor did not provide a form, unable to serve page.")
         return render_error_response(
             _("The anchor did not provide a form, unable to serve page."),
             status_code=500,
@@ -186,6 +195,7 @@ def withdraw(account: str, request: Request) -> Response:
         withdraw_memo=withdraw_memo,
         withdraw_memo_type=Transaction.MEMO_TYPES.hash,
     )
+    logger.info(f"Created withdrawal transaction {transaction_id}")
     url = rwi.interactive_url(request, str(transaction_id), account, asset_code)
     return Response(
         {"type": "interactive_customer_info_needed", "url": url, "id": transaction_id}

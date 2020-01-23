@@ -32,7 +32,11 @@ class Command(BaseCommand):
     """
 
     def handle(self, *args, **options):
-        asyncio.run(self.watch_transactions())
+        try:
+            asyncio.run(self.watch_transactions())
+        except Exception as e:
+            logger.exception("watch_transactions() threw an unexpected exception")
+            raise e
 
     async def watch_transactions(self):
         await asyncio.gather(
@@ -68,13 +72,11 @@ class Command(BaseCommand):
             if not self.match_transaction(response, withdrawal_transaction):
                 continue
             elif not response["successful"]:
+                err_msg = "The transaction failed to execute on the Stellar network"
                 self.update_transaction(
-                    response,
-                    withdrawal_transaction,
-                    error_msg=(
-                        "The transaction failed to " "execute on the Stellar network"
-                    ),
+                    response, withdrawal_transaction, error_msg=err_msg
                 )
+                logger.warning(err_msg)
                 continue
             try:
                 rwi.process_withdrawal(response, withdrawal_transaction)
@@ -82,7 +84,7 @@ class Command(BaseCommand):
                 self.update_transaction(
                     response, withdrawal_transaction, error_msg=str(e)
                 )
-                logger.exception(str(e))
+                logger.exception("process_withdrawal() integration raised an exception")
             else:
                 self.update_transaction(response, withdrawal_transaction)
                 logger.info(
@@ -110,9 +112,15 @@ class Command(BaseCommand):
             stellar_transaction_id = response["id"]
             envelope_xdr = response["envelope_xdr"]
         except KeyError:
+            logger.warning(
+                f"Stellar response for transaction missing expected arguments"
+            )
             return False
 
         if memo_type != "hash":
+            logger.warning(
+                f"Transaction memo for {transaction.id} was not of type hash"
+            )
             return False
 
         # The memo on the response will be base 64 string, due to XDR, while

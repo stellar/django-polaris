@@ -1,7 +1,7 @@
 import time
 
 from polaris import settings
-from django.core.management.base import BaseCommand, CommandError
+from django.core.management.base import BaseCommand
 from django.core.management import call_command
 from stellar_sdk.exceptions import BaseHorizonError
 
@@ -43,18 +43,22 @@ class Command(BaseCommand):
                     server.accounts().account_id(transaction.stellar_account).call()
                 )
             except BaseHorizonError:
-                logger.debug("could not load account using provided horizon URL")
+                logger.warning(
+                    f"could not load account {transaction.stellar_account} using provided horizon URL"
+                )
                 continue
             try:
                 balances = account["balances"]
             except KeyError:
-                logger.debug("horizon account response had no balances")
+                logger.warning(
+                    f"horizon account {transaction.stellar_account} response had no balances"
+                )
                 continue
             for balance in balances:
                 try:
                     asset_code = balance["asset_code"]
                 except KeyError:
-                    logger.debug("horizon balances had no asset_code")
+                    logger.warning("horizon balances had no asset_code")
                     continue
                 if asset_code == transaction.asset.code:
                     call_command("create_stellar_deposit", transaction.id)
