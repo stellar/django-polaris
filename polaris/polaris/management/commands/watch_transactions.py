@@ -35,6 +35,9 @@ class Command(BaseCommand):
         try:
             asyncio.run(self.watch_transactions())
         except Exception as e:
+            # This is very likely a bug, so re-raise the error and crash.
+            # Heroku will restart the process unless it is repeatedly crashing,
+            # in which case restarting isn't of much use.
             logger.exception("watch_transactions() threw an unexpected exception")
             raise e
 
