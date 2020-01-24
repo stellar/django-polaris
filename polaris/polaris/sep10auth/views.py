@@ -94,22 +94,23 @@ def _validate_challenge(envelope_xdr):
     """
     Validate the provided TransactionEnvelope XDR (base64 string). Return the
     appropriate error if it fails, else the empty string.
+
+    verify_challenge_transaction() does not verify that the transaction's
+    signers are valid and have the total weight greater or equal to the
+    source account's medium threshold value, so this function does that as
+    well.
     """
-    # Use stellar_sdk's verification function
     verify_challenge_transaction(
         challenge_transaction=envelope_xdr,
         server_account_id=settings.SIGNING_KEY,
         network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
     )
 
-    # verify_challenge_transaction() does not verify that the transaction's
-    # signers are valid and have the total weight greater or equal to the
-    # source account's medium threshold value, so this function does that as
-    # well.
-
     transaction_envelope = TransactionEnvelope.from_xdr(
         envelope_xdr, settings.STELLAR_NETWORK_PASSPHRASE
     )
+    # verify_challenge_transaction ensures transaction has at least
+    # one operation whose source is the client account.
     source_account = transaction_envelope.transaction.operations[0].source
     tx_hash = transaction_envelope.hash()
 
@@ -123,11 +124,8 @@ def _validate_challenge(envelope_xdr):
         try:
             server_kp.verify(tx_hash, dec_signer.signature)
         except BadSignatureError:
-            pass
-        else:
-            # the transaction has the server as a signer
-            continue
-        matched_signers.append(match_signer(tx_hash, dec_signer, account_signers))
+            # dec_signer is not from the server's keypair
+            matched_signers.append(_match_signer(tx_hash, dec_signer, account_signers))
 
     # Check threshold
     if sum(signer["weight"] for signer in matched_signers) < threshold:
@@ -136,14 +134,18 @@ def _validate_challenge(envelope_xdr):
         )
 
 
-def match_signer(tx_hash, dec_signer, account_signers):
+def _match_signer(tx_hash, dec_signer, account_signers):
+    """
+    Iterate over account_signers to find a match for dec_signer. If
+    dec_signer doesn't have a match, raise a ValueError.
+    """
     matched_signer = None
     for acc_signer in account_signers:
-        acc_signer_kp = acc_signer["keypair"]
-        if dec_signer.hint != acc_signer_kp.signature_hint():
+        account_kp = acc_signer["keypair"]
+        if dec_signer.hint != account_kp.signature_hint():
             continue
         try:
-            acc_signer_kp.verify(tx_hash, dec_signer.signature)
+            account_kp.verify(tx_hash, dec_signer.signature)
         except BadSignatureError:
             continue
         else:
@@ -166,11 +168,8 @@ def _get_signers_and_threshold(source_account):
     threshold = account_json["thresholds"]["med_threshold"]
     account_signers = []
     for signer in account_json["signers"]:
-        key = signer.pop("key")
-        if key == settings.SIGNING_KEY:
-            # the server should not contribute to the client's authentication
-            continue
-        account_signers.append({"keypair": Keypair.from_public_key(key), **signer})
+        kp = Keypair.from_public_key(signer.pop("key"))
+        account_signers.append({"keypair": kp, **signer})
     return account_signers, threshold
 
 
