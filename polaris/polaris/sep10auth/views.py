@@ -120,6 +120,30 @@ def _validate_challenge_xdr(envelope_xdr):
     # make horizon /accounts API call to get signers and threshold
     account_signers, threshold = _get_signers_and_threshold(source_account)
 
+    ##################################################################
+    # The functionality implemented below should go in stellar_sdk and
+    # invoked like so:
+    #
+    #       verify_challenge_transaction(
+    #           challenge_transaction=envelope_xdr,
+    #           server_account_id=settings.SIGNING_KEY,
+    #           network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
+    #           account_signers=account_signers,
+    #           threshold=threshold
+    #       )
+    #
+    # Where account_signers and threshold are defined like so:
+    #
+    #       account_json = server.accounts().account_id(source_account).call()
+    #       account_signers = account_json["signers"]
+    #       threshold = account_json["thresholds"]["med_threshold"]
+    #
+    # This way, the client can choose which threshold the challenge should
+    # meet. It also makes sense to pass the unaltered account_json["signers"]
+    # instead of requiring the client to do some manipulation of the
+    # response before passing.
+    ##################################################################
+
     # Get the account signers used for this transaction
     server_kp = Keypair.from_public_key(settings.SIGNING_KEY)
     matched_signers = []
