@@ -19,7 +19,8 @@ from stellar_sdk.sep.stellar_web_authentication import (
     verify_challenge_transaction,
 )
 from stellar_sdk.sep.exceptions import InvalidSep10ChallengeError
-from stellar_sdk.exceptions import Ed25519PublicKeyInvalidError
+from stellar_sdk.exceptions import Ed25519PublicKeyInvalidError, BadSignatureError
+from stellar_sdk.keypair import Keypair
 
 from polaris import settings
 from polaris.helpers import Logger
@@ -89,20 +90,88 @@ def _transaction_from_post_request(request):
     return _get_transaction_json(request.body)
 
 
-def _validate_envelope_xdr(envelope_xdr):
+def _validate_challenge(envelope_xdr):
     """
     Validate the provided TransactionEnvelope XDR (base64 string). Return the
     appropriate error if it fails, else the empty string.
     """
-    try:
-        verify_challenge_transaction(
-            challenge_transaction=envelope_xdr,
-            server_account_id=settings.SIGNING_KEY,
-            network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
+    # Use stellar_sdk's verification function
+    verify_challenge_transaction(
+        challenge_transaction=envelope_xdr,
+        server_account_id=settings.SIGNING_KEY,
+        network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
+    )
+
+    # verify_challenge_transaction() does not verify that the transaction's
+    # signers are valid and have the total weight greater or equal to the
+    # source account's medium threshold value, so this function does that as
+    # well.
+
+    transaction_envelope = TransactionEnvelope.from_xdr(
+        envelope_xdr, settings.STELLAR_NETWORK_PASSPHRASE
+    )
+    source_account = transaction_envelope.transaction.operations[0].source
+    tx_hash = transaction_envelope.hash()
+
+    # make horizon /accounts API call to get signers and threshold
+    account_signers, threshold = _get_signers_and_threshold(source_account)
+
+    # Get the account signers used for this transaction
+    server_kp = Keypair.from_public_key(settings.SIGNING_KEY)
+    matched_signers = []
+    for dec_signer in transaction_envelope.signatures:
+        try:
+            server_kp.verify(tx_hash, dec_signer.signature)
+        except BadSignatureError:
+            pass
+        else:
+            # the transaction has the server as a signer
+            continue
+        matched_signers.append(match_signer(tx_hash, dec_signer, account_signers))
+
+    # Check threshold
+    if sum(signer["weight"] for signer in matched_signers) < threshold:
+        raise ValueError(
+            "Transaction signers do not reach medium threshold for account"
         )
-    except InvalidSep10ChallengeError as err:
-        return str(err)
-    return ""
+
+
+def match_signer(tx_hash, dec_signer, account_signers):
+    matched_signer = None
+    for acc_signer in account_signers:
+        acc_signer_kp = acc_signer["keypair"]
+        if dec_signer.hint != acc_signer_kp.signature_hint():
+            continue
+        try:
+            acc_signer_kp.verify(tx_hash, dec_signer.signature)
+        except BadSignatureError:
+            continue
+        else:
+            matched_signer = acc_signer
+            break
+
+    if not matched_signer:
+        raise ValueError("Transaction has unrecognized signatures")
+
+    return matched_signer
+
+
+def _get_signers_and_threshold(source_account):
+    """
+    Makes a Horizon API call to /accounts and returns the signers and
+    threshold. Replaces 'key' with 'keypair'.
+    """
+    server = settings.HORIZON_SERVER
+    account_json = server.accounts().account_id(source_account).call()
+    threshold = account_json["thresholds"]["med_threshold"]
+    account_signers = []
+    for signer in account_json["signers"]:
+        key = signer.pop("key")
+        if key == settings.SIGNING_KEY:
+            # the server should not contribute to the client's authentication
+            continue
+        account_signers.append({"keypair": Keypair.from_public_key(key), **signer})
+    return account_signers, threshold
 
 
 def _generate_jwt(request, envelope_xdr):
@@ -158,11 +227,10 @@ def _post_auth(request):
     if not success:
         return JsonResponse({"error": xdr_or_error}, status=status.HTTP_400_BAD_REQUEST)
     envelope_xdr = xdr_or_error
-    validate_error = _validate_envelope_xdr(envelope_xdr)
-    if validate_error != "":
-        return JsonResponse(
-            {"error": validate_error}, status=status.HTTP_400_BAD_REQUEST
-        )
+    try:
+        _validate_challenge(envelope_xdr)
+    except ValueError as e:
+        return JsonResponse({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
     return JsonResponse({"token": _generate_jwt(request, envelope_xdr)})
 
 
