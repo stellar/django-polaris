@@ -90,7 +90,7 @@ def _transaction_from_post_request(request):
     return _get_transaction_json(request.body)
 
 
-def _validate_challenge(envelope_xdr):
+def _validate_challenge_xdr(envelope_xdr):
     """
     Validate the provided TransactionEnvelope XDR (base64 string). Return the
     appropriate error if it fails, else the empty string.
@@ -230,7 +230,7 @@ def _post_auth(request):
         return JsonResponse({"error": xdr_or_error}, status=status.HTTP_400_BAD_REQUEST)
     envelope_xdr = xdr_or_error
     try:
-        _validate_challenge(envelope_xdr)
+        _validate_challenge_xdr(envelope_xdr)
     except ValueError as e:
         return JsonResponse({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
     return JsonResponse({"token": _generate_jwt(request, envelope_xdr)})
