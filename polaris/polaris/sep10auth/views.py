@@ -100,11 +100,14 @@ def _validate_challenge(envelope_xdr):
     source account's medium threshold value, so this function does that as
     well.
     """
-    verify_challenge_transaction(
-        challenge_transaction=envelope_xdr,
-        server_account_id=settings.SIGNING_KEY,
-        network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
-    )
+    try:
+        verify_challenge_transaction(
+            challenge_transaction=envelope_xdr,
+            server_account_id=settings.SIGNING_KEY,
+            network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
+        )
+    except InvalidSep10ChallengeError as e:
+        raise ValueError(str(e))
 
     transaction_envelope = TransactionEnvelope.from_xdr(
         envelope_xdr, settings.STELLAR_NETWORK_PASSPHRASE
