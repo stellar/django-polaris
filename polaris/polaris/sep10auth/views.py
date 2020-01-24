@@ -19,8 +19,12 @@ from stellar_sdk.sep.stellar_web_authentication import (
     verify_challenge_transaction,
 )
 from stellar_sdk.sep.exceptions import InvalidSep10ChallengeError
-from stellar_sdk.exceptions import Ed25519PublicKeyInvalidError, BadSignatureError
 from stellar_sdk.keypair import Keypair
+from stellar_sdk.exceptions import (
+    Ed25519PublicKeyInvalidError,
+    BadSignatureError,
+    NotFoundError,
+)
 
 from polaris import settings
 from polaris.helpers import Logger
@@ -101,6 +105,10 @@ def _validate_challenge_xdr(envelope_xdr):
     well.
     """
     try:
+        # For now, this function assumes the client's account has signed
+        # the transaction envelope, so it doesn't yet support multisig
+        # challenges where the client account isn't a signer. We'll be
+        # making a pull request to add multisig support.
         verify_challenge_transaction(
             challenge_transaction=envelope_xdr,
             server_account_id=settings.SIGNING_KEY,
@@ -118,7 +126,16 @@ def _validate_challenge_xdr(envelope_xdr):
     tx_hash = transaction_envelope.hash()
 
     # make horizon /accounts API call to get signers and threshold
-    account_signers, threshold = _get_signers_and_threshold(source_account)
+    try:
+        account_signers, threshold = _get_signers_and_threshold(source_account)
+    except NotFoundError:
+        # The account doesn't exist, so we cannot check the signers.
+        #
+        # This is fine because a newly created account's single signer
+        # is itself. When the necessary changes go into stellar_sdk,
+        # verify_challenge_transaction() will check that the client
+        # has signed the envelope XDR when account_signers isn't passed
+        return
 
     ##################################################################
     # The functionality implemented below should go in stellar_sdk and
@@ -142,20 +159,30 @@ def _validate_challenge_xdr(envelope_xdr):
     # meet. It also makes sense to pass the unaltered account_json["signers"]
     # instead of requiring the client to do some manipulation of the
     # response before passing.
+    #
+    # The stellar_sdk should also have a function to extract the transaction
+    # and source_account so the client doesn't have to know to fetch them
+    # from envelope_xdr
     ##################################################################
 
     # Get the account signers used for this transaction
     server_kp = Keypair.from_public_key(settings.SIGNING_KEY)
-    matched_signers = []
+    matched_signers = {}  # use signer pub key to avoid duplicate signatures
     for dec_signer in transaction_envelope.signatures:
+        if dec_signer.hint != server_kp.signature_hint():
+            ms = _match_signer(tx_hash, dec_signer, account_signers)
+            matched_signers[ms["keypair"].public_key] = ms
+            continue
         try:
+            # dec_signer might be derived from server_kp
             server_kp.verify(tx_hash, dec_signer.signature)
         except BadSignatureError:
-            # dec_signer is not from the server's keypair
-            matched_signers.append(_match_signer(tx_hash, dec_signer, account_signers))
+            # dec_signer is not derived from server_kp
+            ms = _match_signer(tx_hash, dec_signer, account_signers)
+            matched_signers[ms["keypair"].public_key] = ms
 
     # Check threshold
-    if sum(signer["weight"] for signer in matched_signers) < threshold:
+    if sum(signer["weight"] for signer in matched_signers.values()) < threshold:
         raise ValueError(
             "Transaction signers do not reach medium threshold for account"
         )
@@ -189,6 +216,8 @@ def _get_signers_and_threshold(source_account):
     """
     Makes a Horizon API call to /accounts and returns the signers and
     threshold. Replaces 'key' with 'keypair'.
+
+    May raise a NotFoundError if the account does not exist.
     """
     server = settings.HORIZON_SERVER
     account_json = server.accounts().account_id(source_account).call()
