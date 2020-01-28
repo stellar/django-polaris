@@ -20,9 +20,7 @@ def execute_deposit(transaction: Transaction) -> bool:
     :returns a boolean of whether or not the transaction was
         completed successfully on the Stellar network.
     """
-    print(transaction.kind)
     if transaction.kind != transaction.KIND.deposit:
-        print("The exception that should be raised")
         raise ValueError("Transaction not a deposit")
     elif transaction.status != transaction.STATUS.pending_user_transfer_start:
         raise ValueError(

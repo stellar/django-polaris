@@ -192,7 +192,6 @@ def deposit(account: str, request: Request) -> Response:
 
     # Verify that the asset code exists in our database, with deposit enabled.
     asset = Asset.objects.filter(code=asset_code).first()
-    print(asset, not asset)
     if not asset:
         # Add .po entry
         return render_error_response(_("unknown asset: %s") % asset_code)
