@@ -44,16 +44,16 @@ logger = Logger(__name__)
 def post_interactive_withdraw(request: Request) -> Response:
     """
     """
-    transaction, asset, error_resp = interactive_args_validation(request)
+    transaction, asset, callback, error_resp = interactive_args_validation(request)
     if error_resp:
         return error_resp
 
     content = rwi.content_for_transaction(transaction)
     if not (content and content.get("form")):
-        # django-admin makemessages doesn't detect translation strings if they're
-        # stored in a variable prior to translation, and we don't want to log non-english,
-        # so we going to... duplicate code! dun dun dun
-        logger.error("The anchor did not provide a content, unable to serve page.")
+        logger.error(
+            "POST: initial content_for_transaction() returned None "
+            f"for {transaction.id}"
+        )
         return render_error_response(
             _("The anchor did not provide a content, unable to serve page."),
             status_code=500,
@@ -98,7 +98,8 @@ def post_interactive_withdraw(request: Request) -> Response:
             invalidate_session(request)
             transaction.status = Transaction.STATUS.pending_user_transfer_start
             transaction.save()
-            url, args = reverse("more_info"), urlencode({"id": transaction.id})
+            url = reverse("more_info")
+            args = urlencode({"id": transaction.id, "callback": callback})
             return redirect(f"{url}?{args}")
 
     else:
@@ -132,7 +133,7 @@ def get_interactive_withdraw(request: Request) -> Response:
     if err_resp:
         return err_resp
 
-    transaction, asset, error_resp = interactive_args_validation(request)
+    transaction, asset, callback, error_resp = interactive_args_validation(request)
     if error_resp:
         return error_resp
 
@@ -150,6 +151,9 @@ def get_interactive_withdraw(request: Request) -> Response:
         content["form"] = form_class()
 
     url_args = {"transaction_id": transaction.id, "asset_code": asset.code}
+    if callback:
+        url_args["callback"] = callback
+
     post_url = f"{reverse('post_interactive_withdraw')}?{urlencode(url_args)}"
     get_url = f"{reverse('get_interactive_withdraw')}?{urlencode(url_args)}"
     content.update(

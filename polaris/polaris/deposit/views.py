@@ -51,7 +51,7 @@ logger = Logger(__name__)
 def post_interactive_deposit(request: Request) -> Response:
     """
     """
-    transaction, asset, error_resp = interactive_args_validation(request)
+    transaction, asset, callback, error_resp = interactive_args_validation(request)
     if error_resp:
         return error_resp
 
@@ -106,7 +106,8 @@ def post_interactive_deposit(request: Request) -> Response:
             invalidate_session(request)
             transaction.status = Transaction.STATUS.pending_user_transfer_start
             transaction.save()
-            url, args = reverse("more_info"), urlencode({"id": transaction.id})
+            url = reverse("more_info")
+            args = urlencode({"id": transaction.id, "callback": callback})
             return redirect(f"{url}?{args}")
 
     else:
@@ -140,7 +141,7 @@ def get_interactive_deposit(request: Request) -> Response:
     if err_resp:
         return err_resp
 
-    transaction, asset, err_resp = interactive_args_validation(request)
+    transaction, asset, callback, err_resp = interactive_args_validation(request)
     if err_resp:
         return err_resp
 
@@ -158,6 +159,9 @@ def get_interactive_deposit(request: Request) -> Response:
         content["form"] = form_class()
 
     url_args = {"transaction_id": transaction.id, "asset_code": asset.code}
+    if callback:
+        url_args["callback"] = callback
+
     post_url = f"{reverse('post_interactive_deposit')}?{urlencode(url_args)}"
     get_url = f"{reverse('get_interactive_deposit')}?{urlencode(url_args)}"
     content.update(

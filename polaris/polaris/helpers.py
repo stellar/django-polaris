@@ -12,6 +12,7 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.request import Request
 from django.core.exceptions import ValidationError
+from django.core.validators import URLValidator
 from django.utils.translation import gettext as _
 from django.conf import settings as django_settings
 
@@ -259,15 +260,17 @@ def invalidate_session(request: Request):
 
 def interactive_args_validation(
     request: Request,
-) -> Tuple[Optional[Transaction], Optional[Asset], Optional[Response]]:
+) -> Tuple[Optional[Transaction], Optional[Asset], Optional[str], Optional[Response]]:
     """
     Validates the arguments passed to the /interactive endpoints
     """
     transaction_id = request.GET.get("transaction_id")
     asset_code = request.GET.get("asset_code")
+    callback = request.GET.get("callback")
     asset = Asset.objects.filter(code=asset_code).first()
     if not transaction_id:
         return (
+            None,
             None,
             None,
             render_error_response(
@@ -276,6 +279,7 @@ def interactive_args_validation(
         )
     elif not (asset_code and asset):
         return (
+            None,
             None,
             None,
             render_error_response(_("invalid 'asset_code'"), content_type="text/html"),
@@ -287,6 +291,7 @@ def interactive_args_validation(
         return (
             None,
             None,
+            None,
             render_error_response(
                 _("Transaction with ID and asset_code not found"),
                 content_type="text/html",
@@ -294,7 +299,7 @@ def interactive_args_validation(
             ),
         )
 
-    return transaction, asset, None
+    return transaction, asset, callback, None
 
 
 def generate_interactive_jwt(

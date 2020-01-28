@@ -73,11 +73,16 @@
     <script type="text/javascript">
         var tx_json = JSON.parse('{{ tx_json|safe }}');
         var transaction = tx_json["transaction"];
+        var callback = '{{ callback|safe }}'
 
-        postTransactionCallback();
+        if (callback && callback !== "postMessage") {
+            postMessageCallback();
+        } else {
+            urlCallback();
+        }
 
         // Callback function to post the serialized transaction to the wallet.
-        function postTransactionCallback() {
+        function postMessageCallback() {
             var targetWindow;
 
             if (window.opener != void 0) {
@@ -103,6 +108,20 @@
             //     }
             // }
             targetWindow.postMessage(tx_json, "*");
+        }
+
+        // Callback function to post the serialized transaction to the callback URL
+        function urlCallback() {
+            fetch(callback, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(tx_json)
+            }).catch(() => {
+                console.error('POST request to specified callback failed. Attempting postMessage instead.');
+                postMessageCallback();
+            });
         }
     </script>
 </section>

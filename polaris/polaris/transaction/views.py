@@ -70,6 +70,7 @@ def more_info(request: Request) -> Response:
     Popup to display more information about a specific transaction.
     See table: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md#4-customer-information-status
     """
+    callback = request.GET.get("callback")
     try:
         request_transaction = _get_transaction_from_request(request)
     except (AttributeError, ValidationError) as exc:
@@ -87,6 +88,7 @@ def more_info(request: Request) -> Response:
     tx_json = json.dumps({"transaction": serializer.data})
     resp_data = {
         "tx_json": tx_json,
+        "callback": callback,
         "transaction": request_transaction,
         "asset_code": request_transaction.asset.code,
         "scripts": registered_javascript_func(),
