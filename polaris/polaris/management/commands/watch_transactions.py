@@ -31,7 +31,7 @@ class Command(BaseCommand):
     `process_withdrawal` must be overridden by the developer using Polaris.
     """
 
-    def handle(self, *args, **options):
+    def handle(self, *args, **options):  # pragma: no cover
         try:
             asyncio.run(self.watch_transactions())
         except Exception as e:
@@ -41,7 +41,7 @@ class Command(BaseCommand):
             logger.exception("watch_transactions() threw an unexpected exception")
             raise e
 
-    async def watch_transactions(self):
+    async def watch_transactions(self):  # pragma: no cover
         await asyncio.gather(
             *[
                 self._for_account(asset["DISTRIBUTION_ACCOUNT_ADDRESS"])
@@ -49,7 +49,7 @@ class Command(BaseCommand):
             ]
         )
 
-    async def _for_account(self, account: str):
+    async def _for_account(self, account: str):  # pragma: no cover
         """
         Stream transactions for the server Stellar address.
         """
@@ -92,7 +92,6 @@ class Command(BaseCommand):
                 )
                 logger.exception("process_withdrawal() integration raised an exception")
             else:
-                print("Updating for success")
                 cls.update_transaction(response, withdrawal_transaction)
                 logger.info(
                     f"successfully processed withdrawal for response with "

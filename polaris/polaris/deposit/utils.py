@@ -72,7 +72,7 @@ def create_stellar_deposit(transaction_id: str) -> bool:
         server.load_account(stellar_account)
     except BaseHorizonError as address_exc:
         # 404 code corresponds to Resource Missing.
-        if address_exc.status != 404:
+        if address_exc.status != 404:  # pragma: no cover
             msg = (
                 "Horizon error when loading stellar account: " f"{address_exc.message}"
             )
@@ -91,7 +91,7 @@ def create_stellar_deposit(transaction_id: str) -> bool:
         transaction_envelope.sign(asset_config["DISTRIBUTION_ACCOUNT_SEED"])
         try:
             server.submit_transaction(transaction_envelope)
-        except BaseHorizonError as submit_exc:
+        except BaseHorizonError as submit_exc:  # pragma: no cover
             msg = (
                 "Horizon error when submitting create account to horizon: "
                 f"{submit_exc.message}"
@@ -123,7 +123,7 @@ def create_stellar_deposit(transaction_id: str) -> bool:
         response = server.submit_transaction(transaction_envelope)
     # Functional errors at this stage are Horizon errors.
     except BaseHorizonError as exception:
-        if TRUSTLINE_FAILURE_XDR not in exception.result_xdr:
+        if TRUSTLINE_FAILURE_XDR not in exception.result_xdr:  # pragma: no cover
             msg = (
                 "Unable to submit payment to horizon, "
                 f"non-trustline failure: {exception.message}"
@@ -140,7 +140,7 @@ def create_stellar_deposit(transaction_id: str) -> bool:
         transaction.save()
         return False
 
-    if response["result_xdr"] != SUCCESS_XDR:
+    if response["result_xdr"] != SUCCESS_XDR:  # pragma: no cover
         transaction_result = TransactionResult.from_xdr(response["result_xdr"])
         msg = (
             "Stellar transaction failed when submitted to horizon: "

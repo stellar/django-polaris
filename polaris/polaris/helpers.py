@@ -194,18 +194,17 @@ def authenticate_session_helper(r: Request):
     """
     token = r.GET.get("token")
     if not token:
-        # If there is no token, check if this session has already been authenticated
-        # and that the session's account is the one that initiated the transaction.
+        # If there is no token, check if this session has already been authenticated,
+        # that the session's account is the one that initiated the transaction, and
+        # that the session has been authenticated for this particular transaction.
         if r.session.get("authenticated") and r.session.get("account", ""):
-            transaction_qs = Transaction.objects.filter(
-                id=r.GET.get("transaction_id"), stellar_account=r.session["account"]
+            tid = r.GET.get("transaction_id")
+            tqs = Transaction.objects.filter(
+                id=tid, stellar_account=r.session["account"]
             )
-            if not transaction_qs.exists():
-                raise ValueError(
-                    "Not authenticated for transaction ID: "
-                    f"{r.GET.get('transaction_id')}"
-                )
-            else:
+            if not (tid in r.session.get("transactions", []) and tqs.exists()):
+                raise ValueError(f"Not authenticated for transaction ID: {tid}")
+            else:  # pragma: no cover
                 # client has been authenticated for the requested transaction
                 return
         else:
@@ -231,6 +230,10 @@ def authenticate_session_helper(r: Request):
     # JWT is valid, authenticate session
     r.session["authenticated"] = True
     r.session["account"] = jwt_dict["sub"]
+    try:
+        r.session["transactions"].append(jwt_dict["jti"])
+    except KeyError:
+        r.session["transactions"] = [jwt_dict["jti"]]
 
 
 def check_authentication_helper(r: Request):

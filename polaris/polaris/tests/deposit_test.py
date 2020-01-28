@@ -461,3 +461,41 @@ def test_interactive_deposit_success(
     )
     assert response.status_code == 302
     assert client.session["authenticated"] is False
+
+
+@pytest.mark.django_db
+@patch("polaris.deposit.views.check_middleware", return_value=None)
+def test_interactive_auth_new_transaction(
+    mock_check_middleware, client, acc1_usd_deposit_transaction_factory
+):
+    """
+    Tests that requests by previously authenticated accounts are denied if they
+    were not authenticated for the specified transaction.
+    """
+    del mock_check_middleware
+    deposit = acc1_usd_deposit_transaction_factory()
+    # So that content_for_transaction() returns TransactionForm
+    deposit.amount_in = None
+    deposit.save()
+
+    payload = interactive_jwt_payload(deposit, "deposit")
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode(
+        "ascii"
+    )
+
+    response = client.get(
+        f"/transactions/deposit/webapp"
+        f"?token={token}"
+        f"&transaction_id={deposit.id}"
+        f"&asset_code={deposit.asset.code}"
+    )
+    assert response.status_code == 200
+    assert client.session["authenticated"] is True
+
+    new_deposit = acc1_usd_deposit_transaction_factory()
+    response = client.get(
+        f"/transactions/deposit/webapp"
+        f"?transaction_id={new_deposit.id}"
+        f"&asset_code={new_deposit.asset.code}"
+    )
+    assert response.status_code == 403
