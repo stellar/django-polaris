@@ -98,4 +98,6 @@ class TransactionForm(forms.Form):
                 raise forms.ValidationError(
                     _("Amount is above maximum for asset %s") % self.asset.code
                 )
-        return amount
+            return amount
+        else:
+            raise ValueError("Form instance has no self.asset")
