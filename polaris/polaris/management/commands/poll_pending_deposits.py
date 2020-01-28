@@ -42,7 +42,7 @@ class Command(BaseCommand):
     restarting every 10 seconds (or a user-defined time period)
     """
 
-    def add_arguments(self, parser):
+    def add_arguments(self, parser):  # pragma: no cover
         parser.add_argument(
             "--loop",
             action="store_true",
@@ -58,7 +58,7 @@ class Command(BaseCommand):
             "restarting command. Defaults to 10.",
         )
 
-    def handle(self, *args, **options):
+    def handle(self, *args, **options):  # pragma: no cover
         if options.get("loop"):
             while True:
                 self.execute_deposits()
@@ -74,11 +74,11 @@ class Command(BaseCommand):
         )
         try:
             ready_transactions = rdi.poll_pending_deposits(pending_deposits)
-        except NotImplementedError as e:
+        except NotImplementedError as e:  # pragma: no cover
             # Let the process crash because the anchor needs to implement the
             # integration function.
             raise CommandError(e)
-        except Exception:
+        except Exception:  # pragma: no cover
             # We don't know if poll_pending_deposits() will raise an exception
             # every time its called, but we're going to assume it was a special
             # case and allow the process to continue running by returning instead
@@ -97,7 +97,7 @@ class Command(BaseCommand):
                 transaction.refresh_from_db()
                 try:
                     rdi.after_deposit(transaction)
-                except Exception:
+                except Exception:  # pragma: no cover
                     # Same situation as poll_pending_deposits(), we should assume
                     # this won't happen every time, so we don't stop the loop.
                     logger.exception("after_deposit() threw an unexpected exception")

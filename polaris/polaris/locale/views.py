@@ -6,7 +6,6 @@ from rest_framework.renderers import JSONRenderer
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, renderer_classes
-from rest_framework import status
 
 from polaris.helpers import render_error_response, check_authentication
 
@@ -39,10 +38,6 @@ def language(request: Request) -> Response:
     err_resp = validate_language(lang)
     if err_resp:
         return err_resp
-    elif not request.session.get("authenticated"):
-        return render_error_response(
-            _("Request session not found"), status_code=status.HTTP_404_NOT_FOUND,
-        )
 
     translation.activate(lang)
     request.session[translation.LANGUAGE_SESSION_KEY] = lang

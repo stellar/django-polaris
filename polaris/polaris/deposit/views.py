@@ -192,7 +192,9 @@ def deposit(account: str, request: Request) -> Response:
 
     # Verify that the asset code exists in our database, with deposit enabled.
     asset = Asset.objects.filter(code=asset_code).first()
-    if not asset or not asset.deposit_enabled:
+    if not asset:
+        return render_error_response(_("unknown asset: %s") % asset_code)
+    elif not asset.deposit_enabled:
         return render_error_response(_("invalid operation for asset %s") % asset_code)
 
     try:

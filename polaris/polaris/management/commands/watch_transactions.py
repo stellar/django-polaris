@@ -31,7 +31,7 @@ class Command(BaseCommand):
     `process_withdrawal` must be overridden by the developer using Polaris.
     """
 
-    def handle(self, *args, **options):
+    def handle(self, *args, **options):  # pragma: no cover
         try:
             asyncio.run(self.watch_transactions())
         except Exception as e:
@@ -41,7 +41,7 @@ class Command(BaseCommand):
             logger.exception("watch_transactions() threw an unexpected exception")
             raise e
 
-    async def watch_transactions(self):
+    async def watch_transactions(self):  # pragma: no cover
         await asyncio.gather(
             *[
                 self._for_account(asset["DISTRIBUTION_ACCOUNT_ADDRESS"])
@@ -49,7 +49,7 @@ class Command(BaseCommand):
             ]
         )
 
-    async def _for_account(self, account: str):
+    async def _for_account(self, account: str):  # pragma: no cover
         """
         Stream transactions for the server Stellar address.
         """
@@ -68,17 +68,18 @@ class Command(BaseCommand):
             async for response in endpoint.stream():
                 self.process_response(response)
 
-    def process_response(self, response):
+    @classmethod
+    def process_response(cls, response):
         pending_withdrawal_transactions = Transaction.objects.filter(
             status=Transaction.STATUS.pending_user_transfer_start,
             kind=Transaction.KIND.withdrawal,
         )
         for withdrawal_transaction in pending_withdrawal_transactions:
-            if not self.match_transaction(response, withdrawal_transaction):
+            if not cls.match_transaction(response, withdrawal_transaction):
                 continue
             elif not response["successful"]:
                 err_msg = "The transaction failed to execute on the Stellar network"
-                self.update_transaction(
+                cls.update_transaction(
                     response, withdrawal_transaction, error_msg=err_msg
                 )
                 logger.warning(err_msg)
@@ -86,12 +87,12 @@ class Command(BaseCommand):
             try:
                 rwi.process_withdrawal(response, withdrawal_transaction)
             except Exception as e:
-                self.update_transaction(
+                cls.update_transaction(
                     response, withdrawal_transaction, error_msg=str(e)
                 )
                 logger.exception("process_withdrawal() integration raised an exception")
             else:
-                self.update_transaction(response, withdrawal_transaction)
+                cls.update_transaction(response, withdrawal_transaction)
                 logger.info(
                     f"successfully processed withdrawal for response with "
                     f"xdr {response['envelope_xdr']}"
@@ -99,7 +100,8 @@ class Command(BaseCommand):
             finally:
                 break
 
-    def match_transaction(self, response: Dict, transaction: Transaction) -> bool:
+    @classmethod
+    def match_transaction(cls, response: Dict, transaction: Transaction) -> bool:
         """
         Determines whether or not the given ``response`` represents the given
         ``transaction``. Polaris does this by constructing the transaction memo
@@ -140,7 +142,7 @@ class Command(BaseCommand):
         ).transaction
         found_matching_payment_op = False
         for operation in horizon_tx.operations:
-            if self._check_payment_op(
+            if cls._check_payment_op(
                 operation, transaction.asset.code, transaction.amount_in
             ):
                 found_matching_payment_op = True

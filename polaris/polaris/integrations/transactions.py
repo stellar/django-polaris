@@ -83,8 +83,8 @@ class DepositIntegration:
         and update the ``amount_in`` column with the amount specified in form.
 
         The form will be rendered inside a django template that has several
-        pieces of content that can be replaced by also returning a
-        dictionary containing the key-value pairs as shown below.
+        pieces of content that can be replaced by returning a dictionary
+        containing the key-value pairs as shown below.
         ::
 
             def content_for_transaction(cls, transaction):

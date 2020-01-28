@@ -34,6 +34,11 @@ msgstr "Os parâmetros `asset_code` e `account` são necessários"
 msgid "invalid operation for asset %s"
 msgstr "Valor é maior que o máximo para esse ativo: %s"
 
+#: deposit/views.py:197
+#, python-format
+msgid "unknown asset: %s"
+msgstr "avito desconhecido: %s"
+
 #: deposit/views.py:178
 msgid "invalid 'account'"
 msgstr "'asset_code' inválido"
