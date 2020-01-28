@@ -49,27 +49,6 @@ def test_deposit_success(mock_check, client, acc1_usd_deposit_transaction_factor
     assert content["type"] == "interactive_customer_info_needed"
 
 
-@pytest.mark.django_db
-@patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
-def test_deposit_success_memo(mock_check, client, acc1_usd_deposit_transaction_factory):
-    """`POST /transactions/deposit/interactive` succeeds with valid `memo` and `memo_type`."""
-    del mock_check
-    deposit = acc1_usd_deposit_transaction_factory()
-    response = client.post(
-        DEPOSIT_PATH,
-        {
-            "asset_code": "USD",
-            "account": deposit.stellar_account,
-            "memo_type": "text",
-            "memo": "foo",
-        },
-        follow=True,
-    )
-
-    content = json.loads(response.content)
-    assert content["type"] == "interactive_customer_info_needed"
-
-
 @patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
 def test_deposit_no_params(mock_check, client):
     """`POST /transactions/deposit/interactive` fails with no required parameters."""
@@ -148,7 +127,7 @@ def test_deposit_invalid_asset(
     content = json.loads(response.content)
 
     assert response.status_code == 400
-    assert content == {"error": "invalid operation for asset GBP"}
+    assert content == {"error": "unknown asset: GBP"}
 
 
 @pytest.mark.django_db
@@ -270,7 +249,6 @@ def test_deposit_interactive_confirm_success(
         **header,
     )
     content = json.loads(response.content)
-    print(content)
     assert response.status_code == 200
     assert content["type"] == "interactive_customer_info_needed"
 
