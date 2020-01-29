@@ -4,7 +4,7 @@ import codecs
 import time
 import uuid
 from decimal import Decimal
-from typing import Callable, Tuple, Optional
+from typing import Callable, Dict, Optional
 
 import jwt
 from jwt.exceptions import InvalidTokenError
@@ -12,6 +12,7 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.request import Request
 from django.core.exceptions import ValidationError
+from django.core.validators import URLValidator
 from django.utils.translation import gettext as _
 from django.conf import settings as django_settings
 
@@ -257,44 +258,42 @@ def invalidate_session(request: Request):
     request.session["authenticated"] = False
 
 
-def interactive_args_validation(
-    request: Request,
-) -> Tuple[Optional[Transaction], Optional[Asset], Optional[Response]]:
+def interactive_args_validation(request: Request) -> Dict:
     """
     Validates the arguments passed to the /interactive endpoints
+
+    Returns a dictionary, either containing an 'error' response
+    object or the transaction and asset objects specified by the
+    incoming request.
     """
     transaction_id = request.GET.get("transaction_id")
     asset_code = request.GET.get("asset_code")
+    callback = request.GET.get("callback")
     asset = Asset.objects.filter(code=asset_code).first()
     if not transaction_id:
-        return (
-            None,
-            None,
-            render_error_response(
+        return dict(
+            error=render_error_response(
                 _("no 'transaction_id' provided"), content_type="text/html"
-            ),
+            )
         )
     elif not (asset_code and asset):
-        return (
-            None,
-            None,
-            render_error_response(_("invalid 'asset_code'"), content_type="text/html"),
+        return dict(
+            error=render_error_response(
+                _("invalid 'asset_code'"), content_type="text/html"
+            )
         )
-
     try:
         transaction = Transaction.objects.get(id=transaction_id, asset=asset)
     except (Transaction.DoesNotExist, ValidationError):
-        return (
-            None,
-            None,
-            render_error_response(
+        return dict(
+            error=render_error_response(
                 _("Transaction with ID and asset_code not found"),
                 content_type="text/html",
                 status_code=status.HTTP_404_NOT_FOUND,
-            ),
+            )
         )
 
-    return transaction, asset, None
+    return dict(transaction=transaction, asset=asset, callback=callback)
 
 
 def generate_interactive_jwt(

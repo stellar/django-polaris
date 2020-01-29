@@ -90,8 +90,12 @@ def more_info(request: Request) -> Response:
         "transaction": request_transaction,
         "asset_code": request_transaction.asset.code,
         "scripts": registered_javascript_func(),
-        "instructions": None,
     }
+
+    callback = request.GET.get("callback")
+    if callback:
+        resp_data["callback"] = callback
+
     if (
         request_transaction.kind == Transaction.KIND.deposit
         and request_transaction.status == Transaction.STATUS.pending_user_transfer_start

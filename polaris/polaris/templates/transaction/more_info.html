@@ -71,13 +71,30 @@
     </div>
 
     <script type="text/javascript">
+        // Anchors should send a POST or postMessage request with the the entire transaction
+        // object, serialized by the server, in a transaction property (i.e., the value for
+        // the "transaction" key).
+        //
+        // In other terms, the message should have the following structure:
+        // tx_json = {
+        //     "transaction": {
+        //         "id": "fake-transaction-id",
+        //         "status": "completed"
+        //         etc.
+        //     }
+        // }
         var tx_json = JSON.parse('{{ tx_json|safe }}');
         var transaction = tx_json["transaction"];
+        var callback = '{{ callback|safe }}'
 
-        postTransactionCallback();
+        if (!callback || callback.toLowerCase() === 'postmessage') {
+            postMessageCallback();
+        } else {
+            urlCallback();
+        }
 
         // Callback function to post the serialized transaction to the wallet.
-        function postTransactionCallback() {
+        function postMessageCallback() {
             var targetWindow;
 
             if (window.opener != void 0) {
@@ -88,21 +105,21 @@
                 return;
             }
 
-            // Anchors should send a JSON with the the entire transaction object, serialized by
-            // the server, in a transaction property (i.e., the value for the "transaction" key).
-            // The transaction object should not be hand-constructed at this point.
-            // The reference client expects the following fields in the transaction: id, status,
-            // withdraw_anchor_account, withdraw_memo, withdraw_memo_type, amount_in.
-            //
-            // In other terms, the message should have the following structure:
-            // tx_json = {
-            //     "transaction": {
-            //         "id": "fake-transaction-id",
-            //         "status": "completed"
-            //         etc.
-            //     }
-            // }
             targetWindow.postMessage(tx_json, "*");
+        }
+
+        // Callback function to post the serialized transaction to the callback URL
+        function urlCallback() {
+            fetch(callback, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(tx_json)
+            }).catch((e) => {
+                console.error('POST request to specified callback failed. Attempting postMessage instead.', e);
+                postMessageCallback();
+            });
         }
     </script>
 </section>

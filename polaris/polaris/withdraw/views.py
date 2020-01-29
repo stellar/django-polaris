@@ -44,16 +44,20 @@ logger = Logger(__name__)
 def post_interactive_withdraw(request: Request) -> Response:
     """
     """
-    transaction, asset, error_resp = interactive_args_validation(request)
-    if error_resp:
-        return error_resp
+    args_or_error = interactive_args_validation(request)
+    if "error" in args_or_error:
+        return args_or_error["error"]
+
+    transaction = args_or_error["transaction"]
+    asset = args_or_error["asset"]
+    callback = args_or_error["callback"]
 
     content = rwi.content_for_transaction(transaction)
     if not (content and content.get("form")):
-        # django-admin makemessages doesn't detect translation strings if they're
-        # stored in a variable prior to translation, and we don't want to log non-english,
-        # so we going to... duplicate code! dun dun dun
-        logger.error("The anchor did not provide a content, unable to serve page.")
+        logger.error(
+            "Initial content_for_transaction() call returned None "
+            f"for {transaction.id}"
+        )
         return render_error_response(
             _("The anchor did not provide a content, unable to serve page."),
             status_code=500,
@@ -98,7 +102,8 @@ def post_interactive_withdraw(request: Request) -> Response:
             invalidate_session(request)
             transaction.status = Transaction.STATUS.pending_user_transfer_start
             transaction.save()
-            url, args = reverse("more_info"), urlencode({"id": transaction.id})
+            url = reverse("more_info")
+            args = urlencode({"id": transaction.id, "callback": callback})
             return redirect(f"{url}?{args}")
 
     else:
@@ -112,7 +117,7 @@ def post_interactive_withdraw(request: Request) -> Response:
 def complete_interactive_withdraw(request: Request) -> Response:
     transaction_id = request.GET("id")
     if not transaction_id:
-        render_error_response(
+        return render_error_response(
             _("Missing id parameter in URL"), content_type="text/html"
         )
     logger.info(f"Hands-off interactive flow complete for transaction {transaction_id}")
@@ -132,9 +137,13 @@ def get_interactive_withdraw(request: Request) -> Response:
     if err_resp:
         return err_resp
 
-    transaction, asset, error_resp = interactive_args_validation(request)
-    if error_resp:
-        return error_resp
+    args_or_error = interactive_args_validation(request)
+    if "error" in args_or_error:
+        return args_or_error["error"]
+
+    transaction = args_or_error["transaction"]
+    asset = args_or_error["asset"]
+    callback = args_or_error["callback"]
 
     content = rwi.content_for_transaction(transaction)
     if not content:
@@ -150,6 +159,9 @@ def get_interactive_withdraw(request: Request) -> Response:
         content["form"] = form_class()
 
     url_args = {"transaction_id": transaction.id, "asset_code": asset.code}
+    if callback:
+        url_args["callback"] = callback
+
     post_url = f"{reverse('post_interactive_withdraw')}?{urlencode(url_args)}"
     get_url = f"{reverse('get_interactive_withdraw')}?{urlencode(url_args)}"
     content.update(
