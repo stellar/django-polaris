@@ -55,7 +55,7 @@ def post_interactive_withdraw(request: Request) -> Response:
     content = rwi.content_for_transaction(transaction)
     if not (content and content.get("form")):
         logger.error(
-            "POST: initial content_for_transaction() returned None "
+            "Initial content_for_transaction() call returned None "
             f"for {transaction.id}"
         )
         return render_error_response(
