@@ -268,6 +268,7 @@ def interactive_args_validation(request: Request) -> Dict:
     """
     transaction_id = request.GET.get("transaction_id")
     asset_code = request.GET.get("asset_code")
+    callback = request.GET.get("callback")
     asset = Asset.objects.filter(code=asset_code).first()
     if not transaction_id:
         return dict(
@@ -292,7 +293,7 @@ def interactive_args_validation(request: Request) -> Dict:
             )
         )
 
-    return dict(transaction=transaction, asset=asset)
+    return dict(transaction=transaction, asset=asset, callback=callback)
 
 
 def generate_interactive_jwt(
