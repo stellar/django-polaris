@@ -1,8 +1,11 @@
 """This module defines the models used by Polaris."""
 import uuid
 
-from polaris import settings
-from django.core.validators import MinLengthValidator
+from django.core.validators import (
+    MinLengthValidator,
+    MinValueValidator,
+    MaxValueValidator,
+)
 from django.db import models
 from model_utils.models import TimeStampedModel
 from model_utils import Choices
@@ -22,7 +25,7 @@ class Asset(TimeStampedModel):
     This defines an Asset, as described in the SEP-24 Info_ endpoint.
     """
 
-    code = models.TextField(validators=[MinLengthValidator(1)], default="USD")
+    code = models.TextField(default="USD")
     """The asset code as defined on the Stellar network."""
 
     issuer = models.TextField(validators=[MinLengthValidator(56)])
@@ -32,56 +35,72 @@ class Asset(TimeStampedModel):
     """The number of decimal places Polaris should save when collecting input amounts"""
 
     # Deposit-related info
-    deposit_enabled = models.BooleanField(null=False, default=True)
+    deposit_enabled = models.BooleanField(default=True)
     """``True`` if SEP-6 deposit for this asset is supported."""
+
     deposit_fee_fixed = models.DecimalField(
-        default=1.0, blank=True, max_digits=30, decimal_places=7
+        default=0, blank=True, max_digits=30, decimal_places=7
     )
     """
     Optional fixed (base) fee for deposit. In units of the deposited asset. 
     This is in addition to any ``fee_percent``. Omit if there is no fee or the fee 
     schedule is complex.
     """
+
     deposit_fee_percent = models.DecimalField(
-        default=0.01, blank=True, max_digits=30, decimal_places=7
+        default=0,
+        blank=True,
+        max_digits=30,
+        decimal_places=7,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
     )
     """
     Optional percentage fee for deposit. In percentage points. This is in 
     addition to any ``fee_fixed``. Omit if there is no fee or the fee schedule
     is complex.
     """
+
     deposit_min_amount = models.DecimalField(
-        default=10.0, blank=True, max_digits=30, decimal_places=7
+        default=0, blank=True, max_digits=30, decimal_places=7
     )
     """Optional minimum amount. No limit if not specified."""
+
     deposit_max_amount = models.DecimalField(
-        default=10000.0, blank=True, max_digits=30, decimal_places=7
+        default=10 ** (23 - 1), blank=True, max_digits=30, decimal_places=7
     )
     """Optional maximum amount. No limit if not specified."""
 
     # Withdrawal-related info
-    withdrawal_enabled = models.BooleanField(null=False, default=True)
+    withdrawal_enabled = models.BooleanField(default=True)
     """``True`` if SEP-6 withdrawal for this asset is supported."""
+
     withdrawal_fee_fixed = models.DecimalField(
-        default=1.0, blank=True, max_digits=30, decimal_places=7
+        default=0, blank=True, max_digits=30, decimal_places=7
     )
     """
     Optional fixed (base) fee for withdraw. In units of the withdrawn asset. 
     This is in addition to any ``fee_percent``.
     """
+
     withdrawal_fee_percent = models.DecimalField(
-        default=0.01, blank=True, max_digits=30, decimal_places=7
+        default=0,
+        blank=True,
+        max_digits=30,
+        decimal_places=7,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
     )
     """
     Optional percentage fee for withdraw in percentage points. This is in 
     addition to any ``fee_fixed``.
     """
+
     withdrawal_min_amount = models.DecimalField(
-        default=10.0, blank=True, max_digits=30, decimal_places=7
+        default=0, blank=True, max_digits=30, decimal_places=7
     )
     """Optional minimum amount. No limit if not specified."""
+
     withdrawal_max_amount = models.DecimalField(
-        default=10000.0, blank=True, max_digits=30, decimal_places=7
+        default=10 ** (23 - 1), blank=True, max_digits=30, decimal_places=7
     )
     """Optional maximum amount. No limit if not specified."""
 
@@ -100,6 +119,7 @@ class Transaction(models.Model):
 
     KIND = PolarisChoices("deposit", "withdrawal")
     """Choices object for ``deposit`` or ``withdrawal``."""
+
     STATUS = PolarisChoices(
         "completed",
         "pending_external",
@@ -114,6 +134,7 @@ class Transaction(models.Model):
         "too_large",
         "error",
     )
+
     MEMO_TYPES = PolarisChoices("text", "id", "hash")
     """Type for the ``deposit_memo``. Can be either `hash`, `id`, or `text`"""
 
@@ -124,12 +145,14 @@ class Transaction(models.Model):
     # NOTE: these fields should not be publicly exposed
     stellar_account = models.TextField(validators=[MinLengthValidator(1)])
     """The stellar source account for the transaction."""
+
     asset = models.ForeignKey("Asset", on_delete=models.CASCADE)
     """The Django foreign key to the associated :class:`Asset`"""
 
     # These fields can be shown through an API:
     kind = models.CharField(choices=KIND, default=KIND.deposit, max_length=20)
     """The character field for the available ``KIND`` choices."""
+
     status = models.CharField(
         choices=STATUS, default=STATUS.pending_external, max_length=30
     )
@@ -181,51 +204,62 @@ class Transaction(models.Model):
     
         catch-all for any error not enumerated above.
     """
+
     status_eta = models.IntegerField(null=True, blank=True, default=3600)
     """(optional) Estimated number of seconds until a status change is expected."""
+
     status_message = models.TextField(null=True, blank=True)
     """A message stored in association to the current status for debugging"""
+
     stellar_transaction_id = models.TextField(null=True, blank=True)
     """
     transaction_id on Stellar network of the transfer that either completed
     the deposit or started the withdrawal.
     """
+
     external_transaction_id = models.TextField(null=True, blank=True)
     """
     (optional) ID of transaction on external network that either started 
     the deposit or completed the withdrawal.
     """
+
     amount_in = models.DecimalField(
-        null=True, blank=True, max_digits=50, decimal_places=25
+        null=True, blank=True, max_digits=30, decimal_places=7
     )
     """
     Amount received by anchor at start of transaction as a string with up 
     to 7 decimals. Excludes any fees charged before the anchor received the 
     funds.
     """
+
     amount_out = models.DecimalField(
-        null=True, blank=True, max_digits=50, decimal_places=25
+        null=True, blank=True, max_digits=30, decimal_places=7
     )
     """
     Amount sent by anchor to user at end of transaction as a string with up to
     7 decimals. Excludes amount converted to XLM to fund account and any 
     external fees.
     """
+
     amount_fee = models.DecimalField(
-        null=True, blank=True, max_digits=50, decimal_places=25
+        null=True, blank=True, max_digits=30, decimal_places=7
     )
     """Amount of fee charged by anchor."""
+
     started_at = models.DateTimeField(auto_now_add=True)
     """Start date and time of transaction."""
+
     completed_at = models.DateTimeField(null=True)
     """
     Completion date and time of transaction. Assigned null for in-progress 
     transactions.
     """
+
     from_address = models.TextField(
         null=True, blank=True
     )  # Using from_address since `from` is a reserved keyword
     """Sent from address, perhaps BTC, IBAN, or bank account."""
+
     to_address = models.TextField(
         null=True, blank=True
     )  # Using to_address for naming consistency
@@ -233,18 +267,22 @@ class Transaction(models.Model):
     Sent to address (perhaps BTC, IBAN, or bank account in the case of a 
     withdrawal, Stellar address in the case of a deposit).
     """
+
     external_extra = models.TextField(null=True, blank=True)
     """"""
+
     external_extra_text = models.TextField(null=True, blank=True)
     """
     The bank name or store name that the user will be withdrawing 
     their funds to.
     """
+
     deposit_memo = models.TextField(null=True, blank=True)
     """
     (optional) Value of memo to attach to transaction, for hash this should
     be base64-encoded.
     """
+
     deposit_memo_type = models.CharField(
         choices=MEMO_TYPES, default=MEMO_TYPES.text, max_length=10
     )
@@ -252,6 +290,7 @@ class Transaction(models.Model):
     (optional) Type of memo that anchor should attach to the Stellar payment 
     transaction, one of text, id or hash.
     """
+
     withdraw_anchor_account = models.TextField(null=True, blank=True)
     """
     (optional) The stellar account ID of the user that wants to do the 
@@ -259,8 +298,10 @@ class Transaction(models.Model):
     withdrawal. The anchor can use account to look up the user's KYC 
     information.
     """
+
     withdraw_memo = models.TextField(null=True, blank=True)
     """(if specified) use this memo in the payment transaction to the anchor."""
+
     withdraw_memo_type = models.CharField(
         choices=MEMO_TYPES, default=MEMO_TYPES.text, max_length=10
     )
