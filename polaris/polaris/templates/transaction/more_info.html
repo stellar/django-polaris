@@ -75,6 +75,8 @@
         var transaction = tx_json["transaction"];
         var callback = '{{ callback|safe }}'
 
+        console.log('transaction status', transaction['status'], 'CALLBACK', callback)
+
         if (!callback || callback.toLowerCase() === 'postmessage') {
             postMessageCallback();
         } else {
@@ -118,8 +120,8 @@
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(tx_json)
-            }).catch(() => {
-                console.error('POST request to specified callback failed. Attempting postMessage instead.');
+            }).catch((e) => {
+                console.error('POST request to specified callback failed. Attempting postMessage instead.', e);
                 postMessageCallback();
             });
         }

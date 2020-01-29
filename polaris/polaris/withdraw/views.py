@@ -44,9 +44,13 @@ logger = Logger(__name__)
 def post_interactive_withdraw(request: Request) -> Response:
     """
     """
-    transaction, asset, callback, error_resp = interactive_args_validation(request)
-    if error_resp:
-        return error_resp
+    args_or_error = interactive_args_validation(request)
+    if "error" in args_or_error:
+        return args_or_error["error"]
+
+    transaction = args_or_error["transaction"]
+    asset = args_or_error["asset"]
+    callback = args_or_error["callback"]
 
     content = rwi.content_for_transaction(transaction)
     if not (content and content.get("form")):
@@ -113,7 +117,7 @@ def post_interactive_withdraw(request: Request) -> Response:
 def complete_interactive_withdraw(request: Request) -> Response:
     transaction_id = request.GET("id")
     if not transaction_id:
-        render_error_response(
+        return render_error_response(
             _("Missing id parameter in URL"), content_type="text/html"
         )
     logger.info(f"Hands-off interactive flow complete for transaction {transaction_id}")

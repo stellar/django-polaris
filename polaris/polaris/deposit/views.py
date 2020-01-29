@@ -51,17 +51,21 @@ logger = Logger(__name__)
 def post_interactive_deposit(request: Request) -> Response:
     """
     """
-    transaction, asset, callback, error_resp = interactive_args_validation(request)
-    if error_resp:
-        return error_resp
+    args_or_error = interactive_args_validation(request)
+    if "error" in args_or_error:
+        return args_or_error["error"]
+
+    transaction = args_or_error["transaction"]
+    asset = args_or_error["asset"]
+    callback = args_or_error["callback"]
 
     # Get the content served for the previous request
     content = rdi.content_for_transaction(transaction)
     if not (content and content.get("form")):
-        # django-admin makemessages doesn't detect translation strings if they're
-        # stored in a variable prior to translation, and we don't want to log non-english,
-        # so we going to... duplicate code! dun dun dun
-        logger.error("The anchor did not provide form content, unable to serve page.")
+        logger.error(
+            "Initial content_for_transaction() call returned None in "
+            f"POST request for transaction: {transaction.id}"
+        )
         return render_error_response(
             _("The anchor did not provide form content, unable to serve page."),
             status_code=500,
@@ -121,7 +125,7 @@ def post_interactive_deposit(request: Request) -> Response:
 def complete_interactive_deposit(request: Request) -> Response:
     transaction_id = request.GET("id")
     if not transaction_id:
-        render_error_response(
+        return render_error_response(
             _("Missing id parameter in URL"), content_type="text/html"
         )
     logger.info(f"Hands-off interactive flow complete for transaction {transaction_id}")

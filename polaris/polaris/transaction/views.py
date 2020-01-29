@@ -88,12 +88,14 @@ def more_info(request: Request) -> Response:
     tx_json = json.dumps({"transaction": serializer.data})
     resp_data = {
         "tx_json": tx_json,
-        "callback": callback,
         "transaction": request_transaction,
         "asset_code": request_transaction.asset.code,
         "scripts": registered_javascript_func(),
         "instructions": None,
     }
+    if callback:
+        resp_data["callback"] = callback
+
     if (
         request_transaction.kind == Transaction.KIND.deposit
         and request_transaction.status == Transaction.STATUS.pending_user_transfer_start
