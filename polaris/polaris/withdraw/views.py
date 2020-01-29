@@ -137,9 +137,13 @@ def get_interactive_withdraw(request: Request) -> Response:
     if err_resp:
         return err_resp
 
-    transaction, asset, callback, error_resp = interactive_args_validation(request)
-    if error_resp:
-        return error_resp
+    args_or_error = interactive_args_validation(request)
+    if "error" in args_or_error:
+        return args_or_error["error"]
+
+    transaction = args_or_error["transaction"]
+    asset = args_or_error["asset"]
+    callback = args_or_error["callback"]
 
     content = rwi.content_for_transaction(transaction)
     if not content:

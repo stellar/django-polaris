@@ -145,9 +145,13 @@ def get_interactive_deposit(request: Request) -> Response:
     if err_resp:
         return err_resp
 
-    transaction, asset, callback, err_resp = interactive_args_validation(request)
-    if err_resp:
-        return err_resp
+    args_or_error = interactive_args_validation(request)
+    if "error" in args_or_error:
+        return args_or_error["error"]
+
+    transaction = args_or_error["transaction"]
+    asset = args_or_error["asset"]
+    callback = args_or_error["callback"]
 
     content = rdi.content_for_transaction(transaction)
     if not content:
