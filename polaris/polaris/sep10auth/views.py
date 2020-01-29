@@ -15,7 +15,6 @@ from django.http import JsonResponse
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.request import Request
-from stellar_sdk.transaction_envelope import TransactionEnvelope
 from stellar_sdk.sep.stellar_web_authentication import (
     build_challenge_transaction,
     read_challenge_transaction,
@@ -74,14 +73,12 @@ class SEP10Auth(APIView):
         This is used in `GET <auth>`, as per SEP 10.
         Returns the XDR encoding of that transaction.
         """
-        # TODO: https://github.com/stellar/django-polaris/issues/81
-        challenge_tx_xdr = build_challenge_transaction(
+        return build_challenge_transaction(
             server_secret=settings.SIGNING_SEED,
             client_account_id=client_account,
             anchor_name=ANCHOR_NAME,
             network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
         )
-        return challenge_tx_xdr
 
     ################
     # POST functions
@@ -161,18 +158,16 @@ class SEP10Auth(APIView):
         See: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.md#token
         """
         issued_at = time.time()
-        transaction_envelope = TransactionEnvelope.from_xdr(
-            envelope_xdr, network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE
+        transaction_envelope, source_account = read_challenge_transaction(
+            envelope_xdr, settings.SIGNING_KEY, settings.STELLAR_NETWORK_PASSPHRASE
         )
-        transaction = transaction_envelope.transaction
-        source_account = transaction.operations[0].source
         logger.info(
             f"Challenge verified, generating SEP-10 token for account {source_account}"
         )
         hash_hex = binascii.hexlify(transaction_envelope.hash()).decode()
         jwt_dict = {
             "iss": request.build_absolute_uri("/auth"),
-            "sub": transaction.operations[0].source,
+            "sub": source_account,
             "iat": issued_at,
             "exp": issued_at + 24 * 60 * 60,
             "jti": hash_hex,
