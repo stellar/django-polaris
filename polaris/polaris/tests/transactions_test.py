@@ -155,8 +155,6 @@ def test_transactions_content(
     assert withdrawal_transaction["to"] is None
     assert withdrawal_transaction["external_extra"] is None
     assert withdrawal_transaction["external_extra_text"] is None
-    assert withdrawal_transaction["deposit_memo"] is None
-    assert withdrawal_transaction["deposit_memo_type"] == withdrawal.deposit_memo_type
     assert (
         withdrawal_transaction["withdraw_anchor_account"]
         == withdrawal.withdraw_anchor_account
@@ -185,9 +183,6 @@ def test_transactions_content(
     assert deposit_transaction["external_extra_text"] is None
     assert deposit_transaction["deposit_memo"] == deposit.deposit_memo
     assert deposit_transaction["deposit_memo_type"] == deposit.deposit_memo_type
-    assert deposit_transaction["withdraw_anchor_account"] is None
-    assert deposit_transaction["withdraw_memo"] is None
-    assert deposit_transaction["withdraw_memo_type"] == deposit.withdraw_memo_type
 
     # stellar_account and asset should not be exposed:
     with pytest.raises(KeyError):

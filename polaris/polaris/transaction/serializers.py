@@ -41,14 +41,19 @@ class TransactionSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         """
         Removes the "address" part of the to_address and from_address field
-        names from the serialized representation.
-
-        Since "from" is a python keyword, a "from" variable could not be
-        defined directly as an attribute.
+        names from the serialized representation. Also removes the
+        deposit-related fields for withdraw transactions and vice-versa.
         """
         data = super().to_representation(instance)
         data["to"] = data.pop("to_address")
         data["from"] = data.pop("from_address")
+        if data["kind"] == Transaction.KIND.deposit:
+            del data["withdraw_memo"]
+            del data["withdraw_memo_type"]
+            del data["withdraw_anchor_account"]
+        else:  # withdrawal
+            del data["deposit_memo"]
+            del data["deposit_memo_type"]
         return data
 
     class Meta:

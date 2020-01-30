@@ -80,8 +80,6 @@ def test_transaction_id_filter_and_format(
     assert withdrawal_transaction["to"] is None
     assert withdrawal_transaction["external_extra"] is None
     assert withdrawal_transaction["external_extra_text"] is None
-    assert withdrawal_transaction["deposit_memo"] is None
-    assert withdrawal_transaction["deposit_memo_type"] == withdrawal.deposit_memo_type
     assert (
         withdrawal_transaction["withdraw_anchor_account"]
         == withdrawal.withdraw_anchor_account
