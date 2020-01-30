@@ -84,11 +84,9 @@ def post_interactive_deposit(request: Request) -> Response:
             # calculate the amount_fee.
             op_type = form.cleaned_data.get("op_type")
             transaction.amount_in = form.cleaned_data["amount"]
-            print("AMOUNT", transaction.amount_in)
             transaction.amount_fee = registered_fee_func(
                 asset, settings.OPERATION_DEPOSIT, op_type, transaction.amount_in
             )
-            print("FEE", transaction.amount_fee)
             transaction.save()
 
         # Perform any defined post-validation logic defined by Polaris users.
