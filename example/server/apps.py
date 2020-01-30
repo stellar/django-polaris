@@ -11,6 +11,7 @@ class AnchorConfig(AppConfig):
             MyWithdrawalIntegration,
             get_stellar_toml,
             scripts,
+            calculate_custom_fee,
         )
 
         register_integrations(
@@ -18,4 +19,5 @@ class AnchorConfig(AppConfig):
             withdrawal=MyWithdrawalIntegration(),
             toml_func=get_stellar_toml,
             javascript_func=scripts,
+            fee_func=calculate_custom_fee,
         )

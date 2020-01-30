@@ -14,6 +14,20 @@ OPERATION_DEPOSIT = settings.OPERATION_DEPOSIT
 OPERATION_WITHDRAWAL = settings.OPERATION_WITHDRAWAL
 
 
+def _verify_valid_asset_operation(asset, amount, op_type) -> Response:
+    enabled = getattr(asset, f"{op_type}_enabled")
+    min_amount = getattr(asset, f"{op_type}_min_amount")
+    max_amount = getattr(asset, f"{op_type}_max_amount")
+    if not enabled:
+        return render_error_response(
+            f"the specified operation is not available for '{asset.code}'"
+        )
+    elif not (min_amount <= amount <= max_amount):
+        return render_error_response(
+            f"Asset amount must be within bounds [{min_amount, max_amount}]"
+        )
+
+
 @api_view()
 @validate_sep10_token()
 def fee(account: str, request: Request) -> Response:
@@ -31,33 +45,36 @@ def fee(account: str, request: Request) -> Response:
         return render_error_response("invalid 'asset_code'")
     asset = Asset.objects.get(code=asset_code)
 
-    # Verify that the requested operation is valid:
-    if operation not in (OPERATION_DEPOSIT, OPERATION_WITHDRAWAL):
-        return render_error_response(
-            f"'operation' should be either '{OPERATION_DEPOSIT}' or '{OPERATION_WITHDRAWAL}'"
-        )
-    elif (operation == OPERATION_DEPOSIT and not asset.deposit_enabled) or (
-        operation == OPERATION_WITHDRAWAL and not asset.withdrawal_enabled
-    ):
-        return render_error_response(
-            f"the specified operation is not available for '{asset_code}'"
-        )
-
     # Verify that amount is provided, and that can be parsed into a decimal:
     try:
         amount = Decimal(amount_str)
     except (DecimalException, TypeError):
         return render_error_response("invalid 'amount'")
 
-    return Response(
-        {
-            "fee": registered_fee_func(
-                {
-                    "operation": operation,
-                    "type": op_type,
-                    "asset_code": asset_code,
-                    "amount": amount,
-                }
-            )
-        }
-    )
+    error_resp = None
+    # Verify that the requested operation is valid:
+    if operation not in (OPERATION_DEPOSIT, OPERATION_WITHDRAWAL):
+        error_resp = render_error_response(
+            f"'operation' should be either '{OPERATION_DEPOSIT}' or '{OPERATION_WITHDRAWAL}'"
+        )
+    # Verify asset is enabled and within the specified limits
+    elif operation == OPERATION_DEPOSIT:
+        error_resp = _verify_valid_asset_operation(asset, amount, "deposit")
+    elif operation == OPERATION_WITHDRAWAL:
+        error_resp = _verify_valid_asset_operation(asset, amount, "withdrawal")
+
+    if error_resp:
+        return error_resp
+    else:
+        return Response(
+            {
+                "fee": registered_fee_func(
+                    {
+                        "operation": operation,
+                        "type": op_type,
+                        "asset_code": asset_code,
+                        "amount": amount,
+                    }
+                )
+            }
+        )

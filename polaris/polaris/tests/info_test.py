@@ -22,11 +22,15 @@ def _get_expected_response(settings):
         "deposit": {{
             "USD": {{
                 "enabled": true,
+                "fee_fixed": 5.0,
+                "fee_percent": 1.0,
                 "min_amount": 0.1,
                 "max_amount": 1000.0
             }},
             "ETH": {{
                 "enabled": true,
+                "fee_fixed": 0.002,
+                "fee_percent": 0.0,
                 "max_amount": 10000000.0,
                 "min_amount": 0.0
             }}
@@ -34,6 +38,8 @@ def _get_expected_response(settings):
         "withdraw": {{
             "USD": {{
                 "enabled": true,
+                "fee_fixed": 5.0,
+                "fee_percent": 0.0,
                 "min_amount": 0.1,
                 "max_amount": 1000.0
             }},
