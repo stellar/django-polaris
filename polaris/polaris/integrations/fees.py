@@ -37,6 +37,11 @@ def calculate_fee(fee_params: Dict) -> Decimal:
             fee_func=calculate_complex_fee
         )
 
+    If this function is replaced with your own, `/info` responses will no
+    longer contain the `fee_fixed` and `fee_percent` attributes per-asset.
+    This is because Polaris can no longer assume fees are determined using
+    those attributes alone.
+
     Note that any registered function must accept the same parameters and
     return the same type.
     """
