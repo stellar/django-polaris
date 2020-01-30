@@ -72,13 +72,16 @@ def post_interactive_withdraw(request: Request) -> Response:
 
     if form.is_valid():
         if is_transaction_form:
-            # Some anchors add an op_type field to their TransactionForm to
-            # calculate the amount_fee.
-            op_type = form.cleaned_data.get("op_type")
+            # Pass `operation`, `asset_code`, and `amount` to registered fee
+            # function, as well as any other fields on the TransactionForm.
+            # Ex. operation `type`
+            fee_params = {
+                "operation": settings.OPERATION_WITHDRAWAL,
+                "asset_code": asset.code,
+                **form.cleaned_data,
+            }
             transaction.amount_in = form.cleaned_data["amount"]
-            transaction.amount_fee = registered_fee_func(
-                asset, settings.OPERATION_WITHDRAWAL, op_type, transaction.amount_in
-            )
+            transaction.amount_fee = registered_fee_func(fee_params)
             transaction.save()
 
         # Perform any defined post-validation logic defined by Polaris users.

@@ -49,4 +49,15 @@ def fee(account: str, request: Request) -> Response:
     except (DecimalException, TypeError):
         return render_error_response("invalid 'amount'")
 
-    return Response({"fee": registered_fee_func(asset, operation, op_type, amount)})
+    return Response(
+        {
+            "fee": registered_fee_func(
+                {
+                    "operation": operation,
+                    "type": op_type,
+                    "asset_code": asset_code,
+                    "amount": amount,
+                }
+            )
+        }
+    )

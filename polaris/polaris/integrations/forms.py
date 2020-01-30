@@ -74,6 +74,12 @@ class TransactionForm(forms.Form):
     Developers must define subclasses to collect additional information and
     apply additional validation.
 
+    A subclass of this form should be returned by
+    :func:`content_for_transaction` once for each interactive flow. After
+    form validation, the key-value pairs in `self.cleaned_data` will be passed
+    to the registered fee function to calculate `amount_fee` for the
+    associated ``Transaction``.
+
     Defines the :class:`.forms.DecimalField` `amount` and also has a non-form
     attribute `asset`, which will be populated by the `asset_code`
     request parameter used in `/transactions/deposit/webapp` and
@@ -81,25 +87,6 @@ class TransactionForm(forms.Form):
 
     The `amount` field is validated with the :meth:`clean_amount` function,
     which ensures the amount is within the bounds for the asset type.
-
-    If the fee charged for a transaction differs based on the type of deposit
-    or withdrawal operation needed, add an `op_type` choice field to a
-    subclass of this form. Polaris will attempt to retrieve the operation type
-    like so:
-    ::
-
-        content = rdi.content_for_transaction(transaction)
-        form = content["form"](request.POST)
-        is_transaction_form = issubclass(form.__class__, TransactionForm)
-        if form.is_valid():
-            if is_transaction_form:
-                op_type = form.cleaned_data.get("op_type")
-                transaction.amount_in = form.cleaned_data["amount"]
-                transaction.amount_fee = registered_fee_func(
-                    asset, settings.OPERATION_WITHDRAWAL, op_type, transaction.amount_in
-                )
-                transaction.save()
-
     """
 
     amount = forms.DecimalField(
