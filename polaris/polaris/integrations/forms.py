@@ -74,6 +74,25 @@ class TransactionForm(forms.Form):
 
     The `amount` field is validated with the :meth:`clean_amount` function,
     which ensures the amount is within the bounds for the asset type.
+
+    If the fee charged for a transaction differs based on the type of deposit
+    or withdrawal operation needed, add an `op_type` choice field to a
+    subclass of this form. Polaris will attempt to retrieve the operation type
+    like so:
+    ::
+
+        content = rdi.content_for_transaction(transaction)
+        form = content["form"](request.POST)
+        is_transaction_form = issubclass(form.__class__, TransactionForm)
+        if form.is_valid():
+            if is_transaction_form:
+                op_type = form.cleaned_data.get("op_type")
+                transaction.amount_in = form.cleaned_data["amount"]
+                transaction.amount_fee = registered_fee_func(
+                    asset, settings.OPERATION_WITHDRAWAL, op_type, transaction.amount_in
+                )
+                transaction.save()
+
     """
 
     amount = forms.DecimalField(

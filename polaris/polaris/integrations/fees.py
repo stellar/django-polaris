@@ -16,7 +16,7 @@ def calculate_fee(
     accepted by the `/fee`_ endpoint.
 
     Replace this function by registering another through
-    :func:`register_integrations`::
+    :func:`register_integrations`:
     ::
 
         from myapp.integrations import (
