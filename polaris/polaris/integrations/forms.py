@@ -54,6 +54,13 @@ class CreditCardField(forms.CharField):
 
 
 class CreditCardForm(forms.Form):
+    """
+    A generic form for collecting credit or debit card information.
+
+    Ensures `card_number` is valid, but does not validate the expiration or
+    CVV. Subclass this form for additional validation.
+    """
+
     name = forms.CharField(label=_("Name"))
     card_number = CreditCardField(label=_("Card Number"))
     expiration = forms.Field(widget=CardExpirationInput, label=_("Expiration"))
@@ -62,7 +69,7 @@ class CreditCardForm(forms.Form):
 
 class TransactionForm(forms.Form):
     """
-    Base class for collecting transaction information
+    Base class for collecting transaction information.
 
     Developers must define subclasses to collect additional information and
     apply additional validation.
