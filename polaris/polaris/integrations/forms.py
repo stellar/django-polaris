@@ -69,16 +69,21 @@ class CreditCardForm(forms.Form):
 
 class TransactionForm(forms.Form):
     """
+    .. _`HiddenInput`: https://docs.djangoproject.com/en/3.0/ref/forms/widgets/#hiddeninput
+
     Base class for collecting transaction information.
 
     Developers must define subclasses to collect additional information and
     apply additional validation.
 
     A subclass of this form should be returned by
-    :func:`content_for_transaction` once for each interactive flow. After
-    form validation, the key-value pairs in `self.cleaned_data` will be passed
-    to the registered fee function to calculate `amount_fee` for the
-    associated ``Transaction``.
+    :func:`content_for_transaction` once for each interactive flow.
+
+    After form validation, the key-value pairs in `self.cleaned_data` will be
+    passed to the registered fee function to calculate `amount_fee` for the
+    associated ``Transaction``. If you want a key-value pair passed to
+    the registered fee function but don't want to display an additional field
+    to the user, add a field with a `HiddenInput`_ widget.
 
     Defines the :class:`.forms.DecimalField` `amount` and also has a non-form
     attribute `asset`, which will be populated by the `asset_code`
