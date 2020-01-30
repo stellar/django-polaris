@@ -162,7 +162,7 @@ intend to anchor. Get into the django python shell like so:
 ::
 
     from polaris.models import Asset
-    Asset.objects.create(code="USD", issuer="<the issuer address>")
+    Asset.objects.create(...)
 
 You are now ready to run the Polaris anchor server!
 
