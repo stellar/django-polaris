@@ -89,36 +89,6 @@ def test_fee_invalid_amount(mock_check, client, usd_asset_factory):
 
 @pytest.mark.django_db
 @patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
-def test_fee_invalid_operation_type_deposit(mock_check, client, usd_asset_factory):
-    """Fails if the specified deposit `operation` is not valid for `asset_code`."""
-    del mock_check
-    usd_asset_factory()
-    response = client.get(
-        f"/fee?asset_code=USD&operation=deposit&amount=100.0&type=IBAN", follow=True
-    )
-    content = json.loads(response.content)
-
-    assert response.status_code == 400
-    assert content == {"error": "the specified operation is not available for 'USD'"}
-
-
-@pytest.mark.django_db
-@patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
-def test_fee_invalid_operation_type_withdraw(mock_check, client, usd_asset_factory):
-    """Fails if the specified withdraw `operation` is not enabled for `asset_code`."""
-    del mock_check
-    usd_asset_factory()
-    response = client.get(
-        f"/fee?asset_code=USD&operation=withdraw&amount=100.0&type=IBAN", follow=True
-    )
-    content = json.loads(response.content)
-
-    assert response.status_code == 400
-    assert content == {"error": "the specified operation is not available for 'USD'"}
-
-
-@pytest.mark.django_db
-@patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
 def test_fee_withdraw_disabled(mock_check, client, eth_asset_factory):
     """Fails if the withdraw `operation` is not enabled for the `asset_code`."""
     del mock_check

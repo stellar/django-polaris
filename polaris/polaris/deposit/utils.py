@@ -46,7 +46,10 @@ def create_stellar_deposit(transaction_id: str) -> bool:
     # We can assume transaction has valid stellar_account, amount_in, and asset
     # because this task is only called after those parameters are validated.
     stellar_account = transaction.stellar_account
-    payment_amount = round(transaction.amount_in - transaction.amount_fee, 7)
+    payment_amount = round(
+        transaction.amount_in - transaction.amount_fee,
+        transaction.asset.significant_decimals,
+    )
     asset = transaction.asset.code
 
     # If the given Stellar account does not exist, create

@@ -1,5 +1,6 @@
 import sys
 from typing import Callable
+from polaris.integrations.fees import calculate_fee, registered_fee_func
 from polaris.integrations.forms import TransactionForm, CreditCardForm
 from polaris.integrations.toml import get_stellar_toml, registered_toml_func
 from polaris.integrations.javascript import scripts, registered_javascript_func
@@ -16,6 +17,7 @@ def register_integrations(
     withdrawal: WithdrawalIntegration = None,
     toml_func: Callable = None,
     javascript_func: Callable = None,
+    fee_func: Callable = None,
 ):
     """
     Registers instances of user-defined subclasses of
@@ -34,13 +36,12 @@ def register_integrations(
             def ready(self):
                 from polaris.integrations import register_integrations
                 from myapp.integrations import (MyDepositIntegration,
-                                                MyWithdrawalIntegration,
-                                                get_toml_data)
+                                                MyWithdrawalIntegration)
+
 
                 register_integrations(
                     deposit=MyDepositIntegration(),
-                    withdrawal=MyWithdrawalIntegration(),
-                    toml_func=get_toml_data
+                    withdrawal=MyWithdrawalIntegration()
                 )
 
     These integration classes provide a structured interface for implementing
@@ -56,6 +57,7 @@ def register_integrations(
     :param toml_func: a function that returns stellar.toml data as a dictionary
     :param javascript_func: a function that returns a list of script tags as
         strings
+    :param fee_func: a function that returns the fee that would be charged
     :raises ValueError: missing argument(s)
     :raises TypeError: arguments are not subclasses of DepositIntegration or
         Withdrawal
@@ -72,12 +74,15 @@ def register_integrations(
         raise TypeError("toml_func is not callable")
     elif javascript_func and not callable(javascript_func):
         raise TypeError("javascript_func is not callable")
+    elif fee_func and not callable(fee_func):
+        raise TypeError("javascript_func is not callable")
 
     for obj, attr in [
         (deposit, "registered_deposit_integration"),
         (withdrawal, "registered_withdrawal_integration"),
         (toml_func, "registered_toml_func"),
         (javascript_func, "registered_javascript_func"),
+        (fee_func, "registered_fee_func"),
     ]:
         if obj:
             setattr(this, attr, obj)

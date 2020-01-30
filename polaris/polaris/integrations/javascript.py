@@ -21,12 +21,15 @@ def scripts() -> List[str]:
     :func:`polaris.integrations.register_integrations` like so:
     ::
 
-        from myapp.integrations import scripts, get_toml_data
+        from myapp.integrations import (
+            scripts,
+            MyDepositIntegration,
+            MyWithdrawalIntegration
+        )
 
         register_integrations(
-            deposit=DepositIntegration(),
-            withdrawal=WithdrawalIntegration(),
-            toml_func=get_toml_data,
+            deposit=MyDepositIntegration(),
+            withdrawal=MyWithdrawalIntegration(),
             javascript_func=scripts
         )
 

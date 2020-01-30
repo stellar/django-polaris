@@ -72,6 +72,13 @@ the anchor is done processing the transaction and may resume control.
 
 .. autofunction:: polaris.integrations.WithdrawalIntegration.interactive_url
 
+Registering Integrations
+------------------------
+In order for Polaris to use the integration classes you've defined, you
+must register them.
+
+.. autofunction:: polaris.integrations.register_integrations
+
 stellar.toml Integration
 ------------------------
 
@@ -82,20 +89,19 @@ certainly need to replace this default to provide more detailed information.
 
 .. autofunction:: polaris.integrations.get_stellar_toml
 
-Deposit Instructions
---------------------
-
-.. autofunction:: polaris.integrations.DepositIntegration.instructions_for_pending_deposit
-
 Javascript Integration
 ----------------------
 
 .. autofunction:: polaris.integrations.scripts
 
-Registering Integrations
-------------------------
-In order for Polaris to use the integration classes you've defined, you
-must register them.
+Fee Integration
+---------------
 
-.. autofunction:: polaris.integrations.register_integrations
+.. autofunction:: polaris.integrations.calculate_fee
+
+Deposit Instructions
+--------------------
+
+.. autofunction:: polaris.integrations.DepositIntegration.instructions_for_pending_deposit
+
 

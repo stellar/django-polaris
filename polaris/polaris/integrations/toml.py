@@ -12,11 +12,15 @@ def get_stellar_toml():
     :func:`polaris.integrations.register_integrations` like so:
     ::
 
-        from myapp.integrations import get_toml_data
+        from myapp.integrations import (
+            get_toml_data,
+            MyDepositIntegration,
+            MyWithdrawalIntegration
+        )
 
         register_integrations(
-            deposit=DepositIntegration(),
-            withdrawal=WithdrawalIntegration(),
+            deposit=MyDepositIntegration(),
+            withdrawal=MyWithdrawalIntegration(),
             toml_func=get_toml_data
         )
 

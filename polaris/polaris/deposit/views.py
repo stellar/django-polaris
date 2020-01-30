@@ -22,7 +22,6 @@ from stellar_sdk.exceptions import Ed25519PublicKeyInvalidError
 
 from polaris import settings
 from polaris.helpers import (
-    calc_fee,
     render_error_response,
     create_transaction_id,
     validate_sep10_token,
@@ -39,6 +38,7 @@ from polaris.locale.views import validate_language, activate_lang_for_request
 from polaris.integrations import (
     registered_deposit_integration as rdi,
     registered_javascript_func,
+    registered_fee_func,
 )
 
 logger = Logger(__name__)
@@ -80,10 +80,15 @@ def post_interactive_deposit(request: Request) -> Response:
 
     if form.is_valid():
         if is_transaction_form:
+            # Some anchors add an op_type field to their TransactionForm to
+            # calculate the amount_fee.
+            op_type = form.cleaned_data.get("op_type")
             transaction.amount_in = form.cleaned_data["amount"]
-            transaction.amount_fee = calc_fee(
-                asset, settings.OPERATION_DEPOSIT, transaction.amount_in
+            print("AMOUNT", transaction.amount_in)
+            transaction.amount_fee = registered_fee_func(
+                asset, settings.OPERATION_DEPOSIT, op_type, transaction.amount_in
             )
+            print("FEE", transaction.amount_fee)
             transaction.save()
 
         # Perform any defined post-validation logic defined by Polaris users.
