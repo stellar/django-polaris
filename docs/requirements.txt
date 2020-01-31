@@ -21,6 +21,6 @@ djangorestframework
 libsass
 psycopg2-binary
 pyjwt
-stellar-sdk==2.0.0
+stellar-sdk==2.1.1
 toml
 whitenoise
