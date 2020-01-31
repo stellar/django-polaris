@@ -75,10 +75,7 @@ class Migration(migrations.Migration):
             model_name="asset",
             name="withdrawal_max_amount",
             field=models.DecimalField(
-                blank=True,
-                decimal_places=7,
-                default=10000000000000000000000,
-                max_digits=30,
+                blank=True, decimal_places=7, default=decimal.MAX_EMAX, max_digits=30,
             ),
         ),
         migrations.AlterField(
