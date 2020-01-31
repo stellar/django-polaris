@@ -14,7 +14,8 @@ from stellar_sdk.exceptions import BadRequestError
 from django.core.management import call_command
 
 from polaris import settings
-from polaris.tests.conftest import STELLAR_ACCOUNT_1_SEED
+from polaris.deposit.utils import create_stellar_deposit
+from polaris.tests.conftest import STELLAR_ACCOUNT_1_SEED, STELLAR_ACCOUNT_1
 from polaris.management.commands.create_stellar_deposit import (
     SUCCESS_XDR,
     TRUSTLINE_FAILURE_XDR,
@@ -157,7 +158,7 @@ def test_deposit_stellar_no_trustline(
     deposit = acc1_usd_deposit_transaction_factory()
     deposit.status = Transaction.STATUS.pending_anchor
     deposit.save()
-    call_command("create_stellar_deposit", deposit.id)
+    create_stellar_deposit(deposit.id)
     assert (
         Transaction.objects.get(id=deposit.id).status
         == Transaction.STATUS.pending_trust
@@ -188,7 +189,7 @@ def test_deposit_stellar_no_account(
     deposit = acc1_usd_deposit_transaction_factory()
     deposit.status = Transaction.STATUS.pending_anchor
     deposit.save()
-    call_command("create_stellar_deposit", deposit.id)
+    create_stellar_deposit(deposit.id)
     assert (
         Transaction.objects.get(id=deposit.id).status
         == Transaction.STATUS.pending_trust
@@ -214,7 +215,7 @@ def test_deposit_stellar_success(
     deposit = acc1_usd_deposit_transaction_factory()
     deposit.status = Transaction.STATUS.pending_anchor
     deposit.save()
-    call_command("create_stellar_deposit", deposit.id)
+    create_stellar_deposit(deposit.id)
     assert Transaction.objects.get(id=deposit.id).status == Transaction.STATUS.completed
 
 
@@ -286,7 +287,13 @@ def test_deposit_interactive_confirm_success(
 )
 @patch(
     "stellar_sdk.call_builder.accounts_call_builder.AccountsCallBuilder.call",
-    return_value={"id": 1, "sequence": 1, "balances": [{"asset_code": "USD"}]},
+    return_value={
+        "id": 1,
+        "sequence": 1,
+        "balances": [{"asset_code": "USD"}],
+        "thresholds": {"low_threshold": 1, "med_threshold": 1, "high_threshold": 1},
+        "signers": [{"key": STELLAR_ACCOUNT_1, "weight": 1}],
+    },
 )
 def test_deposit_check_trustlines_success(
     mock_account,

@@ -1,10 +1,10 @@
 import time
 
-from polaris import settings
 from django.core.management.base import BaseCommand
-from django.core.management import call_command
 from stellar_sdk.exceptions import BaseHorizonError
 
+from polaris import settings
+from polaris.deposit.utils import create_stellar_deposit
 from polaris.models import Transaction
 from polaris.helpers import Logger
 
@@ -68,4 +68,4 @@ class Command(BaseCommand):
                         f"Account {account['id']} has established a trustline for {asset_code}, "
                         f"initiating deposit for {transaction.id}"
                     )
-                    call_command("create_stellar_deposit", transaction.id)
+                    create_stellar_deposit(transaction.id)

@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "c3d167da43da5fb3d239be86e9c1b0b073e822bdb1db7798ddf9355ebc885e95"
+            "sha256": "5e8de7743d656fc9196bc4934c6edbe67c807ded2fb732064e077eaa8d023103"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -378,11 +378,11 @@
         },
         "stellar-sdk": {
             "hashes": [
-                "sha256:ae67ef303957aae44fa470a3e8890e9c02caf51cd22eaeaea380584e67baa967",
-                "sha256:dccf7c6d240d3eaa9f5edc1264450bbda3664cf4b3a810b8e13f95ee7a090923"
+                "sha256:4de91015c04862bf5adb4c4c35fa0ebe6024d879fbec0b1c88072b3cd2cd0710",
+                "sha256:7461be91488477556d24d859e7dd1c0d486efc51355f4c14d48718ad35ad565d"
             ],
             "index": "pypi",
-            "version": "==2.0.0"
+            "version": "==2.1.1"
         },
         "toml": {
             "hashes": [
@@ -617,10 +617,10 @@
         },
         "jinja2": {
             "hashes": [
-                "sha256:6e7a3c2934694d59ad334c93dd1b6c96699cf24c53fdb8ec848ac6b23e685734",
-                "sha256:d6609ae5ec3d56212ca7d802eda654eaf2310000816ce815361041465b108be4"
+                "sha256:93187ffbc7808079673ef52771baa950426fd664d3aad1d0fa3e95644360e250",
+                "sha256:b0eaf100007721b5c16c1fc1eecb87409464edc10469ddc9a22a27a99123be49"
             ],
-            "version": "==2.11.0"
+            "version": "==2.11.1"
         },
         "lazy-object-proxy": {
             "hashes": [
@@ -1065,10 +1065,10 @@
         },
         "wheel": {
             "hashes": [
-                "sha256:48e082fac9a549bb30abcb71360db41e9e999f63bfc9933fdb7339ba7205330f",
-                "sha256:664b9c5033ee7cd5aa6b355bc8a4a5915eadb7612e7b0acab1aa71f005457107"
+                "sha256:8788e9155fe14f54164c1b9eb0a319d98ef02c160725587ad60f14ddc57b6f96",
+                "sha256:df277cb51e61359aba502208d680f90c0493adec6f0e848af94948778aed386e"
             ],
-            "version": "==0.34.1"
+            "version": "==0.34.2"
         },
         "wrapt": {
             "hashes": [

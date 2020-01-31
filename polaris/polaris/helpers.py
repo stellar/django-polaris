@@ -1,4 +1,5 @@
 """This module defines helpers for various endpoints."""
+import os
 import logging
 import codecs
 import time
@@ -109,7 +110,7 @@ def validate_jwt_request(request: Request) -> str:
     except InvalidTokenError as e:
         raise ValueError(str(e))
 
-    if jwt_dict["iss"] != request.build_absolute_uri("/auth"):
+    if jwt_dict["iss"] != os.path.join(settings.HOST_URL, "auth"):
         raise ValueError("'jwt' has incorrect 'issuer'")
     current_time = time.time()
     if current_time < jwt_dict["iat"] or current_time > jwt_dict["exp"]:

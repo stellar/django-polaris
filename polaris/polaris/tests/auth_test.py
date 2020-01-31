@@ -1,5 +1,6 @@
 """This module tests the <auth> endpoint."""
 import json
+from urllib.parse import urlencode
 
 from stellar_sdk.keypair import Keypair
 from stellar_sdk.transaction_envelope import TransactionEnvelope
@@ -89,7 +90,7 @@ def test_auth_post_urlencode_success(client):
 
     response = client.post(
         "/auth",
-        data=f"transaction={client_signed_envelope_xdr}",
+        data=urlencode({"transaction": client_signed_envelope_xdr}),
         content_type="application/x-www-form-urlencoded",
     )
     content = json.loads(response.content)
