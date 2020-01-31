@@ -5,6 +5,7 @@ on behalf of a user who holds a Stellar account.
 
 See: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.md
 """
+import os
 import binascii
 import json
 import time
@@ -166,7 +167,7 @@ class SEP10Auth(APIView):
         )
         hash_hex = binascii.hexlify(transaction_envelope.hash()).decode()
         jwt_dict = {
-            "iss": request.build_absolute_uri("/auth"),
+            "iss": os.path.join(settings.HOST_URL, "auth"),
             "sub": source_account,
             "iat": issued_at,
             "exp": issued_at + 24 * 60 * 60,

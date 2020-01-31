@@ -131,6 +131,7 @@ environment or included in ``PROJECT_ROOT/.env``.
     STELLAR_NETWORK_PASSPHRASE="Test SDF Network ; September 2015"
     HORIZON_URI="https://horizon-testnet.stellar.org/"
     SERVER_JWT_KEY="yoursupersecretjwtkey"
+    HOST_URL="https://example.com"
 
 Polaris supports anchoring one or multiple assets on the Stellar network. ``ASSETS``
 should be a comma-separated list of asset codes such as "USD", "ETH", or "MYCOIN".
