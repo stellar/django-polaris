@@ -24,7 +24,7 @@ django-model-utils = "*"
 djangorestframework = "*"
 whitenoise = "*"
 psycopg2-binary = "*"
-stellar-sdk = {ref = "2.1.1-beta1", git = "https://github.com/StellarCN/py-stellar-base.git"}
+stellar-sdk = "==2.1.1"
 django-cors-headers = "*"
 toml = "*"
 pyjwt = "*"
