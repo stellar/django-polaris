@@ -38,7 +38,7 @@ logger = Logger(__name__)
 
 class SEP10Auth(APIView):
     """
-    `GET /auth` can be used to get an invalid challenge Stellar transaction.
+    `GET /auth` can be used to get a challenge Stellar transaction.
     The client can then sign it using their private key and hit `POST /auth`
     to receive a JSON web token. That token can be used to authenticate calls
     to the other SEP 24 endpoints.
