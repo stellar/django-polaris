@@ -79,6 +79,7 @@ class SEP10Auth(APIView):
             client_account_id=client_account,
             anchor_name=ANCHOR_NAME,
             network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
+            timeout=900,
         )
 
     ################
