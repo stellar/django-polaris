@@ -1,5 +1,6 @@
 """This module defines the models used by Polaris."""
 import uuid
+import decimal
 
 from django.core.validators import (
     MinLengthValidator,
@@ -66,7 +67,7 @@ class Asset(TimeStampedModel):
     """Optional minimum amount. No limit if not specified."""
 
     deposit_max_amount = models.DecimalField(
-        default=10 ** (23 - 1), blank=True, max_digits=30, decimal_places=7
+        default=decimal.MAX_EMAX, blank=True, max_digits=30, decimal_places=7
     )
     """Optional maximum amount. No limit if not specified."""
 
@@ -100,7 +101,7 @@ class Asset(TimeStampedModel):
     """Optional minimum amount. No limit if not specified."""
 
     withdrawal_max_amount = models.DecimalField(
-        default=10 ** (23 - 1), blank=True, max_digits=30, decimal_places=7
+        default=decimal.MAX_EMAX, blank=True, max_digits=30, decimal_places=7
     )
     """Optional maximum amount. No limit if not specified."""
 
