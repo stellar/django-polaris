@@ -12,32 +12,12 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.request import Request
 from django.core.exceptions import ValidationError
-from django.core.validators import URLValidator
 from django.utils.translation import gettext as _
 from django.conf import settings as django_settings
 
 from polaris import settings
 from polaris.middleware import import_path
 from polaris.models import Asset, Transaction
-
-
-def calc_fee(asset: Asset, operation: str, amount: Decimal) -> Decimal:
-    """Calculates fees for an operation with a given asset and amount."""
-    if operation == settings.OPERATION_WITHDRAWAL:
-        fee_percent = asset.withdrawal_fee_percent
-        fee_fixed = asset.withdrawal_fee_fixed
-    else:
-        fee_percent = asset.deposit_fee_percent
-        fee_fixed = asset.deposit_fee_fixed
-
-    # Note (Alex C, 2019-07-12):
-    # `op_type` is not used in this context, since there is no fee variation
-    # based on operation type in this example implementation, but that can
-    # occur in real-life applications.
-    return round(
-        fee_fixed + (fee_percent / Decimal("100.0")) * amount,
-        asset.significant_decimals,
-    )
 
 
 def render_error_response(

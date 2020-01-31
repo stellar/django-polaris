@@ -17,7 +17,6 @@ from polaris import settings
 from polaris.helpers import (
     render_error_response,
     create_transaction_id,
-    calc_fee,
     validate_sep10_token,
     check_authentication,
     authenticate_session,
@@ -32,6 +31,7 @@ from polaris.locale.views import validate_language, activate_lang_for_request
 from polaris.integrations import (
     registered_withdrawal_integration as rwi,
     registered_javascript_func,
+    registered_fee_func,
 )
 
 logger = Logger(__name__)
@@ -72,10 +72,16 @@ def post_interactive_withdraw(request: Request) -> Response:
 
     if form.is_valid():
         if is_transaction_form:
+            # Pass `operation`, `asset_code`, and `amount` to registered fee
+            # function, as well as any other fields on the TransactionForm.
+            # Ex. operation `type`
+            fee_params = {
+                "operation": settings.OPERATION_WITHDRAWAL,
+                "asset_code": asset.code,
+                **form.cleaned_data,
+            }
             transaction.amount_in = form.cleaned_data["amount"]
-            transaction.amount_fee = calc_fee(
-                asset, settings.OPERATION_WITHDRAWAL, transaction.amount_in
-            )
+            transaction.amount_fee = registered_fee_func(fee_params)
             transaction.save()
 
         # Perform any defined post-validation logic defined by Polaris users.

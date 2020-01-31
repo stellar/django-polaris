@@ -10,6 +10,7 @@ from polaris import settings
 from polaris.tests.helpers import mock_check_auth_success
 
 
+@pytest.mark.django_db
 @patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
 def test_fee_no_params(mock_check, client):
     """Fails with no params provided."""
@@ -39,7 +40,7 @@ def test_fee_no_operation(mock_check, client, usd_asset_factory):
     """Fails with no `operation` provided."""
     del mock_check
     usd_asset_factory()
-    response = client.get(f"/fee?asset_code=USD", follow=True)
+    response = client.get(f"/fee?asset_code=USD&amount=100", follow=True)
     content = json.loads(response.content)
 
     assert response.status_code == 400
@@ -52,7 +53,9 @@ def test_fee_invalid_operation(mock_check, client, usd_asset_factory):
     """Fails with an invalid `operation` provided."""
     del mock_check
     usd_asset_factory()
-    response = client.get(f"/fee?asset_code=USD&operation=generate", follow=True)
+    response = client.get(
+        f"/fee?asset_code=USD&amount=100&operation=generate", follow=True
+    )
     content = json.loads(response.content)
 
     assert response.status_code == 400
@@ -85,36 +88,6 @@ def test_fee_invalid_amount(mock_check, client, usd_asset_factory):
 
     assert response.status_code == 400
     assert content == {"error": "invalid 'amount'"}
-
-
-@pytest.mark.django_db
-@patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
-def test_fee_invalid_operation_type_deposit(mock_check, client, usd_asset_factory):
-    """Fails if the specified deposit `operation` is not valid for `asset_code`."""
-    del mock_check
-    usd_asset_factory()
-    response = client.get(
-        f"/fee?asset_code=USD&operation=deposit&amount=100.0&type=IBAN", follow=True
-    )
-    content = json.loads(response.content)
-
-    assert response.status_code == 400
-    assert content == {"error": "the specified operation is not available for 'USD'"}
-
-
-@pytest.mark.django_db
-@patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
-def test_fee_invalid_operation_type_withdraw(mock_check, client, usd_asset_factory):
-    """Fails if the specified withdraw `operation` is not enabled for `asset_code`."""
-    del mock_check
-    usd_asset_factory()
-    response = client.get(
-        f"/fee?asset_code=USD&operation=withdraw&amount=100.0&type=IBAN", follow=True
-    )
-    content = json.loads(response.content)
-
-    assert response.status_code == 400
-    assert content == {"error": "the specified operation is not available for 'USD'"}
 
 
 @pytest.mark.django_db

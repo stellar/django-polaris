@@ -60,7 +60,7 @@ django will find your asset before the Polaris default.
         "polaris",
     ]
 
-Add Polaris' :doc:`PolarisSameSiteMiddleware </middleware/index>`,
+Add Polaris' ``PolarisSameSiteMiddleware``,
 ``CorsMiddleware``, and ``LocaleMiddleware`` to your ``settings.MIDDLEWARE``.
 ``SessionMiddleware`` must be listed `below` ``PolarisSameSiteMiddleware`` and
 `above` ``LocaleMiddleware``.
@@ -165,7 +165,21 @@ intend to anchor. Get into the django python shell like so:
 ::
 
     from polaris.models import Asset
-    Asset.objects.create(code="USD", issuer="<the issuer address>")
+
+    from polaris.models import Asset
+    Asset.objects.create(
+        code="USD",
+        issuer="<the issuer address>",
+        significant_digits=2,
+        deposit_fee_fixed=1,
+        deposit_fee_percent=2,
+        withdraw_fee_fixed=1,
+        withdraw_fee_percent=2,
+        deposit_min_amount=10,
+        deposit_max_amount=10000,
+        withdrawal_min_amount=10,
+        withdrawal_min_amount=10000
+    )
 
 You are now ready to run the Polaris anchor server!
 

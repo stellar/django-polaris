@@ -54,6 +54,13 @@ class CreditCardField(forms.CharField):
 
 
 class CreditCardForm(forms.Form):
+    """
+    A generic form for collecting credit or debit card information.
+
+    Ensures `card_number` is valid, but does not validate the `expiration` or
+    `cvv`. Subclass this form for additional validation.
+    """
+
     name = forms.CharField(label=_("Name"))
     card_number = CreditCardField(label=_("Card Number"))
     expiration = forms.Field(widget=CardExpirationInput, label=_("Expiration"))
@@ -62,10 +69,21 @@ class CreditCardForm(forms.Form):
 
 class TransactionForm(forms.Form):
     """
-    Base class for collecting transaction information
+    .. _`HiddenInput`: https://docs.djangoproject.com/en/3.0/ref/forms/widgets/#hiddeninput
+
+    Base class for collecting transaction information.
 
     Developers must define subclasses to collect additional information and
     apply additional validation.
+
+    A subclass of this form should be returned by
+    :func:`content_for_transaction` once for each interactive flow.
+
+    After form validation, the key-value pairs in `self.cleaned_data` will be
+    passed to the registered fee function to calculate `amount_fee` for the
+    associated ``Transaction``. If you want a key-value pair passed to
+    the registered fee function but don't want to display an additional field
+    to the user, add a field with a `HiddenInput`_ widget.
 
     Defines the :class:`.forms.DecimalField` `amount` and also has a non-form
     attribute `asset`, which will be populated by the `asset_code`

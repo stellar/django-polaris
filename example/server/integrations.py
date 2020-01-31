@@ -1,6 +1,7 @@
 import logging
 import time
-from typing import List, Dict, Optional, Type, Tuple
+from decimal import Decimal
+from typing import List, Dict, Optional
 from uuid import uuid4
 
 from django.db.models import QuerySet
@@ -8,7 +9,11 @@ from django.utils.translation import gettext as _
 from django import forms
 
 from polaris.models import Transaction
-from polaris.integrations import DepositIntegration, WithdrawalIntegration
+from polaris.integrations import (
+    DepositIntegration,
+    WithdrawalIntegration,
+    calculate_fee,
+)
 from polaris import settings
 
 from . import mock_banking_rails as rails
@@ -277,3 +282,15 @@ def scripts():
         </script>
         """
     ]
+
+
+def calculate_custom_fee(fee_params: Dict) -> Decimal:
+    """
+    This function replaces the default registered_fee_func for demonstration
+    purposes.
+
+    However, since we don't have any custom logic to implement, it simply
+    calls the default that has been replaced.
+    """
+    logger.info("Using custom fee function")
+    return calculate_fee(fee_params)
