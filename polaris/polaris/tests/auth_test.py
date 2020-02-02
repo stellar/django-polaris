@@ -1,4 +1,5 @@
 """This module tests the <auth> endpoint."""
+import base64
 import json
 from urllib.parse import urlencode
 
@@ -39,7 +40,8 @@ def test_auth_get_account(client):
     manage_data_op = transaction_object.operations[0]
     assert manage_data_op.type_code() == Xdr.const.MANAGE_DATA
     assert manage_data_op.data_name == "SEP 24 Reference auth"
-    assert len(manage_data_op.data_value) == 64
+    assert len(manage_data_op.data_value) == 48
+    assert len(base64.b64encode(manage_data_op.data_value)) == 64
 
     signatures = envelope_object.signatures
     assert len(signatures) == 1

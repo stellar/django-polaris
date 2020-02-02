@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "5e8de7743d656fc9196bc4934c6edbe67c807ded2fb732064e077eaa8d023103"
+            "sha256": "3f1966f269030644a2858434b060da14fc6ff6b86c59f990f412e5de74464941"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -378,11 +378,11 @@
         },
         "stellar-sdk": {
             "hashes": [
-                "sha256:4de91015c04862bf5adb4c4c35fa0ebe6024d879fbec0b1c88072b3cd2cd0710",
-                "sha256:7461be91488477556d24d859e7dd1c0d486efc51355f4c14d48718ad35ad565d"
+                "sha256:625b42396a026f6b35e5fae504241090363f971a37c737c4bdfd9e2cc46d1964",
+                "sha256:81df6725c3e452938d95773a02748217add3213bed3f8b539d53455b5ba482c2"
             ],
             "index": "pypi",
-            "version": "==2.1.1"
+            "version": "==2.1.2"
         },
         "toml": {
             "hashes": [
@@ -490,7 +490,8 @@
         },
         "cerberus": {
             "hashes": [
-                "sha256:302e6694f206dd85cb63f13fd5025b31ab6d38c99c50c6d769f8fa0b0f299589"
+                "sha256:302e6694f206dd85cb63f13fd5025b31ab6d38c99c50c6d769f8fa0b0f299589",
+                "sha256:f6cf4c8d3515acc53c01e92fd5ee919fba22fb2e490212676eaf2ff3dd615909"
             ],
             "version": "==1.3.2"
         },
