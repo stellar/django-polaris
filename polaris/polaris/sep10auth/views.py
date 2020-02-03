@@ -20,7 +20,7 @@ from stellar_sdk.sep.stellar_web_authentication import (
     build_challenge_transaction,
     read_challenge_transaction,
     verify_challenge_transaction_threshold,
-    verify_challenge_transaction_signed_by_client,
+    verify_challenge_transaction_signed_by_client_master_key,
 )
 from stellar_sdk.sep.exceptions import InvalidSep10ChallengeError
 from stellar_sdk.exceptions import (
@@ -128,7 +128,7 @@ class SEP10Auth(APIView):
                 "Account does not exist, using client's master key to verify"
             )
             try:
-                verify_challenge_transaction_signed_by_client(
+                verify_challenge_transaction_signed_by_client_master_key(
                     envelope_xdr, server_key, net
                 )
             except InvalidSep10ChallengeError as e:
