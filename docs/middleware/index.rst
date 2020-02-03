@@ -2,4 +2,4 @@
 Middleware
 ==========================================
 
-.. autoclass:: polaris.middleware.PolarisSameSiteMiddleware
+.. autoclass:: polaris.middleware.PolarisSameSiteMiddleware()

@@ -22,7 +22,7 @@ class PolarisSameSiteMiddleware:
             'django.middleware.clickjacking.XFrameOptionsMiddleware',
         ]
 
-    Fix: https://github.com/django/django/pull/11894/files
+    Fix: https://github.com/django/django/pull/11894
 
     Boilerplate code from:
     https://docs.djangoproject.com/en/2.2/topics/http/middleware

@@ -1,15 +1,12 @@
-from typing import Type, Dict, List, Optional, Tuple
-from urllib.parse import urlencode
+from typing import Dict, List, Optional
 
 from django.db.models import QuerySet
-from django.urls import reverse
 from django import forms
 from rest_framework.request import Request
 
 from polaris.models import Transaction
 from polaris.withdraw.forms import WithdrawForm
 from polaris.integrations.forms import TransactionForm
-from polaris.helpers import generate_interactive_jwt
 
 
 class DepositIntegration:
@@ -23,18 +20,17 @@ class DepositIntegration:
     @classmethod
     def poll_pending_deposits(cls, pending_deposits: QuerySet) -> List[Transaction]:
         """
-        **OVERRIDE REQUIRED**
-
-        This function should poll the financial entity for the state of all
-        `pending_deposits` and return the ones that have externally completed.
+        This function should poll the appropriate financial entity for the
+        state of all `pending_deposits` and return the ones that have
+        externally completed.
 
         For every transaction that is returned, Polaris will submit it to the
         Stellar network. If a transaction was completed on the network, the
         overridable :meth:`after_deposit` function will be called, however
-        overriding this function is optional.
+        implementing this function is optional.
 
         If the Stellar network is unable to execute a transaction returned
-        from this function, it's status will be marked as ``pending_stellar``
+        from this function, it's status will be marked as ``error``
         and its ``status_message`` attribute will be assigned a description of
         the problem that occurred. If the Stellar network is successful,
         the transaction will be marked as ``completed``.
@@ -178,23 +174,18 @@ class DepositIntegration:
     @classmethod
     def interactive_url(
         cls, request: Request, transaction_id: str, account: str, asset_code: str
-    ) -> str:
+    ) -> Optional[str]:
         """
         Override this function to provide the wallet a non-Polaris endpoint
         to begin the interactive flow.
 
+        Polaris' /webapp endpoint will redirect to the URL returned from this
+        function if returned.
+
         :return: a URL to be used as the entry point for the interactive
             deposit flow
         """
-        qparams = urlencode(
-            {
-                "asset_code": asset_code,
-                "transaction_id": transaction_id,
-                "token": generate_interactive_jwt(request, transaction_id, account),
-            }
-        )
-        url_params = f"{reverse('get_interactive_deposit')}?{qparams}"
-        return request.build_absolute_uri(url_params)
+        return None
 
 
 class WithdrawalIntegration:
@@ -231,12 +222,7 @@ class WithdrawalIntegration:
     @classmethod
     def content_for_transaction(cls, transaction: Transaction) -> Optional[Dict]:
         """
-        Same as :func:`DepositIntegration.content_for_transaction`, except:
-
-        When this function returns ``None``, Polaris will update the Transaction
-        status to ``pending_external``. Once the wallet submits the
-        withdrawal transaction to the stellar network, Polaris will detect the
-        event and mark the transaction status as ``complete``.
+        Same as :func:`DepositIntegration.content_for_transaction`
 
         :param transaction: the :class:`Transaction` database object
         :return: an uninitialized :class:`forms.Form` subclass. For transaction
@@ -262,23 +248,18 @@ class WithdrawalIntegration:
     @classmethod
     def interactive_url(
         cls, request: Request, transaction_id: str, account: str, asset_code: str
-    ) -> str:
+    ) -> Optional[str]:
         """
         Override this function to provide the wallet a non-Polaris endpoint
         to begin the interactive flow.
 
+        Polaris' /webapp endpoint will redirect to the URL returned from this
+        function if returned.
+
         :return: a URL to be used as the entry point for the interactive
             withdraw flow
         """
-        qparams = urlencode(
-            {
-                "asset_code": asset_code,
-                "transaction_id": transaction_id,
-                "token": generate_interactive_jwt(request, transaction_id, account),
-            }
-        )
-        url_params = f"{reverse('get_interactive_withdraw')}?{qparams}"
-        return request.build_absolute_uri(url_params)
+        return None
 
 
 registered_deposit_integration = DepositIntegration()

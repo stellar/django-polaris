@@ -2,6 +2,6 @@
 Forms
 =============
 
-.. autoclass:: polaris.integrations.TransactionForm
+.. autoclass:: polaris.integrations.TransactionForm()
 
-.. autoclass:: polaris.integrations.CreditCardForm
+.. autoclass:: polaris.integrations.CreditCardForm()

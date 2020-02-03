@@ -4,7 +4,7 @@ import logging
 import codecs
 import time
 import uuid
-from decimal import Decimal
+from urllib.parse import urlencode
 from typing import Callable, Dict, Optional
 
 import jwt
@@ -15,6 +15,7 @@ from rest_framework.request import Request
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext as _
 from django.conf import settings as django_settings
+from django.urls import reverse
 
 from polaris import settings
 from polaris.middleware import import_path
@@ -86,8 +87,6 @@ def validate_sep10_token(content_type: str = "application/json"):
 def validate_jwt_request(request: Request) -> str:
     """
     Validate the JSON web token in a request and return the source account address
-
-    # TODO: Investigate if we can validate the JTI, a hex-encoded transaction hash.
 
     :raises ValueError: invalid JWT
     """
@@ -319,6 +318,23 @@ def check_middleware(content_type: str = "text/html") -> Optional[Response]:
         )
     else:
         return None
+
+
+def interactive_url(
+    request: Request, transaction_id: str, account: str, asset_code: str, op_type: str
+) -> Optional[str]:
+    qparams = urlencode(
+        {
+            "asset_code": asset_code,
+            "transaction_id": transaction_id,
+            "token": generate_interactive_jwt(request, transaction_id, account),
+        }
+    )
+    if op_type == settings.OPERATION_WITHDRAWAL:
+        url_params = f"{reverse('get_interactive_withdraw')}?{qparams}"
+    else:
+        url_params = f"{reverse('get_interactive_deposit')}?{qparams}"
+    return request.build_absolute_uri(url_params)
 
 
 class Logger:

@@ -24,6 +24,7 @@ from polaris.helpers import (
     interactive_args_validation,
     check_middleware,
     Logger,
+    interactive_url,
 )
 from polaris.models import Asset, Transaction
 from polaris.integrations.forms import TransactionForm
@@ -126,6 +127,9 @@ def complete_interactive_withdraw(request: Request) -> Response:
         return render_error_response(
             _("Missing id parameter in URL"), content_type="text/html"
         )
+    Transaction.objects.filter(id=transaction_id).update(
+        status=Transaction.STATUS.pending_user_transfer_start
+    )
     logger.info(f"Hands-off interactive flow complete for transaction {transaction_id}")
     url, args = reverse("more_info"), urlencode({"id": transaction_id})
     return redirect(f"{url}?{args}")
@@ -150,6 +154,12 @@ def get_interactive_withdraw(request: Request) -> Response:
     transaction = args_or_error["transaction"]
     asset = args_or_error["asset"]
     callback = args_or_error["callback"]
+
+    url = rwi.interactive_url(
+        request, str(transaction.id), transaction.stellar_account, asset.code
+    )
+    if url:  # The anchor uses a standalone interactive flow
+        return redirect(url)
 
     content = rwi.content_for_transaction(transaction)
     if not content:
@@ -223,7 +233,10 @@ def withdraw(account: str, request: Request) -> Response:
         withdraw_memo_type=Transaction.MEMO_TYPES.hash,
     )
     logger.info(f"Created withdrawal transaction {transaction_id}")
-    url = rwi.interactive_url(request, str(transaction_id), account, asset_code)
+
+    url = interactive_url(
+        request, str(transaction_id), account, asset_code, settings.OPERATION_WITHDRAWAL
+    )
     return Response(
         {"type": "interactive_customer_info_needed", "url": url, "id": transaction_id}
     )

@@ -17,7 +17,7 @@ def validate_language(
         return render_error_response(
             _("Missing language code in request"), content_type=content_type
         )
-    elif not is_supported_language(lang):
+    elif not _is_supported_language(lang):
         return render_error_response(
             _("Unsupported language: %s" % lang), content_type=content_type
         )
@@ -44,42 +44,7 @@ def language(request: Request) -> Response:
     return Response({"language": lang})
 
 
-# This function will be added to the documentation under Localization
-def is_supported_language(lang: str) -> bool:
-    """
-    .. _settings: https://docs.djangoproject.com/en/2.2/ref/settings/#std:setting-LANGUAGES
-    .. _gettext: https://www.gnu.org/software/gettext
-
-    Polaris currently supports English and Portuguese. Note that this feature depends
-    on the GNU gettext_ library.
-
-    To enable this support, add the following to your settings.py:
-    ::
-
-        from django.utils.translation import gettext_lazy as _
-
-        USE_I18N = True
-        USE_L10N = True
-        USE_THOUSAND_SEPARATOR = True
-        LANGUAGES = [("en", _("English"))]
-
-    Note that adding the ``LANGUAGE`` setting is **required**. Without this,
-    Django assumes your application supports every language Django itself
-    supports.
-
-    You must also add ``django.middleware.locale.LocaleMiddleware`` to your
-    ``settings.MIDDLEWARE`` `after` ``SessionMiddleware``.
-
-    All text content rendered to users from your application should support
-    translation. Otherwise, Spanish users will see some English in their
-    mostly-Spanish page. Supporting translation is easy, as shown in the
-    code sample above. Just use ``gettext`` or ``gettext_lazy`` on any text
-    that could be rendered to the user.
-
-    If you'd like Polaris content to render in a different language,
-    make a pull request containing the `.po` file. This file should contain
-    translations for all text rendered to the frontend by Polaris.
-    """
+def _is_supported_language(lang: str) -> bool:
     from django.conf.global_settings import LANGUAGES
 
     return any(lang == supported_lang[0] for supported_lang in LANGUAGES)

@@ -7,6 +7,7 @@ from polaris import settings
 from polaris.deposit.utils import create_stellar_deposit
 from polaris.models import Transaction
 from polaris.helpers import Logger
+from polaris.integrations import registered_deposit_integration as rdi
 
 logger = Logger(__name__)
 
@@ -18,13 +19,25 @@ class Command(BaseCommand):
     """
 
     def add_arguments(self, parser):
-        parser.add_argument("--loop", "-l", action="store_true")
+        parser.add_argument(
+            "--loop",
+            action="store_true",
+            help="Continually restart command after a specified " "number of seconds.",
+        )
+        parser.add_argument(
+            "--interval",
+            "-i",
+            type=int,
+            nargs=1,
+            help="The number of seconds to wait before "
+            "restarting command. Defaults to 60.",
+        )
 
     def handle(self, *args, **options):
         if options.get("loop"):
             while True:
                 self.check_trustlines()
-                time.sleep(60)
+                time.sleep(options.get("interval") or 60)
         else:
             self.check_trustlines()
 
@@ -68,4 +81,13 @@ class Command(BaseCommand):
                         f"Account {account['id']} has established a trustline for {asset_code}, "
                         f"initiating deposit for {transaction.id}"
                     )
-                    create_stellar_deposit(transaction.id)
+                    success = create_stellar_deposit(transaction.id)
+                    if success:
+                        transaction.refresh_from_db()
+                        try:
+                            rdi.after_deposit(transaction)
+                        except Exception:
+                            logger.exception(
+                                "An unexpected error was raised from "
+                                "after_deposit() in check_trustlines"
+                            )

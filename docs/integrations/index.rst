@@ -8,28 +8,12 @@ Integrations
 .. _Django Commands: https://docs.djangoproject.com/en/2.2/howto/custom-management-commands
 
 Polaris does most of the work implementing SEP-24_. However, some pieces of
-SEP-24 can only be implemented by the anchor. Specifically, anchors need to
-implement their own banking rails and KYC requirements. This is where the
-Integrations classes come in
+SEP-24 can only be implemented by the anchor.
 
-These classes should be subclassed and its methods overridden by Polaris
-developers to fill in the gaps in Polaris's functionality.
-
-The SDF_ also maintains an reference implementation of an anchor server using
-Polaris. The source can be found in the Polaris github_ repository.
-
-Banking Rails
--------------
-
-Polaris simply doesn't have the information it needs to interface with an
-anchor's partner financial entities. That is why Polaris provides a set of
-integration functions for anchors to override.
-
-.. autofunction:: polaris.integrations.DepositIntegration.poll_pending_deposits
-
-.. autofunction:: polaris.integrations.DepositIntegration.after_deposit
-
-.. autofunction:: polaris.integrations.WithdrawalIntegration.process_withdrawal
+Polaris provides a set of base classes that should be subclassed for processing
+transactions, ``DepositIntegration`` and ``WithdrawalIntegration``. These subclasses,
+along with several other integration functions, should be registered with Polaris once
+implemented. See the `Registering Integrations`_ section for more information.
 
 Form Integrations
 -----------------
@@ -40,10 +24,11 @@ Polaris provides a set of integration functions that allow you to collect,
 validate, and process the information you need to collect from users with
 `Django Forms`_.
 
-For example, you'll need to collect the amount the user would like to deposit
-or withdraw. Polaris provides a `TransactionForm` that can be subclassed to
-add additional fields for this purpose. The definition can be found in the
-:doc:`../forms/index` documentation.
+Of course, you'll need to collect the amount the user would like to deposit
+or withdraw. Polaris provides a :class:`TransactionForm` that can be subclassed to
+add additional fields for this purpose. One ``TransactionForm`` should be rendered
+for every transaction processed. See the :doc:`../forms/index` documentation for
+more information.
 
 The functions below facilitate the process of collecting the information needed.
 
@@ -72,6 +57,19 @@ the anchor is done processing the transaction and may resume control.
 
 .. autofunction:: polaris.integrations.WithdrawalIntegration.interactive_url
 
+Banking Rails
+-------------
+
+Polaris doesn't have the information it needs to interface with an
+anchor's partner financial entities. That is why Polaris provides a set of
+integration functions for anchors to implement.
+
+.. autofunction:: polaris.integrations.DepositIntegration.poll_pending_deposits
+
+.. autofunction:: polaris.integrations.DepositIntegration.after_deposit
+
+.. autofunction:: polaris.integrations.WithdrawalIntegration.process_withdrawal
+
 Registering Integrations
 ------------------------
 In order for Polaris to use the integration classes you've defined, you
@@ -83,8 +81,8 @@ stellar.toml Integration
 ------------------------
 
 Every anchor must define a stellar.toml file to describe the anchors's supported
-currencies, any validators that are run, and other meta data. Polaris provides a
-default function that returns the currency supported by your server, but you'll almost
+assets, any validators that are run, and other meta data. Polaris provides a
+default function that returns the assets supported by your server, but you'll almost
 certainly need to replace this default to provide more detailed information.
 
 .. autofunction:: polaris.integrations.get_stellar_toml
