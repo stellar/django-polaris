@@ -17,7 +17,6 @@ COPY ./Pipfile ./Pipfile.lock /code/
 # Install dependencies
 WORKDIR /code
 RUN pip install pipenv
-RUN pipenv lock --clear
 RUN pipenv install --dev
 
 # Create .po and .mo translation files
