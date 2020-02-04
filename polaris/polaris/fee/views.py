@@ -7,25 +7,16 @@ from rest_framework.response import Response
 from rest_framework.request import Request
 
 from polaris.integrations import registered_fee_func
-from polaris.helpers import render_error_response, validate_sep10_token
+from polaris.helpers import (
+    render_error_response,
+    validate_sep10_token,
+    verify_valid_asset_operation,
+)
 from polaris.models import Asset
+from polaris.models import Transaction
 
 OPERATION_DEPOSIT = settings.OPERATION_DEPOSIT
 OPERATION_WITHDRAWAL = settings.OPERATION_WITHDRAWAL
-
-
-def _verify_valid_asset_operation(asset, amount, op_type) -> Response:
-    enabled = getattr(asset, f"{op_type}_enabled")
-    min_amount = getattr(asset, f"{op_type}_min_amount")
-    max_amount = getattr(asset, f"{op_type}_max_amount")
-    if not enabled:
-        return render_error_response(
-            f"the specified operation is not available for '{asset.code}'"
-        )
-    elif not (min_amount <= amount <= max_amount):
-        return render_error_response(
-            f"Asset amount must be within bounds [{min_amount, max_amount}]"
-        )
 
 
 @api_view()
@@ -59,9 +50,13 @@ def fee(account: str, request: Request) -> Response:
         )
     # Verify asset is enabled and within the specified limits
     elif operation == OPERATION_DEPOSIT:
-        error_resp = _verify_valid_asset_operation(asset, amount, "deposit")
+        error_resp = verify_valid_asset_operation(
+            asset, amount, Transaction.KIND.deposit
+        )
     elif operation == OPERATION_WITHDRAWAL:
-        error_resp = _verify_valid_asset_operation(asset, amount, "withdrawal")
+        error_resp = verify_valid_asset_operation(
+            asset, amount, Transaction.KIND.withdrawal
+        )
 
     if error_resp:
         return error_resp

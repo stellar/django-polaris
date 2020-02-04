@@ -1,10 +1,11 @@
 from typing import Dict, List, Optional
+from decimal import Decimal
 
 from django.db.models import QuerySet
 from django import forms
 from rest_framework.request import Request
 
-from polaris.models import Transaction
+from polaris.models import Transaction, Asset
 from polaris.withdraw.forms import WithdrawForm
 from polaris.integrations.forms import TransactionForm
 
@@ -173,14 +174,17 @@ class DepositIntegration:
 
     @classmethod
     def interactive_url(
-        cls, request: Request, transaction_id: str, account: str, asset_code: str
+        cls,
+        request: Request,
+        transaction: Transaction,
+        asset: Asset,
+        amount: Optional[Decimal],
+        callback: Optional[str],
     ) -> Optional[str]:
         """
         Override this function to provide the wallet a non-Polaris endpoint
-        to begin the interactive flow.
-
-        Polaris' /webapp endpoint will redirect to the URL returned from this
-        function if returned.
+        to begin the interactive flow. If the `amount` or `callback` arguments
+        are not ``None``, make sure you include them in the URL returned.
 
         :return: a URL to be used as the entry point for the interactive
             deposit flow
@@ -247,14 +251,15 @@ class WithdrawalIntegration:
 
     @classmethod
     def interactive_url(
-        cls, request: Request, transaction_id: str, account: str, asset_code: str
+        cls,
+        request: Request,
+        transaction: Transaction,
+        asset: Asset,
+        amount: Optional[Decimal],
+        callback: Optional[str],
     ) -> Optional[str]:
         """
-        Override this function to provide the wallet a non-Polaris endpoint
-        to begin the interactive flow.
-
-        Polaris' /webapp endpoint will redirect to the URL returned from this
-        function if returned.
+        Same as ``DepositIntegration.interactive_url``
 
         :return: a URL to be used as the entry point for the interactive
             withdraw flow

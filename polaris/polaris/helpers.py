@@ -6,6 +6,7 @@ import time
 import uuid
 from urllib.parse import urlencode
 from typing import Callable, Dict, Optional
+from decimal import Decimal, DecimalException
 
 import jwt
 from jwt.exceptions import InvalidTokenError
@@ -240,7 +241,7 @@ def invalidate_session(request: Request):
 
 def interactive_args_validation(request: Request) -> Dict:
     """
-    Validates the arguments passed to the /interactive endpoints
+    Validates the arguments passed to the /webapp endpoints
 
     Returns a dictionary, either containing an 'error' response
     object or the transaction and asset objects specified by the
@@ -249,6 +250,7 @@ def interactive_args_validation(request: Request) -> Dict:
     transaction_id = request.GET.get("transaction_id")
     asset_code = request.GET.get("asset_code")
     callback = request.GET.get("callback")
+    amount_str = request.GET.get("amount")
     asset = Asset.objects.filter(code=asset_code).first()
     if not transaction_id:
         return dict(
@@ -273,7 +275,21 @@ def interactive_args_validation(request: Request) -> Dict:
             )
         )
 
-    return dict(transaction=transaction, asset=asset, callback=callback)
+    # Verify that amount is provided, and that can be parsed into a decimal:
+    amount = None
+    if amount_str:
+        try:
+            amount = Decimal(amount_str)
+        except (DecimalException, TypeError):
+            return dict(error=render_error_response("invalid 'amount'"))
+
+        err_resp = verify_valid_asset_operation(
+            asset, amount, Transaction.kind, content_type="text/html"
+        )
+        if err_resp:
+            return dict(error=err_resp)
+
+    return dict(transaction=transaction, asset=asset, callback=callback, amount=amount)
 
 
 def generate_interactive_jwt(
@@ -335,6 +351,24 @@ def interactive_url(
     else:
         url_params = f"{reverse('get_interactive_deposit')}?{qparams}"
     return request.build_absolute_uri(url_params)
+
+
+def verify_valid_asset_operation(
+    asset, amount, op_type, content_type="application/json"
+) -> Optional[Response]:
+    enabled = getattr(asset, f"{op_type}_enabled")
+    min_amount = getattr(asset, f"{op_type}_min_amount")
+    max_amount = getattr(asset, f"{op_type}_max_amount")
+    if not enabled:
+        return render_error_response(
+            f"the specified operation is not available for '{asset.code}'",
+            content_type=content_type,
+        )
+    elif not (min_amount <= amount <= max_amount):
+        return render_error_response(
+            f"Asset amount must be within bounds [{min_amount, max_amount}]",
+            content_type=content_type,
+        )
 
 
 class Logger:

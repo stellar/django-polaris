@@ -59,6 +59,7 @@ def post_interactive_deposit(request: Request) -> Response:
     transaction = args_or_error["transaction"]
     asset = args_or_error["asset"]
     callback = args_or_error["callback"]
+    amount = args_or_error["amount"]
 
     # Get the content served for the previous request
     content = rdi.content_for_transaction(transaction)
@@ -108,6 +109,10 @@ def post_interactive_deposit(request: Request) -> Response:
         content = rdi.content_for_transaction(transaction)
         if content:
             args = {"transaction_id": transaction.id, "asset_code": asset.code}
+            if amount:
+                args["amount"] = amount
+            if callback:
+                args["callback"] = callback
             url = reverse("get_interactive_deposit")
             return redirect(f"{url}?{urlencode(args)}")
         else:  # Last form has been submitted
@@ -130,7 +135,8 @@ def post_interactive_deposit(request: Request) -> Response:
 @renderer_classes([TemplateHTMLRenderer])
 @check_authentication()
 def complete_interactive_deposit(request: Request) -> Response:
-    transaction_id = request.GET("id")
+    transaction_id = request.GET.get("id")
+    callback = request.GET.get("callback")
     if not transaction_id:
         return render_error_response(
             _("Missing id parameter in URL"), content_type="text/html"
@@ -139,7 +145,10 @@ def complete_interactive_deposit(request: Request) -> Response:
         status=Transaction.STATUS.pending_user_transfer_start
     )
     logger.info(f"Hands-off interactive flow complete for transaction {transaction_id}")
-    url, args = reverse("more_info"), urlencode({"id": transaction_id})
+    url, args = (
+        reverse("more_info"),
+        urlencode({"id": transaction_id, "callback": callback}),
+    )
     return redirect(f"{url}?{args}")
 
 
@@ -162,10 +171,9 @@ def get_interactive_deposit(request: Request) -> Response:
     transaction = args_or_error["transaction"]
     asset = args_or_error["asset"]
     callback = args_or_error["callback"]
+    amount = args_or_error["amount"]
 
-    url = rdi.interactive_url(
-        request, str(transaction.id), transaction.stellar_account, asset.code
-    )
+    url = rdi.interactive_url(request, transaction, asset, amount, callback)
     if url:  # The anchor uses a standalone interactive flow
         return redirect(url)
 
@@ -180,18 +188,22 @@ def get_interactive_deposit(request: Request) -> Response:
 
     if content.get("form"):
         form_class = content.pop("form")
-        content["form"] = form_class()
+        if issubclass(form_class, TransactionForm) and amount:
+            content["form"] = form_class({"amount": amount})
+        else:
+            content["form"] = form_class()
 
     url_args = {"transaction_id": transaction.id, "asset_code": asset.code}
     if callback:
         url_args["callback"] = callback
+    if amount:
+        url_args["amount"] = amount
 
     post_url = f"{reverse('post_interactive_deposit')}?{urlencode(url_args)}"
     get_url = f"{reverse('get_interactive_deposit')}?{urlencode(url_args)}"
     content.update(
         post_url=post_url, get_url=get_url, scripts=registered_javascript_func()
     )
-
     return Response(content, template_name="deposit/form.html")
 
 

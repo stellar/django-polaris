@@ -53,6 +53,7 @@ you must redirect to the `/transactions/<deposit or withdraw>/interactive/comple
 endpoint for the relevant transaction when finished. This signals to the wallet that
 the anchor is done processing the transaction and may resume control.
 
+
 .. autofunction:: polaris.integrations.DepositIntegration.interactive_url
 
 .. autofunction:: polaris.integrations.WithdrawalIntegration.interactive_url

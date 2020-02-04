@@ -97,8 +97,8 @@ class TransactionForm(forms.Form):
     amount = forms.DecimalField(
         min_value=0,
         widget=forms.NumberInput(attrs={"class": "input"}),
-        max_digits=50,
-        decimal_places=25,
+        max_digits=30,
+        decimal_places=7,
         label=_("Amount"),
         localize=True,
     )
