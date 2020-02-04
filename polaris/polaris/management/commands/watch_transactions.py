@@ -1,6 +1,7 @@
 """This module defines custom management commands for the app admin."""
 import asyncio
 from typing import Dict
+from decimal import Decimal
 
 from django.core.management.base import BaseCommand
 from django.utils.timezone import now
@@ -181,7 +182,7 @@ class Command(BaseCommand):
 
     @staticmethod
     def _check_payment_op(
-        operation: Operation, want_asset: str, want_amount: float
+        operation: Operation, want_asset: str, want_amount: Decimal
     ) -> bool:
         # TODO: Add test cases!
         issuer = operation.asset.issuer
@@ -194,5 +195,5 @@ class Command(BaseCommand):
             and
             # TODO: Handle multiple possible asset issuance accounts
             str(issuer) == asset.get("ISSUER_ACCOUNT_ADDRESS")
-            and float(operation.amount) == want_amount
+            and Decimal(operation.amount) == want_amount
         )

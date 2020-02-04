@@ -9,4 +9,6 @@ class PolarisConfig(AppConfig):
         """
         Initialize the app. Currently a no-op.
         """
-        pass
+        from polaris.helpers import check_middleware
+
+        check_middleware()

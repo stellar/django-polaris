@@ -1,6 +1,7 @@
 """
-This module implements the logic for the `/withdraw` endpoint. This lets a user
-withdraw some asset from their Stellar account into a non Stellar based asset.
+This module implements the logic for the `/transactions/withdraw` endpoint.
+This lets a user withdraw some asset from their Stellar account into a
+non-Stellar-based account.
 """
 from urllib.parse import urlencode
 
@@ -44,6 +45,25 @@ logger = Logger(__name__)
 @check_authentication()
 def post_interactive_withdraw(request: Request) -> Response:
     """
+    POST /transactions/withdraw/webapp
+
+    This endpoint processes form submissions during the withdraw interactive
+    flow. The following steps are taken during this process:
+
+        1. URL arguments are parsed and validated.
+        2. content_for_transaction() is called to retrieve the form used to
+           submit this request. This function is implemented by the anchor.
+        3. The form is used to validate the data submitted, and if the form
+           is a TransactionForm, the fee for the transaction is calculated.
+        4. after_form_validation() is called to allow the anchor to process
+           the data submitted. This function should change the application
+           state such that the next call to content_for_transaction() returns
+           the next form in the flow.
+        5. content_for_transaction() is called again to retrieve the next
+           form to be served to the user. If a form is returned, the
+           function redirects to GET /transaction/deposit/webapp. Otherwise,
+           The user's session is invalidated, the transaction status is
+           updated, and the function redirects to GET /more_info.
     """
     args_or_error = interactive_args_validation(request)
     if "error" in args_or_error:
@@ -74,9 +94,6 @@ def post_interactive_withdraw(request: Request) -> Response:
 
     if form.is_valid():
         if is_transaction_form:
-            # Pass `operation`, `asset_code`, and `amount` to registered fee
-            # function, as well as any other fields on the TransactionForm.
-            # Ex. operation `type`
             fee_params = {
                 "operation": settings.OPERATION_WITHDRAWAL,
                 "asset_code": asset.code,
@@ -86,18 +103,7 @@ def post_interactive_withdraw(request: Request) -> Response:
             transaction.amount_fee = registered_fee_func(fee_params)
             transaction.save()
 
-        # Perform any defined post-validation logic defined by Polaris users.
-        # If the anchor wants to return another form, this function should
-        # change the application state such that the next call to
-        # content_for_transaction() returns the next form.
-        #
-        # Note that we're not catching exceptions, even though one could be raised.
-        # If the anchor raises an exception during the request/response cycle, we're
-        # going to let that fail with with a 500 status. Same goes for the calls
-        # to content_for_transaction().
         rwi.after_form_validation(form, transaction)
-
-        # Check to see if there is another form to render
         content = rwi.content_for_transaction(transaction)
         if content:
             args = {"transaction_id": transaction.id, "asset_code": asset.code}
@@ -127,6 +133,13 @@ def post_interactive_withdraw(request: Request) -> Response:
 @renderer_classes([TemplateHTMLRenderer])
 @check_authentication()
 def complete_interactive_withdraw(request: Request) -> Response:
+    """
+    GET /transactions/withdraw/interactive/complete
+
+    Updates the transaction status to pending_user_transfer_start and
+    redirects to GET /more_info. A `callback` can be passed in the URL
+    to be used by the more_info template javascript.
+    """
     transaction_id = request.GET.get("id")
     callback = request.GET.get("callback")
     if not transaction_id:
@@ -150,12 +163,24 @@ def complete_interactive_withdraw(request: Request) -> Response:
 @authenticate_session()
 def get_interactive_withdraw(request: Request) -> Response:
     """
-    Validates the arguments and serves the next form to process
-    """
-    err_resp = check_middleware()
-    if err_resp:
-        return err_resp
+    GET /transactions/withdraw/webapp
 
+    This endpoint retrieves the next form to be served to the user in the
+    interactive flow. The following steps are taken during this process:
+
+        1. URL arguments are parsed and validated.
+        2. interactive_url() is called to determine whether or not the anchor
+           uses an external service for the interactive flow. If a URL is
+           returned, this function redirects to the URL. However, the session
+           cookie should still be included in the response so future calls to
+           GET /transactions/withdraw/interactive/complete are authenticated.
+        3. content_for_transaction() is called to retrieve the next form to
+           render to the user. `amount` is prepopulated in the form if it was
+           passed as a parameter to this endpoint and the form is a subclass
+           of TransactionForm.
+        4. get and post URLs are constructed with the appropriate arguments
+           and passed to the response to be rendered to the user.
+    """
     args_or_error = interactive_args_validation(request)
     if "error" in args_or_error:
         return args_or_error["error"]
@@ -205,8 +230,10 @@ def get_interactive_withdraw(request: Request) -> Response:
 @renderer_classes([JSONRenderer])
 def withdraw(account: str, request: Request) -> Response:
     """
-    `POST /transactions/withdraw` initiates the withdrawal and returns an
-    interactive withdrawal form to the user.
+    POST /transactions/withdraw/interactive
+
+    Creates an `incomplete` withdraw Transaction object in the database and
+    returns the URL entry-point for the interactive flow.
     """
     lang = request.POST.get("lang")
     asset_code = request.POST.get("asset_code")

@@ -1,9 +1,6 @@
 """
-This module implements the logic for the `/deposit` endpoint. This lets a user
-initiate a deposit of some asset into their Stellar account.
-
-Note that before the Stellar transaction is submitted, an external agent must
-confirm that the first step of the deposit successfully completed.
+This module implements the logic for the `/transactions/deposit` endpoints.
+This lets a user initiate a deposit of an asset into their Stellar account.
 """
 from urllib.parse import urlencode
 
@@ -51,6 +48,25 @@ logger = Logger(__name__)
 @check_authentication()
 def post_interactive_deposit(request: Request) -> Response:
     """
+    POST /transactions/deposit/webapp
+
+    This endpoint processes form submissions during the deposit interactive
+    flow. The following steps are taken during this process:
+
+        1. URL arguments are parsed and validated.
+        2. content_for_transaction() is called to retrieve the form used to
+           submit this request. This function is implemented by the anchor.
+        3. The form is used to validate the data submitted, and if the form
+           is a TransactionForm, the fee for the transaction is calculated.
+        4. after_form_validation() is called to allow the anchor to process
+           the data submitted. This function should change the application
+           state such that the next call to content_for_transaction() returns
+           the next form in the flow.
+        5. content_for_transaction() is called again to retrieve the next
+           form to be served to the user. If a form is returned, the
+           function redirects to GET /transaction/deposit/webapp. Otherwise,
+           The user's session is invalidated, the transaction status is
+           updated, and the function redirects to GET /more_info.
     """
     args_or_error = interactive_args_validation(request)
     if "error" in args_or_error:
@@ -61,7 +77,6 @@ def post_interactive_deposit(request: Request) -> Response:
     callback = args_or_error["callback"]
     amount = args_or_error["amount"]
 
-    # Get the content served for the previous request
     content = rdi.content_for_transaction(transaction)
     if not (content and content.get("form")):
         logger.error(
@@ -82,9 +97,6 @@ def post_interactive_deposit(request: Request) -> Response:
 
     if form.is_valid():
         if is_transaction_form:
-            # Pass `operation`, `asset_code`, and `amount` to registered fee
-            # function, as well as any other fields on the TransactionForm.
-            # Ex. operation `type`
             fee_params = {
                 "operation": settings.OPERATION_DEPOSIT,
                 "asset_code": asset.code,
@@ -94,18 +106,7 @@ def post_interactive_deposit(request: Request) -> Response:
             transaction.amount_fee = registered_fee_func(fee_params)
             transaction.save()
 
-        # Perform any defined post-validation logic defined by Polaris users.
-        # If the anchor wants to return another form, this function should
-        # change the application state such that the next call to
-        # content_for_transaction() returns the next form.
-        #
-        # Note that we're not catching exceptions, even though one could be raised.
-        # If the anchor raises an exception during the request/response cycle, we're
-        # going to let that fail with with a 500 status. Same goes for the calls
-        # to content_for_transaction().
         rdi.after_form_validation(form, transaction)
-
-        # Check to see if there is another form to render
         content = rdi.content_for_transaction(transaction)
         if content:
             args = {"transaction_id": transaction.id, "asset_code": asset.code}
@@ -135,6 +136,13 @@ def post_interactive_deposit(request: Request) -> Response:
 @renderer_classes([TemplateHTMLRenderer])
 @check_authentication()
 def complete_interactive_deposit(request: Request) -> Response:
+    """
+    GET /transactions/deposit/interactive/complete
+
+    Updates the transaction status to pending_user_transfer_start and
+    redirects to GET /more_info. A `callback` can be passed in the URL
+    to be used by the more_info template javascript.
+    """
     transaction_id = request.GET.get("id")
     callback = request.GET.get("callback")
     if not transaction_id:
@@ -158,12 +166,24 @@ def complete_interactive_deposit(request: Request) -> Response:
 @authenticate_session()
 def get_interactive_deposit(request: Request) -> Response:
     """
-    Validates the arguments and serves the next form to process
-    """
-    err_resp = check_middleware()
-    if err_resp:
-        return err_resp
+    GET /transactions/deposit/webapp
 
+    This endpoint retrieves the next form to be served to the user in the
+    interactive flow. The following steps are taken during this process:
+
+        1. URL arguments are parsed and validated.
+        2. interactive_url() is called to determine whether or not the anchor
+           uses an external service for the interactive flow. If a URL is
+           returned, this function redirects to the URL. However, the session
+           cookie should still be included in the response so future calls to
+           GET /transactions/deposit/interactive/complete are authenticated.
+        3. content_for_transaction() is called to retrieve the next form to
+           render to the user. `amount` is prepopulated in the form if it was
+           passed as a parameter to this endpoint and the form is a subclass
+           of TransactionForm.
+        4. get and post URLs are constructed with the appropriate arguments
+           and passed to the response to be rendered to the user.
+    """
     args_or_error = interactive_args_validation(request)
     if "error" in args_or_error:
         return args_or_error["error"]
@@ -204,6 +224,7 @@ def get_interactive_deposit(request: Request) -> Response:
     content.update(
         post_url=post_url, get_url=get_url, scripts=registered_javascript_func()
     )
+
     return Response(content, template_name="deposit/form.html")
 
 
@@ -212,8 +233,10 @@ def get_interactive_deposit(request: Request) -> Response:
 @validate_sep10_token()
 def deposit(account: str, request: Request) -> Response:
     """
-    `POST /transactions/deposit/interactive` initiates the deposit and returns an interactive
-    deposit form to the user.
+    POST /transactions/deposit/interactive
+
+    Creates an `incomplete` deposit Transaction object in the database and
+    returns the URL entry-point for the interactive flow.
     """
     asset_code = request.POST.get("asset_code")
     stellar_account = request.POST.get("account")

@@ -311,29 +311,23 @@ def generate_interactive_jwt(
     return encoded_jwt.decode("ascii")
 
 
-def check_middleware(content_type: str = "text/html") -> Optional[Response]:
+def check_middleware():
     """
     Ensures the Django app running Polaris has the correct middleware
-    configuration for GET /webapp requests.
+    configuration. Polaris requires SessionMiddleware and the custom
+    PolarisSameSiteMiddleware is installed.
     """
-    err_msg, err_args = None, None
     session_middleware_path = "django.contrib.sessions.middleware.SessionMiddleware"
+    err_msg = "{} is not installed in settings.MIDDLEWARE"
     if import_path not in django_settings.MIDDLEWARE:
-        err_msg, err_args = _("%s is not installed"), import_path
+        raise ValueError(err_msg.format(import_path))
     elif session_middleware_path not in django_settings.MIDDLEWARE:
-        err_msg, err_args = _("%s is not installed"), session_middleware_path
+        raise ValueError(err_msg.format(session_middleware_path))
     elif django_settings.MIDDLEWARE.index(
         import_path
     ) > django_settings.MIDDLEWARE.index(session_middleware_path):
-        err_args = {"polaris_mid": import_path, "session_mid": session_middleware_path}
-        err_msg = _("%(polaris_mid)s must be listed before %(session_mid)s")
-
-    if err_msg:
-        return render_error_response(
-            err_msg % err_args, content_type=content_type, status_code=501
-        )
-    else:
-        return None
+        err_msg = f"{import_path} must be listed before {session_middleware_path}"
+        raise ValueError(err_msg)
 
 
 def interactive_url(
