@@ -6,7 +6,7 @@ with open("README.rst") as f:
 
 setup(
     name="django-polaris",
-    version="0.10.0",
+    version="0.10.1",
     description="A SEP-24-compliant Django anchor server",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -61,7 +61,7 @@ setup(
         "six==1.14.0",
         "sqlparse==0.3.0",
         "stellar-base-sseclient==0.0.21",
-        "stellar-sdk==2.1.1",
+        "stellar-sdk==2.1.3",
         "toml==0.10.0",
         "urllib3==1.25.8",
         "whitenoise==5.0.1",
