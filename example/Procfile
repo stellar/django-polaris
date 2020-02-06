@@ -1,5 +1,0 @@
-release: ./release.sh
-watch_transactions: pipenv run python manage.py watch_transactions
-check_trustlines: pipenv run python manage.py check_trustlines --loop
-poll_pending_deposits: pipenv run python manage.py poll_pending_deposits --loop
-web: pipenv run gunicorn server.wsgi
