@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     "sass_processor",
     "server",
     "polaris",
+    "sslserver",
 ]
 
 MIDDLEWARE = [

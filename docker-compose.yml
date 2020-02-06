@@ -4,40 +4,40 @@ services:
   server:
     build: .
     volumes:
-      - ./polaris/polaris:/code/polaris
+      - ./polaris/polaris:/code/polaris/polaris
       - ./example/server:/code/server
-      - ${PWD}/polaris/db.sqlite3:/code/db.sqlite3
-      - ${PWD}/polaris/settings.py:/code/settings.py
+      - ${PWD}/example/db.sqlite3:/code/db.sqlite3
+      - ${PWD}/example/server/settings.py:/code/server/settings.py
     ports:
       - "8000:8000"
     command: pipenv run watchmedo auto-restart --recursive --pattern="*.py" --directory="." sh run.sh
   watch_transactions:
     build: .
     volumes:
-      - ./polaris/polaris:/code/polaris
+      - ./polaris/polaris:/code/polaris/polaris
       - ./example/server:/code/server
-      - ${PWD}/polaris/db.sqlite3:/code/db.sqlite3
-      - ${PWD}/polaris/settings.py:/code/settings.py
+      - ${PWD}/example/db.sqlite3:/code/db.sqlite3
+      - ${PWD}/example/server/settings.py:/code/server/settings.py
     depends_on:
       - server
     command: pipenv run watchmedo auto-restart --recursive --pattern="*.py" --directory="." python manage.py watch_transactions
   check_trustlines:
     build: .
     volumes:
-      - ./polaris/polaris:/code/polaris
+      - ./polaris/polaris:/code/polaris/polaris
       - ./example/server:/code/server
-      - ${PWD}/polaris/db.sqlite3:/code/db.sqlite3
-      - ${PWD}/polaris/settings.py:/code/settings.py
+      - ${PWD}/example/db.sqlite3:/code/db.sqlite3
+      - ${PWD}/example/server/settings.py:/code/server/settings.py
     depends_on:
       - server
     command: pipenv run watchmedo auto-restart --recursive --pattern="*.py" --directory="." python manage.py check_trustlines -- --loop
   poll_pending_deposits:
     build: .
     volumes:
-      - ./polaris/polaris:/code/polaris
+      - ./polaris/polaris:/code/polaris/polaris
       - ./example/server:/code/server
-      - ${PWD}/polaris/db.sqlite3:/code/db.sqlite3
-      - ${PWD}/polaris/settings.py:/code/settings.py
+      - ${PWD}/example/db.sqlite3:/code/db.sqlite3
+      - ${PWD}/example/server/settings.py:/code/server/settings.py
     depends_on:
       - server
     command: pipenv run watchmedo auto-restart --recursive --pattern="*.py" --directory="." python manage.py poll_pending_deposits -- --loop
