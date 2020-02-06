@@ -23,21 +23,19 @@ except (environ.ImproperlyConfigured, AssertionError):
 
 ASSETS = {}
 for asset_code in assets:
-    code = asset_code.upper()
-
     try:
-        dist_seed = env(f"{code}_DISTRIBUTION_ACCOUNT_SEED")
-        iss_address = env(f"{code}_ISSUER_ACCOUNT_ADDRESS")
+        dist_seed = env(f"{asset_code}_DISTRIBUTION_ACCOUNT_SEED")
+        iss_address = env(f"{asset_code}_ISSUER_ACCOUNT_ADDRESS")
         assert dist_seed and iss_address
-    except (environ.ImproperlyConfigured, AssertionError):
-        raise ValueError(f"Missing values for {code}")
+    except AssertionError:
+        raise ValueError(f"Environment variable {asset_code} cannot be an empty string")
 
     try:
         dist_address = Keypair.from_secret(dist_seed).public_key
     except Ed25519SecretSeedInvalidError:
-        raise ValueError(f"Invalid distribution private key for {code}")
+        raise ValueError(f"Invalid distribution private key for {asset_code}")
 
-    ASSETS[code] = {
+    ASSETS[asset_code] = {
         "DISTRIBUTION_ACCOUNT_SEED": dist_seed,
         "DISTRIBUTION_ACCOUNT_ADDRESS": dist_address,
         "ISSUER_ACCOUNT_ADDRESS": iss_address,
