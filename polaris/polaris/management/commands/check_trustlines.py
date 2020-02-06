@@ -73,6 +73,7 @@ class Command(BaseCommand):
                     asset_issuer = balance["asset_issuer"]
                     limit = float(balance["limit"])
                 except KeyError:
+                    logger.debug(f'balance {balance}')
                     if balance.get("asset_type") != "native":
                         logger.debug(
                             f"horizon balance had no asset_code for account {account['id']}"
