@@ -59,7 +59,7 @@ def create_stellar_deposit(transaction_id: str) -> bool:
 
     server = settings.HORIZON_SERVER
     starting_balance = settings.ACCOUNT_STARTING_BALANCE
-    asset_code = transaction.asset.code.upper()
+    asset_code = transaction.asset.code
     try:
         asset_config = settings.ASSETS[asset_code]
     except KeyError:
