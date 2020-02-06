@@ -41,7 +41,8 @@ class Command(BaseCommand):
         else:
             self.check_trustlines()
 
-    def check_trustlines(self):
+    @staticmethod
+    def check_trustlines():
         """
         Create Stellar transaction for deposit transactions marked as pending trust, if a
         trustline has been created.
