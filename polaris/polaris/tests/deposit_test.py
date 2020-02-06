@@ -11,7 +11,6 @@ import pytest
 from stellar_sdk import Keypair, TransactionEnvelope
 from stellar_sdk.client.response import Response
 from stellar_sdk.exceptions import BadRequestError
-from django.core.management import call_command
 
 from polaris import settings
 from polaris.deposit.utils import create_stellar_deposit
@@ -21,6 +20,7 @@ from polaris.management.commands.create_stellar_deposit import (
     TRUSTLINE_FAILURE_XDR,
 )
 from polaris.management.commands.poll_pending_deposits import execute_deposit
+from polaris.management.commands.check_trustlines import Command as CheckTrustlinesCMD
 from polaris.models import Transaction
 from polaris.tests.helpers import (
     mock_check_auth_success,
@@ -290,7 +290,12 @@ def test_deposit_interactive_confirm_success(
     return_value={
         "id": 1,
         "sequence": 1,
-        "balances": [{"asset_code": "USD"}],
+        "balances": [
+            {
+                "asset_code": "USD",
+                "asset_issuer": settings.ASSETS["USD"]["ISSUER_ACCOUNT_ADDRESS"],
+            }
+        ],
         "thresholds": {"low_threshold": 1, "med_threshold": 1, "high_threshold": 1},
         "signers": [{"key": STELLAR_ACCOUNT_1, "weight": 1}],
     },
@@ -315,7 +320,7 @@ def test_deposit_check_trustlines_success(
         Transaction.objects.get(id=deposit.id).status
         == Transaction.STATUS.pending_trust
     )
-    call_command("check_trustlines")
+    CheckTrustlinesCMD.check_trustlines()
     assert Transaction.objects.get(id=deposit.id).status == Transaction.STATUS.completed
 
 

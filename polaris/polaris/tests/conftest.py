@@ -6,6 +6,7 @@ import pytest
 from django.utils import timezone
 
 from polaris.models import Asset, Transaction
+from polaris import settings
 
 STELLAR_ACCOUNT_1 = "GAIRMDK7VDAXKXCX54UQ7WQUXZVITPBBYH33ADXQIADMDTDVJMQGBQ6V"
 STELLAR_ACCOUNT_1_SEED = "SBB57BRFU7OFBVGUNJH4PMTQR72VCGKKFXBRQJJX7CHRSTZATAB5645L"
@@ -24,6 +25,7 @@ def fixture_usd_asset_factory():
         """
         usd_asset = Asset.objects.create(
             code="USD",
+            issuer=settings.ASSETS["USD"]["ISSUER_ACCOUNT_ADDRESS"],
             # Deposit Info
             deposit_enabled=True,
             deposit_fee_fixed=5,

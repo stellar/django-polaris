@@ -41,13 +41,14 @@ class Command(BaseCommand):
         else:
             self.check_trustlines()
 
-    def check_trustlines(self):
+    @staticmethod
+    def check_trustlines():
         """
         Create Stellar transaction for deposit transactions marked as pending trust, if a
         trustline has been created.
         """
         transactions = Transaction.objects.filter(
-            status=Transaction.STATUS.pending_trust
+            kind=Transaction.KIND.deposit, status=Transaction.STATUS.pending_trust
         )
         server = settings.HORIZON_SERVER
         for transaction in transactions:
@@ -70,19 +71,25 @@ class Command(BaseCommand):
             for balance in balances:
                 try:
                     asset_code = balance["asset_code"]
+                    asset_issuer = balance["asset_issuer"]
                 except KeyError:
+                    logger.debug(
+                        f"Unable to retrieve asset info from balance object: {balance}"
+                    )
                     if balance.get("asset_type") != "native":
                         logger.debug(
                             f"horizon balance had no asset_code for account {account['id']}"
                         )
                     continue
-                if asset_code == transaction.asset.code:
+                if (
+                    asset_code == transaction.asset.code
+                    and asset_issuer == transaction.asset.issuer
+                ):
                     logger.info(
                         f"Account {account['id']} has established a trustline for {asset_code}, "
                         f"initiating deposit for {transaction.id}"
                     )
-                    success = create_stellar_deposit(transaction.id)
-                    if success:
+                    if create_stellar_deposit(transaction.id):
                         transaction.refresh_from_db()
                         try:
                             rdi.after_deposit(transaction)
