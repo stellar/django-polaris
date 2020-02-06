@@ -70,13 +70,17 @@ class Command(BaseCommand):
             for balance in balances:
                 try:
                     asset_code = balance["asset_code"]
+                    asset_issuer = balance["asset_issuer"]
+                    limit = float(balance["limit"])
                 except KeyError:
                     if balance.get("asset_type") != "native":
                         logger.debug(
                             f"horizon balance had no asset_code for account {account['id']}"
                         )
                     continue
-                if asset_code == transaction.asset.code:
+                if (asset_code == transaction.asset.code
+                        and asset_issuer == transaction.asset.issuer
+                        and limit > 0):
                     logger.info(
                         f"Account {account['id']} has established a trustline for {asset_code}, "
                         f"initiating deposit for {transaction.id}"
