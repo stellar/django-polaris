@@ -78,6 +78,11 @@ class Command(BaseCommand):
                             f"horizon balance had no asset_code for account {account['id']}"
                         )
                     continue
+                logger.debug(f'asset_code: {asset_code}')
+                logger.debug(f'asset_issuer: {asset_issuer}')
+                logger.debug(f'limit: {limit}')
+                logger.debug(f'transaction.asset.code: {transaction.asset.code}')
+                logger.debug(f'transaction.asset.issuer: {transaction.asset.issuer}')
                 if (asset_code == transaction.asset.code
                         and asset_issuer == transaction.asset.issuer
                         and limit > 0):
