@@ -1,4 +1,3 @@
-import logging
 import time
 from smtplib import SMTPException
 from decimal import Decimal
@@ -15,6 +14,7 @@ from django.conf import settings as server_settings
 from django.template.loader import render_to_string
 
 from polaris.models import Transaction
+from polaris.helpers import Logger
 from polaris.integrations import (
     DepositIntegration,
     WithdrawalIntegration,
@@ -27,7 +27,7 @@ from .models import PolarisUser, PolarisStellarAccount, PolarisUserTransaction
 from .forms import KYCForm
 
 
-logger = logging.getLogger(__name__)
+logger = Logger(__name__)
 CONFIRM_EMAIL_PAGE_TITLE = _("Confirm Email")
 
 
@@ -41,7 +41,7 @@ def send_confirmation_email(user: PolarisUser):
     traffic so we are making an exception here.
     """
     args = urlencode({"token": user.confirmation_token, "email": user.email})
-    url = f"{reverse('confirm_email')}?{args}"
+    url = f"{settings.HOST_URL}{reverse('confirm_email')}?{args}"
     try:
         send_mail(
             "Reference Anchor Server: Confirm Email",
@@ -335,7 +335,7 @@ def scripts():
                     window.location.reload(true);
                 }
             });
-        <script>
+        </script>
         """
         % CONFIRM_EMAIL_PAGE_TITLE,
     ]
