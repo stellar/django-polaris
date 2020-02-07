@@ -1,13 +1,21 @@
+from uuid import uuid4
+
 from django.db import models
 from django.core.validators import MinLengthValidator
 
 from polaris.models import Transaction
 
 
+def get_new_token():
+    return str(uuid4())
+
+
 class PolarisUser(models.Model):
     first_name = models.CharField(max_length=254)
     last_name = models.CharField(max_length=254)
     email = models.EmailField(unique=True)
+    confirmed = models.BooleanField(default=False)
+    confirmation_token = models.CharField(max_length=36, default=get_new_token)
 
     objects = models.Manager()
 
