@@ -83,7 +83,7 @@ msgstr "Senha"
 
 #: integrations.py:31 integrations.py:119 templates/confirmation_email.html:125
 msgid "Confirm Email"
-msgstr ""
+msgstr "Confirmar Email"
 
 #: integrations.py:108 integrations.py:124 integrations.py:220
 #: integrations.py:261
@@ -106,6 +106,7 @@ msgstr ""
 msgid ""
 "We sent you a confirmation email. Once confirmed, continue on this page."
 msgstr ""
+"Um email de confirmação foi enviado. Uma vez que a confirmação for feita, continue nesta página."
 
 #: integrations.py:197
 #, python-format
@@ -146,31 +147,35 @@ msgstr "Português"
 #: templates/confirmation_email.html:116
 #, python-format
 msgid "Hi %(first_name)s,"
-msgstr ""
+msgstr "Olá %(first_name)s,"
 
 #: templates/confirmation_email.html:117
 msgid ""
 "Thanks for using the Stellar Development Foundation's reference anchor "
 "server. Click the button below to confirm your email."
 msgstr ""
+"Obrigado por user o servidor de referência da Stellar Development Foundation,"
+" Clique no botão abaixo para confirmar o seu email."
 
 #: templates/confirmation_email.html:133
 msgid "The reference server is powered by "
-msgstr ""
+msgstr "O servidor de referência funciona utilizando o "
 
 #: templates/email_confirmed.html:4
 msgid "Email Confirmed"
-msgstr ""
+msgstr "Email Confirmado"
 
 #: templates/email_confirmed.html:9
 msgid "Confirmed"
-msgstr ""
+msgstr "Confirmado"
 
 #: templates/email_confirmed.html:10
 msgid ""
 "Your email has been confirmed! Please continue with your deposit or "
 "withdrawal on the original page."
 msgstr ""
+"Seu email foi confirmado! Por favor continue o seu deposito ou "
+"saque na página original."
 
 #: templates/readonly_login.html:21
 msgid "Please correct the error below."
