@@ -325,7 +325,9 @@ def scripts():
           gtag('config', 'UA-53373928-6');
         </script>
         """,
-        # Refresh the confirm email page whenever the user brings the popup back into focus
+        # Refresh the confirm email page whenever the user brings the popup
+        # back into focus. This is not strictly necessary since deposit.html
+        # and withdraw.html have 'Refresh' buttons, but this is a better UX.
         """
         <script>
             window.addEventListener("focus", () => {
