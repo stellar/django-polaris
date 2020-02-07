@@ -10,7 +10,7 @@ services:
       - ${PWD}/example/server/settings.py:/code/server/settings.py
     ports:
       - "8000:8000"
-    command: pipenv run watchmedo auto-restart --recursive --pattern="*.py" --directory="." sh run.sh
+    command: pipenv run watchmedo auto-restart --recursive --pattern="*.py" --directory="." sh run-local.sh
   watch_transactions:
     build: .
     volumes:
