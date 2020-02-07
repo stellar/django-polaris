@@ -1,0 +1,19 @@
+build:
+  docker:
+    reference-server: Dockerfile
+release:
+  command: ./release-heroku.sh
+  image: reference-server
+run:
+  watch_transactions:
+    command: pipenv run python manage.py watch_transactions
+    image: reference-server
+  check_trustlines:
+    command: pipenv run python manage.py check_trustlines --loop
+    image: reference-server
+  poll_pending_deposits:
+    command: pipenv run python manage.py poll_pending_deposits --loop
+    image: reference-server
+  web:
+    command: pipenv run gunicorn server.wsgi
+    image: reference-server
