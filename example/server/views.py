@@ -27,13 +27,11 @@ def confirm_email(request: Request) -> Response:
 
     try:
         user = PolarisUser.objects.get(
-            email=request.GET.get("email"),
-            token=request.GET.get("token")
+            email=request.GET.get("email"), token=request.GET.get("token")
         )
     except PolarisUser.DoesNotExist:
         return render_error_response(
-            "User with email and token does not exist",
-            content_type="text/html"
+            "User with email and token does not exist", content_type="text/html"
         )
 
     user.confirmed = True

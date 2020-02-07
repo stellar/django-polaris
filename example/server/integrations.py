@@ -49,10 +49,10 @@ def send_confirmation_email(user: PolarisUser):
             f"Confirm your email by pasting this URL in your browser: {url}",
             server_settings.EMAIL_HOST_USER,
             [user.email],
-            html_message=render_to_string("confirmation_email.html", {
-                "first_name": user.first_name,
-                "confirmation_url": url
-            })
+            html_message=render_to_string(
+                "confirmation_email.html",
+                {"first_name": user.first_name, "confirmation_url": url},
+            ),
         )
     except SMTPException as e:
         logger.error(f"Unable to send email to {user.email}: {e}")
@@ -117,9 +117,11 @@ def check_kyc(transaction: Transaction) -> Optional[Dict]:
     elif not account.user.confirmed:  # User needs to confirm email
         return {
             "title": _("Confirm Email"),
-            "guidance": _("We sent you a confirmation email. Once confirmed, "
-                          "continue on this page."),
-            "icon_label": _("Stellar Development Foundation")
+            "guidance": _(
+                "We sent you a confirmation email. Once confirmed, "
+                "continue on this page."
+            ),
+            "icon_label": _("Stellar Development Foundation"),
         }
     else:
         return None
@@ -334,7 +336,8 @@ def scripts():
                 }
             });
         <script>
-        """ % CONFIRM_EMAIL_PAGE_TITLE
+        """
+        % CONFIRM_EMAIL_PAGE_TITLE,
     ]
 
 

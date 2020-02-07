@@ -7,18 +7,18 @@ from .. import models as polaris_models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('server', '0001_initial'),
+        ("server", "0001_initial"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='polarisuser',
-            name='confirmation_token',
+            model_name="polarisuser",
+            name="confirmation_token",
             field=models.CharField(default=polaris_models.get_new_token, max_length=36),
         ),
         migrations.AddField(
-            model_name='polarisuser',
-            name='confirmed',
+            model_name="polarisuser",
+            name="confirmed",
             field=models.BooleanField(default=False),
         ),
     ]
