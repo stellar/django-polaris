@@ -2,18 +2,23 @@ build:
   docker:
     reference-server: Dockerfile
 release:
-  command: ./release-heroku.sh
   image: reference-server
+  command:
+    - python manage.py migrate
 run:
   watch_transactions:
-    command: pipenv run python manage.py watch_transactions
     image: reference-server
+    command:
+      - python manage.py watch_transactions
   check_trustlines:
-    command: pipenv run python manage.py check_trustlines --loop
     image: reference-server
+    command:
+      - python manage.py check_trustlines --loop
   poll_pending_deposits:
-    command: pipenv run python manage.py poll_pending_deposits --loop
     image: reference-server
+    command:
+      - python manage.py poll_pending_deposits --loop
   web:
-    command: pipenv run gunicorn server.wsgi
     image: reference-server
+    command:
+      - gunicorn server.wsgi
