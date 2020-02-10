@@ -116,6 +116,7 @@ STATICFILES_FINDERS = [
     "sass_processor.finders.CssFinder",
 ]
 SASS_PROCESSOR_ROOT = STATIC_ROOT
+
 # Django Rest Framework Settings:
 
 REST_FRAMEWORK = {
@@ -128,6 +129,13 @@ REST_FRAMEWORK = {
     "PAGE_SIZE": 10,
 }
 
+# Email Settings
+
+EMAIL_HOST = "smtp.gmail.com"
+EMAIL_HOST_USER = env("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD")
+EMAIL_USE_TLS = True
+EMAIL_PORT = 587
 
 # API Config
 

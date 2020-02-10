@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: 1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-01-21 18:30+0000\n"
+"POT-Creation-Date: 2020-02-07 01:11+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -25,51 +25,51 @@ msgstr "Primeiro Nome"
 msgid "Last Name"
 msgstr "Sobrenome"
 
-#: forms.py:18
+#: forms.py:17
 msgid "Email"
 msgstr "Email"
 
-#: forms.py:23
+#: forms.py:22
 msgid "Text"
 msgstr "Texto"
 
-#: forms.py:24
+#: forms.py:23
 msgid "Checkbox"
 msgstr "Caixa de seleção"
 
-#: forms.py:26 forms.py:31
+#: forms.py:25 forms.py:30
 msgid "Option 1"
 msgstr "Opção 1"
 
-#: forms.py:26 forms.py:31
+#: forms.py:25 forms.py:30
 msgid "Option 2"
 msgstr "Opção 2"
 
-#: forms.py:26 forms.py:31
+#: forms.py:25 forms.py:30
 msgid "Option 3"
 msgstr "Opção 3"
 
-#: forms.py:28
+#: forms.py:27
 msgid "Select"
 msgstr "Selecione"
 
-#: forms.py:33
+#: forms.py:32
 msgid "Multiple Choice"
 msgstr "Múltiplas Escolhas"
 
-#: forms.py:35
+#: forms.py:34
 msgid "Datetime"
 msgstr "Data hora"
 
-#: forms.py:36
+#: forms.py:35
 msgid "Date"
 msgstr "Data"
 
-#: forms.py:37
+#: forms.py:36
 msgid "Time"
 msgstr "Tempo"
 
-#: forms.py:38
+#: forms.py:37
 msgid "File"
 msgstr "Arquivo"
 
@@ -77,19 +77,24 @@ msgstr "Arquivo"
 msgid "Textarea"
 msgstr "Área de Texto"
 
-#: forms.py:40
+#: forms.py:42
 msgid "Password"
 msgstr "Senha"
 
-#: integrations.py:68 integrations.py:171
+#: integrations.py:31 integrations.py:119 templates/confirmation_email.html:125
+msgid "Confirm Email"
+msgstr "Confirmar Email"
+
+#: integrations.py:108 integrations.py:124 integrations.py:220
+#: integrations.py:261
 msgid "Stellar Development Foundation"
 msgstr "Stellar Development Foundation"
 
-#: integrations.py:69
+#: integrations.py:109
 msgid "Polaris KYC Information"
 msgstr "Informações de KYC do Polaris"
 
-#: integrations.py:72
+#: integrations.py:112
 msgid ""
 "We're legally required to know our customers. Please enter the information "
 "requested."
@@ -97,7 +102,13 @@ msgstr ""
 "Para seguir regulações, temos que conhecer nossos usuários. Por favor "
 "forneça as seguintes informaçõe."
 
-#: integrations.py:148
+#: integrations.py:121
+msgid ""
+"We sent you a confirmation email. Once confirmed, continue on this page."
+msgstr ""
+"Um email de confirmação foi enviado. Uma vez que a confirmação for feita, continue nesta página."
+
+#: integrations.py:197
 #, python-format
 msgid ""
 "Include this code as the memo when making the deposit: <strong>%s</strong>. "
@@ -105,19 +116,20 @@ msgid ""
 "(This deposit is automatically confirmed for demonstration purposes. Please "
 "wait.)"
 msgstr ""
-"Inclua este código como um 'memo' quando for realizar o depósito: <strong>%s</strong>. "
-"Nós usaremos este memo para te identificar como o remetente.\n(Este depósito "
-"é automaticamente confirmado para fins de demonstração. Por favor aguarde.)"
+"Inclua este código como um 'memo' quando for realizar o depósito: <strong>"
+"%s</strong>. Nós usaremos este memo para te identificar como o remetente.\n"
+"(Este depósito é automaticamente confirmado para fins de demonstração. Por "
+"favor aguarde.)"
 
-#: integrations.py:169 integrations.py:211
+#: integrations.py:218 integrations.py:260
 msgid "Polaris Transaction Information"
 msgstr "Informações de Transações do Polaris"
 
-#: integrations.py:170
+#: integrations.py:219
 msgid "Please enter the amount you would like to transfer."
 msgstr "Por favor informe o valor que você quer transferir."
 
-#: integrations.py:214
+#: integrations.py:264
 msgid ""
 "Please enter the banking details for the account you would like to receive "
 "your funds."
@@ -131,6 +143,39 @@ msgstr "Inglês"
 #: settings.py:118
 msgid "Portuguese"
 msgstr "Português"
+
+#: templates/confirmation_email.html:116
+#, python-format
+msgid "Hi %(first_name)s,"
+msgstr "Olá %(first_name)s,"
+
+#: templates/confirmation_email.html:117
+msgid ""
+"Thanks for using the Stellar Development Foundation's reference anchor "
+"server. Click the button below to confirm your email."
+msgstr ""
+"Obrigado por user o servidor de referência da Stellar Development Foundation,"
+" Clique no botão abaixo para confirmar o seu email."
+
+#: templates/confirmation_email.html:133
+msgid "The reference server is powered by "
+msgstr "O servidor de referência funciona utilizando o "
+
+#: templates/email_confirmed.html:4
+msgid "Email Confirmed"
+msgstr "Email Confirmado"
+
+#: templates/email_confirmed.html:9
+msgid "Confirmed"
+msgstr "Confirmado"
+
+#: templates/email_confirmed.html:10
+msgid ""
+"Your email has been confirmed! Please continue with your deposit or "
+"withdrawal on the original page."
+msgstr ""
+"Seu email foi confirmado! Por favor continue o seu deposito ou "
+"saque na página original."
 
 #: templates/readonly_login.html:21
 msgid "Please correct the error below."

@@ -1,14 +1,20 @@
-import logging
 import time
+from smtplib import SMTPException
 from decimal import Decimal
 from typing import List, Dict, Optional
 from uuid import uuid4
+from urllib.parse import urlencode
 
 from django.db.models import QuerySet
 from django.utils.translation import gettext as _
 from django import forms
+from django.urls import reverse
+from django.core.mail import send_mail
+from django.conf import settings as server_settings
+from django.template.loader import render_to_string
 
 from polaris.models import Transaction
+from polaris.helpers import Logger
 from polaris.integrations import (
     DepositIntegration,
     WithdrawalIntegration,
@@ -21,7 +27,35 @@ from .models import PolarisUser, PolarisStellarAccount, PolarisUserTransaction
 from .forms import KYCForm
 
 
-logger = logging.getLogger(__name__)
+logger = Logger(__name__)
+CONFIRM_EMAIL_PAGE_TITLE = _("Confirm Email")
+
+
+def send_confirmation_email(user: PolarisUser):
+    """
+    Sends a confirmation email to user.email
+
+    In a real production deployment, you would never want to send emails
+    as part of the request/response cycle. Instead, use a job queue service
+    like Celery. This reference server is not intended to handle heavy
+    traffic so we are making an exception here.
+    """
+    args = urlencode({"token": user.confirmation_token, "email": user.email})
+    url = f"{settings.HOST_URL}{reverse('confirm_email')}?{args}"
+    try:
+        send_mail(
+            "Reference Anchor Server: Confirm Email",
+            # email body if the HTML is not rendered
+            f"Confirm your email by pasting this URL in your browser: {url}",
+            server_settings.EMAIL_HOST_USER,
+            [user.email],
+            html_message=render_to_string(
+                "confirmation_email.html",
+                {"first_name": user.first_name, "confirmation_url": url},
+            ),
+        )
+    except SMTPException as e:
+        logger.error(f"Unable to send email to {user.email}: {e}")
 
 
 def track_user_activity(form: forms.Form, transaction: Transaction):
@@ -40,6 +74,8 @@ def track_user_activity(form: forms.Form, transaction: Transaction):
                 last_name=data.get("last_name"),
                 email=data.get("email"),
             )
+            send_confirmation_email(user)
+
         account = PolarisStellarAccount.objects.create(
             account=transaction.stellar_account, user=user
         )
@@ -63,11 +99,10 @@ def check_kyc(transaction: Transaction) -> Optional[Dict]:
     Returns a KYCForm if there is no record of this stellar account,
     otherwise returns None.
     """
-    account_qs = PolarisStellarAccount.objects.filter(
+    account = PolarisStellarAccount.objects.filter(
         account=transaction.stellar_account
-    )
-    if not account_qs.exists():
-        # Unknown stellar account, get KYC info
+    ).first()
+    if not account:  # Unknown stellar account, get KYC info
         return {
             "form": KYCForm,
             "icon_label": _("Stellar Development Foundation"),
@@ -78,6 +113,15 @@ def check_kyc(transaction: Transaction) -> Optional[Dict]:
                     "Please enter the information requested."
                 )
             ),
+        }
+    elif not account.user.confirmed:  # User needs to confirm email
+        return {
+            "title": _("Confirm Email"),
+            "guidance": _(
+                "We sent you a confirmation email. Once confirmed, "
+                "continue on this page."
+            ),
+            "icon_label": _("Stellar Development Foundation"),
         }
     else:
         return None
@@ -270,6 +314,7 @@ def get_stellar_toml():
 
 def scripts():
     return [
+        # Google Analytics
         """
         <!-- Global site tag (gtag.js) - Google Analytics -->
         <script async src="https://www.googletagmanager.com/gtag/js?id=UA-53373928-6"></script>
@@ -279,7 +324,22 @@ def scripts():
           gtag('js', new Date());
           gtag('config', 'UA-53373928-6');
         </script>
+        """,
+        # Refresh the confirm email page whenever the user brings the popup
+        # back into focus. This is not strictly necessary since deposit.html
+        # and withdraw.html have 'Refresh' buttons, but this is a better UX.
         """
+        <script>
+            window.addEventListener("focus", () => {
+                if (document.title === "%s") {
+                    // Hit the /webapp endpoint again to check if the user's 
+                    // email has been confirmed.
+                    window.location.reload(true);
+                }
+            });
+        </script>
+        """
+        % CONFIRM_EMAIL_PAGE_TITLE,
     ]
 
 

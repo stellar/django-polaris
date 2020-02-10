@@ -1,0 +1,12 @@
+{% extends "base.html" %} {% load i18n %}
+
+{% block "title" %}
+<title>{% trans "Email Confirmed" %}</title>
+{% endblock %}
+
+{% block "content" %}
+<section class="section">
+    <h2>{% trans "Confirmed" %}</h2>
+    <p>{% trans "Your email has been confirmed! Please continue with your deposit or withdrawal on the original page." %}</p>
+</section>
+{% endblock %}
