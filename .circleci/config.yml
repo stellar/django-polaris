@@ -18,20 +18,20 @@ jobs: # A basic unit of work in a run
           key: deps9-{{ .Branch }}-{{ checksum "Pipfile.lock" }}
       - run:
           command: |
-            sudo pip install pipenv
-            pipenv install --dev
+            pip install pipenv
+            pipenv install --dev --system
       - save_cache: # cache Python dependencies using checksum of Pipfile as the cache-key
           key: deps9-{{ .Branch }}-{{ checksum "Pipfile.lock" }}
           paths:
-            - ".venv"
             - "/usr/local/bin"
             - "/usr/local/lib/python3.7/site-packages"
       - run:
           command: |
             cp polaris/.env.example polaris/.env
-            pipenv run pytest --cov -c polaris/pytest.ini
-            pipenv run codecov
-            pipenv --rm
+            python manage.py compilescss
+            python manage.py collectstatic --no-input -v 0
+            pytest --cov -c polaris/pytest.ini
+            codecov
       - store_test_results: # Upload test results for display in Test Summary: https://circleci.com/docs/2.0/collect-test-data/
           path: test-results
       - store_artifacts: # Upload test summary for display in Artifacts: https://circleci.com/docs/2.0/artifacts/
