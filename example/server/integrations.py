@@ -74,7 +74,8 @@ def track_user_activity(form: forms.Form, transaction: Transaction):
                 last_name=data.get("last_name"),
                 email=data.get("email"),
             )
-            send_confirmation_email(user)
+            if server_settings.EMAIL_HOST_USER:
+                send_confirmation_email(user)
 
         account = PolarisStellarAccount.objects.create(
             account=transaction.stellar_account, user=user
@@ -114,7 +115,7 @@ def check_kyc(transaction: Transaction) -> Optional[Dict]:
                 )
             ),
         }
-    elif not account.user.confirmed:  # User needs to confirm email
+    elif server_settings.EMAIL_HOST_USER and not account.user.confirmed:
         return {
             "title": _("Confirm Email"),
             "guidance": _(
