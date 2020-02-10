@@ -27,7 +27,9 @@ FAKE_ISSUER_ACCOUNT_ADDRESS=GCYPVLFODQNRZAQTDBIZMBJ5QNSBYBXGM7KWHGS2SFIU73BTTDNS
 HOST_URL=https://fake.com\n\
 SERVER_JWT_KEY=notsosecretkey\n\
 DJANGO_SECRET_KEY=notsosecretkey\n\
-DJANGO_ALLOWED_HOSTS=https://fake.com\
+DJANGO_ALLOWED_HOSTS=https://fake.com\n\
+EMAIL_HOST_USER=fakeemail@gmail.com\n\
+EMAIL_HOST_PASSWORD=fakepassword\
 ' >> /code/.env; fi
 
 # Install dependencies
