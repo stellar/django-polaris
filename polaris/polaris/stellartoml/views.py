@@ -15,7 +15,7 @@ from polaris.integrations import registered_toml_func
 def generate_toml(request):
     """Generate the TOML file."""
     toml_dict = {
-        "TRANSFER_SERVER": request.build_absolute_uri("/"),
+        "TRANSFER_SERVER": settings.HOST_URL,
         "WEB_AUTH_ENDPOINT": request.build_absolute_uri("/auth"),
         "ACCOUNTS": [
             asset["DISTRIBUTION_ACCOUNT_ADDRESS"] for asset in settings.ASSETS.values()
