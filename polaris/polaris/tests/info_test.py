@@ -45,7 +45,7 @@ def _get_expected_response(settings):
             }},
             "ETH": {{"enabled": false}}
         }},
-        "fee": {{"enabled": true}},
+        "fee": {{"enabled": true, "authentication_required": true}},
         "transactions": {{"enabled": true}},
         "transaction": {{"enabled": true}}
     }}"""

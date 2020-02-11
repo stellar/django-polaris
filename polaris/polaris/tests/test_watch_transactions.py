@@ -14,6 +14,7 @@ TRANSACTION_JSON = {
     "envelope_xdr": "",
     "memo": "",
     "memo_type": "hash",
+    "source": "GCUZ6YLL5RQBTYLTTQLPCM73C5XAIUGK2TIMWQH7HPSGWVS2KJ2F3CHS",
 }
 mock_envelope = Mock(
     transaction=Mock(
@@ -26,7 +27,10 @@ mock_envelope = Mock(
                 destination=settings.ASSETS["USD"]["DISTRIBUTION_ACCOUNT_ADDRESS"],
                 type_code=Mock(return_value=1),
             )
-        ]
+        ],
+        source=Mock(
+            public_key="GCUZ6YLL5RQBTYLTTQLPCM73C5XAIUGK2TIMWQH7HPSGWVS2KJ2F3CHS"
+        ),
     )
 )
 
