@@ -27,7 +27,7 @@ jobs: # A basic unit of work in a run
             - "/usr/local/lib/python3.7/site-packages"
       - run:
           command: |
-            cp polaris/.env.example polaris/.env
+            cp example/.env.example example/.env
             python example/manage.py compilescss
             python example/manage.py collectstatic --no-input -v 0
             pytest --cov -c polaris/pytest.ini
