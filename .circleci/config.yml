@@ -11,27 +11,12 @@ jobs: # A basic unit of work in a run
           PIPENV_VENV_IN_PROJECT: true
     steps: # steps that comprise the `build` job
       - checkout # check out source code to working directory
-      - run: sudo chown -R circleci:circleci /usr/local/bin
-      - run: sudo chown -R circleci:circleci /usr/local/lib/python3.7/site-packages
-      - restore_cache:
-          # Read about caching dependencies: https://circleci.com/docs/2.0/caching/
-          key: deps9-{{ .Branch }}-{{ checksum "Pipfile.lock" }}
       - run:
           command: |
-            pip install pipenv
-            pipenv install --dev --system
-      - save_cache: # cache Python dependencies using checksum of Pipfile as the cache-key
-          key: deps9-{{ .Branch }}-{{ checksum "Pipfile.lock" }}
-          paths:
-            - "/usr/local/bin"
-            - "/usr/local/lib/python3.7/site-packages"
-      - run:
-          command: |
-            cp example/.env.example example/.env
-            python example/manage.py compilescss
-            python example/manage.py collectstatic --no-input -v 0
-            pytest --cov -c polaris/pytest.ini
-            codecov
+            docker build -t reference-server .
+            docker run --name ref-server referece-server:latest pytest --cov -c /code/polaris/pytest.ini
+            mkdir test-results
+            docker cp ref-server:/code/junit.xml test-results/junit.xml
       - store_test_results: # Upload test results for display in Test Summary: https://circleci.com/docs/2.0/collect-test-data/
           path: test-results
       - store_artifacts: # Upload test summary for display in Artifacts: https://circleci.com/docs/2.0/artifacts/

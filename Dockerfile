@@ -9,11 +9,9 @@ ENV PYTHONUNBUFFERED 1
 RUN apk update && apk add build-base postgresql-dev libffi-dev gettext-dev curl
 
 # Copy files to working directory
-RUN mkdir /code
-COPY ./example /code
-COPY ./setup.py ./README.rst ./MANIFEST.in /code/
-RUN mkdir /code/polaris /code/polaris/polaris
-COPY ./polaris/polaris /code/polaris/polaris/
+RUN mkdir /code /code/polaris
+COPY ./example ./setup.py ./README.rst ./MANIFEST.in /code/
+COPY ./polaris /code/polaris/
 
 # Set fake environment variables so manage.py commands can run.
 # django-environ's env() function uses variables defined in the
