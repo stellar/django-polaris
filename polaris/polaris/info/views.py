@@ -37,7 +37,7 @@ def info(request):
     info_data = {
         "deposit": {},
         "withdraw": {},
-        "fee": {"enabled": True},
+        "fee": {"enabled": True, "authentication_required": True},
         "transactions": {"enabled": True},
         "transaction": {"enabled": True},
     }

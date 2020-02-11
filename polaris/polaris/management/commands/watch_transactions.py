@@ -146,6 +146,9 @@ class Command(BaseCommand):
             if cls._check_payment_op(
                 operation, transaction.asset.code, transaction.amount_in
             ):
+                transaction.from_address = horizon_tx.source
+                transaction.to_address = operation.destination
+                transaction.save()
                 found_matching_payment_op = True
                 break
 
