@@ -117,7 +117,7 @@ def check_kyc(transaction: Transaction) -> Optional[Dict]:
         }
     elif server_settings.EMAIL_HOST_USER and not account.user.confirmed:
         return {
-            "title": _("Confirm Email"),
+            "title": CONFIRM_EMAIL_PAGE_TITLE,
             "guidance": _(
                 "We sent you a confirmation email. Once confirmed, "
                 "continue on this page."
@@ -313,8 +313,8 @@ def get_stellar_toml():
     }
 
 
-def scripts():
-    return [
+def scripts(page_content: Optional[Dict]):
+    tags = [
         # Google Analytics
         """
         <!-- Global site tag (gtag.js) - Google Analytics -->
@@ -325,23 +325,27 @@ def scripts():
           gtag('js', new Date());
           gtag('config', 'UA-53373928-6');
         </script>
-        """,
+        """
+    ]
+    if (
+        "form" not in page_content
+        and page_content.get("title") == CONFIRM_EMAIL_PAGE_TITLE
+    ):
         # Refresh the confirm email page whenever the user brings the popup
         # back into focus. This is not strictly necessary since deposit.html
         # and withdraw.html have 'Refresh' buttons, but this is a better UX.
-        """
-        <script>
-            window.addEventListener("focus", () => {
-                if (document.title === "%s") {
+        tags.append(
+            """
+            <script>
+                window.addEventListener("focus", () => {
                     // Hit the /webapp endpoint again to check if the user's 
                     // email has been confirmed.
                     window.location.reload(true);
-                }
-            });
-        </script>
-        """
-        % CONFIRM_EMAIL_PAGE_TITLE,
-    ]
+                });
+            </script>
+            """
+        )
+    return tags
 
 
 def calculate_custom_fee(fee_params: Dict) -> Decimal:

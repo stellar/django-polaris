@@ -17,7 +17,7 @@ from polaris.models import Transaction
 from polaris.transaction.serializers import TransactionSerializer
 from polaris.integrations import (
     registered_deposit_integration as rdi,
-    registered_javascript_func,
+    registered_scripts_func,
 )
 
 
@@ -89,7 +89,7 @@ def more_info(request: Request) -> Response:
         "tx_json": tx_json,
         "transaction": request_transaction,
         "asset_code": request_transaction.asset.code,
-        "scripts": registered_javascript_func(),
+        "scripts": registered_scripts_func(None),
     }
 
     callback = request.GET.get("callback")

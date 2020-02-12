@@ -18,6 +18,6 @@ class AnchorConfig(AppConfig):
             deposit=MyDepositIntegration(),
             withdrawal=MyWithdrawalIntegration(),
             toml_func=get_stellar_toml,
-            javascript_func=scripts,
+            scripts_func=scripts,
             fee_func=calculate_custom_fee,
         )
