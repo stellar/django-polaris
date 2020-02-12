@@ -12,6 +12,8 @@ from django.http.response import HttpResponse
 from polaris import settings
 from polaris.integrations import registered_toml_func
 
+# made a comment
+
 
 def generate_toml(request):
     """Generate the TOML file."""
