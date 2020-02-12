@@ -17,7 +17,7 @@ codecov = "*"
 pipenv-to-requirements = "*"
 
 [packages]
-django = "==2.2.9"
+django = "<3.0"
 django-environ = "*"
 django-model-utils = "*"
 djangorestframework = "*"

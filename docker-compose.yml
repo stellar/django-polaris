@@ -7,7 +7,6 @@ services:
       - ./polaris/polaris:/code/polaris/polaris
       - ./example/server:/code/server
       - ${PWD}/example/db.sqlite3:/code/db.sqlite3
-      - ${PWD}/example/server/settings.py:/code/server/settings.py
     ports:
       - "8000:8000"
     command: watchmedo auto-restart --recursive --pattern="*.py" --directory="." python manage.py runsslserver -- --nostatic --certificate cert.pem --key key.pem 0.0.0.0:8000
@@ -17,7 +16,6 @@ services:
       - ./polaris/polaris:/code/polaris/polaris
       - ./example/server:/code/server
       - ${PWD}/example/db.sqlite3:/code/db.sqlite3
-      - ${PWD}/example/server/settings.py:/code/server/settings.py
     depends_on:
       - server
     command: watchmedo auto-restart --recursive --pattern="*.py" --directory="." python manage.py watch_transactions
@@ -27,7 +25,6 @@ services:
       - ./polaris/polaris:/code/polaris/polaris
       - ./example/server:/code/server
       - ${PWD}/example/db.sqlite3:/code/db.sqlite3
-      - ${PWD}/example/server/settings.py:/code/server/settings.py
     depends_on:
       - server
     command: watchmedo auto-restart --recursive --pattern="*.py" --directory="." python manage.py check_trustlines -- --loop
@@ -37,7 +34,6 @@ services:
       - ./polaris/polaris:/code/polaris/polaris
       - ./example/server:/code/server
       - ${PWD}/example/db.sqlite3:/code/db.sqlite3
-      - ${PWD}/example/server/settings.py:/code/server/settings.py
     depends_on:
       - server
     command: watchmedo auto-restart --recursive --pattern="*.py" --directory="." python manage.py poll_pending_deposits -- --loop

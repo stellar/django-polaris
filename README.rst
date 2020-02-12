@@ -277,8 +277,9 @@ To set up the development environment, fork the repository, then:
     docker-compose build
     docker-compose up
 
-You should now have a minimal anchor server running on port 8000.
+You should now have the SDF's reference anchor server running on port 8000.
 When you make changes locally, the docker containers will restart with the updated code.
+
 Your browser may complain about the service using a self-signed certificate for HTTPS.
 You can resolve this by marking the certificate used by the service as trusted.
 
@@ -296,11 +297,11 @@ Or, you can simply run the tests from inside the docker container. However,
 this may be slower.
 ::
 
-    docker exec -it <image ID> pipenv run pytest
+    docker exec -it <image ID> pytest -c polaris/pytest.ini
 
 Submit a PR
 ^^^^^^^^^^^
-After you've made your changes, push them to you a remote branch
+After you've made your changes, push them to your remote's branch
 and make a Pull Request on the stellar/django-polaris master branch.
 
 
