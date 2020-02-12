@@ -117,7 +117,7 @@ def check_kyc(transaction: Transaction) -> Optional[Dict]:
         }
     elif server_settings.EMAIL_HOST_USER and not account.user.confirmed:
         return {
-            "title": _("Confirm Email"),
+            "title": CONFIRM_EMAIL_PAGE_TITLE,
             "guidance": _(
                 "We sent you a confirmation email. Once confirmed, "
                 "continue on this page."
@@ -327,7 +327,10 @@ def scripts(page_content: Optional[Dict]):
         </script>
         """
     ]
-    if "form" not in page_content and page_content.get("title") == _("Confirm Email"):
+    if (
+        "form" not in page_content
+        and page_content.get("title") == CONFIRM_EMAIL_PAGE_TITLE
+    ):
         # Refresh the confirm email page whenever the user brings the popup
         # back into focus. This is not strictly necessary since deposit.html
         # and withdraw.html have 'Refresh' buttons, but this is a better UX.
