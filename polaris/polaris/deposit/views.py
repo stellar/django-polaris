@@ -35,7 +35,7 @@ from polaris.integrations.forms import TransactionForm
 from polaris.locale.views import validate_language, activate_lang_for_request
 from polaris.integrations import (
     registered_deposit_integration as rdi,
-    registered_javascript_func,
+    registered_scripts_func,
     registered_fee_func,
 )
 
@@ -206,6 +206,8 @@ def get_interactive_deposit(request: Request) -> Response:
             content_type="text/html",
         )
 
+    scripts = registered_scripts_func(content)
+
     if content.get("form"):
         form_class = content.pop("form")
         if issubclass(form_class, TransactionForm) and amount:
@@ -221,9 +223,7 @@ def get_interactive_deposit(request: Request) -> Response:
 
     post_url = f"{reverse('post_interactive_deposit')}?{urlencode(url_args)}"
     get_url = f"{reverse('get_interactive_deposit')}?{urlencode(url_args)}"
-    content.update(
-        post_url=post_url, get_url=get_url, scripts=registered_javascript_func()
-    )
+    content.update(post_url=post_url, get_url=get_url, scripts=scripts)
 
     return Response(content, template_name="deposit/form.html")
 

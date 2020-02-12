@@ -3,7 +3,7 @@ from typing import Callable
 from polaris.integrations.fees import calculate_fee, registered_fee_func
 from polaris.integrations.forms import TransactionForm, CreditCardForm
 from polaris.integrations.toml import get_stellar_toml, registered_toml_func
-from polaris.integrations.javascript import scripts, registered_javascript_func
+from polaris.integrations.javascript import scripts, registered_scripts_func
 from polaris.integrations.transactions import (
     DepositIntegration,
     WithdrawalIntegration,
@@ -16,7 +16,7 @@ def register_integrations(
     deposit: DepositIntegration = None,
     withdrawal: WithdrawalIntegration = None,
     toml_func: Callable = None,
-    javascript_func: Callable = None,
+    scripts_func: Callable = None,
     fee_func: Callable = None,
 ):
     """
@@ -55,7 +55,7 @@ def register_integrations(
     :param withdrawal: the :class:`WithdrawalIntegration` subclass instance to
         be used by Polaris
     :param toml_func: a function that returns stellar.toml data as a dictionary
-    :param javascript_func: a function that returns a list of script tags as
+    :param scripts_func: a function that returns a list of script tags as
         strings
     :param fee_func: a function that returns the fee that would be charged
     :raises ValueError: missing argument(s)
@@ -72,7 +72,7 @@ def register_integrations(
         raise TypeError("withdrawal must be a subclass of WithdrawalIntegration")
     elif toml_func and not callable(toml_func):
         raise TypeError("toml_func is not callable")
-    elif javascript_func and not callable(javascript_func):
+    elif scripts_func and not callable(scripts_func):
         raise TypeError("javascript_func is not callable")
     elif fee_func and not callable(fee_func):
         raise TypeError("javascript_func is not callable")
@@ -81,7 +81,7 @@ def register_integrations(
         (deposit, "registered_deposit_integration"),
         (withdrawal, "registered_withdrawal_integration"),
         (toml_func, "registered_toml_func"),
-        (javascript_func, "registered_javascript_func"),
+        (scripts_func, "registered_scripts_func"),
         (fee_func, "registered_fee_func"),
     ]:
         if obj:
