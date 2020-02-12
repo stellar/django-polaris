@@ -1,4 +1,5 @@
 {% load sass_tags %} {% load static %} {% load i18n %}
+{% get_current_language as LANGUAGE_CODE %}
 <!DOCTYPE html>
 <html>
   <head>
@@ -86,12 +87,18 @@
         datepickerScript.async = true;
         document.body.append(datepickerScript)
 
+        var datepickerScript = document.createElement('script');
+        datepickerScript.src = "https://unpkg.com/flatpickr@4.6.3/dist/l10n/{{ LANGUAGE_CODE }}.js";
+        datepickerScript.async = true;
+        document.body.append(datepickerScript)
+
         var datepickerScript = document.createElement('link');
         datepickerScript.href = "https://unpkg.com/flatpickr@4.6.3/dist/flatpickr.min.css";
         datepickerScript.rel = "stylesheet";
         document.head.append(datepickerScript)
 
         waitFor(function() {return !!window.flatpickr}).then(function () {
+          window.flatpickr.localize(window.flatpickr.l10ns['{{ LANGUAGE_CODE }}']);
           window.flatpickr('input.date');
           window.flatpickr('input.date-time', {enableTime: true});
           window.flatpickr('input.time', {noCalendar: true, enableTime: true});
