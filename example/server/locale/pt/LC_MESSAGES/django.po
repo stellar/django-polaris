@@ -201,3 +201,7 @@ msgstr "Esqueceu a senha ou usuário?"
 #: templates/readonly_login.html:65
 msgid "Log in"
 msgstr "Entrar"
+
+#: views.py:17
+msgid "This form contains every field type."
+msgstr "Este formulário possui todos os tipos de campos."

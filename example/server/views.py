@@ -1,3 +1,5 @@
+from django.utils.translation import gettext as _
+
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, renderer_classes
@@ -12,7 +14,10 @@ from polaris.helpers import render_error_response
 @renderer_classes([TemplateHTMLRenderer])
 def all_fields_form_view(request: Request) -> Response:
     return Response(
-        {"form": AllFieldsForm(), "guidance": "This form contains every field type."},
+        {
+            "form": AllFieldsForm(),
+            "guidance": _("This form contains every field type."),
+        },
         template_name="deposit/form.html",
     )
 
