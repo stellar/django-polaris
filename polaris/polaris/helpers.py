@@ -225,11 +225,55 @@ def check_authentication_helper(r: Request):
     if not r.session.get("authenticated"):
         raise ValueError(_("Session is not authenticated"))
 
-    transaction_qs = Transaction.objects.filter(
-        id=r.GET.get("transaction_id"), stellar_account=r.session.get("account")
-    )
-    if not transaction_qs.exists():
-        raise ValueError(_("Transaction for account not found"))
+    if "more_info" in r.build_absolute_uri("?"):
+        try:
+            transaction = get_transaction_from_request(r)
+        except (AttributeError, Transaction.DoesNotExist):
+            raise ValueError(_("Transaction for account not found"))
+    else:
+        transaction = Transaction.objects.filter(
+            id=r.GET.get("transaction_id"), stellar_account=r.session.get("account")
+        ).first()
+        if not transaction:
+            raise ValueError(_("Transaction for account not found"))
+
+    if str(transaction.id) not in r.session.get("transactions", []):
+        tid = transaction.id
+        raise ValueError(f"Not authenticated for transaction ID: {tid}")
+
+
+def compute_qset_filters(req_params, translation_dict):
+    """
+    _compute_qset_filters translates the keys of req_params to the keys of translation_dict.
+    If the key isn't present in filters_dict, it is discarded.
+    """
+
+    return {
+        translation_dict[rp]: req_params[rp]
+        for rp in filter(lambda i: i in translation_dict, req_params.keys())
+    }
+
+
+def get_transaction_from_request(request, account: str = None):
+    translation_dict = {
+        "id": "id",
+        "stellar_transaction_id": "stellar_transaction_id",
+        "external_transaction_id": "external_transaction_id",
+    }
+
+    qset_filter = compute_qset_filters(request.GET, translation_dict)
+    if not qset_filter:
+        raise AttributeError(
+            _(
+                "at least one of id, stellar_transaction_id, or "
+                "external_transaction_id must be provided"
+            )
+        )
+
+    if account:
+        qset_filter["stellar_account"] = account
+
+    return Transaction.objects.get(**qset_filter)
 
 
 def invalidate_session(request: Request):

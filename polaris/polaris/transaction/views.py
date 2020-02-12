@@ -12,7 +12,13 @@ from django.views.decorators.clickjacking import xframe_options_exempt
 from django.utils.translation import gettext as _
 from django.core.exceptions import ValidationError
 
-from polaris.helpers import render_error_response, validate_sep10_token
+from polaris.helpers import (
+    render_error_response,
+    validate_sep10_token,
+    check_authentication,
+    compute_qset_filters,
+    get_transaction_from_request,
+)
 from polaris.models import Transaction
 from polaris.transaction.serializers import TransactionSerializer
 from polaris.integrations import (
@@ -28,50 +34,17 @@ def _validate_limit(limit):
     return limit
 
 
-def _compute_qset_filters(req_params, translation_dict):
-    """
-    _compute_qset_filters translates the keys of req_params to the keys of translation_dict.
-    If the key isn't present in filters_dict, it is discarded.
-    """
-
-    return {
-        translation_dict[rp]: req_params[rp]
-        for rp in filter(lambda i: i in translation_dict, req_params.keys())
-    }
-
-
-def _get_transaction_from_request(request, account: str = None):
-    translation_dict = {
-        "id": "id",
-        "stellar_transaction_id": "stellar_transaction_id",
-        "external_transaction_id": "external_transaction_id",
-    }
-
-    qset_filter = _compute_qset_filters(request.GET, translation_dict)
-    if not qset_filter:
-        raise AttributeError(
-            _(
-                "at least one of id, stellar_transaction_id, or "
-                "external_transaction_id must be provided"
-            )
-        )
-
-    if account:
-        qset_filter["stellar_account"] = account
-
-    return Transaction.objects.get(**qset_filter)
-
-
 @xframe_options_exempt
 @api_view()
 @renderer_classes([TemplateHTMLRenderer])
+@check_authentication()
 def more_info(request: Request) -> Response:
     """
     Popup to display more information about a specific transaction.
     See table: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md#4-customer-information-status
     """
     try:
-        request_transaction = _get_transaction_from_request(request)
+        request_transaction = get_transaction_from_request(request)
     except (AttributeError, ValidationError) as exc:
         return render_error_response(str(exc), content_type="text/html")
     except Transaction.DoesNotExist:
@@ -131,7 +104,7 @@ def transactions(account: str, request: Request) -> Response:
         "kind": "kind",
     }
 
-    qset_filter = _compute_qset_filters(request.GET, translation_dict)
+    qset_filter = compute_qset_filters(request.GET, translation_dict)
     qset_filter["stellar_account"] = account
 
     # Since the Transaction IDs are UUIDs, rather than in the chronological
@@ -163,7 +136,7 @@ def transaction(account: str, request: Request) -> Response:
     See: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md#single-historical-transaction
     """
     try:
-        request_transaction = _get_transaction_from_request(request, account=account)
+        request_transaction = get_transaction_from_request(request, account=account)
     except (AttributeError, ValidationError) as exc:
         return render_error_response(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
     except Transaction.DoesNotExist:
