@@ -337,10 +337,12 @@ def scripts(page_content: Optional[Dict]):
         tags.append(
             """
             <script>
-                window.addEventListener("focus", () => {
-                    // Hit the /webapp endpoint again to check if the user's 
-                    // email has been confirmed.
-                    window.location.reload(true);
+                window.addEventListener("load", () => {
+                    window.addEventListener("focus", () => {
+                        // Hit the /webapp endpoint again to check if the user's 
+                        // email has been confirmed.
+                        window.location.reload(true);
+                    });
                 });
             </script>
             """
