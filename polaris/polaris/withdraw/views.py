@@ -137,7 +137,7 @@ def complete_interactive_withdraw(request: Request) -> Response:
     redirects to GET /more_info. A `callback` can be passed in the URL
     to be used by the more_info template javascript.
     """
-    transaction_id = request.GET.get("id")
+    transaction_id = request.GET.get("transaction_id")
     callback = request.GET.get("callback")
     if not transaction_id:
         return render_error_response(
