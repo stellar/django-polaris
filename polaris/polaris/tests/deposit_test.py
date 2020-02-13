@@ -225,19 +225,14 @@ def test_deposit_stellar_success(
     "stellar_sdk.server.Server.submit_transaction",
     return_value=HORIZON_SUCCESS_RESPONSE,
 )
-@patch("polaris.deposit.views.check_middleware", return_value=None)
 def test_deposit_interactive_confirm_success(
-    mock_check_middleware,
-    mock_submit,
-    mock_base_fee,
-    client,
-    acc1_usd_deposit_transaction_factory,
+    mock_submit, mock_base_fee, client, acc1_usd_deposit_transaction_factory,
 ):
     """
     `GET /deposit` and `GET /transactions/deposit/webapp` succeed with valid `account`
     and `asset_code`.
     """
-    del mock_submit, mock_base_fee, mock_check_middleware
+    del mock_submit, mock_base_fee
     deposit = acc1_usd_deposit_transaction_factory()
 
     encoded_jwt = sep10(client, deposit.stellar_account, STELLAR_ACCOUNT_1_SEED)
@@ -442,11 +437,7 @@ def test_interactive_deposit_no_transaction(
 
 
 @pytest.mark.django_db
-@patch("polaris.deposit.views.check_middleware", return_value=None)
-def test_interactive_deposit_success(
-    mock_check_middleware, client, acc1_usd_deposit_transaction_factory
-):
-    del mock_check_middleware
+def test_interactive_deposit_success(client, acc1_usd_deposit_transaction_factory):
     deposit = acc1_usd_deposit_transaction_factory()
     deposit.amount_in = None
     deposit.save()
@@ -472,19 +463,14 @@ def test_interactive_deposit_success(
         {"amount": 200.0},
     )
     assert response.status_code == 302
-    assert client.session["authenticated"] is False
 
 
 @pytest.mark.django_db
-@patch("polaris.deposit.views.check_middleware", return_value=None)
-def test_interactive_auth_new_transaction(
-    mock_check_middleware, client, acc1_usd_deposit_transaction_factory
-):
+def test_interactive_auth_new_transaction(client, acc1_usd_deposit_transaction_factory):
     """
     Tests that requests by previously authenticated accounts are denied if they
     were not authenticated for the specified transaction.
     """
-    del mock_check_middleware
     deposit = acc1_usd_deposit_transaction_factory()
     # So that content_for_transaction() returns TransactionForm
     deposit.amount_in = None
