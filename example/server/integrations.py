@@ -328,7 +328,8 @@ def scripts(page_content: Optional[Dict]):
         """
     ]
     if (
-        "form" not in page_content
+        page_content
+        and "form" not in page_content
         and page_content.get("title") == CONFIRM_EMAIL_PAGE_TITLE
     ):
         # Refresh the confirm email page whenever the user brings the popup
