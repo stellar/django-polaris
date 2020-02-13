@@ -24,15 +24,14 @@ from polaris.helpers import (
     validate_sep10_token,
     check_authentication,
     authenticate_session,
-    invalidate_session,
     interactive_args_validation,
-    check_middleware,
     Logger,
     interactive_url,
 )
 from polaris.models import Asset, Transaction
 from polaris.integrations.forms import TransactionForm
 from polaris.locale.views import validate_language, activate_lang_for_request
+from polaris.transaction.urls import MORE_INFO_URL_NAME
 from polaris.integrations import (
     registered_deposit_integration as rdi,
     registered_scripts_func,
@@ -122,7 +121,7 @@ def post_interactive_deposit(request: Request) -> Response:
             )
             transaction.status = Transaction.STATUS.pending_user_transfer_start
             transaction.save()
-            url = reverse("more_info")
+            url = reverse(MORE_INFO_URL_NAME)
             args = urlencode({"id": transaction.id, "callback": callback})
             return redirect(f"{url}?{args}")
 
@@ -142,7 +141,7 @@ def complete_interactive_deposit(request: Request) -> Response:
     redirects to GET /more_info. A `callback` can be passed in the URL
     to be used by the more_info template javascript.
     """
-    transaction_id = request.GET.get("id")
+    transaction_id = request.GET.get("transaction_id")
     callback = request.GET.get("callback")
     if not transaction_id:
         return render_error_response(
@@ -153,7 +152,7 @@ def complete_interactive_deposit(request: Request) -> Response:
     )
     logger.info(f"Hands-off interactive flow complete for transaction {transaction_id}")
     url, args = (
-        reverse("more_info"),
+        reverse(MORE_INFO_URL_NAME),
         urlencode({"id": transaction_id, "callback": callback}),
     )
     return redirect(f"{url}?{args}")

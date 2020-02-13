@@ -21,6 +21,7 @@ from django.urls import reverse
 from polaris import settings
 from polaris.middleware import import_path
 from polaris.models import Asset, Transaction
+from polaris.transaction.urls import MORE_INFO_URL_NAME
 
 
 def render_error_response(
@@ -221,16 +222,26 @@ def authenticate_session_helper(r: Request):
 def check_authentication_helper(r: Request):
     """
     Checks that the session associated with the request is authenticated
+
+    Used for interactive flow and /more_info endpoints. /webapp requests should
+    have the `transaction_id` URL parameter and `get_transaction_from_request()`
+    will be used to identify the transaction for /more_info requests.
+
+    To be authenticated, the session['authenticated'] boolean must be true, the
+    transaction specified in the URL arguments must exist, and it's ID must be
+    in the r.sessions's list of transactions the session is authenticated for.
     """
     if not r.session.get("authenticated"):
         raise ValueError(_("Session is not authenticated"))
 
-    if "more_info" in r.build_absolute_uri("?"):
+    if reverse(MORE_INFO_URL_NAME) in r.build_absolute_uri("?"):
+        # this is a /more_info request
         try:
             transaction = get_transaction_from_request(r)
         except (AttributeError, Transaction.DoesNotExist):
             raise ValueError(_("Transaction for account not found"))
     else:
+        # this is an interactive flow request
         transaction = Transaction.objects.filter(
             id=r.GET.get("transaction_id"), stellar_account=r.session.get("account")
         ).first()
@@ -244,8 +255,9 @@ def check_authentication_helper(r: Request):
 
 def compute_qset_filters(req_params, translation_dict):
     """
-    _compute_qset_filters translates the keys of req_params to the keys of translation_dict.
-    If the key isn't present in filters_dict, it is discarded.
+    _compute_qset_filters translates the keys of req_params to the keys of
+    translation_dict. If the key isn't present in transaction_dict, it is
+    discarded.
     """
 
     return {
@@ -255,6 +267,9 @@ def compute_qset_filters(req_params, translation_dict):
 
 
 def get_transaction_from_request(request, account: str = None):
+    """
+    Gets the transaction specified by the URL arguments used in /more_info
+    """
     translation_dict = {
         "id": "id",
         "stellar_transaction_id": "stellar_transaction_id",
