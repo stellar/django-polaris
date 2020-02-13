@@ -116,7 +116,6 @@ def post_interactive_withdraw(request: Request) -> Response:
             logger.info(
                 f"Finished data collection and processing for transaction {transaction.id}"
             )
-            invalidate_session(request)
             transaction.status = Transaction.STATUS.pending_user_transfer_start
             transaction.save()
             url = reverse("more_info")
