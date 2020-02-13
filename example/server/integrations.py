@@ -44,9 +44,9 @@ def send_confirmation_email(user: PolarisUser):
     url = f"{settings.HOST_URL}{reverse('confirm_email')}?{args}"
     try:
         send_mail(
-            "Reference Anchor Server: Confirm Email",
+            _("Reference Anchor Server: Confirm Email"),
             # email body if the HTML is not rendered
-            f"Confirm your email by pasting this URL in your browser: {url}",
+            _("Confirm your email by pasting this URL in your browser: %s") % url,
             server_settings.EMAIL_HOST_USER,
             [user.email],
             html_message=render_to_string(

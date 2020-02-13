@@ -205,3 +205,12 @@ msgstr "Entrar"
 #: views.py:17
 msgid "This form contains every field type."
 msgstr "Este formulário possui todos os tipos de campos."
+
+#: integrations.py:47
+msgid "Reference Anchor Server: Confirm Email"
+msgstr "Servidor Âncora de Referência: Confirmação de Email"
+
+#: integrations.py:49
+#, python-format
+msgid "Confirm your email by pasting this URL in your browser: %s"
+msgstr "Confirme seu email colando essa URL no seu navegador: %s"
