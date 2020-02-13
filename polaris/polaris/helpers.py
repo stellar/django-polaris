@@ -21,7 +21,6 @@ from django.urls import reverse
 from polaris import settings
 from polaris.middleware import import_path
 from polaris.models import Asset, Transaction
-from polaris.transaction.urls import MORE_INFO_URL_NAME
 
 
 def render_error_response(
@@ -234,7 +233,7 @@ def check_authentication_helper(r: Request):
     if not r.session.get("authenticated"):
         raise ValueError(_("Session is not authenticated"))
 
-    if reverse(MORE_INFO_URL_NAME) in r.build_absolute_uri("?"):
+    if reverse("more_info") in r.build_absolute_uri("?"):
         # this is a /more_info request
         try:
             transaction = get_transaction_from_request(r)

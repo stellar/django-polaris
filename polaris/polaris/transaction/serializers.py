@@ -3,7 +3,6 @@ from rest_framework import serializers
 from django.urls import reverse
 
 from polaris.models import Transaction
-from polaris.transaction.urls import MORE_INFO_URL_NAME
 
 
 class PolarisDecimalField(serializers.DecimalField):
@@ -32,7 +31,7 @@ class TransactionSerializer(serializers.ModelSerializer):
         if not request_from_context:
             raise ValueError("Unable to construct url for transaction.")
 
-        path = reverse(MORE_INFO_URL_NAME)
+        path = reverse("more_info")
         path_params = f"{path}?id={transaction_instance.id}"
         return request_from_context.build_absolute_uri(path_params)
 

@@ -28,7 +28,6 @@ from polaris.helpers import (
 from polaris.models import Asset, Transaction
 from polaris.integrations.forms import TransactionForm
 from polaris.locale.views import validate_language, activate_lang_for_request
-from polaris.transaction.urls import MORE_INFO_URL_NAME
 from polaris.integrations import (
     registered_withdrawal_integration as rwi,
     registered_scripts_func,
@@ -118,7 +117,7 @@ def post_interactive_withdraw(request: Request) -> Response:
             )
             transaction.status = Transaction.STATUS.pending_user_transfer_start
             transaction.save()
-            url = reverse(MORE_INFO_URL_NAME)
+            url = reverse("more_info")
             args = urlencode({"id": transaction.id, "callback": callback})
             return redirect(f"{url}?{args}")
 
@@ -149,7 +148,7 @@ def complete_interactive_withdraw(request: Request) -> Response:
     )
     logger.info(f"Hands-off interactive flow complete for transaction {transaction_id}")
     url, args = (
-        reverse(MORE_INFO_URL_NAME),
+        reverse("more_info"),
         urlencode({"id": transaction_id, "callback": callback}),
     )
     return redirect(f"{url}?{args}")

@@ -184,26 +184,3 @@ def acc2_eth_deposit_transaction_factory(eth_asset_factory):
         )
 
     return create_deposit_transaction
-
-
-@pytest.fixture(scope="session")
-def authenticated_session():
-    """
-    Create a fake session for testing
-
-    This session still needs the `transaction_id` key-value pair
-    """
-
-    def create_authenticated_session(stellar_account: str = STELLAR_ACCOUNT_1):
-        session = SessionStore(None)
-        session.clear()
-        session.cycle_key()
-        session[auth.SESSION_KEY] = str(uuid4())
-        session[auth.BACKEND_SESSION_KEY] = "django.contrib.auth.backends.ModelBackend"
-        session[auth.HASH_SESSION_KEY] = hash(session[auth.SESSION_KEY])
-        session["authenticated"] = True
-        session["account"] = stellar_account
-        session.save()
-        return session
-
-    return create_authenticated_session
