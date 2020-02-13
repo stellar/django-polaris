@@ -2,12 +2,8 @@
 This module sets up the test configuration. It defines fixtures needed to test various Django
 models, such as the transactions and assets.
 """
-from uuid import uuid4
-
 import pytest
 from django.utils import timezone
-from django.contrib import auth
-from django.contrib.sessions.backends.db import SessionStore
 
 from polaris.models import Asset, Transaction
 from polaris import settings
