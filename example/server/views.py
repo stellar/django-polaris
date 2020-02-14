@@ -3,10 +3,10 @@ from django.utils.translation import gettext as _
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, renderer_classes
-from rest_framework.renderers import TemplateHTMLRenderer
+from rest_framework.renderers import TemplateHTMLRenderer, JSONRenderer
 
 from .forms import AllFieldsForm
-from .models import PolarisUser
+from .models import PolarisUser, PolarisStellarAccount
 from polaris.helpers import render_error_response
 
 
@@ -43,3 +43,20 @@ def confirm_email(request: Request) -> Response:
     user.save()
 
     return Response(template_name="email_confirmed.html")
+
+
+@api_view(["GET"])
+@renderer_classes([JSONRenderer])
+def skip_confirm_email(request: Request) -> Response:
+    account = request.session.get("account")
+    try:
+        user = (
+            PolarisStellarAccount.objects.select_related("user")
+            .get(account=account)
+            .user
+        )
+    except PolarisStellarAccount.DoesNotExist:
+        return Response({"status": "not found"}, content_type="application/json")
+    user.confirmed = True
+    user.save()
+    return Response({"status": "success"}, content_type="application/json")

@@ -31,6 +31,11 @@ logger = Logger(__name__)
 CONFIRM_EMAIL_PAGE_TITLE = _("Confirm Email")
 
 
+def get_confirmation_url(user: PolarisUser):
+    args = urlencode({"token": user.confirmation_token, "email": user.email})
+    return f"{settings.HOST_URL}{reverse('confirm_email')}?{args}"
+
+
 def send_confirmation_email(user: PolarisUser):
     """
     Sends a confirmation email to user.email
@@ -40,8 +45,7 @@ def send_confirmation_email(user: PolarisUser):
     like Celery. This reference server is not intended to handle heavy
     traffic so we are making an exception here.
     """
-    args = urlencode({"token": user.confirmation_token, "email": user.email})
-    url = f"{settings.HOST_URL}{reverse('confirm_email')}?{args}"
+    url = get_confirmation_url(user)
     try:
         send_mail(
             _("Reference Anchor Server: Confirm Email"),
@@ -122,6 +126,7 @@ def check_kyc(transaction: Transaction) -> Optional[Dict]:
                 "We sent you a confirmation email. Once confirmed, "
                 "continue on this page."
             ),
+            "confirmation_url": get_confirmation_url(account.user),
             "icon_label": _("Stellar Development Foundation"),
         }
     else:
@@ -345,6 +350,33 @@ def scripts(page_content: Optional[Dict]):
                         window.location.reload(true);
                     });
                 });
+            </script>
+            """
+        )
+        # Add a "Skip Confirmation" button that will make a GET request to the
+        # confirmation link and reload the page. The email confirmation
+        # functionality is just for sake of demonstration anyway.
+        #
+        # `confirmation_url` will be returned by content_for_transaction()
+        # alongside the rest of the confirmation email template arguments.
+        tags.append(
+            """
+            <script>
+                (function () {
+                    let section = document.querySelector('.main-content').firstElementChild;
+                    let button = document.createElement("button");
+                    button.className = "button";
+                    button.innerHTML = "Skip Confirmation";
+                    button.addEventListener("click", function () {
+                        let url = window.location.protocol + '//' + window.location.host + '/skip_confirm_email';
+                        console.log(url);
+                        fetch(url).then(() => {
+                            window.location.reload(true);
+                        });
+                    });
+                    section.appendChild(document.createElement("br"));
+                    section.appendChild(button);
+                })();
             </script>
             """
         )
