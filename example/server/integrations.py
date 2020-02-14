@@ -363,9 +363,9 @@ def scripts(page_content: Optional[Dict]):
                     let button = document.createElement("button");
                     button.className = "button";
                     button.innerHTML = "Skip Confirmation";
+                    button.setAttribute("test-action", "submit");
                     button.addEventListener("click", function () {
                         let url = window.location.protocol + "//" + window.location.host + "/skip_confirm_email";
-                        console.log(url);
                         fetch(url).then(res => res.json()).then((json) => {
                             if (json["status"] === "not found") {
                                 // This would only happen if the PolarisStellarAccount doesn't exist.
