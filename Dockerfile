@@ -9,7 +9,7 @@ ENV PYTHONUNBUFFERED 1
 RUN apk update && apk add build-base postgresql-dev libffi-dev gettext-dev curl
 
 # Copy files to working directory
-RUN mkdir /code /code/polaris
+RUN mkdir /code /code/polaris /code/data
 COPY ./example ./setup.py ./README.rst ./MANIFEST.in /code/
 COPY ./polaris /code/polaris/
 

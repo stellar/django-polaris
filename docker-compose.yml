@@ -1,39 +1,52 @@
 version: "3"
 
 services:
-  server:
+  db:
     build: .
     volumes:
       - ./polaris/polaris:/code/polaris/polaris
       - ./example/server:/code/server
-      - ${PWD}/example/db.sqlite3:/code/db.sqlite3
+      - ./example/data:/code/data
+    command: ./db-init.sh
+  server:
+    container_name: server
+    build: .
+    volumes:
+      - ./polaris/polaris:/code/polaris/polaris
+      - ./example/server:/code/server
+      - ./example/data:/code/data
     ports:
       - "8000:8000"
     command: watchmedo auto-restart --recursive --pattern="*.py" --directory="." python manage.py runsslserver -- --nostatic --certificate cert.pem --key key.pem 0.0.0.0:8000
+    depends_on:
+      - db
   watch_transactions:
+    container_name: watch_transactions
     build: .
     volumes:
       - ./polaris/polaris:/code/polaris/polaris
       - ./example/server:/code/server
-      - ${PWD}/example/db.sqlite3:/code/db.sqlite3
+      - ./example/data:/code/data
     depends_on:
       - server
     command: watchmedo auto-restart --recursive --pattern="*.py" --directory="." python manage.py watch_transactions
   check_trustlines:
+    container_name: check_trustlines
     build: .
     volumes:
       - ./polaris/polaris:/code/polaris/polaris
       - ./example/server:/code/server
-      - ${PWD}/example/db.sqlite3:/code/db.sqlite3
+      - ./example/data:/code/data
     depends_on:
       - server
     command: watchmedo auto-restart --recursive --pattern="*.py" --directory="." python manage.py check_trustlines -- --loop
   poll_pending_deposits:
+    container_name: poll_pending_deposits
     build: .
     volumes:
       - ./polaris/polaris:/code/polaris/polaris
       - ./example/server:/code/server
-      - ${PWD}/example/db.sqlite3:/code/db.sqlite3
+      - ./example/data:/code/data
     depends_on:
       - server
     command: watchmedo auto-restart --recursive --pattern="*.py" --directory="." python manage.py poll_pending_deposits -- --loop

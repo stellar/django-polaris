@@ -41,9 +41,12 @@
 </p>
 {% endif %}
 
-<p><strong>Read-Only User: </strong></p><br>
-<p>Username: readonly</p><br>
-<p>Password: ilovestellar</p>
+<p><strong>Read-Only User:</strong></p>
+<p>
+  Username: readonly<br>
+  Password: ilovestellar<br>
+  <small>(doesn't exist in local deployments)</small>
+</p>
 
 <form action="{{ app_path }}" method="post" id="login-form">{% csrf_token %}
   <div class="form-row">

@@ -23,6 +23,9 @@ class PolarisUser(models.Model):
     def name(self):
         return " ".join([str(self.first_name), str(self.last_name)])
 
+    def __str__(self):
+        return f"{self.name} ({self.id})"
+
 
 class PolarisStellarAccount(models.Model):
     user = models.ForeignKey(PolarisUser, on_delete=models.CASCADE)
@@ -31,6 +34,9 @@ class PolarisStellarAccount(models.Model):
     )
 
     objects = models.Manager()
+
+    def __str__(self):
+        return f"{str(self.user)}: {str(self.account)}"
 
 
 class PolarisUserTransaction(models.Model):
@@ -43,3 +49,6 @@ class PolarisUserTransaction(models.Model):
     account = models.ForeignKey(PolarisStellarAccount, on_delete=models.CASCADE)
 
     objects = models.Manager()
+
+    def __str__(self):
+        return f"{str(self.account)}: {str(self.transaction)}"
