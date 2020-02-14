@@ -1,8 +1,5 @@
 """This module defines a serializer for the transaction model."""
-from urllib.parse import urlencode
-
 from rest_framework import serializers
-from rest_framework.request import Request
 from django.urls import reverse
 
 from polaris.models import Transaction

@@ -49,9 +49,11 @@ application to collect that information, override this function to return the
 URL that should be requested to begin that process.
 
 Note that if you choose to use another application or set of endpoints,
-you must redirect to the `/transactions/<deposit or withdraw>/interactive/complete?id=`
+you must redirect to the
+`/transactions/<deposit or withdraw>/interactive/complete?transaction_id=`
 endpoint for the relevant transaction when finished. This signals to the wallet that
-the anchor is done processing the transaction and may resume control.
+the anchor is done processing the transaction and may resume control. A `callback`
+parameter can also be included in the URL.
 
 
 .. autofunction:: polaris.integrations.DepositIntegration.interactive_url
