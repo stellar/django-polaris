@@ -31,6 +31,11 @@ logger = Logger(__name__)
 CONFIRM_EMAIL_PAGE_TITLE = _("Confirm Email")
 
 
+def get_confirmation_url(user: PolarisUser):
+    args = urlencode({"token": user.confirmation_token, "email": user.email})
+    return f"{settings.HOST_URL}{reverse('confirm_email')}?{args}"
+
+
 def send_confirmation_email(user: PolarisUser):
     """
     Sends a confirmation email to user.email
@@ -40,8 +45,7 @@ def send_confirmation_email(user: PolarisUser):
     like Celery. This reference server is not intended to handle heavy
     traffic so we are making an exception here.
     """
-    args = urlencode({"token": user.confirmation_token, "email": user.email})
-    url = f"{settings.HOST_URL}{reverse('confirm_email')}?{args}"
+    url = get_confirmation_url(user)
     try:
         send_mail(
             _("Reference Anchor Server: Confirm Email"),
@@ -345,6 +349,42 @@ def scripts(page_content: Optional[Dict]):
                         window.location.reload(true);
                     });
                 });
+            </script>
+            """
+        )
+        # Add a "Skip Confirmation" button that will make a GET request to the
+        # skip confirmation endpoint and reload the page. The email confirmation
+        # functionality is just for sake of demonstration anyway.
+        tags.append(
+            """
+            <script>
+                (function () {
+                    let section = document.querySelector(".main-content").firstElementChild;
+                    let button = document.createElement("button");
+                    button.className = "button";
+                    button.innerHTML = "Skip Confirmation";
+                    button.setAttribute("test-action", "submit");
+                    button.addEventListener("click", function () {
+                        let url = window.location.protocol + "//" + window.location.host + "/skip_confirm_email";
+                        fetch(url).then(res => res.json()).then((json) => {
+                            if (json["status"] === "not found") {
+                                // This would only happen if the PolarisStellarAccount doesn't exist.
+                                // It should always exist because the user needs to have an existing
+                                // account to access the confirm email page.
+                                let errElement = document.createElement("p");
+                                errElement.style = "color:red";
+                                errElement.innerHTML = "Error: Unable to skip confirmation step";
+                                errElement.align = "center";
+                                section.appendChild(document.createElement("br"));
+                                section.appendChild(errElement);
+                            } else {
+                                window.location.reload(true);
+                            }
+                        });
+                    });
+                    section.appendChild(document.createElement("br"));
+                    section.appendChild(button);
+                })();
             </script>
             """
         )
