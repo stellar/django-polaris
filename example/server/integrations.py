@@ -126,7 +126,6 @@ def check_kyc(transaction: Transaction) -> Optional[Dict]:
                 "We sent you a confirmation email. Once confirmed, "
                 "continue on this page."
             ),
-            "confirmation_url": get_confirmation_url(account.user),
             "icon_label": _("Stellar Development Foundation"),
         }
     else:
@@ -354,11 +353,8 @@ def scripts(page_content: Optional[Dict]):
             """
         )
         # Add a "Skip Confirmation" button that will make a GET request to the
-        # confirmation link and reload the page. The email confirmation
+        # skip confirmation endpoint and reload the page. The email confirmation
         # functionality is just for sake of demonstration anyway.
-        #
-        # `confirmation_url` will be returned by content_for_transaction()
-        # alongside the rest of the confirmation email template arguments.
         tags.append(
             """
             <script>
