@@ -31,14 +31,6 @@ DJANGO_SECRET_KEY=notsosecretkey\
 WORKDIR /code
 RUN pip install pipenv; pipenv install --dev --system
 
-# Create .po and .mo translation files
-WORKDIR /code/polaris/polaris
-RUN django-admin compilemessages
-WORKDIR /code/server
-RUN django-admin compilemessages
-
-WORKDIR /code
-
 # Compile static assets, collect static assets, run migrations
 RUN python manage.py compilescss; python manage.py collectstatic --no-input -v 0
 
