@@ -308,6 +308,9 @@ class Transaction(models.Model):
     )
     """Field for the ``MEMO_TYPES`` Choices"""
 
+    refunded = models.BooleanField(default=False)
+    """True if the transaction was refunded, false otherwise."""
+
     objects = models.Manager()
 
     @property
