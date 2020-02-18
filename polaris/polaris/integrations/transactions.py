@@ -23,7 +23,8 @@ class DepositIntegration:
         """
         This function should poll the appropriate financial entity for the
         state of all `pending_deposits` and return the ones that have
-        externally completed.
+        externally completed. Make sure to save the transaction's `from_address`
+        field with the account number/address the funds originated from.
 
         For every transaction that is returned, Polaris will submit it to the
         Stellar network. If a transaction was completed on the network, the
@@ -242,7 +243,8 @@ class WithdrawalIntegration:
     @classmethod
     def after_form_validation(cls, form: TransactionForm, transaction: Transaction):
         """
-        Same as :func:`DepositIntegration.after_form_validation`
+        Same as :func:`DepositIntegration.after_form_validation`, except
+        `transaction.to_address` should be saved here when present in `form`.
 
         :param form: the completed :class:`forms.Form` submitted by the user
         :param transaction: the :class:`Transaction` database object

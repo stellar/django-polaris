@@ -147,7 +147,6 @@ class Command(BaseCommand):
                 operation, transaction.asset.code, transaction.amount_in
             ):
                 transaction.from_address = horizon_tx.source.public_key
-                transaction.to_address = operation.destination
                 transaction.save()
                 found_matching_payment_op = True
                 break
