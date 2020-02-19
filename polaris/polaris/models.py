@@ -125,7 +125,7 @@ class Transaction(models.Model):
     status_to_message = {
         "completed": _("complete"),
         "pending_external": _("waiting on an external entity"),
-        "pending_anchor": _("waiting on the anchor"),
+        "pending_anchor": _("Processing"),
         "pending_stellar": _("stellar is executing the transaction"),
         "pending_trust": _("waiting for a trustline to be established"),
         "pending_user": _("waiting on user action"),
