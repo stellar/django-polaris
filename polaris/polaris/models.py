@@ -7,6 +7,7 @@ from django.core.validators import (
     MinValueValidator,
     MaxValueValidator,
 )
+from django.utils.translation import gettext_lazy as _
 from django.db import models
 from model_utils.models import TimeStampedModel
 from model_utils import Choices
@@ -121,20 +122,22 @@ class Transaction(models.Model):
     KIND = PolarisChoices("deposit", "withdrawal")
     """Choices object for ``deposit`` or ``withdrawal``."""
 
-    STATUS = PolarisChoices(
-        "completed",
-        "pending_external",
-        "pending_anchor",
-        "pending_stellar",
-        "pending_trust",
-        "pending_user",
-        "pending_user_transfer_start",
-        "incomplete",
-        "no_market",
-        "too_small",
-        "too_large",
-        "error",
-    )
+    status_to_message = {
+        "completed": _("complete"),
+        "pending_external": _("waiting on an external entity"),
+        "pending_anchor": _("Processing"),
+        "pending_stellar": _("stellar is executing the transaction"),
+        "pending_trust": _("waiting for a trustline to be established"),
+        "pending_user": _("waiting on user action"),
+        "pending_user_transfer_start": _("waiting on the user to transfer funds"),
+        "incomplete": _("incomplete"),
+        "no_market": _("no market for the asset"),
+        "too_small": _("the transaction amount is too small"),
+        "too_large": _("the transaction amount is too big"),
+        "error": _("error"),
+    }
+
+    STATUS = PolarisChoices(*list(status_to_message.keys()))
 
     MEMO_TYPES = PolarisChoices("text", "id", "hash")
     """Type for the ``deposit_memo``. Can be either `hash`, `id`, or `text`"""
@@ -316,6 +319,13 @@ class Transaction(models.Model):
     @property
     def asset_name(self):
         return self.asset.code + ":" + self.asset.issuer
+
+    @property
+    def message(self):
+        """
+        Human readable explanation of transaction status
+        """
+        return self.status_to_message[str(self.status)]
 
     class Meta:
         ordering = ("-started_at",)
