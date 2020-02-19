@@ -272,10 +272,10 @@ msgstr "sem mercado para o ativo"
 msgid "the transaction amount is too small"
 msgstr "o valor da transação é muito pequeno"
 
-#: models.py:135
+#: models.py:136
 msgid "the transaction amount is too big"
 msgstr "o valor da transação é muito grande"
 
-#: models.py:135
+#: models.py:137
 msgid "error"
 msgstr "erro"
