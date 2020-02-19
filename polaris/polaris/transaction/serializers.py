@@ -77,4 +77,5 @@ class TransactionSerializer(serializers.ModelSerializer):
             "withdraw_memo",
             "withdraw_memo_type",
             "more_info_url",
+            "refunded",
         ]

@@ -13,7 +13,7 @@ from django.utils.translation import gettext as _
 from django.core.exceptions import ValidationError
 
 from polaris.helpers import render_error_response, validate_sep10_token
-from polaris.models import Transaction
+from polaris.models import Transaction, Asset
 from polaris.transaction.serializers import TransactionSerializer
 from polaris.integrations import (
     registered_deposit_integration as rdi,
@@ -121,9 +121,9 @@ def transactions(account: str, request: Request) -> Response:
         )
 
     if not request.GET.get("asset_code"):
-        return render_error_response(
-            "asset_code is required", status_code=status.HTTP_400_BAD_REQUEST,
-        )
+        return render_error_response("asset_code is required")
+    elif not Asset.objects.filter(code=request.GET.get("asset_code")).exists():
+        return render_error_response("invalid asset_code")
 
     translation_dict = {
         "asset_code": "asset__code",
