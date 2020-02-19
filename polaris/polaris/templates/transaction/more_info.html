@@ -65,14 +65,16 @@
         </div>
     </div>
 
-    <div class="info-item">
-        <div class="info-label">
-            {% trans "completed" %}
+    {% if transaction.status == "completed" %}
+        <div class="info-item">
+            <div class="info-label">
+                {% trans "completed" %}
+            </div>
+            <div class="field-value">
+                {{ transaction.completed_at }}
+            </div>
         </div>
-        <div class="field-value">
-            {{ transaction.completed_at }}
-        </div>
-    </div>
+    {% endif %}
 
     <script type="text/javascript">
         // Anchors should send a POST or postMessage request with the the entire transaction
