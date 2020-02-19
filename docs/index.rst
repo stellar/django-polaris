@@ -26,7 +26,7 @@ endpoints, templates, and database models. The project is completely open
 source and available at the SDF's github_.
 
 To use Polaris, developers must implement it's provided
-integrations points. These integration points
+:doc:`integrations points </integrations/index>`. These integration points
 allow developers to inject their own business logic into the transaction
 processing flow, customize their stellar.toml, and more.
 
@@ -62,7 +62,7 @@ django will find your asset before the Polaris default.
         "polaris",
     ]
 
-Add Polaris' ``PolarisSameSiteMiddleware``,
+Add Polaris' :doc:`PolarisSameSiteMiddleware </middleware/index>`,
 and ``CorsMiddleware`` to your ``settings.MIDDLEWARE``.
 ``SessionMiddleware`` must be listed `below` ``PolarisSameSiteMiddleware``.
 ::
@@ -170,7 +170,7 @@ intend to anchor. Get into your python shell, then run something like this:
         withdrawal_min_amount=10000
     )
 
-See the ``Asset`` documentation for more information on the fields used.
+See the :doc:`Asset </models/index>` documentation for more information on the fields used.
 
 At this point, you are now ready to run the Polaris anchor server!
 
@@ -266,7 +266,8 @@ Finally, run this commands:
     python manage.py runsslserver --certificate <path to localhost.crt> --key <path to localhost.key>
 
 At this point, you need to start implementing the integration points Polaris
-provides.
+provides. Check out the :doc:`Integrations </integrations/index>` section
+for more information.
 
 Contributing
 ============
@@ -277,9 +278,8 @@ To set up the development environment, fork the repository, then:
     docker-compose build
     docker-compose up
 
-You should now have the SDF's reference anchor server running on port 8000.
+You should now have a minimal anchor server running on port 8000.
 When you make changes locally, the docker containers will restart with the updated code.
-
 Your browser may complain about the service using a self-signed certificate for HTTPS.
 You can resolve this by marking the certificate used by the service as trusted.
 
@@ -301,7 +301,7 @@ this may be slower.
 
 Submit a PR
 ^^^^^^^^^^^
-After you've made your changes, push them to your remote's branch
+After you've made your changes, push them to you a remote branch
 and make a Pull Request on the stellar/django-polaris master branch.
 
 
