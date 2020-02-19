@@ -25,6 +25,7 @@ class TransactionSerializer(serializers.ModelSerializer):
     amount_out = PolarisDecimalField(max_digits=50, decimal_places=25)
     amount_fee = PolarisDecimalField(max_digits=50, decimal_places=25)
     more_info_url = serializers.SerializerMethodField()
+    message = serializers.CharField()
 
     def get_more_info_url(self, transaction_instance):
         request_from_context = self.context.get("request")
@@ -78,4 +79,5 @@ class TransactionSerializer(serializers.ModelSerializer):
             "withdraw_memo_type",
             "more_info_url",
             "refunded",
+            "message",
         ]

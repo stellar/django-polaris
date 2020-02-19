@@ -225,3 +225,9 @@ msgstr "'asset_code' é necessário"
 #, python-format
 msgid "unsupported asset type: %s"
 msgstr "Tipo de ativo não suportado: %s"
+
+msgid "withdrawal"
+msgstr "saque"
+
+msgid "deposit"
+msgstr "depósito"

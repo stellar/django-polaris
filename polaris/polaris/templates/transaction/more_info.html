@@ -21,7 +21,11 @@
             {% trans "kind" %}
         </div>
         <div class="field-value">
-            {{ transaction.kind }}
+            {% if transaction.kind == "deposit" %}
+                {% trans "deposit" %}
+            {% else %}
+                {% trans "withdrawal" %}
+            {% endif %}
         </div>
     </div>
 
@@ -48,7 +52,7 @@
             {% trans "status" %}
         </div>
         <div class="field-value">
-            {{ transaction.status }}
+            {{ transaction.message }}
         </div>
     </div>
 
