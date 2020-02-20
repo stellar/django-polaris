@@ -2,8 +2,8 @@ import time
 from smtplib import SMTPException
 from decimal import Decimal
 from typing import List, Dict, Optional
-from uuid import uuid4
 from urllib.parse import urlencode
+from base64 import b64encode
 
 from django.db.models import QuerySet
 from django.utils.translation import gettext as _
@@ -180,33 +180,20 @@ class MyDepositIntegration(DepositIntegration):
         bank account number, that could be used to match the deposit and user
         as well.
         """
-        if (
-            transaction.kind == Transaction.KIND.deposit
-            and transaction.status == Transaction.STATUS.pending_user_transfer_start
-        ):
-            # Generate a unique alphanumeric memo string to identify bank deposit
-            #
-            # If you anticipate a high rate of newly created deposits, you wouldn't
-            # want to make a DB query for every attempt to create a unique memo.
-            # This only suffices for the sake of providing an example.
-            memo, memo_exists = None, True
-            while memo_exists:
-                memo = str(uuid4()).split("-")[0].upper()
-                memo_exists = Transaction.objects.filter(external_extra=memo).exists()
-
-            transaction.external_extra = memo
-            transaction.save()
-
-            return (
-                _(
-                    "Include this code as the memo when making the deposit: "
-                    "<strong>%s</strong>. We will use "
-                    "this memo to identify you as the sender.\n(This deposit is "
-                    "automatically confirmed for demonstration purposes. Please "
-                    "wait.)"
-                )
-                % transaction.external_extra
+        # Generate a unique alphanumeric memo string to identify bank deposit
+        memo = b64encode(str(hash(transaction)).encode()).decode()[:10].upper()
+        transaction.external_extra = memo
+        transaction.save()
+        return (
+            _(
+                "Include this code as the memo when making the deposit: "
+                "<strong>%s</strong>. We will use "
+                "this memo to identify you as the sender.\n(This deposit is "
+                "automatically confirmed for demonstration purposes. Please "
+                "wait.)"
             )
+            % transaction.external_extra
+        )
 
     @classmethod
     def content_for_transaction(cls, transaction: Transaction) -> Optional[Dict]:
