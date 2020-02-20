@@ -2,8 +2,9 @@
 from decimal import Decimal, DecimalException
 
 from polaris import settings
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, renderer_classes
 from rest_framework.response import Response
+from rest_framework.renderers import JSONRenderer
 from rest_framework.request import Request
 
 from polaris.integrations import registered_fee_func
@@ -20,6 +21,7 @@ OPERATION_WITHDRAWAL = settings.OPERATION_WITHDRAWAL
 
 
 @api_view()
+@renderer_classes([JSONRenderer])
 @validate_sep10_token()
 def fee(account: str, request: Request) -> Response:
     """
