@@ -279,3 +279,6 @@ msgstr "o valor da transação é muito grande"
 #: models.py:137
 msgid "error"
 msgstr "erro"
+
+msgid "$"
+msgstr "R$"
