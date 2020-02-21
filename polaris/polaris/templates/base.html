@@ -132,6 +132,13 @@
           })
         })
       }
+
+      // Disable form submit buttons after first click
+      let submitButton = document.querySelector('.submit');
+      let anchorForm = document.querySelector('form');
+      anchorForm.addEventListener('submit', (e) => {
+        submitButton.disabled = true;
+      });
     </script>
 
     {# Rendered via Polaris javascript integrations #}
