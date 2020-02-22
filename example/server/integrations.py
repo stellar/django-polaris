@@ -31,12 +31,12 @@ logger = Logger(__name__)
 CONFIRM_EMAIL_PAGE_TITLE = _("Confirm Email")
 
 
-def get_confirmation_url(user: PolarisUser):
-    args = urlencode({"token": user.confirmation_token, "email": user.email})
+def get_confirmation_url(user: PolarisUser, account: PolarisStellarAccount):
+    args = urlencode({"token": account.confirmation_token, "email": user.email})
     return f"{settings.HOST_URL}{reverse('confirm_email')}?{args}"
 
 
-def send_confirmation_email(user: PolarisUser):
+def send_confirmation_email(user: PolarisUser, account: PolarisStellarAccount):
     """
     Sends a confirmation email to user.email
 
@@ -45,7 +45,7 @@ def send_confirmation_email(user: PolarisUser):
     like Celery. This reference server is not intended to handle heavy
     traffic so we are making an exception here.
     """
-    url = get_confirmation_url(user)
+    url = get_confirmation_url(user, account)
     try:
         send_mail(
             _("Reference Anchor Server: Confirm Email"),
@@ -78,12 +78,12 @@ def track_user_activity(form: forms.Form, transaction: Transaction):
                 last_name=data.get("last_name"),
                 email=data.get("email"),
             )
-            if server_settings.EMAIL_HOST_USER:
-                send_confirmation_email(user)
 
         account = PolarisStellarAccount.objects.create(
             account=transaction.stellar_account, user=user
         )
+        if server_settings.EMAIL_HOST_USER:
+            send_confirmation_email(user, account)
     else:
         try:
             account = PolarisStellarAccount.objects.get(
@@ -119,7 +119,7 @@ def check_kyc(transaction: Transaction) -> Optional[Dict]:
                 )
             ),
         }
-    elif server_settings.EMAIL_HOST_USER and not account.user.confirmed:
+    elif server_settings.EMAIL_HOST_USER and not account.confirmed:
         return {
             "title": CONFIRM_EMAIL_PAGE_TITLE,
             "guidance": _(
