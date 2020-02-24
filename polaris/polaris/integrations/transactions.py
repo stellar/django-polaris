@@ -76,7 +76,7 @@ class DepositIntegration:
         to render for the user given the state of the interactive flow.
 
         For example, this function should return a :class:`TransactionForm`
-        along with any keyword parameters to use during initialization to get
+        along with any keyword arguments to use during initialization to get
         the get the amount that should be transferred. Once the form is
         submitted, Polaris will detect the form used is a
         :class:`TransactionForm` subclass and update the ``amount_in`` column
@@ -90,7 +90,7 @@ class DepositIntegration:
             def content_for_transaction(cls, transaction):
                 ...
                 return {
-                    "form": (TransactionForm, {"arg1": "val1"}),
+                    "form": (TransactionForm, {}),
                     "title": "Deposit Transaction Form",
                     "guidance": "Please enter the amount you would like to deposit.",
                     "icon_label": "Stellar Development Foundation"
@@ -98,6 +98,22 @@ class DepositIntegration:
 
         The icon image displayed can be replaced by adding a ``company-icon.svg``
         in the top level of your app's static files directory.
+
+        The form returned will be initialized like so:
+        ::
+
+            if content.get("form"):
+                form_class, form_args = content.get("form")
+                is_transaction_form = issubclass(form_class, TransactionForm)
+                if is_transaction_form:
+                    # amount can be prepopulated in the TransactionForm
+                    content["form"] = form_class(asset, initial={"amount": amount}, **form_args)
+                else:
+                    content["form"] = form_class(**form_args)
+
+        Make sure you ``pop()`` any keyword arguments passed to the form before
+        calling ``super().__init__(*args, **kwargs)``, since django's Form class
+        does not accept extra keyword arguments.
 
         After a form is submitted and validated, Polaris will call
         :func:`DepositlIntegration.after_form_validation` with the populated
