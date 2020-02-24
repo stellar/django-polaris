@@ -228,10 +228,9 @@ def get_interactive_withdraw(request: Request) -> Response:
             )
         is_transaction_form = issubclass(form_class, TransactionForm)
         if is_transaction_form:
-            field_args = dict(request.POST.items(), amount=amount)
-            content["form"] = form_class(asset, field_args, **form_args)
+            content["form"] = form_class(asset, {"amount": amount}, **form_args)
         else:
-            content["form"] = form_class(request.POST, **form_args)
+            content["form"] = form_class(**form_args)
 
     url_args = {"transaction_id": transaction.id, "asset_code": asset.code}
     if callback:
