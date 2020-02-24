@@ -98,10 +98,11 @@ def post_interactive_deposit(request: Request) -> Response:
             content_type="text/html",
         )
 
-    form = form_class({**form_args, **dict(request.POST.items())})
     is_transaction_form = issubclass(form_class, TransactionForm)
     if is_transaction_form:
-        form.asset = asset
+        form = form_class(asset, request.POST, **form_args)
+    else:
+        form = form_class(request.POST, **form_args)
 
     if form.is_valid():
         if is_transaction_form:
@@ -218,7 +219,7 @@ def get_interactive_deposit(request: Request) -> Response:
 
     if content.get("form"):
         try:
-            form_class, args = content.get("form")
+            form_class, form_args = content.get("form")
         except TypeError:
             logger.exception(
                 "content_for_transaction(): 'form' key value must be a tuple"
@@ -227,10 +228,12 @@ def get_interactive_deposit(request: Request) -> Response:
                 _("The anchor did not provide content, unable to serve page."),
                 content_type="text/html",
             )
-        if issubclass(form_class, TransactionForm) and amount:
-            content["form"] = form_class({"amount": amount, **args})
+        is_transaction_form = issubclass(form_class, TransactionForm)
+        if is_transaction_form:
+            field_args = dict(request.POST.items(), amount=amount)
+            content["form"] = form_class(asset, field_args, **form_args)
         else:
-            content["form"] = form_class(**args)
+            content["form"] = form_class(request.POST, **form_args)
 
     url_args = {"transaction_id": transaction.id, "asset_code": asset.code}
     if callback:
