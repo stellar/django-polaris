@@ -134,7 +134,7 @@ def post_interactive_withdraw(request: Request) -> Response:
 
     else:
         content.update(form=form)
-        return Response(content, template_name="withdraw/form.html", status=400)
+        return Response(content, template_name="withdraw/form.html", status=422)
 
 
 @api_view(["GET"])
