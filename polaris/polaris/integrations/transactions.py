@@ -111,7 +111,7 @@ class DepositIntegration:
                 else:
                     content["form"] = form_class(**form_args)
 
-        In your form's ``__init__()`, make sure you ``pop()`` any keyword arguments
+        In your form's ``__init__()``, make sure you ``pop()`` any keyword arguments
         passed to the form before calling ``super().__init__(*args, **kwargs)``,
         since django's Form class does not accept extra keyword arguments. If you
         don't use keyword arguments, you don't need to define an ``__init__()``
