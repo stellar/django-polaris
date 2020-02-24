@@ -114,7 +114,7 @@ environment or included in ``PROJECT_ROOT/.env``.
 ::
 
     DJANGO_SECRET_KEY="yoursupersecretkey"
-    DJANGO_DEBUG=True
+    DJANGO_DEBUG=False
 
     ASSETS="USD"
     USD_DISTRIBUTION_ACCOUNT_SEED=""
