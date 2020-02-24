@@ -111,9 +111,11 @@ class DepositIntegration:
                 else:
                     content["form"] = form_class(**form_args)
 
-        Make sure you ``pop()`` any keyword arguments passed to the form before
-        calling ``super().__init__(*args, **kwargs)``, since django's Form class
-        does not accept extra keyword arguments.
+        In your form's ``__init__()`, make sure you ``pop()`` any keyword arguments
+        passed to the form before calling ``super().__init__(*args, **kwargs)``,
+        since django's Form class does not accept extra keyword arguments. If you
+        don't use keyword arguments, you don't need to define an ``__init__()``
+        function.
 
         After a form is submitted and validated, Polaris will call
         :func:`DepositlIntegration.after_form_validation` with the populated
