@@ -59,7 +59,10 @@ workflows:
       - test
   build_deploy_publish:
     jobs:
-      - test
+      - test:
+          filters:
+            branches:
+              only: master
       - publish_build:
           requires:
             - test
