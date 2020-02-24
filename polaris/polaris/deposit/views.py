@@ -88,8 +88,17 @@ def post_interactive_deposit(request: Request) -> Response:
             content_type="text/html",
         )
 
-    form_class = content.get("form")
-    form = form_class(request.POST)
+    try:
+        form_class, form_args = content.get("form")
+    except TypeError:
+        logger.exception("content_for_transaction(): 'form' key value must be a tuple")
+        return render_error_response(
+            _("The anchor did not provide content, unable to serve page."),
+            status_code=500,
+            content_type="text/html",
+        )
+
+    form = form_class({**form_args, **dict(request.POST.items())})
     is_transaction_form = issubclass(form_class, TransactionForm)
     if is_transaction_form:
         form.asset = asset
@@ -128,7 +137,7 @@ def post_interactive_deposit(request: Request) -> Response:
 
     else:
         content.update(form=form)
-        return Response(content, template_name="deposit/form.html")
+        return Response(content, template_name="deposit/form.html", status=400)
 
 
 @api_view(["GET"])
@@ -198,9 +207,9 @@ def get_interactive_deposit(request: Request) -> Response:
 
     content = rdi.content_for_transaction(transaction)
     if not content:
-        logger.error("The anchor did not provide a content, unable to serve page.")
+        logger.error("The anchor did not provide content, unable to serve page.")
         return render_error_response(
-            _("The anchor did not provide a content, unable to serve page."),
+            _("The anchor did not provide content, unable to serve page."),
             status_code=500,
             content_type="text/html",
         )
@@ -208,11 +217,20 @@ def get_interactive_deposit(request: Request) -> Response:
     scripts = registered_scripts_func(content)
 
     if content.get("form"):
-        form_class = content.pop("form")
+        try:
+            form_class, args = content.get("form")
+        except TypeError:
+            logger.exception(
+                "content_for_transaction(): 'form' key value must be a tuple"
+            )
+            return render_error_response(
+                _("The anchor did not provide content, unable to serve page."),
+                content_type="text/html",
+            )
         if issubclass(form_class, TransactionForm) and amount:
-            content["form"] = form_class({"amount": amount})
+            content["form"] = form_class({"amount": amount, **args})
         else:
-            content["form"] = form_class()
+            content["form"] = form_class(**args)
 
     url_args = {"transaction_id": transaction.id, "asset_code": asset.code}
     if callback:
