@@ -33,7 +33,9 @@ class Asset(TimeStampedModel):
     issuer = models.TextField(validators=[MinLengthValidator(56)])
     """The issuing Stellar account address."""
 
-    significant_decimals = models.IntegerField(default=2)
+    significant_decimals = models.IntegerField(
+        default=2, validators=[MinValueValidator(0), MaxValueValidator(7)]
+    )
     """The number of decimal places Polaris should save when collecting input amounts"""
 
     # Deposit-related info

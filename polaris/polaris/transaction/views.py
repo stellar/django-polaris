@@ -87,6 +87,7 @@ def more_info(request: Request) -> Response:
     tx_json = json.dumps({"transaction": serializer.data})
     resp_data = {
         "tx_json": tx_json,
+        "amount_in": serializer.data.get("amount_in"),
         "transaction": request_transaction,
         "asset_code": request_transaction.asset.code,
         "scripts": registered_scripts_func(None),
@@ -149,7 +150,7 @@ def transactions(account: str, request: Request) -> Response:
 
     transactions_qset = Transaction.objects.filter(**qset_filter)[:limit]
     serializer = TransactionSerializer(
-        transactions_qset, many=True, context={"request": request},
+        transactions_qset, many=True, context={"request": request, "same_asset": True},
     )
 
     return Response({"transactions": serializer.data})

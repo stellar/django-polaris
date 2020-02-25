@@ -63,9 +63,9 @@ def test_transaction_id_filter_and_format(
     assert withdrawal_transaction["kind"] == "withdrawal"
     assert withdrawal_transaction["status"] == "completed"
     assert withdrawal_transaction["status_eta"] == 3600
-    assert withdrawal_transaction["amount_in"] == "500.0"
-    assert withdrawal_transaction["amount_out"] == "495.0"
-    assert withdrawal_transaction["amount_fee"] == "3.0"
+    assert withdrawal_transaction["amount_in"] == "500.00"
+    assert withdrawal_transaction["amount_out"] == "495.00"
+    assert withdrawal_transaction["amount_fee"] == "3.00"
     assert withdrawal_transaction["started_at"] == w_started_at
     assert withdrawal_transaction["completed_at"] == w_completed_at
     assert (
