@@ -132,15 +132,27 @@ def test_transactions_content(
 
     withdrawal_transaction = content.get("transactions")[0]
     deposit_transaction = content.get("transactions")[1]
+    withdrawal_asset = withdrawal.asset
+    deposit_asset = deposit.asset
+
+    # update amount_* fields to the correct number of decimals
+    withdrawal.refresh_from_db()
+    deposit.refresh_from_db()
 
     # Verifying the withdrawal transaction data:
     assert withdrawal_transaction["id"] == str(withdrawal.id)
     assert withdrawal_transaction["kind"] == withdrawal.kind
     assert withdrawal_transaction["status"] == withdrawal.status
     assert withdrawal_transaction["status_eta"] == 3600
-    assert withdrawal_transaction["amount_in"] == str(withdrawal.amount_in)
-    assert withdrawal_transaction["amount_out"] == str(withdrawal.amount_out)
-    assert withdrawal_transaction["amount_fee"] == str(float(withdrawal.amount_fee))
+    assert withdrawal_transaction["amount_in"] == str(
+        round(withdrawal.amount_in, withdrawal_asset.significant_decimals)
+    )
+    assert withdrawal_transaction["amount_out"] == str(
+        round(withdrawal.amount_out, withdrawal_asset.significant_decimals)
+    )
+    assert withdrawal_transaction["amount_fee"] == str(
+        round(withdrawal.amount_fee, withdrawal_asset.significant_decimals)
+    )
     assert withdrawal_transaction["started_at"] == w_started_at
     assert withdrawal_transaction["completed_at"] == w_completed_at
     assert (
@@ -167,9 +179,15 @@ def test_transactions_content(
     assert deposit_transaction["kind"] == deposit.kind
     assert deposit_transaction["status"] == deposit.status
     assert deposit_transaction["status_eta"] == deposit.status_eta
-    assert deposit_transaction["amount_in"] == str(deposit.amount_in)
-    assert deposit_transaction["amount_out"] == str(deposit.amount_out)
-    assert deposit_transaction["amount_fee"] == str(float(deposit.amount_fee))
+    assert deposit_transaction["amount_in"] == str(
+        round(deposit.amount_in, deposit_asset.significant_decimals)
+    )
+    assert deposit_transaction["amount_out"] == str(
+        round(deposit.amount_out, deposit_asset.significant_decimals)
+    )
+    assert deposit_transaction["amount_fee"] == str(
+        round(deposit.amount_fee, deposit_asset.significant_decimals)
+    )
     assert deposit_transaction["started_at"] == d_started_at
     assert deposit_transaction["completed_at"] is None
     assert deposit_transaction["stellar_transaction_id"] is None
