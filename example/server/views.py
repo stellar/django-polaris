@@ -31,16 +31,17 @@ def confirm_email(request: Request) -> Response:
         )
 
     try:
-        user = PolarisUser.objects.get(
-            email=request.GET.get("email"), confirmation_token=request.GET.get("token")
+        account = PolarisStellarAccount.objects.get(
+            user__email=request.GET.get("email"),
+            confirmation_token=request.GET.get("token"),
         )
-    except PolarisUser.DoesNotExist:
+    except PolarisStellarAccount.DoesNotExist:
         return render_error_response(
             "User with email and token does not exist", content_type="text/html"
         )
 
-    user.confirmed = True
-    user.save()
+    account.confirmed = True
+    account.save()
 
     return Response(template_name="email_confirmed.html")
 
@@ -50,13 +51,9 @@ def confirm_email(request: Request) -> Response:
 def skip_confirm_email(request: Request) -> Response:
     account = request.session.get("account")
     try:
-        user = (
-            PolarisStellarAccount.objects.select_related("user")
-            .get(account=account)
-            .user
-        )
+        account = PolarisStellarAccount.objects.get(account=account)
     except PolarisStellarAccount.DoesNotExist:
         return Response({"status": "not found"}, content_type="application/json")
-    user.confirmed = True
-    user.save()
+    account.confirmed = True
+    account.save()
     return Response({"status": "success"}, content_type="application/json")

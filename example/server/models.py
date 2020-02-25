@@ -14,8 +14,6 @@ class PolarisUser(models.Model):
     first_name = models.CharField(max_length=254)
     last_name = models.CharField(max_length=254)
     email = models.EmailField(unique=True)
-    confirmed = models.BooleanField(default=False)
-    confirmation_token = models.CharField(max_length=36, default=get_new_token)
 
     objects = models.Manager()
 
@@ -32,6 +30,8 @@ class PolarisStellarAccount(models.Model):
     account = models.CharField(
         max_length=56, unique=True, validators=[MinLengthValidator(56)]
     )
+    confirmed = models.BooleanField(default=False)
+    confirmation_token = models.CharField(max_length=36, default=get_new_token)
 
     objects = models.Manager()
 
