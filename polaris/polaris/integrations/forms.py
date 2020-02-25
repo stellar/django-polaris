@@ -2,6 +2,8 @@ from django import forms
 from django.utils.translation import gettext_lazy as _
 from django.forms.widgets import TextInput
 
+from polaris.models import Asset
+
 
 class CardNumberInput(TextInput):
     template_name = "widgets/card_number.html"
@@ -94,6 +96,10 @@ class TransactionForm(forms.Form):
     which ensures the amount is within the bounds for the asset type.
     """
 
+    def __init__(self, asset: Asset, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.asset = asset
+
     amount = forms.DecimalField(
         min_value=0,
         widget=forms.NumberInput(attrs={"class": "input", "test-value": "100"}),
@@ -102,7 +108,6 @@ class TransactionForm(forms.Form):
         label=_("Amount"),
         localize=True,
     )
-    asset = None
 
     def clean_amount(self):
         """Validate the provided amount of an asset."""

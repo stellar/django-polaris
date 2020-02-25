@@ -75,10 +75,12 @@ class DepositIntegration:
         This function should return a dictionary containing the next form class
         to render for the user given the state of the interactive flow.
 
-        For example, this function should return a :class:`TransactionForm` to
-        get the amount that should be transferred. Once the form is submitted,
-        Polaris will detect the form used is a :class:`TransactionForm` subclass
-        and update the ``amount_in`` column with the amount specified in form.
+        For example, this function should return a :class:`TransactionForm`
+        along with any keyword arguments to use during initialization to get
+        the get the amount that should be transferred. Once the form is
+        submitted, Polaris will detect the form used is a
+        :class:`TransactionForm` subclass and update the ``amount_in`` column
+        with the amount specified in form.
 
         The form will be rendered inside a django template that has several
         pieces of content that can be replaced by returning a dictionary
@@ -88,7 +90,7 @@ class DepositIntegration:
             def content_for_transaction(cls, transaction):
                 ...
                 return {
-                    "form": TransactionForm,
+                    "form": (TransactionForm, {}),
                     "title": "Deposit Transaction Form",
                     "guidance": "Please enter the amount you would like to deposit.",
                     "icon_label": "Stellar Development Foundation"
@@ -96,6 +98,24 @@ class DepositIntegration:
 
         The icon image displayed can be replaced by adding a ``company-icon.svg``
         in the top level of your app's static files directory.
+
+        The form returned will be initialized like so:
+        ::
+
+            if content.get("form"):
+                form_class, form_args = content.get("form")
+                is_transaction_form = issubclass(form_class, TransactionForm)
+                if is_transaction_form:
+                    # amount can be prepopulated in the TransactionForm
+                    content["form"] = form_class(asset, initial={"amount": amount}, **form_args)
+                else:
+                    content["form"] = form_class(**form_args)
+
+        In your form's ``__init__()``, make sure you ``pop()`` any keyword arguments
+        passed to the form before calling ``super().__init__(*args, **kwargs)``,
+        since django's Form class does not accept extra keyword arguments. If you
+        don't use keyword arguments, you don't need to define an ``__init__()``
+        function.
 
         After a form is submitted and validated, Polaris will call
         :func:`DepositlIntegration.after_form_validation` with the populated
@@ -124,16 +144,15 @@ class DepositIntegration:
         ultimately marking the transaction as ``complete`` upon success.
 
         :param transaction: the :class:`Transaction` database object
-        :return: an uninitialized :class:`forms.Form` subclass. For transaction
-            information, return a :class:`polaris.integrations.TransactionForm`
-            subclass.
+        :return: a dictionary containing various pieces of information to use
+            when rendering the next page.
         """
         if transaction.amount_in:
             # we've collected transaction info
             # and don't implement KYC by default
             return
 
-        return {"form": TransactionForm}
+        return {"form": (TransactionForm, {})}
 
     @classmethod
     def after_form_validation(cls, form: forms.Form, transaction: Transaction):
@@ -230,15 +249,15 @@ class WithdrawalIntegration:
         Same as :func:`DepositIntegration.content_for_transaction`
 
         :param transaction: the :class:`Transaction` database object
-        :return: an uninitialized :class:`forms.Form` subclass. For transaction
-            information, use a :class:`TransactionForm` subclass.
+        :return: a dictionary containing various pieces of information to use
+            when rendering the next page.
         """
         if transaction.amount_in:
             # we've collected transaction info
             # and don't implement KYC by default
             return
 
-        return {"form": WithdrawForm}
+        return {"form": (WithdrawForm, {})}
 
     @classmethod
     def after_form_validation(cls, form: TransactionForm, transaction: Transaction):

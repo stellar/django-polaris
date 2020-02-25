@@ -284,7 +284,7 @@ def interactive_args_validation(request: Request) -> Dict:
             return dict(error=render_error_response("invalid 'amount'"))
 
         err_resp = verify_valid_asset_operation(
-            asset, amount, Transaction.kind, content_type="text/html"
+            asset, amount, transaction.kind, content_type="text/html"
         )
         if err_resp:
             return dict(error=err_resp)

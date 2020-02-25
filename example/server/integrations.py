@@ -109,7 +109,7 @@ def check_kyc(transaction: Transaction) -> Optional[Dict]:
     ).first()
     if not account:  # Unknown stellar account, get KYC info
         return {
-            "form": KYCForm,
+            "form": (KYCForm, {}),
             "icon_label": _("Stellar Development Foundation"),
             "title": _("Polaris KYC Information"),
             "guidance": (
