@@ -76,12 +76,8 @@ class Command(BaseCommand):
                     asset_issuer = balance["asset_issuer"]
                 except KeyError:
                     logger.debug(
-                        f"Unable to retrieve asset info from balance object: {balance}"
+                        f"horizon balance had no asset_code for account {account['id']}"
                     )
-                    if balance.get("asset_type") != "native":
-                        logger.debug(
-                            f"horizon balance had no asset_code for account {account['id']}"
-                        )
                     continue
                 if (
                     asset_code == transaction.asset.code
