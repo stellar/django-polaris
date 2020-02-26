@@ -69,6 +69,8 @@ class Command(BaseCommand):
                 )
                 continue
             for balance in balances:
+                if balance.get("asset_type") == "native":
+                    continue
                 try:
                     asset_code = balance["asset_code"]
                     asset_issuer = balance["asset_issuer"]
