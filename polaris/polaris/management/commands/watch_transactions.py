@@ -146,6 +146,7 @@ class Command(BaseCommand):
             if cls._check_payment_op(
                 operation, transaction.asset.code, transaction.amount_in
             ):
+                transaction.stellar_transaction_id = stellar_transaction_id
                 transaction.from_address = horizon_tx.source.public_key
                 transaction.save()
                 found_matching_payment_op = True
