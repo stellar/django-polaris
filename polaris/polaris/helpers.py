@@ -108,7 +108,7 @@ def validate_jwt_request(request: Request) -> str:
             encoded_jwt, settings.SERVER_JWT_KEY, algorithms=["HS256"]
         )
     except InvalidTokenError as e:
-        raise ValueError(str(e))
+        raise ValueError("Unable to decode jwt")
 
     if jwt_dict["iss"] != os.path.join(settings.HOST_URL, "auth"):
         raise ValueError("'jwt' has incorrect 'issuer'")
