@@ -24,7 +24,7 @@ from polaris import settings
 
 from . import mock_banking_rails as rails
 from .models import PolarisUser, PolarisStellarAccount, PolarisUserTransaction
-from .forms import KYCForm
+from .forms import KYCForm, WithdrawForm
 
 
 logger = Logger(__name__)
@@ -248,7 +248,7 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
             return None
 
         return {
-            "form": content.get("form"),
+            "form": (WithdrawForm, {}),
             "title": _("Polaris Transaction Information"),
             "icon_label": _("Stellar Development Foundation"),
             "guidance": (

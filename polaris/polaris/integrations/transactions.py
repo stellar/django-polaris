@@ -6,7 +6,6 @@ from django import forms
 from rest_framework.request import Request
 
 from polaris.models import Transaction, Asset
-from polaris.withdraw.forms import WithdrawForm
 from polaris.integrations.forms import TransactionForm
 
 
@@ -257,7 +256,7 @@ class WithdrawalIntegration:
             # and don't implement KYC by default
             return
 
-        return {"form": (WithdrawForm, {})}
+        return {"form": (TransactionForm, {})}
 
     @classmethod
     def after_form_validation(cls, form: TransactionForm, transaction: Transaction):

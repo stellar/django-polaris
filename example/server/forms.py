@@ -1,6 +1,8 @@
 from django import forms
 from django.utils.translation import gettext_lazy as _
 
+from polaris.integrations.forms import TransactionForm
+
 
 class KYCForm(forms.Form):
     first_name = forms.CharField(
@@ -18,6 +20,28 @@ class KYCForm(forms.Form):
             attrs={"class": "input", "test-value": "clerk@patentoffice.gov"}
         ),
         label=_("Email"),
+    )
+
+
+class WithdrawForm(TransactionForm):
+    """This form accepts the amount to withdraw from the user."""
+
+    bank_account = forms.CharField(
+        min_length=0,
+        help_text=_("Enter the bank account number for withdrawal."),
+        widget=forms.widgets.TextInput(
+            attrs={"class": "input", "test-value": "FakeAccount"}
+        ),
+        label=_("Bank Account"),
+    )
+    # TODO: Replace the bank with a ChoiceField.
+    bank = forms.CharField(
+        min_length=0,
+        help_text=_("Enter the bank to withdraw from."),
+        widget=forms.widgets.TextInput(
+            attrs={"class": "input", "test-value": "FakeBank"}
+        ),
+        label=_("Bank"),
     )
 
 
