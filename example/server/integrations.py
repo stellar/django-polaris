@@ -142,9 +142,6 @@ class MyDepositIntegration(DepositIntegration):
         This implementation interfaces with a fake banking rails client
         for demonstration purposes.
         """
-        # act like we're doing more work than we are for demo purposes
-        time.sleep(10)
-
         # interface with mock banking rails
         ready_deposits = []
         mock_bank_account_id = "XXXXXXXXXXXXX"
