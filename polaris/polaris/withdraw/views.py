@@ -228,7 +228,9 @@ def get_interactive_withdraw(request: Request) -> Response:
             )
         is_transaction_form = issubclass(form_class, TransactionForm)
         if is_transaction_form:
-            content["form"] = form_class(asset, initial={"amount": amount}, **form_args)
+            content["form"] = form_class(
+                asset, initial={"amount": amount}, test_value="100", **form_args
+            )
         else:
             content["form"] = form_class(**form_args)
 

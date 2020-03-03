@@ -97,12 +97,17 @@ class TransactionForm(forms.Form):
     """
 
     def __init__(self, asset: Asset, *args, **kwargs):
+        # For testing via anchor-validator.herokuapp.com
+        test_value = kwargs.pop("test_value", None) or "100"
+
         super().__init__(*args, **kwargs)
         self.asset = asset
 
+        self.fields["amount"].widget.attrs.update({"test-value": test_value})
+
     amount = forms.DecimalField(
         min_value=0,
-        widget=forms.NumberInput(attrs={"class": "input", "test-value": "100"}),
+        widget=forms.NumberInput(attrs={"class": "input"}),
         max_digits=30,
         decimal_places=7,
         label=_("Amount"),
