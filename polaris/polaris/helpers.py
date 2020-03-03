@@ -69,7 +69,9 @@ def check_auth(request, func, content_type: str = "application/json"):
     try:
         account = validate_jwt_request(request)
     except ValueError as e:
-        return render_error_response(str(e), content_type=content_type)
+        return render_error_response(
+            str(e), content_type=content_type, status_code=status.HTTP_403_FORBIDDEN
+        )
     return func(account, request)
 
 
