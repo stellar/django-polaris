@@ -360,5 +360,5 @@ def test_withdraw_no_jwt(client, acc1_usd_withdrawal_transaction_factory):
     acc1_usd_withdrawal_transaction_factory()
     response = client.post(WITHDRAW_PATH, {"asset_code": "USD"}, follow=True)
     content = json.loads(response.content)
-    assert response.status_code == 400
+    assert response.status_code == 403
     assert content == {"error": "JWT must be passed as 'Authorization' header"}

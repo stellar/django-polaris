@@ -205,5 +205,5 @@ def test_fee_no_jwt(client, usd_asset_factory):
         f"/fee?asset_code=USD&operation=withdraw&amount=100.0", follow=True
     )
     content = json.loads(response.content)
-    assert response.status_code == 400
+    assert response.status_code == 403
     assert content == {"error": "JWT must be passed as 'Authorization' header"}

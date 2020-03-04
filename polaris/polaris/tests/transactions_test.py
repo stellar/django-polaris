@@ -439,5 +439,5 @@ def test_transactions_no_jwt(client, acc2_eth_withdrawal_transaction_factory):
         f"/transactions?asset_code={withdrawal.asset.code}", follow=True,
     )
     content = json.loads(response.content)
-    assert response.status_code == 400
+    assert response.status_code == 403
     assert content == {"error": "JWT must be passed as 'Authorization' header"}
