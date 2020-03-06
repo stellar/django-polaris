@@ -113,6 +113,9 @@ class Asset(TimeStampedModel):
     class Meta:
         app_label = "polaris"
 
+    def __str__(self):
+        return f"{self.code} - issuer({self.issuer})"
+
 
 class Transaction(models.Model):
     """
