@@ -17,7 +17,7 @@ def generate_toml(request):
     """Generate the TOML file."""
     toml_dict = {
         "TRANSFER_SERVER": settings.HOST_URL,
-        "TRANSFER_SERVER_0024": settings.HOST_URL,
+        "TRANSFER_SERVER_SEP0024": settings.HOST_URL,
         "WEB_AUTH_ENDPOINT": os.path.join(settings.HOST_URL, "auth"),
         "ACCOUNTS": [
             asset["DISTRIBUTION_ACCOUNT_ADDRESS"] for asset in settings.ASSETS.values()
