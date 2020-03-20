@@ -98,12 +98,17 @@ def validate_jwt_request(request: Request) -> str:
     jwt_header = request.META.get("HTTP_AUTHORIZATION")
     if not jwt_header:
         raise ValueError("JWT must be passed as 'Authorization' header")
+    bad_format_error = ValueError(
+        "'Authorization' header must be formatted as 'Bearer <token>'"
+    )
     if "Bearer" not in jwt_header:
-        raise ValueError("'Authorization' header must be formatted as 'Bearer <token>'")
-    encoded_jwt = jwt_header.split(" ")[1]
+        raise bad_format_error
+    try:
+        encoded_jwt = jwt_header.split(" ")[1]
+    except IndexError:
+        raise bad_format_error
     if not encoded_jwt:
-        raise ValueError("'jwt' is required")
-
+        raise bad_format_error
     # Validate the JWT contents.
     try:
         jwt_dict = jwt.decode(
