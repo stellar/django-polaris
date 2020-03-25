@@ -282,3 +282,7 @@ msgstr "erro"
 
 msgid "$"
 msgstr "R$"
+
+msgid "The anchor did not provide content, is the interactive flow already complete?"
+msgid ""
+
