@@ -79,6 +79,14 @@ def post_interactive_withdraw(request: Request) -> Response:
             "Initial content_for_transaction() call returned None "
             f"for {transaction.id}"
         )
+        if transaction.status != transaction.STATUS.incomplete:
+            return render_error_response(
+                _(
+                    "The anchor did not provide content, is the interactive flow already complete?"
+                ),
+                status_code=422,
+                content_type="text/html",
+            )
         return render_error_response(
             _("The anchor did not provide content, unable to serve page."),
             status_code=500,
@@ -206,6 +214,14 @@ def get_interactive_withdraw(request: Request) -> Response:
     content = rwi.content_for_transaction(transaction)
     if not content:
         logger.error("The anchor did not provide content, unable to serve page.")
+        if transaction.status != transaction.STATUS.incomplete:
+            return render_error_response(
+                _(
+                    "The anchor did not provide content, is the interactive flow already complete?"
+                ),
+                status_code=422,
+                content_type="text/html",
+            )
         return render_error_response(
             _("The anchor did not provide content, unable to serve page."),
             status_code=500,
