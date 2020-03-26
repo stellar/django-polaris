@@ -284,5 +284,5 @@ msgid "$"
 msgstr "R$"
 
 msgid "The anchor did not provide content, is the interactive flow already complete?"
-msgid ""
+msgid "A âncora não forneceu conteúdo, o fluxo interativo já está completo?"
 
