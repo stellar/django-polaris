@@ -131,9 +131,14 @@ class SEP10Auth(APIView):
                 verify_challenge_transaction_signed_by_client_master_key(
                     envelope_xdr, server_key, net
                 )
+                if len(tx_envelope.signatures) != 2:
+                    raise InvalidSep10ChallengeError(
+                        "There is more than one client signer on a challenge "
+                        "transaction for an account that doesn't exist"
+                    )
             except InvalidSep10ChallengeError as e:
                 logger.info(
-                    f"Missing or invalid signature(s) for {account_id}: {str(e)})"
+                    f"Missing or invalid signature(s) for {account_id}: {str(e)}"
                 )
                 raise ValueError(str(e))
             else:
