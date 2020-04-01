@@ -54,9 +54,12 @@ jobs:
             docker push $IMAGE_NAME:latest
 workflows:
   version: 2
+  # Runs tests for any commit
   test:
     jobs:
       - test
+  # Test, build and publish docker image, deploy
+  # only on pushes to master
   build_deploy_publish:
     jobs:
       - test:
