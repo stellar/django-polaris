@@ -124,7 +124,7 @@ class TransactionForm(forms.Form):
                 )
             elif amount > self.asset.deposit_max_amount:
                 raise forms.ValidationError(
-                    _("The maximum amount is: %s") % round(self.asset.deposit_max_amount,2)
+                    _("The maximum amount is: %s") % round(self.asset.deposit_max_amount, self.asset.significant_decimals)
                 )
             return amount
         else:
