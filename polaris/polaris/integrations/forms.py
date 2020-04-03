@@ -120,7 +120,7 @@ class TransactionForm(forms.Form):
             amount = round(self.cleaned_data["amount"], self.asset.significant_decimals)
             if amount < self.asset.deposit_min_amount:
                 raise forms.ValidationError(
-                    _("The minimum amount is: %s") % round(self.asset.deposit_min_amount,2)
+                    _("The minimum amount is: %s") % round(self.asset.deposit_min_amount, self.asset.significant_decimals)
                 )
             elif amount > self.asset.deposit_max_amount:
                 raise forms.ValidationError(
