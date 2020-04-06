@@ -107,7 +107,7 @@ class TransactionForm(forms.Form):
 
     amount = forms.DecimalField(
         min_value=0,
-        widget=forms.NumberInput(attrs={"class": "input", "inputmode":"decimal"}),
+        widget=forms.NumberInput(attrs={"class": "input", "inputmode": "decimal"}),
         max_digits=30,
         decimal_places=7,
         label=_("Amount"),
@@ -120,11 +120,17 @@ class TransactionForm(forms.Form):
             amount = round(self.cleaned_data["amount"], self.asset.significant_decimals)
             if amount < self.asset.deposit_min_amount:
                 raise forms.ValidationError(
-                    _("The minimum amount is: %s") % round(self.asset.deposit_min_amount, self.asset.significant_decimals)
+                    _("The minimum amount is: %s")
+                    % round(
+                        self.asset.deposit_min_amount, self.asset.significant_decimals
+                    )
                 )
             elif amount > self.asset.deposit_max_amount:
                 raise forms.ValidationError(
-                    _("The maximum amount is: %s") % round(self.asset.deposit_max_amount, self.asset.significant_decimals)
+                    _("The maximum amount is: %s")
+                    % round(
+                        self.asset.deposit_max_amount, self.asset.significant_decimals
+                    )
                 )
             return amount
         else:
