@@ -100,7 +100,7 @@ msgid ""
 "requested."
 msgstr ""
 "Para seguir regulações, temos que conhecer nossos usuários. Por favor "
-"forneça as seguintes informaçõe."
+"forneça as seguintes informações."
 
 #: integrations.py:121
 msgid ""
