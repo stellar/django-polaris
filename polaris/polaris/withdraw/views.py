@@ -25,6 +25,7 @@ from polaris.helpers import (
     interactive_args_validation,
     Logger,
     interactive_url,
+    extract_sep9_fields,
 )
 from polaris.models import Asset, Transaction
 from polaris.integrations.forms import TransactionForm
@@ -247,6 +248,7 @@ def withdraw(account: str, request: Request) -> Response:
     """
     lang = request.POST.get("lang")
     asset_code = request.POST.get("asset_code")
+    sep9_fields = extract_sep9_fields(request.POST)
     if lang:
         err_resp = validate_language(lang)
         if err_resp:
@@ -262,6 +264,14 @@ def withdraw(account: str, request: Request) -> Response:
     elif asset.code not in settings.ASSETS:
         return render_error_response(_("unsupported asset type: %s") % asset_code)
     distribution_address = settings.ASSETS[asset.code]["DISTRIBUTION_ACCOUNT_ADDRESS"]
+
+    try:
+        rwi.save_sep9_fields(sep9_fields, lang)
+    except ValueError as e:
+        # The anchor found a validation error in the sep-9 fields POSTed by
+        # the wallet. The error string returned should be in the language
+        # specified in the request.
+        return render_error_response(str(e))
 
     # We use the transaction ID as a memo on the Stellar transaction for the
     # payment in the withdrawal. This lets us identify that as uniquely

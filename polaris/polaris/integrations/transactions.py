@@ -214,6 +214,45 @@ class DepositIntegration:
         """
         return None
 
+    @classmethod
+    def save_sep9_fields(
+        cls, transaction: Transaction, fields: Dict, language_code: str
+    ):
+        """
+        Save the `fields` passed for `transaction` to pre-populate the forms returned
+        from ``content_for_transaction()``.
+
+        For example, save the user's contact information with the model used for KYC information.
+        ::
+
+            # Assuming you have a similar method and model
+            user = user_for_transaction(transaction)
+            user.phone_number = fields.get('mobile_number')
+            user.email = fields.get('email_address')
+            user.save()
+
+        Then when returning a form to collect KYC information, also return the values
+        saved in this method relevant to that form.
+        ::
+
+            # In your content_for_transaction() implementation
+            user = user_for_transaction(transaction)
+            form_args = {
+                'phone_number': format_number(user.phone_number),
+                'email': user.email_address
+            }
+            return {
+                'form': (KYCForm, form_args),
+                'title': "KYC Collection"
+            }
+
+        If you'd like to validate the values passed in `fields`, you can perform any necessary
+        checks and raise a ``ValueError`` in this function. Polaris will return the message of
+        the exception in the response along with 400 HTTP status. The error message should be
+        in the language specified by `language_code` if possible.
+        """
+        pass
+
 
 class WithdrawalIntegration:
     """
@@ -306,6 +345,15 @@ class WithdrawalIntegration:
             withdraw flow
         """
         return None
+
+    @classmethod
+    def save_sep9_fields(
+        cls, transaction: Transaction, fields: Dict, language_code: str
+    ):
+        """
+        Same as ``DepositIntegration.save_sep9_fields``
+        """
+        pass
 
 
 registered_deposit_integration = DepositIntegration()
