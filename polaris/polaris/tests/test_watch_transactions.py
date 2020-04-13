@@ -15,6 +15,7 @@ TRANSACTION_JSON = {
     "memo": "",
     "memo_type": "hash",
     "source": "GCUZ6YLL5RQBTYLTTQLPCM73C5XAIUGK2TIMWQH7HPSGWVS2KJ2F3CHS",
+    "paging_token": "123456789",
 }
 mock_envelope = Mock(
     transaction=Mock(
