@@ -215,18 +215,18 @@ class DepositIntegration:
         return None
 
     @classmethod
-    def save_sep9_fields(
-        cls, transaction: Transaction, fields: Dict, language_code: str
-    ):
+    def save_sep9_fields(cls, stellar_account: str, fields: Dict, language_code: str):
         """
         Save the `fields` passed for `transaction` to pre-populate the forms returned
-        from ``content_for_transaction()``.
+        from ``content_for_transaction()``. Note that this function is called before
+        the transaction is created.
 
-        For example, save the user's contact information with the model used for KYC information.
+        For example, you could save the user's contact information with the model used
+        for KYC information.
         ::
 
             # Assuming you have a similar method and model
-            user = user_for_transaction(transaction)
+            user = user_for_account(stellar_account)
             user.phone_number = fields.get('mobile_number')
             user.email = fields.get('email_address')
             user.save()
@@ -236,7 +236,7 @@ class DepositIntegration:
         ::
 
             # In your content_for_transaction() implementation
-            user = user_for_transaction(transaction)
+            user = user_for_account(transaction.stellar_account)
             form_args = {
                 'phone_number': format_number(user.phone_number),
                 'email': user.email_address
@@ -347,9 +347,7 @@ class WithdrawalIntegration:
         return None
 
     @classmethod
-    def save_sep9_fields(
-        cls, transaction: Transaction, fields: Dict, language_code: str
-    ):
+    def save_sep9_fields(cls, stellar_account: str, fields: Dict, language_code: str):
         """
         Same as ``DepositIntegration.save_sep9_fields``
         """

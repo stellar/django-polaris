@@ -277,7 +277,7 @@ def deposit(account: str, request: Request) -> Response:
         return render_error_response(_("invalid 'account'"))
 
     try:
-        rdi.save_sep9_fields(sep9_fields, lang)
+        rdi.save_sep9_fields(stellar_account, sep9_fields, lang)
     except ValueError as e:
         # The anchor found a validation error in the sep-9 fields POSTed by
         # the wallet. The error string returned should be in the language

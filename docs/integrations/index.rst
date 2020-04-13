@@ -18,6 +18,7 @@ implemented. See the `Registering Integrations`_ section for more information.
 Form Integrations
 -----------------
 
+.. _SEP-9: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0009.md
 .. _Django Forms: https://docs.djangoproject.com/en/2.2/topics/forms/#forms-in-django
 
 Polaris provides a set of integration functions that allow you to collect,
@@ -39,6 +40,14 @@ The functions below facilitate the process of collecting the information needed.
 .. autofunction:: polaris.integrations.WithdrawalIntegration.content_for_transaction
 
 .. autofunction:: polaris.integrations.WithdrawalIntegration.after_form_validation
+
+Some wallets may pass fields documented in SEP-9_ to the `/interactive` endpoints for
+the anchor to use to pre-populate the forms presented to the user. Polaris provides
+an integration function to save and validate the fields passed.
+
+.. autofunction:: polaris.integrations.DepositIntegration.save_sep9_fields
+
+.. autofunction:: polaris.integrations.WithdrawalIntegration.save_sep9_fields
 
 Use an External Application for the Interactive Flow
 ----------------------------------------------------

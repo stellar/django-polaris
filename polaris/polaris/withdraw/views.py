@@ -266,7 +266,7 @@ def withdraw(account: str, request: Request) -> Response:
     distribution_address = settings.ASSETS[asset.code]["DISTRIBUTION_ACCOUNT_ADDRESS"]
 
     try:
-        rwi.save_sep9_fields(sep9_fields, lang)
+        rwi.save_sep9_fields(account, sep9_fields, lang)
     except ValueError as e:
         # The anchor found a validation error in the sep-9 fields POSTed by
         # the wallet. The error string returned should be in the language
