@@ -73,7 +73,7 @@ class Command(BaseCommand):
                 .first()
             )
             if last_completed_transaction:
-                cursor = last_completed_transaction.paging_id or "now"
+                cursor = last_completed_transaction.paging_token or "now"
             else:
                 cursor = "now"
 
@@ -187,7 +187,7 @@ class Command(BaseCommand):
             transaction.status = Transaction.STATUS.error
             transaction.status_message = error_msg
         else:
-            transaction.paging_id = response["paging_token"]
+            transaction.paging_token = response["paging_token"]
             transaction.completed_at = now()
             transaction.status = Transaction.STATUS.completed
             transaction.status_eta = 0
