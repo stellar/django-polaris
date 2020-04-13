@@ -45,12 +45,12 @@ class Command(BaseCommand):
     async def watch_transactions(self):  # pragma: no cover
         await asyncio.gather(
             *[
-                self._for_account(asset["DISTRIBUTION_ACCOUNT_ADDRESS"])
-                for asset in settings.ASSETS.values()
+                self._for_account(code, asset["DISTRIBUTION_ACCOUNT_ADDRESS"])
+                for code, asset in settings.ASSETS.items()
             ]
         )
 
-    async def _for_account(self, account: str):  # pragma: no cover
+    async def _for_account(self, code: str, account: str):  # pragma: no cover
         """
         Stream transactions for the server Stellar address.
         """
@@ -65,7 +65,19 @@ class Command(BaseCommand):
                     "Stellar distribution account does not exist in horizon"
                 )
 
-            endpoint = server.transactions().for_account(account).cursor("now")
+            last_completed_transaction = (
+                Transaction.objects.filter(
+                    asset__code=code, status=Transaction.STATUS.completed
+                )
+                .order_by("-completed_at")
+                .first()
+            )
+            if last_completed_transaction:
+                cursor = last_completed_transaction.paging_id or "now"
+            else:
+                cursor = "now"
+
+            endpoint = server.transactions().for_account(account).cursor(cursor)
             async for response in endpoint.stream():
                 self.process_response(response)
 
@@ -175,6 +187,7 @@ class Command(BaseCommand):
             transaction.status = Transaction.STATUS.error
             transaction.status_message = error_msg
         else:
+            transaction.paging_id = response["paging_token"]
             transaction.completed_at = now()
             transaction.status = Transaction.STATUS.completed
             transaction.status_eta = 0
