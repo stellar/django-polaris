@@ -1,6 +1,7 @@
 """This module defines the models used by Polaris."""
 import uuid
 import decimal
+from datetime import datetime
 
 from django.core.validators import (
     MinLengthValidator,
@@ -258,7 +259,7 @@ class Transaction(models.Model):
     )
     """Amount of fee charged by anchor."""
 
-    started_at = models.DateTimeField(auto_now_add=True)
+    started_at = models.DateTimeField(default=datetime.utcnow)
     """Start date and time of transaction."""
 
     completed_at = models.DateTimeField(null=True)
