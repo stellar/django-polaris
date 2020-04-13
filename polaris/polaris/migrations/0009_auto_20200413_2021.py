@@ -4,6 +4,10 @@ import datetime
 from django.db import migrations, models
 
 
+def utc_now():
+    return datetime.datetime.now(datetime.timezone.utc)
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -14,6 +18,6 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name="transaction",
             name="started_at",
-            field=models.DateTimeField(default=datetime.datetime.utcnow),
+            field=models.DateTimeField(default=utc_now),
         ),
     ]
