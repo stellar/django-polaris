@@ -67,15 +67,17 @@ class Command(BaseCommand):
 
             last_completed_transaction = (
                 Transaction.objects.filter(
-                    asset__code=code, status=Transaction.STATUS.completed
+                    asset__code=code,
+                    status=Transaction.STATUS.completed,
+                    kind=Transaction.KIND.withdrawal,
                 )
                 .order_by("-completed_at")
                 .first()
             )
+
+            cursor = "now"
             if last_completed_transaction:
-                cursor = last_completed_transaction.paging_token or "now"
-            else:
-                cursor = "now"
+                cursor = last_completed_transaction.paging_token
 
             endpoint = server.transactions().for_account(account).cursor(cursor)
             async for response in endpoint.stream():
