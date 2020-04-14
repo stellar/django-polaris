@@ -199,7 +199,7 @@ def get_interactive_deposit(request: Request) -> Response:
     if url:  # The anchor uses a standalone interactive flow
         return redirect(url)
 
-    content = rdi.content_for_transaction(transaction, prefill_data={"amount": amount})
+    content = rdi.content_for_transaction(transaction, amount=amount)
     if not content:
         logger.error("The anchor did not provide content, unable to serve page.")
         if transaction.status != transaction.STATUS.incomplete:

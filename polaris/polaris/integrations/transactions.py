@@ -74,7 +74,7 @@ class DepositIntegration:
         cls,
         transaction: Transaction,
         post_data: Optional[QueryDict] = None,
-        prefill_data: Optional[Dict] = None,
+        amount: Optional[Decimal] = None,
     ) -> Optional[Dict]:
         """
         This function should return a dictionary containing the next form class
@@ -160,7 +160,7 @@ class DepositIntegration:
         if post_data:
             form = TransactionForm(transaction.asset, post_data)
         else:
-            form = TransactionForm(transaction.asset, initial=prefill_data)
+            form = TransactionForm(transaction.asset, initial={"amount": amount})
 
         return {"form": form}
 
@@ -258,7 +258,7 @@ class WithdrawalIntegration:
         cls,
         transaction: Transaction,
         post_data: Optional[QueryDict] = None,
-        prefill_data: Optional[Dict] = None,
+        amount: Optional[Decimal] = None,
     ) -> Optional[Dict]:
         """
         Same as :func:`DepositIntegration.content_for_transaction`
@@ -275,7 +275,7 @@ class WithdrawalIntegration:
         if post_data:
             form = TransactionForm(transaction.asset, post_data)
         else:
-            form = TransactionForm(transaction.asset, initial=prefill_data)
+            form = TransactionForm(transaction.asset, initial={"amount": amount})
 
         return {"form": form}
 
