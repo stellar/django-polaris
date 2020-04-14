@@ -180,9 +180,7 @@ def get_interactive_deposit(request: Request) -> Response:
            cookie should still be included in the response so future calls to
            GET /transactions/deposit/interactive/complete are authenticated.
         3. content_for_transaction() is called to retrieve the next form to
-           render to the user. `amount` is prepopulated in the form if it was
-           passed as a parameter to this endpoint and the form is a subclass
-           of TransactionForm.
+           render to the user.
         4. get and post URLs are constructed with the appropriate arguments
            and passed to the response to be rendered to the user.
     """
