@@ -3,6 +3,7 @@ from decimal import Decimal
 
 from django.db.models import QuerySet
 from django import forms
+from django.http import QueryDict
 from rest_framework.request import Request
 
 from polaris.models import Transaction, Asset
@@ -69,7 +70,12 @@ class DepositIntegration:
         pass
 
     @classmethod
-    def content_for_transaction(cls, transaction: Transaction) -> Optional[Dict]:
+    def content_for_transaction(
+        cls,
+        transaction: Transaction,
+        post_data: Optional[QueryDict] = None,
+        prefill_data: Optional[Dict] = None,
+    ) -> Optional[Dict]:
         """
         This function should return a dictionary containing the next form class
         to render for the user given the state of the interactive flow.
@@ -151,7 +157,12 @@ class DepositIntegration:
             # and don't implement KYC by default
             return
 
-        return {"form": (TransactionForm, {})}
+        if post_data:
+            form = TransactionForm(transaction.asset, post_data)
+        else:
+            form = TransactionForm(transaction.asset, initial=prefill_data)
+
+        return {"form": form}
 
     @classmethod
     def after_form_validation(cls, form: forms.Form, transaction: Transaction):
@@ -243,7 +254,12 @@ class WithdrawalIntegration:
         )
 
     @classmethod
-    def content_for_transaction(cls, transaction: Transaction) -> Optional[Dict]:
+    def content_for_transaction(
+        cls,
+        transaction: Transaction,
+        post_data: Optional[QueryDict] = None,
+        prefill_data: Optional[Dict] = None,
+    ) -> Optional[Dict]:
         """
         Same as :func:`DepositIntegration.content_for_transaction`
 
@@ -256,7 +272,12 @@ class WithdrawalIntegration:
             # and don't implement KYC by default
             return
 
-        return {"form": (TransactionForm, {})}
+        if post_data:
+            form = TransactionForm(transaction.asset, post_data)
+        else:
+            form = TransactionForm(transaction.asset, initial=prefill_data)
+
+        return {"form": form}
 
     @classmethod
     def after_form_validation(cls, form: TransactionForm, transaction: Transaction):
