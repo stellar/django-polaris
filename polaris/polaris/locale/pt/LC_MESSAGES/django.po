@@ -292,5 +292,8 @@ msgstr "O valor mínimo é: %s"
 msgid "The maximum amount is: %s"
 msgstr "O valor máximo é: %s"
 
+msgid "minimum: %s, maximum: %s"
+msgstr "mínimo: %s, máximo: %s"
+
 msgid "Unable to validate form submission."
 msgstr "Incapaz de validar o envio do formulário."
