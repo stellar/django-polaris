@@ -41,7 +41,7 @@ The functions below facilitate the process of collecting the information needed.
 
 .. autofunction:: polaris.integrations.WithdrawalIntegration.after_form_validation
 
-Some wallets may pass fields documented in SEP-9_ to the `/interactive` endpoints for
+Some wallets may pass fields documented in SEP-9_ in the initial POST request for
 the anchor to use to pre-populate the forms presented to the user. Polaris provides
 an integration function to save and validate the fields passed.
 

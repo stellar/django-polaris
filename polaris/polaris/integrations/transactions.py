@@ -217,7 +217,7 @@ class DepositIntegration:
     @classmethod
     def save_sep9_fields(cls, stellar_account: str, fields: Dict, language_code: str):
         """
-        Save the `fields` passed for `transaction` to pre-populate the forms returned
+        Save the `fields` passed for `stellar_account` to pre-populate the forms returned
         from ``content_for_transaction()``. Note that this function is called before
         the transaction is created.
 
@@ -242,7 +242,7 @@ class DepositIntegration:
                 'email': user.email_address
             }
             return {
-                'form': (KYCForm, form_args),
+                'form': KYCForm(initial=form_args),
                 'title': "KYC Collection"
             }
 
