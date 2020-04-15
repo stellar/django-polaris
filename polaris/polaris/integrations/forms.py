@@ -2,7 +2,7 @@ from django import forms
 from django.utils.translation import gettext_lazy as _
 from django.forms.widgets import TextInput
 
-from polaris.models import Asset
+from polaris.models import Transaction
 
 
 class CardNumberInput(TextInput):
@@ -79,7 +79,7 @@ class TransactionForm(forms.Form):
     apply additional validation.
 
     A subclass of this form should be returned by
-    :func:`content_for_transaction` once for each interactive flow.
+    ``content_for_transaction()`` once for each interactive flow.
 
     After form validation, the key-value pairs in `self.cleaned_data` will be
     passed to the registered fee function to calculate `amount_fee` for the
@@ -87,23 +87,34 @@ class TransactionForm(forms.Form):
     the registered fee function but don't want to display an additional field
     to the user, add a field with a `HiddenInput`_ widget.
 
-    Defines the :class:`.forms.DecimalField` `amount` and also has a non-form
-    attribute `asset`, which will be populated by the `asset_code`
-    request parameter used in `/transactions/deposit/webapp` and
-    `/transactions/withdraw/webapp` endpoints.
-
     The `amount` field is validated with the :meth:`clean_amount` function,
     which ensures the amount is within the bounds for the asset type.
     """
 
-    def __init__(self, asset: Asset, *args, **kwargs):
+    def __init__(self, transaction: Transaction, *args, **kwargs):
         # For testing via anchor-validator.herokuapp.com
         test_value = kwargs.pop("test_value", None) or "100"
 
         super().__init__(*args, **kwargs)
-        self.asset = asset
 
-        self.fields["amount"].widget.attrs.update({"test-value": test_value})
+        self.transaction = transaction
+        self.asset = transaction.asset
+        self.decimal_places = self.asset.significant_decimals
+        if transaction.kind == Transaction.KIND.deposit:
+            self.min_amount = round(self.asset.deposit_min_amount, self.decimal_places)
+            self.max_amount = round(self.asset.deposit_max_amount, self.decimal_places)
+        else:
+            self.min_amount = round(
+                self.asset.withdrawal_min_amount, self.decimal_places
+            )
+            self.max_amount = round(
+                self.asset.withdrawal_max_amount, self.decimal_places
+            )
+
+        limit_str = _("minimum: %s, maximum: %s") % (self.min_amount, self.max_amount)
+        self.fields["amount"].widget.attrs.update(
+            {"test-value": test_value, "placeholder": limit_str}
+        )
 
     amount = forms.DecimalField(
         min_value=0,
@@ -116,22 +127,15 @@ class TransactionForm(forms.Form):
 
     def clean_amount(self):
         """Validate the provided amount of an asset."""
-        if self.asset:
-            amount = round(self.cleaned_data["amount"], self.asset.significant_decimals)
-            if amount < self.asset.deposit_min_amount:
-                raise forms.ValidationError(
-                    _("The minimum amount is: %s")
-                    % round(
-                        self.asset.deposit_min_amount, self.asset.significant_decimals
-                    )
-                )
-            elif amount > self.asset.deposit_max_amount:
-                raise forms.ValidationError(
-                    _("The maximum amount is: %s")
-                    % round(
-                        self.asset.deposit_max_amount, self.asset.significant_decimals
-                    )
-                )
-            return amount
-        else:
-            raise ValueError("Form instance has no self.asset")
+        amount = round(self.cleaned_data["amount"], self.decimal_places)
+        if amount < self.min_amount:
+            raise forms.ValidationError(
+                _("The minimum amount is: %s")
+                % round(self.min_amount, self.decimal_places)
+            )
+        elif amount > self.max_amount:
+            raise forms.ValidationError(
+                _("The maximum amount is: %s")
+                % round(self.max_amount, self.decimal_places)
+            )
+        return amount
