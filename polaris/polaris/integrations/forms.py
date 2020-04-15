@@ -1,4 +1,5 @@
 from django import forms
+from django.contrib.humanize.templatetags.humanize import intcomma
 from django.utils.translation import gettext_lazy as _
 from django.forms.widgets import TextInput
 
@@ -117,11 +118,11 @@ class TransactionForm(forms.Form):
 
         limit_str = ""
         if self.min_amount > self.min_default and self.max_amount < self.max_default:
-            limit_str = f"({self.min_amount} - {self.max_amount})"
+            limit_str = f"({intcomma(self.min_amount)} - {intcomma(self.max_amount)})"
         elif self.min_amount > self.min_default:
-            limit_str = _("(minimum: %s)") % self.min_amount
+            limit_str = _("(minimum: %s)") % intcomma(self.min_amount)
         elif self.max_amount < self.max_default:
-            limit_str = _("(maximum: %s)") % self.max_amount
+            limit_str = _("(maximum: %s)") % intcomma(self.max_amount)
 
         if limit_str:
             self.fields["amount"].label += " " + limit_str
