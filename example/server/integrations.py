@@ -254,9 +254,9 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
             return None
 
         if post_data:
-            form = WithdrawForm(transaction.asset, post_data)
+            form = WithdrawForm(transaction, post_data)
         else:
-            form = WithdrawForm(transaction.asset, initial=amount)
+            form = WithdrawForm(transaction, initial=amount)
 
         return {
             "form": form,

@@ -92,9 +92,9 @@ class DepositIntegration:
 
             def content_for_transaction(cls, transaction, post_data = None, amount = None):
                 if post_data:
-                    form = TransactionForm(transaction.asset, post_data)
+                    form = TransactionForm(transaction, post_data)
                 else:
-                    form = TransactionForm(initial={"amount": amount})
+                    form = TransactionForm(transaction, initial={"amount": amount})
                 return {
                     "form": form,
                     "title": "Deposit Transaction Form",
@@ -151,9 +151,9 @@ class DepositIntegration:
             return
 
         if post_data:
-            form = TransactionForm(transaction.asset, post_data)
+            form = TransactionForm(transaction, post_data)
         else:
-            form = TransactionForm(transaction.asset, initial={"amount": amount})
+            form = TransactionForm(transaction, initial={"amount": amount})
 
         return {"form": form}
 
@@ -312,9 +312,9 @@ class WithdrawalIntegration:
             return
 
         if post_data:
-            form = TransactionForm(transaction.asset, post_data)
+            form = TransactionForm(transaction, post_data)
         else:
-            form = TransactionForm(transaction.asset, initial={"amount": amount})
+            form = TransactionForm(transaction, initial={"amount": amount})
 
         return {"form": form}
 
