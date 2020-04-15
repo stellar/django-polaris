@@ -28,6 +28,7 @@ from polaris.helpers import (
     interactive_args_validation,
     Logger,
     interactive_url,
+    extract_sep9_fields,
 )
 from polaris.models import Asset, Transaction
 from polaris.integrations.forms import TransactionForm
@@ -250,6 +251,7 @@ def deposit(account: str, request: Request) -> Response:
     asset_code = request.POST.get("asset_code")
     stellar_account = request.POST.get("account")
     lang = request.POST.get("lang")
+    sep9_fields = extract_sep9_fields(request.POST)
     if lang:
         err_resp = validate_language(lang)
         if err_resp:
@@ -273,6 +275,14 @@ def deposit(account: str, request: Request) -> Response:
         Keypair.from_public_key(stellar_account)
     except Ed25519PublicKeyInvalidError:
         return render_error_response(_("invalid 'account'"))
+
+    try:
+        rdi.save_sep9_fields(stellar_account, sep9_fields, lang)
+    except ValueError as e:
+        # The anchor found a validation error in the sep-9 fields POSTed by
+        # the wallet. The error string returned should be in the language
+        # specified in the request.
+        return render_error_response(str(e))
 
     # Construct interactive deposit pop-up URL.
     transaction_id = create_transaction_id()
