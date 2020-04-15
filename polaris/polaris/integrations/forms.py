@@ -2,7 +2,7 @@ from django import forms
 from django.utils.translation import gettext_lazy as _
 from django.forms.widgets import TextInput
 
-from polaris.models import Transaction
+from polaris.models import Transaction, Asset
 
 
 class CardNumberInput(TextInput):
@@ -103,6 +103,8 @@ class TransactionForm(forms.Form):
         if transaction.kind == Transaction.KIND.deposit:
             self.min_amount = round(self.asset.deposit_min_amount, self.decimal_places)
             self.max_amount = round(self.asset.deposit_max_amount, self.decimal_places)
+            self.min_default = Asset._meta.get_field("deposit_min_amount").default
+            self.max_default = Asset._meta.get_field("deposit_max_amount").default
         else:
             self.min_amount = round(
                 self.asset.withdrawal_min_amount, self.decimal_places
@@ -110,11 +112,24 @@ class TransactionForm(forms.Form):
             self.max_amount = round(
                 self.asset.withdrawal_max_amount, self.decimal_places
             )
+            self.min_default = Asset._meta.get_field("withdrawal_min_amount").default
+            self.max_default = Asset._meta.get_field("withdrawal_max_amount").default
 
-        limit_str = _("minimum: %s, maximum: %s") % (self.min_amount, self.max_amount)
-        self.fields["amount"].widget.attrs.update(
-            {"test-value": test_value, "placeholder": limit_str}
-        )
+        limit_str = ""
+        if self.min_amount > self.min_default and self.max_amount < self.max_default:
+            limit_str = _("(minimum: %s, maximum: %s)") % (
+                self.min_amount,
+                self.max_amount,
+            )
+        elif self.min_amount > self.min_default:
+            limit_str = _("(minimum: %s)") % self.min_amount
+        elif self.max_amount < self.max_default:
+            limit_str = _("(maximum: %s)") % self.max_amount
+
+        if limit_str:
+            self.fields["amount"].label += " " + limit_str
+
+        self.fields["amount"].widget.attrs.update({"test-value": test_value})
 
     amount = forms.DecimalField(
         min_value=0,
