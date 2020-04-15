@@ -117,7 +117,7 @@ class TransactionForm(forms.Form):
 
         limit_str = ""
         if self.min_amount > self.min_default and self.max_amount < self.max_default:
-            limit_str = f"{self.min_amount} - {self.max_amount}"
+            limit_str = f"({self.min_amount} - {self.max_amount})"
         elif self.min_amount > self.min_default:
             limit_str = _("(minimum: %s)") % self.min_amount
         elif self.max_amount < self.max_default:
