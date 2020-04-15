@@ -5,6 +5,7 @@ non-Stellar-based account.
 """
 from urllib.parse import urlencode
 
+from django.forms import Form
 from django.urls import reverse
 from django.views.decorators.clickjacking import xframe_options_exempt
 from django.shortcuts import redirect
@@ -93,17 +94,16 @@ def post_interactive_withdraw(request: Request) -> Response:
             content_type="text/html",
         )
 
-    try:
-        form = content.get("form")
-    except TypeError:
-        logger.exception("content_for_transaction(): 'form' key value must be a tuple")
+    form = content.get("form")
+    if not form.is_bound:
+        # The anchor must initialize the form with the request.POST data
         return render_error_response(
-            _("The anchor did not provide content, unable to serve page."),
+            _("Unable to validate form submission."),
             status_code=500,
             content_type="text/html",
         )
 
-    if form.is_valid():
+    elif form.is_valid():
         if issubclass(form.__class__, TransactionForm):
             fee_params = {
                 "operation": settings.OPERATION_WITHDRAWAL,

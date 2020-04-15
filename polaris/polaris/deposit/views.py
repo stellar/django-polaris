@@ -97,6 +97,14 @@ def post_interactive_deposit(request: Request) -> Response:
         )
 
     form = content.get("form")
+    if not form.is_bound:
+        # The anchor must initialize the form with the request.POST data
+        return render_error_response(
+            _("Unable to validate form submission."),
+            status_code=500,
+            content_type="text/html",
+        )
+
     if form.is_valid():
         if issubclass(form.__class__, TransactionForm):
             fee_params = {
