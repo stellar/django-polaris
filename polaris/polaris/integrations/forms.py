@@ -144,11 +144,11 @@ class TransactionForm(forms.Form):
         if amount < self.min_amount:
             raise forms.ValidationError(
                 _("The minimum amount is: %s")
-                % round(self.min_amount, self.decimal_places)
+                % intcomma(round(self.min_amount, self.decimal_places))
             )
         elif amount > self.max_amount:
             raise forms.ValidationError(
                 _("The maximum amount is: %s")
-                % round(self.max_amount, self.decimal_places)
+                % intcomma(round(self.max_amount, self.decimal_places))
             )
         return amount
