@@ -5,7 +5,6 @@ non-Stellar-based account.
 """
 from urllib.parse import urlencode
 
-from django.forms import Form
 from django.urls import reverse
 from django.views.decorators.clickjacking import xframe_options_exempt
 from django.shortcuts import redirect
