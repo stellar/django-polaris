@@ -25,7 +25,7 @@ def scripts(page_content: Optional[Dict]) -> List[str]:
     page every time the window is brought back into focus.
 
     Replace this function with another by passing it to
-    :func:`polaris.integrations.register_integrations` like so:
+    ``polaris.integrations.register_integrations`` like so:
     ::
 
         from myapp.integrations import (

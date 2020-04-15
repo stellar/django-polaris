@@ -28,7 +28,7 @@ class DepositIntegration:
 
         For every transaction that is returned, Polaris will submit it to the
         Stellar network. If a transaction was completed on the network, the
-        overridable :meth:`after_deposit` function will be called, however
+        overridable ``after_deposit`` function will be called, however
         implementing this function is optional.
 
         If the Stellar network is unable to execute a transaction returned
@@ -64,7 +64,7 @@ class DepositIntegration:
         users about completed deposits. Overriding this function is not
         required.
 
-        :param transaction: a :class:`Transaction` that was executed on the
+        :param transaction: a ``Transaction`` that was executed on the
             Stellar network
         """
         pass
@@ -162,10 +162,10 @@ class DepositIntegration:
         """
         Use this function to process the data collected with `form` and to update
         the state of the interactive flow so that the next call to
-        :func:`DepositIntegration.content_for_transaction` returns a dictionary
+        ``DepositIntegration.content_for_transaction`` returns a dictionary
         containing the next form to render to the user, or returns None.
 
-        Keep in mind that if a :class:`TransactionForm` is submitted, Polaris will
+        Keep in mind that if a ``TransactionForm`` is submitted, Polaris will
         update the `amount_in` and `amount_fee` with the information collected.
         There is no need to implement that yourself.
 
@@ -174,11 +174,11 @@ class DepositIntegration:
         particular values at different points in the flow.
 
         If you need to store some data to determine which form to return next when
-        :func:`DepositIntegration.content_for_transaction` is called, store this
+        ``DepositIntegration.content_for_transaction`` is called, store this
         data in a model not used by Polaris.
 
-        :param form: the completed :class:`forms.Form` submitted by the user
-        :param transaction: the :class:`Transaction` database object
+        :param form: the completed ``forms.Form`` submitted by the user
+        :param transaction: the ``Transaction`` database object
         """
         pass
 
@@ -220,7 +220,7 @@ class WithdrawalIntegration:
     The container class for withdrawal integration functions
 
     Subclasses must be registered with Polaris by passing it to
-    :func:`polaris.integrations.register_integrations`.
+    ``polaris.integrations.register_integrations``.
     """
 
     @classmethod
@@ -240,7 +240,7 @@ class WithdrawalIntegration:
 
         :param response: a response body returned from Horizon for the transactions
             for account endpoint_
-        :param transaction: a :class:`Transaction` instance to process
+        :param transaction: a ``Transaction`` instance to process
         """
         raise NotImplementedError(
             "`process_withdrawal` must be implemented to process withdrawals"
@@ -257,7 +257,7 @@ class WithdrawalIntegration:
         .. _django request.POST: https://docs.djangoproject.com/en/3.0/ref/request-response/#django.http.HttpRequest.POST
         .. _SEP-9: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0009.md
 
-        Same as :func:`DepositIntegration.content_for_transaction`
+        Same as ``DepositIntegration.content_for_transaction``
 
         :param transaction: the ``Transaction`` database object
         :param post_data: A `django request.POST`_ object
@@ -282,11 +282,11 @@ class WithdrawalIntegration:
     @classmethod
     def after_form_validation(cls, form: TransactionForm, transaction: Transaction):
         """
-        Same as :func:`DepositIntegration.after_form_validation`, except
+        Same as ``DepositIntegration.after_form_validation``, except
         `transaction.to_address` should be saved here when present in `form`.
 
-        :param form: the completed :class:`forms.Form` submitted by the user
-        :param transaction: the :class:`Transaction` database object
+        :param form: the completed ``forms.Form`` submitted by the user
+        :param transaction: the ``Transaction`` database object
         """
         pass
 

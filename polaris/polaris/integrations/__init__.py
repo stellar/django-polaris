@@ -21,8 +21,8 @@ def register_integrations(
 ):
     """
     Registers instances of user-defined subclasses of
-    :class:`.WithdrawalIntegration` and
-    :class:`.DepositIntegration` with Polaris.
+    ``WithdrawalIntegration`` and
+    ``DepositIntegration`` with Polaris.
 
     Call this function in the relevant Django AppConfig.ready() function:
     ::
@@ -50,9 +50,9 @@ def register_integrations(
 
     See the integration classes for more information on implementation.
 
-    :param deposit: the :class:`.DepositIntegration` subclass instance to be
+    :param deposit: the ``DepositIntegration`` subclass instance to be
         used by Polaris
-    :param withdrawal: the :class:`WithdrawalIntegration` subclass instance to
+    :param withdrawal: the ``WithdrawalIntegration`` subclass instance to
         be used by Polaris
     :param toml_func: a function that returns stellar.toml data as a dictionary
     :param scripts_func: a function that returns a list of script tags as

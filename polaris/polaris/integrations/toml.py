@@ -9,7 +9,7 @@ def get_stellar_toml():
 
     Returns the default info for stellar.toml as a dictionary. Replace this
     function with another by passing it to
-    :func:`polaris.integrations.register_integrations` like so:
+    ``polaris.integrations.register_integrations`` like so:
     ::
 
         from myapp.integrations import (
