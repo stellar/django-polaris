@@ -74,11 +74,11 @@ class DepositIntegration:
         This function should return a dictionary containing the next form class
         to render for the user given the state of the interactive flow.
 
-        For example, this function should return a :class:`TransactionForm`
+        For example, this function should return a ``TransactionForm``
         along with any keyword arguments to use during initialization to get
         the get the amount that should be transferred. Once the form is
         submitted, Polaris will detect the form used is a
-        :class:`TransactionForm` subclass and update the ``amount_in`` column
+        ``TransactionForm`` subclass and update the ``amount_in`` column
         with the amount specified in form.
 
         The form will be rendered inside a django template that has several
@@ -117,7 +117,7 @@ class DepositIntegration:
         function.
 
         After a form is submitted and validated, Polaris will call
-        :func:`DepositlIntegration.after_form_validation` with the populated
+        :func:`DepositIntegration.after_form_validation` with the populated
         form and transaction. This is where developers should update their own
         state-tracking constructs or do any processing with the data submitted
         in the form.

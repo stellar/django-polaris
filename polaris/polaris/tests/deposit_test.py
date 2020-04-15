@@ -31,7 +31,11 @@ from polaris.tests.helpers import (
 
 
 DEPOSIT_PATH = f"/transactions/deposit/interactive"
-HORIZON_SUCCESS_RESPONSE = {"result_xdr": SUCCESS_XDR, "hash": "test_stellar_id"}
+HORIZON_SUCCESS_RESPONSE = {
+    "result_xdr": SUCCESS_XDR,
+    "hash": "test_stellar_id",
+    "paging_token": "123456789",
+}
 # Test client account and seed
 client_address = "GDKFNRUATPH4BSZGVFDRBIGZ5QAFILVFRIRYNSQ4UO7V2ZQAPRNL73RI"
 client_seed = "SDKWSBERDHP3SXW5A3LXSI7FWMMO5H7HG33KNYBKWH2HYOXJG2DXQHQY"

@@ -155,6 +155,7 @@ def create_stellar_deposit(transaction_id: str) -> bool:
         transaction.save()
         return False
 
+    transaction.paging_token = response["paging_token"]
     transaction.stellar_transaction_id = response["hash"]
     transaction.status = Transaction.STATUS.completed
     transaction.completed_at = now()
