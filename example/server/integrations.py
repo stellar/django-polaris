@@ -99,7 +99,7 @@ def track_user_activity(form: forms.Form, transaction: Transaction):
     )
 
 
-def check_kyc(transaction: Transaction) -> Optional[Dict]:
+def check_kyc(transaction: Transaction, post_data=None) -> Optional[Dict]:
     """
     Returns a KYCForm if there is no record of this stellar account,
     otherwise returns None.
@@ -108,8 +108,12 @@ def check_kyc(transaction: Transaction) -> Optional[Dict]:
         account=transaction.stellar_account
     ).first()
     if not account:  # Unknown stellar account, get KYC info
+        if post_data:
+            form = KYCForm(post_data)
+        else:
+            form = KYCForm()
         return {
-            "form": (KYCForm, {}),
+            "form": form,
             "icon_label": _("Stellar Development Foundation"),
             "title": _("Polaris KYC Information"),
             "guidance": (
@@ -193,12 +197,16 @@ class MyDepositIntegration(DepositIntegration):
         )
 
     @classmethod
-    def content_for_transaction(cls, transaction: Transaction) -> Optional[Dict]:
+    def content_for_transaction(
+        cls, transaction: Transaction, post_data=None, amount=None
+    ) -> Optional[Dict]:
         kyc_content = check_kyc(transaction)
         if kyc_content:
             return kyc_content
 
-        form_content = super().content_for_transaction(transaction)
+        form_content = super().content_for_transaction(
+            transaction, post_data=post_data, amount=amount
+        )
         if not form_content:
             return None
 
@@ -235,17 +243,23 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
         )
 
     @classmethod
-    def content_for_transaction(cls, transaction: Transaction) -> Optional[Dict]:
+    def content_for_transaction(
+        cls, transaction: Transaction, post_data=None, amount=None
+    ) -> Optional[Dict]:
         kyc_content = check_kyc(transaction)
         if kyc_content:
             return kyc_content
 
-        content = super().content_for_transaction(transaction)
-        if not content:
+        if transaction.amount_in:
             return None
 
+        if post_data:
+            form = WithdrawForm(transaction.asset, post_data)
+        else:
+            form = WithdrawForm(transaction.asset, initial=amount)
+
         return {
-            "form": (WithdrawForm, {}),
+            "form": form,
             "title": _("Polaris Transaction Information"),
             "icon_label": _("Stellar Development Foundation"),
             "guidance": (
