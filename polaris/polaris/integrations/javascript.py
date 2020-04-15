@@ -25,7 +25,7 @@ def scripts(page_content: Optional[Dict]) -> List[str]:
     page every time the window is brought back into focus.
 
     Replace this function with another by passing it to
-    :func:`polaris.integrations.register_integrations` like so:
+    ``polaris.integrations.register_integrations`` like so:
     ::
 
         from myapp.integrations import (
@@ -37,7 +37,7 @@ def scripts(page_content: Optional[Dict]) -> List[str]:
         register_integrations(
             deposit=MyDepositIntegration(),
             withdrawal=MyWithdrawalIntegration(),
-            javascript_func=scripts
+            scripts_func=scripts
         )
 
     Note that the scripts will be executed in the order in which they are

@@ -73,7 +73,7 @@ def post_interactive_withdraw(request: Request) -> Response:
     callback = args_or_error["callback"]
     amount = args_or_error["amount"]
 
-    content = rwi.content_for_transaction(transaction)
+    content = rwi.content_for_transaction(transaction, post_data=request.POST)
     if not (content and content.get("form")):
         logger.error(
             "Initial content_for_transaction() call returned None "
@@ -93,24 +93,17 @@ def post_interactive_withdraw(request: Request) -> Response:
             content_type="text/html",
         )
 
-    try:
-        form_class, form_args = content.get("form")
-    except TypeError:
-        logger.exception("content_for_transaction(): 'form' key value must be a tuple")
+    form = content.get("form")
+    if not form.is_bound:
+        # The anchor must initialize the form with the request.POST data
         return render_error_response(
-            _("The anchor did not provide content, unable to serve page."),
+            _("Unable to validate form submission."),
             status_code=500,
             content_type="text/html",
         )
 
-    is_transaction_form = issubclass(form_class, TransactionForm)
-    if is_transaction_form:
-        form = form_class(asset, request.POST, **form_args)
-    else:
-        form = form_class(request.POST, **form_args)
-
-    if form.is_valid():
-        if is_transaction_form:
+    elif form.is_valid():
+        if issubclass(form.__class__, TransactionForm):
             fee_params = {
                 "operation": settings.OPERATION_WITHDRAWAL,
                 "asset_code": asset.code,
@@ -121,8 +114,8 @@ def post_interactive_withdraw(request: Request) -> Response:
             transaction.save()
 
         rwi.after_form_validation(form, transaction)
-        content = rwi.content_for_transaction(transaction)
-        if content:
+
+        if rwi.content_for_transaction(transaction):
             args = {"transaction_id": transaction.id, "asset_code": asset.code}
             if amount:
                 args["amount"] = amount
@@ -130,6 +123,7 @@ def post_interactive_withdraw(request: Request) -> Response:
                 args["callback"] = callback
             url = reverse("get_interactive_withdraw")
             return redirect(f"{url}?{urlencode(args)}")
+
         else:  # Last form has been submitted
             logger.info(
                 f"Finished data collection and processing for transaction {transaction.id}"
@@ -192,9 +186,7 @@ def get_interactive_withdraw(request: Request) -> Response:
            cookie should still be included in the response so future calls to
            GET /transactions/withdraw/interactive/complete are authenticated.
         3. content_for_transaction() is called to retrieve the next form to
-           render to the user. `amount` is prepopulated in the form if it was
-           passed as a parameter to this endpoint and the form is a subclass
-           of TransactionForm.
+           render to the user.
         4. get and post URLs are constructed with the appropriate arguments
            and passed to the response to be rendered to the user.
     """
@@ -211,7 +203,7 @@ def get_interactive_withdraw(request: Request) -> Response:
     if url:  # The anchor uses a standalone interactive flow
         return redirect(url)
 
-    content = rwi.content_for_transaction(transaction)
+    content = rwi.content_for_transaction(transaction, amount=amount)
     if not content:
         logger.error("The anchor did not provide content, unable to serve page.")
         if transaction.status != transaction.STATUS.incomplete:
@@ -229,26 +221,6 @@ def get_interactive_withdraw(request: Request) -> Response:
         )
 
     scripts = registered_scripts_func(content)
-
-    if content.get("form"):
-        try:
-            form_class, form_args = content.get("form")
-        except TypeError:
-            logger.exception(
-                "content_for_transaction(): 'form' key value must be a tuple"
-            )
-            return render_error_response(
-                _("The anchor did not provide content, unable to serve page."),
-                status_code=500,
-                content_type="text/html",
-            )
-        is_transaction_form = issubclass(form_class, TransactionForm)
-        if is_transaction_form:
-            content["form"] = form_class(
-                asset, initial={"amount": amount}, test_value="100", **form_args
-            )
-        else:
-            content["form"] = form_class(**form_args)
 
     url_args = {"transaction_id": transaction.id, "asset_code": asset.code}
     if callback:

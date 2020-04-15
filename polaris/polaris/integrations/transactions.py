@@ -3,6 +3,7 @@ from decimal import Decimal
 
 from django.db.models import QuerySet
 from django import forms
+from django.http import QueryDict
 from rest_framework.request import Request
 
 from polaris.models import Transaction, Asset
@@ -27,7 +28,7 @@ class DepositIntegration:
 
         For every transaction that is returned, Polaris will submit it to the
         Stellar network. If a transaction was completed on the network, the
-        overridable :meth:`after_deposit` function will be called, however
+        overridable ``after_deposit`` function will be called, however
         implementing this function is optional.
 
         If the Stellar network is unable to execute a transaction returned
@@ -63,22 +64,25 @@ class DepositIntegration:
         users about completed deposits. Overriding this function is not
         required.
 
-        :param transaction: a :class:`Transaction` that was executed on the
+        :param transaction: a ``Transaction`` that was executed on the
             Stellar network
         """
         pass
 
     @classmethod
-    def content_for_transaction(cls, transaction: Transaction) -> Optional[Dict]:
+    def content_for_transaction(
+        cls,
+        transaction: Transaction,
+        post_data: Optional[QueryDict] = None,
+        amount: Optional[Decimal] = None,
+    ) -> Optional[Dict]:
         """
         This function should return a dictionary containing the next form class
         to render for the user given the state of the interactive flow.
 
-        For example, this function should return a ``TransactionForm``
-        along with any keyword arguments to use during initialization to get
-        the get the amount that should be transferred. Once the form is
-        submitted, Polaris will detect the form used is a
-        ``TransactionForm`` subclass and update the ``amount_in`` column
+        For example, this function should return an instance of a ``TransactionForm``
+        subclass. Once the form is submitted, Polaris will detect the form used
+        is a ``TransactionForm`` subclass and update ``transaction.amount_in``
         with the amount specified in form.
 
         The form will be rendered inside a django template that has several
@@ -86,45 +90,36 @@ class DepositIntegration:
         containing the key-value pairs as shown below.
         ::
 
-            def content_for_transaction(cls, transaction):
-                ...
+            def content_for_transaction(cls, transaction, post_data = None, amount = None):
+                if post_data:
+                    form = TransactionForm(transaction.asset, post_data)
+                else:
+                    form = TransactionForm(initial={"amount": amount})
                 return {
-                    "form": (TransactionForm, {}),
+                    "form": form,
                     "title": "Deposit Transaction Form",
                     "guidance": "Please enter the amount you would like to deposit.",
                     "icon_label": "Stellar Development Foundation"
                 }
 
-        The icon image displayed can be replaced by adding a ``company-icon.svg``
-        in the top level of your app's static files directory.
+        If `post_data` is passed, it must be used to initialize the form returned so
+        Polaris can validate the data submitted. If `amount` is passed, it can be used
+        to pre-populate a ``TransactionForm`` amount field to improve the user
+        experience.
 
-        The form returned will be initialized like so:
-        ::
-
-            if content.get("form"):
-                form_class, form_args = content.get("form")
-                is_transaction_form = issubclass(form_class, TransactionForm)
-                if is_transaction_form:
-                    # amount can be prepopulated in the TransactionForm
-                    content["form"] = form_class(asset, initial={"amount": amount}, **form_args)
-                else:
-                    content["form"] = form_class(**form_args)
-
-        In your form's ``__init__()``, make sure you ``pop()`` any keyword arguments
-        passed to the form before calling ``super().__init__(*args, **kwargs)``,
-        since django's Form class does not accept extra keyword arguments. If you
-        don't use keyword arguments, you don't need to define an ``__init__()``
-        function.
+        Aside from the pieces of content returned from this function, the icon image
+        displayed at the top of each web page can be replaced by adding a
+        ``company-icon.svg`` in the top level of your app's static files directory.
 
         After a form is submitted and validated, Polaris will call
-        :func:`DepositIntegration.after_form_validation` with the populated
+        ``DepositIntegration.after_form_validation`` with the populated
         form and transaction. This is where developers should update their own
         state-tracking constructs or do any processing with the data submitted
         in the form.
 
         Finally, Polaris will call this function again to check if there is
         another form that needs to be rendered to the user. If you are
-        collecting KYC data, return a :class:`forms.Form` with the fields you
+        collecting KYC data, return a ``forms.Form`` with the fields you
         need.
 
         You can also return a dictionary without a ``form`` key. You should do
@@ -137,12 +132,16 @@ class DepositIntegration:
 
         When that happens, Polaris will update the Transaction status to
         ``pending_user_transfer_start``. Once the user makes the deposit
-        to the anchor's bank account,
-        :func:`DepositIntegration.poll_pending_deposits` should detect the
-        event, and Polaris will submit the transaction to the stellar network,
-        ultimately marking the transaction as ``complete`` upon success.
+        to the anchor's bank account, ``DepositIntegration.poll_pending_deposits``
+        should detect the event, and Polaris will submit the transaction to the
+        stellar network, ultimately marking the transaction as ``complete`` upon
+        success.
 
-        :param transaction: the :class:`Transaction` database object
+        :param transaction: the ``Transaction`` database object
+        :param post_data: A `django request.POST`_ object
+        :param amount: a ``Decimal`` object the wallet may pass in the GET request.
+            Use it to pre-populate your TransactionForm along with any SEP-9_
+            parameters.
         :return: a dictionary containing various pieces of information to use
             when rendering the next page.
         """
@@ -151,17 +150,22 @@ class DepositIntegration:
             # and don't implement KYC by default
             return
 
-        return {"form": (TransactionForm, {})}
+        if post_data:
+            form = TransactionForm(transaction.asset, post_data)
+        else:
+            form = TransactionForm(transaction.asset, initial={"amount": amount})
+
+        return {"form": form}
 
     @classmethod
     def after_form_validation(cls, form: forms.Form, transaction: Transaction):
         """
         Use this function to process the data collected with `form` and to update
         the state of the interactive flow so that the next call to
-        :func:`DepositIntegration.content_for_transaction` returns a dictionary
+        ``DepositIntegration.content_for_transaction`` returns a dictionary
         containing the next form to render to the user, or returns None.
 
-        Keep in mind that if a :class:`TransactionForm` is submitted, Polaris will
+        Keep in mind that if a ``TransactionForm`` is submitted, Polaris will
         update the `amount_in` and `amount_fee` with the information collected.
         There is no need to implement that yourself.
 
@@ -170,11 +174,11 @@ class DepositIntegration:
         particular values at different points in the flow.
 
         If you need to store some data to determine which form to return next when
-        :func:`DepositIntegration.content_for_transaction` is called, store this
+        ``DepositIntegration.content_for_transaction`` is called, store this
         data in a model not used by Polaris.
 
-        :param form: the completed :class:`forms.Form` submitted by the user
-        :param transaction: the :class:`Transaction` database object
+        :param form: the completed ``forms.Form`` submitted by the user
+        :param transaction: the ``Transaction`` database object
         """
         pass
 
@@ -216,7 +220,7 @@ class WithdrawalIntegration:
     The container class for withdrawal integration functions
 
     Subclasses must be registered with Polaris by passing it to
-    :func:`polaris.integrations.register_integrations`.
+    ``polaris.integrations.register_integrations``.
     """
 
     @classmethod
@@ -236,18 +240,30 @@ class WithdrawalIntegration:
 
         :param response: a response body returned from Horizon for the transactions
             for account endpoint_
-        :param transaction: a :class:`Transaction` instance to process
+        :param transaction: a ``Transaction`` instance to process
         """
         raise NotImplementedError(
             "`process_withdrawal` must be implemented to process withdrawals"
         )
 
     @classmethod
-    def content_for_transaction(cls, transaction: Transaction) -> Optional[Dict]:
+    def content_for_transaction(
+        cls,
+        transaction: Transaction,
+        post_data: Optional[QueryDict] = None,
+        amount: Optional[Decimal] = None,
+    ) -> Optional[Dict]:
         """
-        Same as :func:`DepositIntegration.content_for_transaction`
+        .. _django request.POST: https://docs.djangoproject.com/en/3.0/ref/request-response/#django.http.HttpRequest.POST
+        .. _SEP-9: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0009.md
 
-        :param transaction: the :class:`Transaction` database object
+        Same as ``DepositIntegration.content_for_transaction``
+
+        :param transaction: the ``Transaction`` database object
+        :param post_data: A `django request.POST`_ object
+        :param amount: a ``Decimal`` object the wallet may pass in the GET request.
+            Use it to pre-populate your TransactionForm along with any SEP-9_
+            parameters.
         :return: a dictionary containing various pieces of information to use
             when rendering the next page.
         """
@@ -256,16 +272,21 @@ class WithdrawalIntegration:
             # and don't implement KYC by default
             return
 
-        return {"form": (TransactionForm, {})}
+        if post_data:
+            form = TransactionForm(transaction.asset, post_data)
+        else:
+            form = TransactionForm(transaction.asset, initial={"amount": amount})
+
+        return {"form": form}
 
     @classmethod
     def after_form_validation(cls, form: TransactionForm, transaction: Transaction):
         """
-        Same as :func:`DepositIntegration.after_form_validation`, except
+        Same as ``DepositIntegration.after_form_validation``, except
         `transaction.to_address` should be saved here when present in `form`.
 
-        :param form: the completed :class:`forms.Form` submitted by the user
-        :param transaction: the :class:`Transaction` database object
+        :param form: the completed ``forms.Form`` submitted by the user
+        :param transaction: the ``Transaction`` database object
         """
         pass
 

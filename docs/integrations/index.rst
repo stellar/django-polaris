@@ -25,7 +25,7 @@ validate, and process the information you need to collect from users with
 `Django Forms`_.
 
 Of course, you'll need to collect the amount the user would like to deposit
-or withdraw. Polaris provides a :class:`TransactionForm` that can be subclassed to
+or withdraw. Polaris provides a ``TransactionForm`` that can be subclassed to
 add additional fields for this purpose. One ``TransactionForm`` should be rendered
 for every transaction processed. See the :doc:`../forms/index` documentation for
 more information.

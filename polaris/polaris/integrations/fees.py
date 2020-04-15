@@ -22,7 +22,7 @@ def calculate_fee(fee_params: Dict) -> Decimal:
     use the fields collected via their TransactionForm in fee calculation.
 
     Replace this function by registering another through
-    :func:`register_integrations`:
+    ``register_integrations``:
     ::
 
         from myapp.integrations import (
