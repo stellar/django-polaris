@@ -94,9 +94,15 @@ class TransactionForm(forms.Form):
 
     def __init__(self, transaction: Transaction, *args, **kwargs):
         # For testing via anchor-validator.herokuapp.com
-        test_value = kwargs.pop("test_value", None) or "100"
+        test_value = kwargs.pop("test_value", None)
+        if not test_value:
+            test_value = (
+                "103" if transaction.kind == Transaction.KIND.deposit else "100"
+            )
 
         super().__init__(*args, **kwargs)
+
+        self.fields["amount"].widget.attrs.update({"test-value": test_value})
 
         self.transaction = transaction
         self.asset = transaction.asset
@@ -126,8 +132,6 @@ class TransactionForm(forms.Form):
 
         if limit_str:
             self.fields["amount"].label += " " + limit_str
-
-        self.fields["amount"].widget.attrs.update({"test-value": test_value})
 
     amount = forms.DecimalField(
         min_value=0,
