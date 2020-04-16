@@ -1,4 +1,4 @@
-from django.utils.timezone import now
+import datetime
 
 from stellar_sdk.transaction_builder import TransactionBuilder
 from stellar_sdk.exceptions import BaseHorizonError
@@ -158,7 +158,7 @@ def create_stellar_deposit(transaction_id: str) -> bool:
     transaction.paging_token = response["paging_token"]
     transaction.stellar_transaction_id = response["hash"]
     transaction.status = Transaction.STATUS.completed
-    transaction.completed_at = now()
+    transaction.completed_at = datetime.datetime.now(datetime.timezone.utc)
     transaction.status_eta = 0  # No more status change.
     transaction.amount_out = payment_amount
     transaction.save()

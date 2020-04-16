@@ -2,9 +2,9 @@
 import asyncio
 from typing import Dict
 from decimal import Decimal
+import datetime
 
 from django.core.management.base import BaseCommand
-from django.utils.timezone import now
 from stellar_sdk.exceptions import NotFoundError
 from stellar_sdk.transaction_envelope import TransactionEnvelope
 from stellar_sdk.xdr import Xdr
@@ -190,7 +190,7 @@ class Command(BaseCommand):
             transaction.status_message = error_msg
         else:
             transaction.paging_token = response["paging_token"]
-            transaction.completed_at = now()
+            transaction.completed_at = datetime.datetime.now(datetime.timezone.utc)
             transaction.status = Transaction.STATUS.completed
             transaction.status_eta = 0
             transaction.amount_out = transaction.amount_in - transaction.amount_fee

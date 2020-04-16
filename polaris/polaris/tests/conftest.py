@@ -3,7 +3,7 @@ This module sets up the test configuration. It defines fixtures needed to test v
 models, such as the transactions and assets.
 """
 import pytest
-from django.utils import timezone
+import datetime
 
 from polaris.models import Asset, Transaction
 from polaris import settings
@@ -114,7 +114,7 @@ def acc1_usd_withdrawal_transaction_factory(usd_asset_factory):
             status=Transaction.STATUS.pending_user_transfer_start,
             amount_in=50.0,
             amount_fee=0,
-            completed_at=timezone.now(),
+            completed_at=datetime.datetime.now(datetime.timezone.utc),
             stellar_transaction_id="c5e8ada72c0e3c248ac7e1ec0ec97e204c06c295113eedbe632020cd6dc29ff8",
             withdraw_memo="0000000000000000000000000000000080ea73ea01d3411a8d9cea22999eef9e",
             withdraw_memo_type=Transaction.MEMO_TYPES.hash,
@@ -140,7 +140,7 @@ def acc2_eth_withdrawal_transaction_factory(eth_asset_factory):
             amount_in=500.0,
             amount_out=495.0,
             amount_fee=3,
-            completed_at=timezone.now(),
+            completed_at=datetime.datetime.now(datetime.timezone.utc),
             stellar_transaction_id=(
                 "17a670bc424ff5ce3b386dbfaae9990b66a2a37b4fbe51547e8794962a3f9e6a"
             ),

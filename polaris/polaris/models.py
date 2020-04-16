@@ -1,6 +1,7 @@
 """This module defines the models used by Polaris."""
 import uuid
 import decimal
+import datetime
 
 from django.core.validators import (
     MinLengthValidator,
@@ -11,6 +12,10 @@ from django.utils.translation import gettext_lazy as _
 from django.db import models
 from model_utils.models import TimeStampedModel
 from model_utils import Choices
+
+
+def utc_now():
+    return datetime.datetime.now(datetime.timezone.utc)
 
 
 class PolarisChoices(Choices):
@@ -258,7 +263,7 @@ class Transaction(models.Model):
     )
     """Amount of fee charged by anchor."""
 
-    started_at = models.DateTimeField(auto_now_add=True)
+    started_at = models.DateTimeField(default=utc_now)
     """Start date and time of transaction."""
 
     completed_at = models.DateTimeField(null=True)
