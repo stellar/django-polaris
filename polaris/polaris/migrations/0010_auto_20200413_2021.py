@@ -11,7 +11,7 @@ def utc_now():
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("polaris", "0008_auto_20200225_1713"),
+        ("polaris", "0009_transaction_paging_token"),
     ]
 
     operations = [
