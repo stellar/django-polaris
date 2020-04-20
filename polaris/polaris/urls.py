@@ -22,7 +22,7 @@ if "sep-1" in settings.ACTIVE_SEPS:
     urlpatterns.append(path(".well-known/", include("polaris.sep1.urls")))
 
 if "sep-6" in settings.ACTIVE_SEPS:
-    pass
+    urlpatterns.append(path("sep6/", include("polaris.sep6.urls")))
 
 if "sep-10" in settings.ACTIVE_SEPS:
     urlpatterns.append(path("auth", include("polaris.sep10.urls")))

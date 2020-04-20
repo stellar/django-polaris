@@ -1,5 +1,6 @@
 import sys
 from typing import Callable
+from polaris.integrations.info import default_info_func, registered_info_func
 from polaris.integrations.fees import calculate_fee, registered_fee_func
 from polaris.integrations.forms import TransactionForm, CreditCardForm
 from polaris.integrations.toml import get_stellar_toml, registered_toml_func
@@ -18,6 +19,7 @@ def register_integrations(
     toml_func: Callable = None,
     scripts_func: Callable = None,
     fee_func: Callable = None,
+    info_func: Callable = None,
 ):
     """
     Registers instances of user-defined subclasses of
@@ -58,6 +60,7 @@ def register_integrations(
     :param scripts_func: a function that returns a list of script tags as
         strings
     :param fee_func: a function that returns the fee that would be charged
+    :param info_func: a function that returns the /info `fields` or `types` values for an Asset
     :raises ValueError: missing argument(s)
     :raises TypeError: arguments are not subclasses of DepositIntegration or
         Withdrawal
@@ -76,6 +79,8 @@ def register_integrations(
         raise TypeError("javascript_func is not callable")
     elif fee_func and not callable(fee_func):
         raise TypeError("javascript_func is not callable")
+    elif info_func and not callable(info_func):
+        raise TypeError("info_func is not callable")
 
     for obj, attr in [
         (deposit, "registered_deposit_integration"),
@@ -83,6 +88,7 @@ def register_integrations(
         (toml_func, "registered_toml_func"),
         (scripts_func, "registered_scripts_func"),
         (fee_func, "registered_fee_func"),
+        (info_func, "registered_info_func"),
     ]:
         if obj:
             setattr(this, attr, obj)
