@@ -12,9 +12,10 @@ from django.views.decorators.clickjacking import xframe_options_exempt
 from django.utils.translation import gettext as _
 from django.core.exceptions import ValidationError
 
-from polaris.helpers import render_error_response, validate_sep10_token
+from polaris.utils import render_error_response
+from polaris.sep10.utils import validate_sep10_token
 from polaris.models import Transaction, Asset
-from polaris.transaction.serializers import TransactionSerializer
+from polaris.sep24.serializers import TransactionSerializer
 from polaris.integrations import (
     registered_deposit_integration as rdi,
     registered_scripts_func,
@@ -123,7 +124,9 @@ def transactions(account: str, request: Request) -> Response:
 
     if not request.GET.get("asset_code"):
         return render_error_response("asset_code is required")
-    elif not Asset.objects.filter(code=request.GET.get("asset_code")).exists():
+    elif not Asset.objects.filter(
+        code=request.GET.get("asset_code"), sep24_enabled=True
+    ).exists():
         return render_error_response("invalid asset_code")
 
     translation_dict = {

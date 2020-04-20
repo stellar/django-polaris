@@ -9,6 +9,6 @@ class PolarisConfig(AppConfig):
         """
         Initialize the app. Currently a no-op.
         """
-        from polaris.helpers import check_middleware
+        from polaris.sep24.utils import check_middleware
 
         check_middleware()

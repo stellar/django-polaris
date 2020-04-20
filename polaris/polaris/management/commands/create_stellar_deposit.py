@@ -1,6 +1,6 @@
-from polaris.helpers import Logger
+from polaris.utils import Logger
 from django.core.management import BaseCommand, CommandError
-from polaris.deposit.utils import create_stellar_deposit
+from polaris.utils import create_stellar_deposit
 
 
 TRUSTLINE_FAILURE_XDR = "AAAAAAAAAGT/////AAAAAQAAAAAAAAAB////+gAAAAA="
