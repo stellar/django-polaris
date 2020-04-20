@@ -7,16 +7,17 @@ from stellar_sdk.keypair import Keypair
 from stellar_sdk.transaction_envelope import TransactionEnvelope
 
 from polaris import settings
-from polaris.helpers import format_memo_horizon
+from polaris.utils import format_memo_horizon
 from polaris.management.commands.watch_transactions import Command
 from polaris.models import Transaction
 from polaris.tests.helpers import mock_check_auth_success
 
-WITHDRAW_PATH = "/transactions/withdraw/interactive"
+WEBAPP_PATH = "/sep24/transactions/withdraw/webapp"
+WITHDRAW_PATH = "/sep24/transactions/withdraw/interactive"
 
 
 @pytest.mark.django_db
-@patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
+@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
 def test_withdraw_success(mock_check, client, acc1_usd_withdrawal_transaction_factory):
     """`GET /withdraw` succeeds with no optional arguments."""
     del mock_check
@@ -27,7 +28,7 @@ def test_withdraw_success(mock_check, client, acc1_usd_withdrawal_transaction_fa
 
 
 @pytest.mark.django_db
-@patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
+@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
 def test_withdraw_invalid_asset(
     mock_check, client, acc1_usd_withdrawal_transaction_factory
 ):
@@ -41,7 +42,7 @@ def test_withdraw_invalid_asset(
 
 
 @pytest.mark.django_db
-@patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
+@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
 def test_withdraw_no_asset(mock_check, client):
     """`GET /withdraw fails with no asset argument."""
     del mock_check
@@ -52,8 +53,8 @@ def test_withdraw_no_asset(mock_check, client):
 
 
 @pytest.mark.django_db
-@patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
-@patch("polaris.helpers.authenticate_session_helper")
+@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
+@patch("polaris.sep24.utils.authenticate_session_helper")
 def test_withdraw_interactive_no_txid(
     mock_check, mock_auth, client, acc1_usd_withdrawal_transaction_factory
 ):
@@ -62,13 +63,13 @@ def test_withdraw_interactive_no_txid(
     """
     del mock_check, mock_auth
     acc1_usd_withdrawal_transaction_factory()
-    response = client.get(f"/transactions/withdraw/webapp?", follow=True)
+    response = client.get(WEBAPP_PATH, follow=True)
     assert response.status_code == 400
 
 
 @pytest.mark.django_db
-@patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
-@patch("polaris.helpers.authenticate_session_helper")
+@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
+@patch("polaris.sep24.utils.authenticate_session_helper")
 def test_withdraw_interactive_no_asset(
     mock_check, mock_auth, client, acc1_usd_withdrawal_transaction_factory
 ):
@@ -77,15 +78,13 @@ def test_withdraw_interactive_no_asset(
     """
     del mock_check, mock_auth
     acc1_usd_withdrawal_transaction_factory()
-    response = client.get(
-        f"/transactions/withdraw/webapp?transaction_id=2", follow=True
-    )
+    response = client.get(f"{WEBAPP_PATH}?transaction_id=2", follow=True)
     assert response.status_code == 400
 
 
 @pytest.mark.django_db
-@patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
-@patch("polaris.helpers.authenticate_session_helper")
+@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
+@patch("polaris.sep24.utils.authenticate_session_helper")
 def test_withdraw_interactive_invalid_asset(
     mock_check, mock_auth, client, acc1_usd_withdrawal_transaction_factory
 ):
@@ -94,9 +93,7 @@ def test_withdraw_interactive_invalid_asset(
     """
     del mock_check, mock_auth
     acc1_usd_withdrawal_transaction_factory()
-    response = client.get(
-        f"/transactions/withdraw/webapp?transaction_id=2&asset_code=ETH", follow=True
-    )
+    response = client.get(f"{WEBAPP_PATH}?transaction_id=2&asset_code=ETH", follow=True)
     assert response.status_code == 400
 
 
@@ -105,7 +102,7 @@ def test_withdraw_interactive_invalid_asset(
 
 
 @pytest.mark.django_db
-@patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
+@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
 def test_withdraw_interactive_failure_no_memotype(
     mock_check, client, acc1_usd_withdrawal_transaction_factory
 ):
@@ -137,7 +134,7 @@ def test_withdraw_interactive_failure_no_memotype(
 
 
 @pytest.mark.django_db
-@patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
+@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
 def test_withdraw_interactive_failure_incorrect_memotype(
     mock_check, client, acc1_usd_withdrawal_transaction_factory
 ):
@@ -169,7 +166,7 @@ def test_withdraw_interactive_failure_incorrect_memotype(
 
 
 @pytest.mark.django_db
-@patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
+@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
 def test_withdraw_interactive_failure_no_memo(
     mock_check, client, acc1_usd_withdrawal_transaction_factory
 ):
@@ -201,7 +198,7 @@ def test_withdraw_interactive_failure_no_memo(
 
 
 @pytest.mark.django_db
-@patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
+@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
 def test_withdraw_interactive_failure_incorrect_memo(
     mock_check, client, acc1_usd_withdrawal_transaction_factory
 ):
@@ -233,7 +230,7 @@ def test_withdraw_interactive_failure_incorrect_memo(
 
 
 @pytest.mark.django_db
-@patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
+@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
 def test_withdraw_interactive_success_transaction_unsuccessful(
     mock_check, client, acc1_usd_withdrawal_transaction_factory
 ):
@@ -275,7 +272,7 @@ def test_withdraw_interactive_success_transaction_unsuccessful(
 
 
 @pytest.mark.django_db
-@patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
+@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
 def test_withdraw_interactive_success_transaction_successful(
     mock_check, client, acc1_usd_withdrawal_transaction_factory
 ):
@@ -324,12 +321,14 @@ def test_withdraw_authenticated_success(
     client, acc1_usd_withdrawal_transaction_factory
 ):
     """`GET /withdraw` succeeds with the SEP 10 authentication flow."""
+    from polaris.tests.auth_test import endpoint as auth_endpoint
+
     client_address = "GDKFNRUATPH4BSZGVFDRBIGZ5QAFILVFRIRYNSQ4UO7V2ZQAPRNL73RI"
     client_seed = "SDKWSBERDHP3SXW5A3LXSI7FWMMO5H7HG33KNYBKWH2HYOXJG2DXQHQY"
     acc1_usd_withdrawal_transaction_factory()
 
     # SEP 10.
-    response = client.get(f"/auth?account={client_address}", follow=True)
+    response = client.get(f"{auth_endpoint}?account={client_address}", follow=True)
     content = json.loads(response.content)
 
     envelope_xdr = content["transaction"]
@@ -341,7 +340,7 @@ def test_withdraw_authenticated_success(
     client_signed_envelope_xdr = envelope_object.to_xdr()
 
     response = client.post(
-        "/auth",
+        auth_endpoint,
         data={"transaction": client_signed_envelope_xdr},
         content_type="application/json",
     )

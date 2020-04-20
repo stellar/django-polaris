@@ -11,7 +11,7 @@ from stellar_sdk.transaction_envelope import TransactionEnvelope
 
 
 def mock_check_auth_success(request, func, content_type: str = "application/json"):
-    """Mocks `helpers.check_auth`, for success."""
+    """Mocks `sep10.utils.check_auth`, for success."""
     return func("test source address", request)
 
 
@@ -54,7 +54,7 @@ def mock_load_not_exist_account(account_id):
 def interactive_jwt_payload(transaction, transaction_type):
     current_time = time.time()
     return {
-        "iss": f"http://testserver/transactions/{transaction_type}/interactive",
+        "iss": f"http://testserver/sep24/transactions/{transaction_type}/interactive",
         "exp": current_time + 30,
         "iat": current_time,
         "jti": str(transaction.id),

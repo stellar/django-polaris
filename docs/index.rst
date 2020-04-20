@@ -13,25 +13,24 @@ What is Polaris?
 .. _here: https://stellar-anchor-server.herokuapp.com
 .. _anchor: https://www.stellar.org/developers/guides/anchor/
 .. _stellar.toml: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0001.md
+.. _demo client: http://sep24.stellar.org/#HOME_DOMAIN=%22https://testanchor.stellar.org%22&TRANSFER_SERVER=%22%22&WEB_AUTH_ENDPOINT=%22%22&USER_SK=%22SBBMVOJQLRJTQISVSUPBI2ZNQLZYNR4ARGWFPDDEL2U7444HPDII4VCX%22&HORIZON_URL=%22https://horizon-testnet.stellar.org%22&ASSET_CODE=%22SRT%22&ASSET_ISSUER=%22%22&EMAIL_ADDRESS=%22%22&STRICT_MODE=false&AUTO_ADVANCE=true&PUBNET=false
 
 Polaris implements SEP-24_ and is maintained by the
 `Stellar Development Foundation`_ (SDF). SEP-24 is a standard defined to make
 wallets and anchors interoperable, meaning any wallet can communicate with any
-anchor_ for the purpose of withdrawing or depositing assets into the stellar
-network.
+anchor_ for the purpose of withdrawing or depositing assets on the stellar network.
 
-Polaris is not a library or a framework; its an extendable `django
-reusable-app`_.  Like many django apps, it comes with fully-implemented
-endpoints, templates, and database models. The project is completely open
-source and available at the SDF's github_.
+Polaris is not a library or a framework; its an `extendable`
+`django-app`_.  Like many django apps, it comes with fully-implemented
+endpoints, templates, and database models.
 
 To use Polaris, developers must implement it's provided
 :doc:`integrations points </integrations/index>`. These integration points
 allow developers to inject their own business logic into the transaction
 processing flow, customize their stellar.toml, and more.
 
-The SDF maintains a reference server running Polaris here, and its source code
-can be found under the repository's example_ folder.
+The SDF maintains a Polaris server at that can be tested using the SEP-24
+`demo client`_ and is completely open source and available on the SDF's github_.
 
 Installation and Configuration
 ==============================

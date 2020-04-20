@@ -11,15 +11,17 @@ from polaris.tests.helpers import mock_check_auth_success, sep10
 client_address = "GDKFNRUATPH4BSZGVFDRBIGZ5QAFILVFRIRYNSQ4UO7V2ZQAPRNL73RI"
 client_seed = "SDKWSBERDHP3SXW5A3LXSI7FWMMO5H7HG33KNYBKWH2HYOXJG2DXQHQY"
 
+endpoint = "/sep24/transactions"
+
 
 @pytest.mark.django_db
-@patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
+@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
 def test_required_fields(mock_check, client, acc2_eth_withdrawal_transaction_factory):
     """Fails without required parameters."""
     del mock_check
     acc2_eth_withdrawal_transaction_factory()
 
-    response = client.get(f"/transactions", follow=True)
+    response = client.get(endpoint, follow=True)
 
     content = json.loads(response.content)
     assert response.status_code == 400
@@ -27,7 +29,7 @@ def test_required_fields(mock_check, client, acc2_eth_withdrawal_transaction_fac
 
 
 @pytest.mark.django_db
-@patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
+@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
 def test_required_asset_code(
     mock_check, client, acc2_eth_withdrawal_transaction_factory
 ):
@@ -36,7 +38,7 @@ def test_required_asset_code(
     withdrawal = acc2_eth_withdrawal_transaction_factory()
 
     response = client.get(
-        f"/transactions?account={withdrawal.stellar_account}", follow=True
+        f"{endpoint}?account={withdrawal.stellar_account}", follow=True
     )
 
     content = json.loads(response.content)
@@ -60,7 +62,7 @@ def test_transactions_format(
     header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
 
     response = client.get(
-        f"/transactions?asset_code={withdrawal.asset.code}", follow=True, **header
+        f"{endpoint}?asset_code={withdrawal.asset.code}", follow=True, **header
     )
     content = json.loads(response.content)
 
@@ -86,7 +88,7 @@ def test_transactions_order(
     header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
 
     response = client.get(
-        f"/transactions?asset_code={withdrawal.asset.code}", follow=True, **header
+        f"{endpoint}?asset_code={withdrawal.asset.code}", follow=True, **header
     )
     content = json.loads(response.content)
 
@@ -126,7 +128,7 @@ def test_transactions_content(
     w_completed_at = withdrawal.completed_at.isoformat().replace("+00:00", "Z")
 
     response = client.get(
-        f"/transactions?asset_code={withdrawal.asset.code}", follow=True, **header
+        f"{endpoint}?asset_code={withdrawal.asset.code}", follow=True, **header
     )
     content = json.loads(response.content)
 
@@ -230,7 +232,7 @@ def test_paging_id(
 
     response = client.get(
         (
-            f"/transactions?asset_code={withdrawal.asset.code}"
+            f"{endpoint}?asset_code={withdrawal.asset.code}"
             f"&paging_id={withdrawal.id}"
         ),
         follow=True,
@@ -260,7 +262,7 @@ def test_kind_filter(
     header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
 
     response = client.get(
-        (f"/transactions?asset_code={withdrawal.asset.code}" "&kind=deposit"),
+        f"{endpoint}?asset_code={withdrawal.asset.code}&kind=deposit",
         follow=True,
         **header,
     )
@@ -273,7 +275,7 @@ def test_kind_filter(
 
 
 @pytest.mark.django_db
-@patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
+@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
 def test_kind_filter_no_500(
     mock_check,
     client,
@@ -286,7 +288,7 @@ def test_kind_filter_no_500(
     withdrawal = acc2_eth_withdrawal_transaction_factory()
 
     response = client.get(
-        (f"/transactions?asset_code={withdrawal.asset.code}" "&kind=somethingelse"),
+        f"{endpoint}?asset_code={withdrawal.asset.code}&kind=somethingelse",
         follow=True,
     )
     content = json.loads(response.content)
@@ -312,7 +314,7 @@ def test_limit(
     header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
 
     response = client.get(
-        f"/transactions?asset_code={withdrawal.asset.code}" "&limit=1",
+        f"{endpoint}?asset_code={withdrawal.asset.code}" "&limit=1",
         follow=True,
         **header,
     )
@@ -325,7 +327,7 @@ def test_limit(
 
 
 @pytest.mark.django_db
-@patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
+@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
 def test_invalid_limit(
     mock_check,
     client,
@@ -338,8 +340,7 @@ def test_invalid_limit(
     withdrawal = acc2_eth_withdrawal_transaction_factory()  # newest
 
     response = client.get(
-        (f"/transactions?asset_code={withdrawal.asset.code}" "&limit=string"),
-        follow=True,
+        f"{endpoint}?asset_code={withdrawal.asset.code}&limit=string", follow=True,
     )
     content = json.loads(response.content)
 
@@ -348,7 +349,7 @@ def test_invalid_limit(
 
 
 @pytest.mark.django_db
-@patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
+@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
 def test_negative_limit(
     mock_check,
     client,
@@ -361,7 +362,7 @@ def test_negative_limit(
     withdrawal = acc2_eth_withdrawal_transaction_factory()  # newest
 
     response = client.get(
-        (f"/transactions?asset_code={withdrawal.asset.code}" "&limit=-1"), follow=True,
+        f"{endpoint}?asset_code={withdrawal.asset.code}&limit=-1", follow=True,
     )
     content = json.loads(response.content)
 
@@ -391,7 +392,7 @@ def test_no_older_than_filter(
     urlencoded_datetime = urllib.parse.quote(deposit_transaction.started_at.isoformat())
     response = client.get(
         (
-            f"/transactions?asset_code={withdrawal_transaction.asset.code}"
+            f"{endpoint}?asset_code={withdrawal_transaction.asset.code}"
             f"&no_older_than={urlencoded_datetime}"
         ),
         follow=True,
@@ -423,7 +424,7 @@ def test_transactions_authenticated_success(
     header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
 
     response = client.get(
-        f"/transactions?asset_code={withdrawal.asset.code}", follow=True, **header,
+        f"{endpoint}?asset_code={withdrawal.asset.code}", follow=True, **header,
     )
     content = json.loads(response.content)
 
@@ -436,7 +437,7 @@ def test_transactions_no_jwt(client, acc2_eth_withdrawal_transaction_factory):
     """`GET /transactions` fails if a required JWT is not provided."""
     withdrawal = acc2_eth_withdrawal_transaction_factory()
     response = client.get(
-        f"/transactions?asset_code={withdrawal.asset.code}", follow=True,
+        f"{endpoint}?asset_code={withdrawal.asset.code}", follow=True,
     )
     content = json.loads(response.content)
     assert response.status_code == 403

@@ -4,9 +4,9 @@ from django.core.management.base import BaseCommand
 from stellar_sdk.exceptions import BaseHorizonError
 
 from polaris import settings
-from polaris.deposit.utils import create_stellar_deposit
+from polaris.utils import create_stellar_deposit
 from polaris.models import Transaction
-from polaris.helpers import Logger
+from polaris.utils import Logger
 from polaris.integrations import registered_deposit_integration as rdi
 
 logger = Logger(__name__)

@@ -4,7 +4,7 @@ from copy import deepcopy
 
 from polaris.models import Transaction
 from polaris import settings
-from polaris.helpers import format_memo_horizon
+from polaris.utils import format_memo_horizon
 from polaris.management.commands.watch_transactions import Command
 
 test_module = "polaris.management.commands.watch_transactions"

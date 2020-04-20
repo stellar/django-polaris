@@ -7,6 +7,8 @@ from polaris.tests.helpers import sep10
 client_address = "GDKFNRUATPH4BSZGVFDRBIGZ5QAFILVFRIRYNSQ4UO7V2ZQAPRNL73RI"
 client_seed = "SDKWSBERDHP3SXW5A3LXSI7FWMMO5H7HG33KNYBKWH2HYOXJG2DXQHQY"
 
+endpoint = "/sep24/transaction/more_info"
+
 
 @pytest.mark.django_db
 def test_more_info_required_fields(client, acc1_usd_deposit_transaction_factory):
@@ -16,7 +18,7 @@ def test_more_info_required_fields(client, acc1_usd_deposit_transaction_factory)
     # For testing, we make the key `HTTP_AUTHORIZATION`. This is the value that
     # we expect due to the middleware.
     header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
-    response = client.get(f"/transaction/more_info", follow=True, **header)
+    response = client.get(endpoint, follow=True, **header)
     assert response.status_code == 400
 
 
@@ -28,9 +30,7 @@ def test_more_info_id_filter(client, acc1_usd_deposit_transaction_factory):
     # For testing, we make the key `HTTP_AUTHORIZATION`. This is the value that
     # we expect due to the middleware.
     header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
-    response = client.get(
-        f"/transaction/more_info?id={deposit.id}", follow=True, **header
-    )
+    response = client.get(f"{endpoint}?id={deposit.id}", follow=True, **header)
 
     assert response.status_code == 200
 
@@ -46,7 +46,7 @@ def test_more_info_stellar_filter(client, acc1_usd_deposit_transaction_factory):
     # we expect due to the middleware.
     header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
     response = client.get(
-        f"/transaction/more_info?stellar_transaction_id={deposit.stellar_transaction_id}",
+        f"{endpoint}?stellar_transaction_id={deposit.stellar_transaction_id}",
         follow=True,
         **header,
     )
@@ -62,7 +62,7 @@ def test_more_info_external_filter(client, acc1_usd_deposit_transaction_factory)
     # we expect due to the middleware.
     header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
     response = client.get(
-        f"/transaction/more_info?external_transaction_id={deposit.external_transaction_id}",
+        f"{endpoint}?external_transaction_id={deposit.external_transaction_id}",
         follow=True,
         **header,
     )
@@ -80,7 +80,7 @@ def test_more_info_multiple_filters(client, acc1_usd_deposit_transaction_factory
     # we expect due to the middleware.
     header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
     response = client.get(
-        f"/transaction/more_info?id={deposit.id}"
+        f"{endpoint}?id={deposit.id}"
         f"&external_transaction_id={deposit.external_transaction_id}"
         f"&stellar_transaction_id={deposit.stellar_transaction_id}",
         follow=True,
@@ -103,7 +103,7 @@ def test_more_info_no_result(
     # we expect due to the middleware.
     header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
     response = client.get(
-        f"/transaction/more_info?id={deposit.id}"
+        f"{endpoint}?id={deposit.id}"
         f"&external_transaction_id={withdrawal.external_transaction_id}"
         f"&stellar_transaction_id={withdrawal.stellar_transaction_id}",
         follow=True,
