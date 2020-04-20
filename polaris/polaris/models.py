@@ -117,13 +117,19 @@ class Asset(TimeStampedModel):
     distribution_seed = models.TextField(null=True)
     """The distribution stellar account secret key"""
 
+    sep24_enabled = models.BooleanField(default=False)
+    """`True` if this asset is transferable via SEP-24"""
+
+    sep6_enabled = models.BooleanField(default=False)
+    """`True` if this asset is transferable via SEP-6"""
+
+    objects = models.Manager()
+
     @property
     def distribution_account(self):
         if not self.distribution_seed:
             return None
         return Keypair.from_secret(str(self.distribution_seed)).public_key
-
-    objects = models.Manager()
 
     class Meta:
         app_label = "polaris"

@@ -31,7 +31,7 @@ def fee(account: str, request: Request) -> Response:
     amount_str = request.GET.get("amount")
 
     # Verify that the asset code exists in our database:
-    asset = Asset.objects.filter(code=asset_code).first()
+    asset = Asset.objects.filter(code=asset_code, sep24_enabled=True).first()
     if not asset_code or not asset:
         return render_error_response("invalid 'asset_code'")
 

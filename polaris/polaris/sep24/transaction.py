@@ -124,7 +124,9 @@ def transactions(account: str, request: Request) -> Response:
 
     if not request.GET.get("asset_code"):
         return render_error_response("asset_code is required")
-    elif not Asset.objects.filter(code=request.GET.get("asset_code")).exists():
+    elif not Asset.objects.filter(
+        code=request.GET.get("asset_code"), sep24_enabled=True
+    ).exists():
         return render_error_response("invalid asset_code")
 
     translation_dict = {

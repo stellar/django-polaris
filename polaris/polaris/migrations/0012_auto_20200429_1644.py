@@ -16,7 +16,7 @@ def populate_from_env_vars(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("polaris", "0010_auto_20200413_2021"),
+        ("polaris", "0011_auto_20200420_2205"),
     ]
 
     operations = [

@@ -149,7 +149,7 @@ def interactive_args_validation(request: Request) -> Dict:
     asset_code = request.GET.get("asset_code")
     callback = request.GET.get("callback")
     amount_str = request.GET.get("amount")
-    asset = Asset.objects.filter(code=asset_code).first()
+    asset = Asset.objects.filter(code=asset_code, sep24_enabled=True).first()
     if not transaction_id:
         return dict(
             error=render_error_response(

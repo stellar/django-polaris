@@ -47,7 +47,7 @@ def info(request):
         "transaction": {"enabled": True},
     }
 
-    for asset in Asset.objects.all():
+    for asset in Asset.objects.filter(sep24_enabled=True):
         info_data["deposit"][asset.code] = _get_asset_info(asset, "deposit")
         info_data["withdraw"][asset.code] = _get_asset_info(asset, "withdrawal")
 
