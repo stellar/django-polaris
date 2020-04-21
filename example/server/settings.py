@@ -42,7 +42,7 @@ INSTALLED_APPS = [
     "sslserver",
 ]
 
-ACTIVE_SEPS = ["sep-1", "sep-6", "sep-10", "sep-24"]
+ACTIVE_SEPS = ["sep-1", "sep-10", "sep-24"]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
