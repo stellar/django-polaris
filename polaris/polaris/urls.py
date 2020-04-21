@@ -13,16 +13,19 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog', include('blog.urls'))
 """
-from django.contrib import admin
+from django.conf import settings
 from django.urls import path, include
 
-urlpatterns = [
-    path(".well-known", include("polaris.stellartoml.urls")),
-    path("info", include("polaris.info.urls")),
-    path("fee", include("polaris.fee.urls")),
-    path("", include("polaris.transaction.urls")),
-    path("", include("polaris.deposit.urls")),
-    path("", include("polaris.withdraw.urls")),
-    path("language", include("polaris.locale.urls")),
-    path("auth", include("polaris.sep10auth.urls")),
-]
+
+urlpatterns = []
+if "sep-1" in settings.ACTIVE_SEPS:
+    urlpatterns.append(path(".well-known/", include("polaris.sep1.urls")))
+
+if "sep-6" in settings.ACTIVE_SEPS:
+    pass
+
+if "sep-10" in settings.ACTIVE_SEPS:
+    urlpatterns.append(path("auth", include("polaris.sep10.urls")))
+
+if "sep-24" in settings.ACTIVE_SEPS:
+    urlpatterns.append(path("sep24/", include("polaris.sep24.urls")))

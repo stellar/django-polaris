@@ -6,8 +6,8 @@ from rest_framework.decorators import api_view, renderer_classes
 from rest_framework.renderers import TemplateHTMLRenderer, JSONRenderer
 
 from .forms import AllFieldsForm
-from .models import PolarisUser, PolarisStellarAccount
-from polaris.helpers import render_error_response
+from .models import PolarisStellarAccount
+from polaris.utils import render_error_response
 
 
 @api_view(["GET"])

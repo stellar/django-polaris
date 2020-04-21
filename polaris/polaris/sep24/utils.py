@@ -1,18 +1,14 @@
-"""This module defines helpers for various endpoints."""
-import os
-import logging
-import codecs
-import time
 import uuid
+import time
+import jwt
+from jwt.exceptions import InvalidTokenError
 from urllib.parse import urlencode
 from typing import Callable, Dict, Optional
 from decimal import Decimal, DecimalException
 
-import jwt
-from jwt.exceptions import InvalidTokenError
 from rest_framework import status
-from rest_framework.response import Response
 from rest_framework.request import Request
+from rest_framework.response import Response
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext as _
 from django.conf import settings as django_settings
@@ -21,112 +17,7 @@ from django.urls import reverse
 from polaris import settings
 from polaris.middleware import import_path
 from polaris.models import Asset, Transaction
-
-
-def render_error_response(
-    description: str,
-    status_code: int = status.HTTP_400_BAD_REQUEST,
-    content_type: str = "application/json",
-) -> Response:
-    """
-    Renders an error response in Django.
-
-    Currently supports HTML or JSON responses.
-    """
-    resp_data = {
-        "data": {"error": description},
-        "status": status_code,
-        "content_type": content_type,
-    }
-    if content_type == "text/html":
-        resp_data["data"]["status_code"] = status_code
-        resp_data["template_name"] = "error.html"
-    return Response(**resp_data)
-
-
-def create_transaction_id():
-    """Creates a unique UUID for a Transaction, via checking existing entries."""
-    while True:
-        transaction_id = uuid.uuid4()
-        if not Transaction.objects.filter(id=transaction_id).exists():
-            break
-    return transaction_id
-
-
-def format_memo_horizon(memo):
-    """
-    Formats a hex memo, as in the Transaction model, to match
-    the base64 Horizon response.
-    """
-    return (codecs.encode(codecs.decode(memo, "hex"), "base64").decode("utf-8")).strip()
-
-
-def check_auth(request, func, content_type: str = "application/json"):
-    """
-    Check SEP 10 authentication in a request.
-    Else call the original view function.
-    """
-    try:
-        account = validate_jwt_request(request)
-    except ValueError as e:
-        return render_error_response(
-            str(e), content_type=content_type, status_code=status.HTTP_403_FORBIDDEN
-        )
-    return func(account, request)
-
-
-def validate_sep10_token(content_type: str = "application/json"):
-    """Decorator to validate the SEP 10 token in a request."""
-
-    def decorator(view):
-        def wrapper(request, *args, **kwargs):
-            return check_auth(request, view, content_type=content_type)
-
-        return wrapper
-
-    return decorator
-
-
-def validate_jwt_request(request: Request) -> str:
-    """
-    Validate the JSON web token in a request and return the source account address
-
-    :raises ValueError: invalid JWT
-    """
-    # While the SEP 24 spec calls the authorization header "Authorization", django middleware
-    # renames this as "HTTP_AUTHORIZATION". We check this header for the JWT.
-    jwt_header = request.META.get("HTTP_AUTHORIZATION")
-    if not jwt_header:
-        raise ValueError("JWT must be passed as 'Authorization' header")
-    bad_format_error = ValueError(
-        "'Authorization' header must be formatted as 'Bearer <token>'"
-    )
-    if "Bearer" not in jwt_header:
-        raise bad_format_error
-    try:
-        encoded_jwt = jwt_header.split(" ")[1]
-    except IndexError:
-        raise bad_format_error
-    if not encoded_jwt:
-        raise bad_format_error
-    # Validate the JWT contents.
-    try:
-        jwt_dict = jwt.decode(
-            encoded_jwt, settings.SERVER_JWT_KEY, algorithms=["HS256"]
-        )
-    except InvalidTokenError as e:
-        raise ValueError("Unable to decode jwt")
-
-    if jwt_dict["iss"] != os.path.join(settings.HOST_URL, "auth"):
-        raise ValueError("'jwt' has incorrect 'issuer'")
-    current_time = time.time()
-    if current_time < jwt_dict["iat"] or current_time > jwt_dict["exp"]:
-        raise ValueError("'jwt' is no longer valid")
-
-    try:
-        return jwt_dict["sub"]
-    except KeyError:
-        raise ValueError("Decoded JWT missing 'sub' field")
+from polaris.utils import render_error_response
 
 
 def check_authentication(content_type: str = "text/html") -> Callable:
@@ -372,99 +263,10 @@ def verify_valid_asset_operation(
         )
 
 
-SEP_9_FIELDS = {
-    "family_name",
-    "last_name",
-    "given_name",
-    "first_name",
-    "additional_name",
-    "address_country_code",
-    "state_or_province",
-    "city",
-    "postal_code",
-    "address",
-    "mobile_number",
-    "email_address",
-    "birth_date",
-    "birth_place",
-    "birth_country_code",
-    "bank_account_number",
-    "bank_number",
-    "bank_phone_number",
-    "tax_id",
-    "tax_id_name",
-    "occupation",
-    "employer_name",
-    "employer_address",
-    "language_code",
-    "id_type",
-    "id_country_code",
-    "id_issue_date",
-    "id_expiration_date",
-    "id_number",
-    "photo_id_front",
-    "photo_id_back",
-    "notary_approval_of_photo_id",
-    "ip_address",
-    "photo_proof_residence",
-    "organization.name",
-    "organization.VAT_number",
-    "organization.registration_number",
-    "organization.registered_address",
-    "organization.number_of_shareholders",
-    "organization.shareholder_name",
-    "organization.photo_incorporation_doc",
-    "organization.photo_proof_adress",
-    "organization.address_country_code",
-    "organization.state_or_province",
-    "organization.city",
-    "organization.postal_code",
-    "organization.director_name",
-    "organization.website",
-    "organization.email",
-    "organization.phone",
-}
-
-
-def extract_sep9_fields(args):
-    sep9_args = {}
-    for field in SEP_9_FIELDS:
-        sep9_args[field] = args.get(field)
-    return sep9_args
-
-
-class Logger:
-    """
-    Additional log message pre-processing.
-
-    Right now this class allows loggers to be defined with additional
-    meta-data that can be used to pre-process log statements. This
-    could be done using a logging.Handler.
-    """
-
-    def __init__(self, namespace):
-        self.logger = logging.getLogger("polaris")
-        self.namespace = namespace
-
-    def fmt(self, msg):
-        return f'{self.namespace}: "{msg}"'
-
-    # typical logging.Logger mock methods
-
-    def debug(self, msg):
-        self.logger.debug(self.fmt(msg))
-
-    def info(self, msg):
-        self.logger.info(self.fmt(msg))
-
-    def warning(self, msg):
-        self.logger.warning(self.fmt(msg))
-
-    def error(self, msg):
-        self.logger.error(self.fmt(msg))
-
-    def critical(self, msg):
-        self.logger.critical(self.fmt(msg))
-
-    def exception(self, msg):
-        self.logger.exception(self.fmt(msg))
+def create_transaction_id():
+    """Creates a unique UUID for a Transaction, via checking existing entries."""
+    while True:
+        transaction_id = uuid.uuid4()
+        if not Transaction.objects.filter(id=transaction_id).exists():
+            break
+    return transaction_id

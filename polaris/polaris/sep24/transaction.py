@@ -12,9 +12,10 @@ from django.views.decorators.clickjacking import xframe_options_exempt
 from django.utils.translation import gettext as _
 from django.core.exceptions import ValidationError
 
-from polaris.helpers import render_error_response, validate_sep10_token
+from polaris.utils import render_error_response
+from polaris.sep10.utils import validate_sep10_token
 from polaris.models import Transaction, Asset
-from polaris.transaction.serializers import TransactionSerializer
+from polaris.sep24.serializers import TransactionSerializer
 from polaris.integrations import (
     registered_deposit_integration as rdi,
     registered_scripts_func,

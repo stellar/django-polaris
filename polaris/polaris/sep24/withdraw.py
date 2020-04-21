@@ -15,21 +15,23 @@ from rest_framework.request import Request
 from rest_framework.renderers import TemplateHTMLRenderer, JSONRenderer
 
 from polaris import settings
-from polaris.helpers import (
+from polaris.utils import (
     render_error_response,
+    Logger,
+    extract_sep9_fields,
+)
+from polaris.sep24.utils import (
     create_transaction_id,
-    validate_sep10_token,
+    interactive_url,
     check_authentication,
     authenticate_session,
     invalidate_session,
     interactive_args_validation,
-    Logger,
-    interactive_url,
-    extract_sep9_fields,
 )
+from polaris.sep10.utils import validate_sep10_token
 from polaris.models import Asset, Transaction
 from polaris.integrations.forms import TransactionForm
-from polaris.locale.views import validate_language, activate_lang_for_request
+from polaris.locale.utils import validate_language, activate_lang_for_request
 from polaris.integrations import (
     registered_withdrawal_integration as rwi,
     registered_scripts_func,
@@ -259,7 +261,7 @@ def withdraw(account: str, request: Request) -> Response:
 
     # Verify that the asset code exists in our database, with withdraw enabled.
     asset = Asset.objects.filter(code=asset_code).first()
-    if not asset or not asset.withdrawal_enabled:
+    if not (asset and asset.withdrawal_enabled):
         return render_error_response(_("invalid operation for asset %s") % asset_code)
     elif asset.code not in settings.ASSETS:
         return render_error_response(_("unsupported asset type: %s") % asset_code)

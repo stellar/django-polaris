@@ -10,13 +10,14 @@ from stellar_sdk.xdr import Xdr
 from polaris import settings
 from polaris.tests.conftest import STELLAR_ACCOUNT_1
 
+endpoint = "/auth"
 CLIENT_ADDRESS = "GDKFNRUATPH4BSZGVFDRBIGZ5QAFILVFRIRYNSQ4UO7V2ZQAPRNL73RI"
 CLIENT_SEED = "SDKWSBERDHP3SXW5A3LXSI7FWMMO5H7HG33KNYBKWH2HYOXJG2DXQHQY"
 
 
 def test_auth_get_no_account(client):
     """`GET <auth>` fails with no `account` parameter."""
-    response = client.get("/auth", follow=True)
+    response = client.get(endpoint, follow=True)
     content = json.loads(response.content)
     assert response.status_code == 400
     assert content == {"error": "no 'account' provided"}
@@ -24,7 +25,7 @@ def test_auth_get_no_account(client):
 
 def test_auth_get_account(client):
     """`GET <auth>` succeeds with a valid TransactionEnvelope XDR."""
-    response = client.get(f"/auth?account={STELLAR_ACCOUNT_1}", follow=True)
+    response = client.get(f"{endpoint}?account={STELLAR_ACCOUNT_1}", follow=True)
     content = json.loads(response.content)
     assert content["network_passphrase"] == "Test SDF Network ; September 2015"
     assert content["transaction"]
@@ -54,7 +55,7 @@ def test_auth_get_account(client):
 
 def test_auth_post_json_success(client):
     """`POST <auth>` succeeds when given a proper JSON-encoded transaction."""
-    response = client.get(f"/auth?account={CLIENT_ADDRESS}", follow=True)
+    response = client.get(f"{endpoint}?account={CLIENT_ADDRESS}", follow=True)
     content = json.loads(response.content)
 
     # Sign the XDR with the client.
@@ -67,7 +68,7 @@ def test_auth_post_json_success(client):
     client_signed_envelope_xdr = envelope_object.to_xdr()
 
     response = client.post(
-        "/auth",
+        endpoint,
         data={"transaction": client_signed_envelope_xdr},
         content_type="application/json",
     )
@@ -78,7 +79,7 @@ def test_auth_post_json_success(client):
 
 def test_auth_post_urlencode_success(client):
     """`POST <auth>` succeeds when given a proper URL-encoded transaction."""
-    response = client.get(f"/auth?account={CLIENT_ADDRESS}", follow=True)
+    response = client.get(f"{endpoint}?account={CLIENT_ADDRESS}", follow=True)
     content = json.loads(response.content)
 
     # Sign the XDR with the client.
@@ -91,7 +92,7 @@ def test_auth_post_urlencode_success(client):
     client_signed_envelope_xdr = envelope_object.to_xdr()
 
     response = client.post(
-        "/auth",
+        endpoint,
         data=urlencode({"transaction": client_signed_envelope_xdr}),
         content_type="application/x-www-form-urlencoded",
     )

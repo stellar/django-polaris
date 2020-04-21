@@ -1,17 +1,89 @@
+"""This module defines helpers for various endpoints."""
+import logging
+import codecs
 import datetime
 
+from rest_framework import status
+from rest_framework.response import Response
 from stellar_sdk.transaction_builder import TransactionBuilder
 from stellar_sdk.exceptions import BaseHorizonError
 from stellar_sdk.xdr.StellarXDR_type import TransactionResult
 
 from polaris import settings
 from polaris.models import Transaction
-from polaris.helpers import Logger
+
+
+TRUSTLINE_FAILURE_XDR = "AAAAAAAAAGT/////AAAAAQAAAAAAAAAB////+gAAAAA="
+SUCCESS_XDR = "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA="
+
+
+class Logger:
+    """
+    Additional log message pre-processing.
+
+    Right now this class allows loggers to be defined with additional
+    meta-data that can be used to pre-process log statements. This
+    could be done using a logging.Handler.
+    """
+
+    def __init__(self, namespace):
+        self.logger = logging.getLogger("polaris")
+        self.namespace = namespace
+
+    def fmt(self, msg):
+        return f'{self.namespace}: "{msg}"'
+
+    # typical logging.Logger mock methods
+
+    def debug(self, msg):
+        self.logger.debug(self.fmt(msg))
+
+    def info(self, msg):
+        self.logger.info(self.fmt(msg))
+
+    def warning(self, msg):
+        self.logger.warning(self.fmt(msg))
+
+    def error(self, msg):
+        self.logger.error(self.fmt(msg))
+
+    def critical(self, msg):
+        self.logger.critical(self.fmt(msg))
+
+    def exception(self, msg):
+        self.logger.exception(self.fmt(msg))
 
 
 logger = Logger(__name__)
-TRUSTLINE_FAILURE_XDR = "AAAAAAAAAGT/////AAAAAQAAAAAAAAAB////+gAAAAA="
-SUCCESS_XDR = "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA="
+
+
+def render_error_response(
+    description: str,
+    status_code: int = status.HTTP_400_BAD_REQUEST,
+    content_type: str = "application/json",
+) -> Response:
+    """
+    Renders an error response in Django.
+
+    Currently supports HTML or JSON responses.
+    """
+    resp_data = {
+        "data": {"error": description},
+        "status": status_code,
+        "content_type": content_type,
+    }
+    if content_type == "text/html":
+        resp_data["data"]["status_code"] = status_code
+        resp_data["template_name"] = "error.html"
+    return Response(**resp_data)
+
+
+def format_memo_horizon(memo):
+    """
+    Formats a hex memo, as in the Transaction model, to match
+    the base64 Horizon response.
+    """
+    return (codecs.encode(codecs.decode(memo, "hex"), "base64").decode("utf-8")).strip()
 
 
 def create_stellar_deposit(transaction_id: str) -> bool:
@@ -164,3 +236,64 @@ def create_stellar_deposit(transaction_id: str) -> bool:
     transaction.save()
     logger.info(f"Transaction {transaction.id} completed.")
     return True
+
+
+SEP_9_FIELDS = {
+    "family_name",
+    "last_name",
+    "given_name",
+    "first_name",
+    "additional_name",
+    "address_country_code",
+    "state_or_province",
+    "city",
+    "postal_code",
+    "address",
+    "mobile_number",
+    "email_address",
+    "birth_date",
+    "birth_place",
+    "birth_country_code",
+    "bank_account_number",
+    "bank_number",
+    "bank_phone_number",
+    "tax_id",
+    "tax_id_name",
+    "occupation",
+    "employer_name",
+    "employer_address",
+    "language_code",
+    "id_type",
+    "id_country_code",
+    "id_issue_date",
+    "id_expiration_date",
+    "id_number",
+    "photo_id_front",
+    "photo_id_back",
+    "notary_approval_of_photo_id",
+    "ip_address",
+    "photo_proof_residence",
+    "organization.name",
+    "organization.VAT_number",
+    "organization.registration_number",
+    "organization.registered_address",
+    "organization.number_of_shareholders",
+    "organization.shareholder_name",
+    "organization.photo_incorporation_doc",
+    "organization.photo_proof_adress",
+    "organization.address_country_code",
+    "organization.state_or_province",
+    "organization.city",
+    "organization.postal_code",
+    "organization.director_name",
+    "organization.website",
+    "organization.email",
+    "organization.phone",
+}
+
+
+def extract_sep9_fields(args):
+    sep9_args = {}
+    for field in SEP_9_FIELDS:
+        sep9_args[field] = args.get(field)
+    return sep9_args

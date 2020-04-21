@@ -8,13 +8,10 @@ from rest_framework.renderers import JSONRenderer
 from rest_framework.request import Request
 
 from polaris.integrations import registered_fee_func
-from polaris.helpers import (
-    render_error_response,
-    validate_sep10_token,
-    verify_valid_asset_operation,
-)
-from polaris.models import Asset
-from polaris.models import Transaction
+from polaris.utils import render_error_response
+from polaris.sep24.utils import verify_valid_asset_operation
+from polaris.sep10.utils import validate_sep10_token
+from polaris.models import Asset, Transaction
 
 OPERATION_DEPOSIT = settings.OPERATION_DEPOSIT
 OPERATION_WITHDRAWAL = settings.OPERATION_WITHDRAWAL
@@ -34,9 +31,9 @@ def fee(account: str, request: Request) -> Response:
     amount_str = request.GET.get("amount")
 
     # Verify that the asset code exists in our database:
-    if not asset_code or not Asset.objects.filter(code=asset_code).exists():
+    asset = Asset.objects.filter(code=asset_code).first()
+    if not asset_code or not asset:
         return render_error_response("invalid 'asset_code'")
-    asset = Asset.objects.get(code=asset_code)
 
     # Verify that amount is provided, and that can be parsed into a decimal:
     try:

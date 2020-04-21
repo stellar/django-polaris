@@ -29,7 +29,7 @@ from stellar_sdk.exceptions import (
 )
 
 from polaris import settings
-from polaris.helpers import Logger
+from polaris.utils import Logger
 
 MIME_URLENCODE, MIME_JSON = "application/x-www-form-urlencoded", "application/json"
 ANCHOR_NAME = "SEP 24 Reference"

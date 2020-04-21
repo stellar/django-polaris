@@ -13,7 +13,7 @@ from stellar_sdk.client.response import Response
 from stellar_sdk.exceptions import BadRequestError
 
 from polaris import settings
-from polaris.deposit.utils import create_stellar_deposit
+from polaris.utils import create_stellar_deposit
 from polaris.tests.conftest import STELLAR_ACCOUNT_1_SEED, STELLAR_ACCOUNT_1
 from polaris.management.commands.create_stellar_deposit import (
     SUCCESS_XDR,
@@ -30,7 +30,8 @@ from polaris.tests.helpers import (
 )
 
 
-DEPOSIT_PATH = f"/transactions/deposit/interactive"
+WEBAPP_PATH = "/sep24/transactions/deposit/webapp"
+DEPOSIT_PATH = "/sep24/transactions/deposit/interactive"
 HORIZON_SUCCESS_RESPONSE = {
     "result_xdr": SUCCESS_XDR,
     "hash": "test_stellar_id",
@@ -42,7 +43,7 @@ client_seed = "SDKWSBERDHP3SXW5A3LXSI7FWMMO5H7HG33KNYBKWH2HYOXJG2DXQHQY"
 
 
 @pytest.mark.django_db
-@patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
+@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
 def test_deposit_success(mock_check, client, acc1_usd_deposit_transaction_factory):
     """`POST /transactions/deposit/interactive` succeeds with no optional arguments."""
     del mock_check
@@ -54,7 +55,7 @@ def test_deposit_success(mock_check, client, acc1_usd_deposit_transaction_factor
     assert content["type"] == "interactive_customer_info_needed"
 
 
-@patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
+@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
 def test_deposit_no_params(mock_check, client):
     """`POST /transactions/deposit/interactive` fails with no required parameters."""
     # Because this test does not use the database, the changed setting
@@ -68,7 +69,7 @@ def test_deposit_no_params(mock_check, client):
     assert content == {"error": "`asset_code` and `account` are required parameters"}
 
 
-@patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
+@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
 def test_deposit_no_account(mock_check, client):
     """`POST /transactions/deposit/interactive` fails with no `account` parameter."""
     del mock_check
@@ -80,7 +81,7 @@ def test_deposit_no_account(mock_check, client):
 
 
 @pytest.mark.django_db
-@patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
+@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
 def test_deposit_no_asset(mock_check, client, acc1_usd_deposit_transaction_factory):
     """`POST /transactions/deposit/interactive` fails with no `asset_code` parameter."""
     del mock_check
@@ -95,7 +96,7 @@ def test_deposit_no_asset(mock_check, client, acc1_usd_deposit_transaction_facto
 
 
 @pytest.mark.django_db
-@patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
+@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
 def test_deposit_invalid_account(
     mock_check, client, acc1_usd_deposit_transaction_factory
 ):
@@ -117,7 +118,7 @@ def test_deposit_invalid_account(
 
 
 @pytest.mark.django_db
-@patch("polaris.helpers.check_auth", side_effect=mock_check_auth_success)
+@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
 def test_deposit_invalid_asset(
     mock_check, client, acc1_usd_deposit_transaction_factory
 ):
@@ -326,10 +327,12 @@ def test_deposit_check_trustlines_success(
 @pytest.mark.django_db
 def test_deposit_authenticated_success(client, acc1_usd_deposit_transaction_factory):
     """`GET /deposit` succeeds with the SEP 10 authentication flow."""
+    from polaris.tests.auth_test import endpoint
+
     deposit = acc1_usd_deposit_transaction_factory()
 
     # SEP 10.
-    response = client.get(f"/auth?account={client_address}", follow=True)
+    response = client.get(f"{endpoint}?account={client_address}", follow=True)
     content = json.loads(response.content)
 
     envelope_xdr = content["transaction"]
@@ -341,7 +344,7 @@ def test_deposit_authenticated_success(client, acc1_usd_deposit_transaction_fact
     client_signed_envelope_xdr = envelope_object.to_xdr()
 
     response = client.post(
-        "/auth",
+        endpoint,
         data={"transaction": client_signed_envelope_xdr},
         content_type="application/json",
     )
@@ -388,7 +391,7 @@ def test_interactive_deposit_no_token(client, acc1_usd_deposit_transaction_facto
     The endpoint returns HTML so we cannot extract the error message from the
     response.
     """
-    response = client.get("/transactions/deposit/webapp")
+    response = client.get(WEBAPP_PATH)
     assert "Missing authentication token" in str(response.content)
     assert response.status_code == 403
 
@@ -402,7 +405,7 @@ def test_interactive_deposit_bad_issuer(client, acc1_usd_deposit_transaction_fac
     encoded_token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256")
     token = encoded_token.decode("ascii")
 
-    response = client.get(f"/transactions/deposit/webapp?token={token}")
+    response = client.get(f"{WEBAPP_PATH}?token={token}")
     assert "Invalid token issuer" in str(response.content)
     assert response.status_code == 403
 
@@ -417,7 +420,7 @@ def test_interactive_deposit_past_exp(client, acc1_usd_deposit_transaction_facto
         "ascii"
     )
 
-    response = client.get(f"/transactions/deposit/webapp?token={token}")
+    response = client.get(f"{WEBAPP_PATH}?token={token}")
     assert "Token is not yet valid or is expired" in str(response.content)
     assert response.status_code == 403
 
@@ -435,7 +438,7 @@ def test_interactive_deposit_no_transaction(
         "ascii"
     )
 
-    response = client.get(f"/transactions/deposit/webapp?token={token}")
+    response = client.get(f"{WEBAPP_PATH}?token={token}")
     assert "Transaction for account not found" in str(response.content)
     assert response.status_code == 403
 
@@ -452,7 +455,7 @@ def test_interactive_deposit_success(client, acc1_usd_deposit_transaction_factor
     )
 
     response = client.get(
-        f"/transactions/deposit/webapp"
+        f"{WEBAPP_PATH}"
         f"?token={token}"
         f"&transaction_id={deposit.id}"
         f"&asset_code={deposit.asset.code}"
@@ -461,7 +464,7 @@ def test_interactive_deposit_success(client, acc1_usd_deposit_transaction_factor
     assert client.session["authenticated"] is True
 
     response = client.post(
-        "/transactions/deposit/webapp/submit"
+        f"{WEBAPP_PATH}/submit"
         f"?transaction_id={deposit.id}"
         f"&asset_code={deposit.asset.code}",
         {"amount": 200.0},
@@ -487,7 +490,7 @@ def test_interactive_auth_new_transaction(client, acc1_usd_deposit_transaction_f
     )
 
     response = client.get(
-        f"/transactions/deposit/webapp"
+        f"{WEBAPP_PATH}"
         f"?token={token}"
         f"&transaction_id={deposit.id}"
         f"&asset_code={deposit.asset.code}"
@@ -497,7 +500,7 @@ def test_interactive_auth_new_transaction(client, acc1_usd_deposit_transaction_f
 
     new_deposit = acc1_usd_deposit_transaction_factory()
     response = client.get(
-        f"/transactions/deposit/webapp"
+        f"{WEBAPP_PATH}"
         f"?transaction_id={new_deposit.id}"
         f"&asset_code={new_deposit.asset.code}"
     )

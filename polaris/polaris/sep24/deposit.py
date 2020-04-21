@@ -18,21 +18,23 @@ from stellar_sdk.keypair import Keypair
 from stellar_sdk.exceptions import Ed25519PublicKeyInvalidError
 
 from polaris import settings
-from polaris.helpers import (
+from polaris.utils import (
     render_error_response,
+    Logger,
+    extract_sep9_fields,
+)
+from polaris.sep10.utils import validate_sep10_token
+from polaris.sep24.utils import (
     create_transaction_id,
-    validate_sep10_token,
     check_authentication,
+    interactive_url,
     authenticate_session,
     invalidate_session,
     interactive_args_validation,
-    Logger,
-    interactive_url,
-    extract_sep9_fields,
 )
 from polaris.models import Asset, Transaction
 from polaris.integrations.forms import TransactionForm
-from polaris.locale.views import validate_language, activate_lang_for_request
+from polaris.locale.utils import validate_language, activate_lang_for_request
 from polaris.integrations import (
     registered_deposit_integration as rdi,
     registered_scripts_func,

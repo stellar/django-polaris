@@ -15,7 +15,7 @@ from stellar_sdk.client.aiohttp_client import AiohttpClient
 from polaris import settings
 from polaris.models import Transaction
 from polaris.integrations import registered_withdrawal_integration as rwi
-from polaris.helpers import format_memo_horizon, Logger
+from polaris.utils import format_memo_horizon, Logger
 
 logger = Logger(__name__)
 

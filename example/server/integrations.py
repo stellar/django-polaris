@@ -14,7 +14,7 @@ from django.conf import settings as server_settings
 from django.template.loader import render_to_string
 
 from polaris.models import Transaction
-from polaris.helpers import Logger
+from polaris.utils import Logger
 from polaris.integrations import (
     DepositIntegration,
     WithdrawalIntegration,

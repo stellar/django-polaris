@@ -2,12 +2,9 @@ from typing import Optional
 
 from django.utils import translation
 from django.utils.translation import gettext as _
-from rest_framework.renderers import JSONRenderer
-from rest_framework.request import Request
 from rest_framework.response import Response
-from rest_framework.decorators import api_view, renderer_classes
 
-from polaris.helpers import render_error_response, check_authentication
+from polaris.utils import render_error_response
 
 
 def validate_language(
@@ -25,23 +22,6 @@ def validate_language(
 
 def activate_lang_for_request(lang: str):
     translation.activate(lang)
-
-
-@api_view(["GET", "POST"])
-@renderer_classes([JSONRenderer])
-@check_authentication()
-def language(request: Request) -> Response:
-    if request.method == "GET":
-        return Response({"language": translation.get_language()})
-
-    lang = request.POST.get("language")
-    err_resp = validate_language(lang)
-    if err_resp:
-        return err_resp
-
-    translation.activate(lang)
-    request.session[translation.LANGUAGE_SESSION_KEY] = lang
-    return Response({"language": lang})
 
 
 def _is_supported_language(lang: str) -> bool:
