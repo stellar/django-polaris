@@ -113,12 +113,6 @@ class Asset(TimeStampedModel):
     )
     """Optional maximum amount. No limit if not specified."""
 
-    sep24_enabled = models.BooleanField(default=False)
-    """`True` if this asset is transferable via SEP-24"""
-
-    sep6_enabled = models.BooleanField(default=False)
-    """`True` if this asset is transferable via SEP-6"""
-
     objects = models.Manager()
 
     class Meta:

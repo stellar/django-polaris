@@ -38,7 +38,6 @@ def fixture_usd_asset_factory():
             withdrawal_fee_percent=0,
             withdrawal_min_amount=0.1,
             withdrawal_max_amount=1000,
-            sep24_enabled=True,
         )
         usd_asset.save()
 
@@ -70,7 +69,6 @@ def fixture_eth_asset_factory():
             withdrawal_fee_percent=0,
             withdrawal_min_amount=0,
             withdrawal_max_amount=0,
-            sep24_enabled=True,
         )
 
         return eth_asset
