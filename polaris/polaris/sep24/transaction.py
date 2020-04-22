@@ -89,6 +89,7 @@ def more_info(request: Request) -> Response:
     resp_data = {
         "tx_json": tx_json,
         "amount_in": serializer.data.get("amount_in"),
+        "amount_fee": serializer.data.get("amount_fee"),
         "transaction": request_transaction,
         "asset_code": request_transaction.asset.code,
         "scripts": registered_scripts_func(None),
