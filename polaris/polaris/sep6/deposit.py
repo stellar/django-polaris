@@ -9,6 +9,7 @@ from rest_framework.renderers import JSONRenderer
 from polaris.models import Asset, Transaction
 from polaris.locale.utils import validate_language, activate_lang_for_request
 from polaris.utils import render_error_response, Logger, create_transaction_id
+from polaris.sep6.utils import validate_403_response
 from polaris.sep10.utils import validate_sep10_token
 from polaris.integrations import (
     registered_deposit_integration as rdi,
@@ -38,7 +39,7 @@ def deposit(account: str, request: Request) -> Response:
     )
     integration_response = rdi.process_sep6_request(args)
     try:
-        response, status_code = validate_response(args["asset"], integration_response)
+        response, status_code = validate_response(args, integration_response)
     except ValueError:
         return bad_integration_error
 
@@ -58,36 +59,15 @@ def deposit(account: str, request: Request) -> Response:
     return Response(response, status=status_code)
 
 
-def validate_response(asset: Asset, integration_response: Dict) -> Tuple[Dict, int]:
+def validate_response(args: Dict, integration_response: Dict) -> Tuple[Dict, int]:
     """
     Validate /deposit response returned from integration function
     """
-    statuses = ["pending", "denied"]
-    types = ["customer_info_status", "non_interactive_customer_info_needed"]
+    account = args["account"]
+    asset = args["asset"]
     if "type" in integration_response:
         status = 403
-        response = {"type": integration_response["type"]}
-        if response["type"] not in types:
-            logger.error("Invalid 'type' returned from process_sep6_request()")
-            raise ValueError()
-
-        elif response["type"] == types[0]:
-            if integration_response.get("status") not in statuses:
-                logger.error("Invalid 'status' returned from process_sep6_request()")
-                raise ValueError()
-            response["status"] = integration_response["status"]
-            if "more_info_url" in integration_response:
-                response["more_info_url"] = integration_response["more_info_url"]
-            elif "eta" in integration_response:
-                response["eta"] = integration_response["eta"]
-
-        elif "fields" not in integration_response:
-            logger.error(f"Missing 'fields' for {types[1]}")
-            raise ValueError()
-
-        else:
-            response["fields"] = integration_response["fields"]
-
+        response = validate_403_response(account, integration_response)
     else:
         status = 200
         response = {
