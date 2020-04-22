@@ -1,5 +1,5 @@
 from django.urls import path
-from polaris.sep6 import info
+from polaris.sep6 import info, customer
 
 
 urlpatterns = [
@@ -8,5 +8,7 @@ urlpatterns = [
     path("info", info.info),
     # path("fee", ),
     # path("transaction", ),
-    # path("transactions", )
+    # path("transactions", ),
+    path("customer", customer.put_customer),
+    path("customer/<account>", customer.delete_customer),
 ]

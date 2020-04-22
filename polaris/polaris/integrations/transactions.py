@@ -18,8 +18,7 @@ class DepositIntegration:
     :func:`polaris.integrations.register_integrations`.
     """
 
-    @classmethod
-    def poll_pending_deposits(cls, pending_deposits: QuerySet) -> List[Transaction]:
+    def poll_pending_deposits(self, pending_deposits: QuerySet) -> List[Transaction]:
         """
         This function should poll the appropriate financial entity for the
         state of all `pending_deposits` and return the ones that have
@@ -55,8 +54,7 @@ class DepositIntegration:
         """
         return list(pending_deposits)
 
-    @classmethod
-    def after_deposit(cls, transaction: Transaction):
+    def after_deposit(self, transaction: Transaction):
         """
         Use this function to perform any post-processing of `transaction` after
         its been executed on the Stellar network. This could include actions
@@ -69,9 +67,8 @@ class DepositIntegration:
         """
         pass
 
-    @classmethod
     def content_for_transaction(
-        cls,
+        self,
         transaction: Transaction,
         post_data: Optional[QueryDict] = None,
         amount: Optional[Decimal] = None,
@@ -157,8 +154,7 @@ class DepositIntegration:
 
         return {"form": form}
 
-    @classmethod
-    def after_form_validation(cls, form: forms.Form, transaction: Transaction):
+    def after_form_validation(self, form: forms.Form, transaction: Transaction):
         """
         Use this function to process the data collected with `form` and to update
         the state of the interactive flow so that the next call to
@@ -182,8 +178,7 @@ class DepositIntegration:
         """
         pass
 
-    @classmethod
-    def instructions_for_pending_deposit(cls, transaction: Transaction):
+    def instructions_for_pending_deposit(self, transaction: Transaction):
         """
         For pending deposits, its common to show instructions to the user for how
         to initiate the external transfer. Use this function to return text or HTML
@@ -195,9 +190,8 @@ class DepositIntegration:
         """
         pass
 
-    @classmethod
     def interactive_url(
-        cls,
+        self,
         request: Request,
         transaction: Transaction,
         asset: Asset,
@@ -212,10 +206,9 @@ class DepositIntegration:
         :return: a URL to be used as the entry point for the interactive
             deposit flow
         """
-        return None
+        pass
 
-    @classmethod
-    def save_sep9_fields(cls, stellar_account: str, fields: Dict, language_code: str):
+    def save_sep9_fields(self, stellar_account: str, fields: Dict, language_code: str):
         """
         Save the `fields` passed for `stellar_account` to pre-populate the forms returned
         from ``content_for_transaction()``. Note that this function is called before
@@ -262,8 +255,7 @@ class WithdrawalIntegration:
     ``polaris.integrations.register_integrations``.
     """
 
-    @classmethod
-    def process_withdrawal(cls, response: Dict, transaction: Transaction):
+    def process_withdrawal(self, response: Dict, transaction: Transaction):
         """
         .. _endpoint: https://www.stellar.org/developers/horizon/reference/resources/transaction.html
 
@@ -285,9 +277,8 @@ class WithdrawalIntegration:
             "`process_withdrawal` must be implemented to process withdrawals"
         )
 
-    @classmethod
     def content_for_transaction(
-        cls,
+        self,
         transaction: Transaction,
         post_data: Optional[QueryDict] = None,
         amount: Optional[Decimal] = None,
@@ -318,8 +309,7 @@ class WithdrawalIntegration:
 
         return {"form": form}
 
-    @classmethod
-    def after_form_validation(cls, form: TransactionForm, transaction: Transaction):
+    def after_form_validation(self, form: TransactionForm, transaction: Transaction):
         """
         Same as ``DepositIntegration.after_form_validation``, except
         `transaction.to_address` should be saved here when present in `form`.
@@ -329,9 +319,8 @@ class WithdrawalIntegration:
         """
         pass
 
-    @classmethod
     def interactive_url(
-        cls,
+        self,
         request: Request,
         transaction: Transaction,
         asset: Asset,
@@ -344,10 +333,9 @@ class WithdrawalIntegration:
         :return: a URL to be used as the entry point for the interactive
             withdraw flow
         """
-        return None
+        pass
 
-    @classmethod
-    def save_sep9_fields(cls, stellar_account: str, fields: Dict, language_code: str):
+    def save_sep9_fields(self, stellar_account: str, fields: Dict, language_code: str):
         """
         Same as ``DepositIntegration.save_sep9_fields``
         """

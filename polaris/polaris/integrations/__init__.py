@@ -5,6 +5,10 @@ from polaris.integrations.fees import calculate_fee, registered_fee_func
 from polaris.integrations.forms import TransactionForm, CreditCardForm
 from polaris.integrations.toml import get_stellar_toml, registered_toml_func
 from polaris.integrations.javascript import scripts, registered_scripts_func
+from polaris.integrations.customers import (
+    CustomerIntegration,
+    registered_customer_integration,
+)
 from polaris.integrations.transactions import (
     DepositIntegration,
     WithdrawalIntegration,
@@ -20,6 +24,7 @@ def register_integrations(
     scripts_func: Callable = None,
     fee_func: Callable = None,
     info_func: Callable = None,
+    customer: CustomerIntegration = None,
 ):
     """
     Registers instances of user-defined subclasses of
@@ -60,7 +65,10 @@ def register_integrations(
     :param scripts_func: a function that returns a list of script tags as
         strings
     :param fee_func: a function that returns the fee that would be charged
-    :param info_func: a function that returns the /info `fields` or `types` values for an Asset
+    :param info_func: a function that returns the /info `fields` or `types`
+        values for an Asset
+    :param customer: the ``CustomerIntegration`` subclass instance to be used
+        by Polaris
     :raises ValueError: missing argument(s)
     :raises TypeError: arguments are not subclasses of DepositIntegration or
         Withdrawal
@@ -81,6 +89,8 @@ def register_integrations(
         raise TypeError("javascript_func is not callable")
     elif info_func and not callable(info_func):
         raise TypeError("info_func is not callable")
+    elif customer and not issubclass(customer.__class__, CustomerIntegration):
+        raise TypeError("info_func is not callable")
 
     for obj, attr in [
         (deposit, "registered_deposit_integration"),
@@ -89,6 +99,7 @@ def register_integrations(
         (scripts_func, "registered_scripts_func"),
         (fee_func, "registered_fee_func"),
         (info_func, "registered_info_func"),
+        (customer, "registered_customer_integration"),
     ]:
         if obj:
             setattr(this, attr, obj)
