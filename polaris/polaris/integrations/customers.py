@@ -1,9 +1,12 @@
+from typing import Dict
+
+
 class CustomerIntegration:
-    def put(self):
+    def put(self, params: Dict):
         pass
 
-    def delete(self):
-        return False
+    def delete(self, account: str):
+        pass
 
 
 registered_customer_integration = CustomerIntegration()

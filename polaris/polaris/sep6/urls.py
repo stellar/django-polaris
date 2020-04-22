@@ -1,6 +1,6 @@
 from django.urls import path
-from polaris.sep6 import info, customer
-
+from polaris.sep6 import info
+from polaris.sep12 import customer
 
 urlpatterns = [
     # path("deposit", ),

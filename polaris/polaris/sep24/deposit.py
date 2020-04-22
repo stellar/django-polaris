@@ -22,10 +22,10 @@ from polaris.utils import (
     render_error_response,
     Logger,
     extract_sep9_fields,
+    create_transaction_id,
 )
 from polaris.sep10.utils import validate_sep10_token
 from polaris.sep24.utils import (
-    create_transaction_id,
     check_authentication,
     interactive_url,
     authenticate_session,

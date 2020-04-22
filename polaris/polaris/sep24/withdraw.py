@@ -19,9 +19,9 @@ from polaris.utils import (
     render_error_response,
     Logger,
     extract_sep9_fields,
+    create_transaction_id,
 )
 from polaris.sep24.utils import (
-    create_transaction_id,
     interactive_url,
     check_authentication,
     authenticate_session,

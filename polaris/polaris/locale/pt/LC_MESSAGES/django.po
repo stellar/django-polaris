@@ -300,3 +300,6 @@ msgstr "(Máximo: %s)"
 
 msgid "Unable to validate form submission."
 msgstr "Incapaz de validar o envio do formulário."
+
+msgid "fee"
+msgstr "taxa"

@@ -11,7 +11,7 @@ from stellar_sdk.keypair import Keypair
 from stellar_sdk.transaction_envelope import TransactionEnvelope
 
 
-def mock_check_auth_success(request, func, content_type: str = "application/json"):
+def mock_check_auth_success(request, func, sep, content_type: str = "application/json"):
     """Mocks `sep10.utils.check_auth`, for success."""
     return func("test source address", request)
 

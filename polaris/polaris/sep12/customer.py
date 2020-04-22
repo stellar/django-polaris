@@ -10,7 +10,7 @@ from polaris.integrations import registered_customer_integration as rci
 
 @api_view(["PUT"])
 @renderer_classes([JSONRenderer])
-@validate_sep10_token()
+@validate_sep10_token("sep6")
 def put_customer(account: str, request: Request) -> Response:
     if account != request.data.get("account"):
         return render_error_response(
@@ -33,9 +33,14 @@ def put_customer(account: str, request: Request) -> Response:
 
 @api_view(["DELETE"])
 @renderer_classes([JSONRenderer])
-@validate_sep10_token()
+@validate_sep10_token("sep6")
 def delete_customer(account_from_auth: str, request: Request, account: str) -> Response:
-    if account_from_auth != account or not rci.delete(account):
-        return render_error_response("Account not found", status_code=404)
+    not_found = render_error_response("Account not found", status_code=404)
+    if account_from_auth != account:
+        return not_found
+    try:
+        rci.delete(account)
+    except ValueError:
+        return not_found
     else:
         return Response(status=200)

@@ -2,7 +2,10 @@
 import logging
 import codecs
 import datetime
+import uuid
+from typing import Optional
 
+from django.utils.translation import gettext as _
 from rest_framework import status
 from rest_framework.response import Response
 from stellar_sdk.transaction_builder import TransactionBuilder
@@ -61,12 +64,16 @@ def render_error_response(
     description: str,
     status_code: int = status.HTTP_400_BAD_REQUEST,
     content_type: str = "application/json",
+    sep6: bool = False,
 ) -> Response:
     """
     Renders an error response in Django.
 
     Currently supports HTML or JSON responses.
     """
+    if sep6:
+        return Response({"type": "authentication_required"}, status=403)
+
     resp_data = {
         "data": {"error": description},
         "status": status_code,
@@ -84,6 +91,37 @@ def format_memo_horizon(memo):
     the base64 Horizon response.
     """
     return (codecs.encode(codecs.decode(memo, "hex"), "base64").decode("utf-8")).strip()
+
+
+def create_transaction_id():
+    """Creates a unique UUID for a Transaction, via checking existing entries."""
+    while True:
+        transaction_id = uuid.uuid4()
+        if not Transaction.objects.filter(id=transaction_id).exists():
+            break
+    return transaction_id
+
+
+def verify_valid_asset_operation(
+    asset, amount, op_type, content_type="application/json"
+) -> Optional[Response]:
+    enabled = getattr(asset, f"{op_type}_enabled")
+    min_amount = getattr(asset, f"{op_type}_min_amount")
+    max_amount = getattr(asset, f"{op_type}_max_amount")
+    if not enabled:
+        return render_error_response(
+            _("the specified operation is not available for '%s'") % asset.code,
+            content_type=content_type,
+        )
+    elif not (min_amount <= amount <= max_amount):
+        return render_error_response(
+            _("Asset amount must be within bounds [%s, %s]")
+            % (
+                round(min_amount, asset.significant_decimals),
+                round(max_amount, asset.significant_decimals),
+            ),
+            content_type=content_type,
+        )
 
 
 def create_stellar_deposit(transaction_id: str) -> bool:

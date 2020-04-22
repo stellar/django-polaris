@@ -17,7 +17,7 @@ from django.urls import reverse
 from polaris import settings
 from polaris.middleware import import_path
 from polaris.models import Asset, Transaction
-from polaris.utils import render_error_response
+from polaris.utils import render_error_response, verify_valid_asset_operation
 
 
 def check_authentication(content_type: str = "text/html") -> Callable:
@@ -243,30 +243,3 @@ def interactive_url(
     else:
         url_params = f"{reverse('get_interactive_deposit')}?{qparams}"
     return request.build_absolute_uri(url_params)
-
-
-def verify_valid_asset_operation(
-    asset, amount, op_type, content_type="application/json"
-) -> Optional[Response]:
-    enabled = getattr(asset, f"{op_type}_enabled")
-    min_amount = getattr(asset, f"{op_type}_min_amount")
-    max_amount = getattr(asset, f"{op_type}_max_amount")
-    if not enabled:
-        return render_error_response(
-            f"the specified operation is not available for '{asset.code}'",
-            content_type=content_type,
-        )
-    elif not (min_amount <= amount <= max_amount):
-        return render_error_response(
-            f"Asset amount must be within bounds [{min_amount, max_amount}]",
-            content_type=content_type,
-        )
-
-
-def create_transaction_id():
-    """Creates a unique UUID for a Transaction, via checking existing entries."""
-    while True:
-        transaction_id = uuid.uuid4()
-        if not Transaction.objects.filter(id=transaction_id).exists():
-            break
-    return transaction_id
