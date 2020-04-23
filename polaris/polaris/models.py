@@ -168,13 +168,16 @@ class Transaction(models.Model):
     MEMO_TYPES = PolarisChoices("text", "id", "hash")
     """Type for the ``deposit_memo``. Can be either `hash`, `id`, or `text`"""
 
+    PROTOCOL = PolarisChoices("sep6", "sep24")
+    """Values for `protocol` column"""
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     """Unique, anchor-generated id for the deposit/withdrawal."""
 
     paging_token = models.TextField(null=True)
     """The token to be used as a cursor for querying before or after this transaction"""
 
-    # Stellar account to watch, and asset that is being transactioned
+    # Stellar account to watch, and asset that is being transacted
     # NOTE: these fields should not be publicly exposed
     stellar_account = models.TextField(validators=[MinLengthValidator(1)])
     """The stellar source account for the transaction."""
@@ -342,6 +345,9 @@ class Transaction(models.Model):
 
     refunded = models.BooleanField(default=False)
     """True if the transaction was refunded, false otherwise."""
+
+    protocol = models.CharField(choices=PROTOCOL, null=True, max_length=5)
+    """Either 'sep6' or 'sep24'"""
 
     objects = models.Manager()
 

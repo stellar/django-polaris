@@ -295,6 +295,7 @@ def deposit(account: str, request: Request) -> Response:
         kind=Transaction.KIND.deposit,
         status=Transaction.STATUS.incomplete,
         to_address=account,
+        protocol=Transaction.PROTOCOL.sep24,
     )
     logger.info(f"Created deposit transaction {transaction_id}")
 

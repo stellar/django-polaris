@@ -292,6 +292,7 @@ def withdraw(account: str, request: Request) -> Response:
         withdraw_anchor_account=asset.distribution_account,
         withdraw_memo=withdraw_memo,
         withdraw_memo_type=Transaction.MEMO_TYPES.hash,
+        protocol=Transaction.PROTOCOL.sep24,
     )
     logger.info(f"Created withdrawal transaction {transaction_id}")
 

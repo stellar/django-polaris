@@ -69,6 +69,7 @@ def withdraw(account: str, request: Request) -> Response:
             withdraw_anchor_account=distribution_address,
             withdraw_memo=args["memo"],
             withdraw_memo_type=args["memo_type"],
+            protocol=Transaction.PROTOCOL.sep6,
         )
         logger.info(f"Created withdraw transaction {transaction_id}")
 

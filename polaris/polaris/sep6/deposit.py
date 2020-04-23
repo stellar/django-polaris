@@ -64,6 +64,7 @@ def deposit(account: str, request: Request) -> Response:
             deposit_memo=args["memo"],
             deposit_memo_type=args["memo_type"],
             to_address=account,
+            protocol=Transaction.PROTOCOL.sep6,
         )
         logger.info(f"Created deposit transaction {transaction_id}")
 

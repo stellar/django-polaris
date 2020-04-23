@@ -105,6 +105,7 @@ def acc1_usd_deposit_transaction_factory(usd_asset_factory):
             amount_in=18.34,
             amount_out=18.24,
             amount_fee=0.1,
+            protocol=Transaction.PROTOCOL.sep24,
         )
 
     return create_deposit_transaction
@@ -128,6 +129,7 @@ def acc1_usd_withdrawal_transaction_factory(usd_asset_factory):
             stellar_transaction_id="c5e8ada72c0e3c248ac7e1ec0ec97e204c06c295113eedbe632020cd6dc29ff8",
             withdraw_memo="0000000000000000000000000000000080ea73ea01d3411a8d9cea22999eef9e",
             withdraw_memo_type=Transaction.MEMO_TYPES.hash,
+            protocol=Transaction.PROTOCOL.sep24,
         )
 
     return create_withdrawal_transaction
@@ -160,6 +162,7 @@ def acc2_eth_withdrawal_transaction_factory(eth_asset_factory):
             withdraw_anchor_account="1xb914",
             withdraw_memo="Deposit for Mr. John Doe (id: 1001)",
             withdraw_memo_type=Transaction.MEMO_TYPES.text,
+            protocol=Transaction.PROTOCOL.sep24,
         )
 
     return create_withdrawal_transaction
@@ -187,6 +190,7 @@ def acc2_eth_deposit_transaction_factory(eth_asset_factory):
             ),
             deposit_memo="86dbfaae9990b66a2a37b4",
             deposit_memo_type=Transaction.MEMO_TYPES.hash,
+            protocol=Transaction.PROTOCOL.sep24,
         )
 
     return create_deposit_transaction
