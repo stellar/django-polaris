@@ -15,10 +15,7 @@ class GoodDepositIntegration(DepositIntegration):
 
 
 @pytest.mark.django_db
-@patch(
-    "polaris.integrations.registered_deposit_integration",
-    new_callable=GoodDepositIntegration,
-)
+@patch("polaris.sep6.deposit.rdi", new_callable=GoodDepositIntegration)
 @patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
 def test_deposit_success(
     mock_check, mock_integration, client, acc1_usd_deposit_transaction_factory
