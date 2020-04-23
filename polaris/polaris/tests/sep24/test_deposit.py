@@ -3,34 +3,17 @@ This module tests the `/deposit` endpoint.
 Celery tasks are called synchronously. Horizon calls are mocked for speed and correctness.
 """
 import json
-from unittest.mock import patch, Mock
+from unittest.mock import patch
 import jwt
 import time
 
 import pytest
 from stellar_sdk import Keypair, TransactionEnvelope
-from stellar_sdk.client.response import Response
-from stellar_sdk.exceptions import BadRequestError
-from stellar_sdk.account import Account
 
 from polaris import settings
-from polaris.utils import create_stellar_deposit
-from polaris.tests.conftest import (
-    STELLAR_ACCOUNT_1_SEED,
-    STELLAR_ACCOUNT_1,
-    USD_ISSUER_ACCOUNT,
-)
-from polaris.management.commands.create_stellar_deposit import (
-    SUCCESS_XDR,
-    TRUSTLINE_FAILURE_XDR,
-)
-from polaris.management.commands.poll_pending_deposits import execute_deposit
-from polaris.management.commands.check_trustlines import Command as CheckTrustlinesCMD
-from polaris.models import Transaction
+from polaris.management.commands.create_stellar_deposit import SUCCESS_XDR
 from polaris.tests.helpers import (
     mock_check_auth_success,
-    mock_load_not_exist_account,
-    sep10,
     interactive_jwt_payload,
 )
 
@@ -139,180 +122,6 @@ def test_deposit_invalid_asset(
 
     assert response.status_code == 400
     assert content == {"error": "unknown asset: GBP"}
-
-
-@pytest.mark.django_db
-@patch("stellar_sdk.server.Server.fetch_base_fee", return_value=100)
-@patch(
-    "stellar_sdk.server.Server.load_account",
-    Mock(return_value=Account(Keypair.random().public_key, 1)),
-)
-@patch(
-    "stellar_sdk.server.Server.submit_transaction",
-    side_effect=BadRequestError(
-        response=Response(
-            status_code=400,
-            headers={},
-            url="",
-            text=json.dumps(
-                dict(status=400, extras=dict(result_xdr=TRUSTLINE_FAILURE_XDR))
-            ),
-        )
-    ),
-)
-def test_deposit_stellar_no_trustline(
-    mock_submit, mock_base_fee, client, acc1_usd_deposit_transaction_factory,
-):
-    """
-    `create_stellar_deposit` sets the transaction with the provided `transaction_id` to
-    status `pending_trust` if the provided transaction's Stellar account has no trustline
-    for its asset. (We assume the asset's issuer is the server Stellar account.)
-    """
-    del mock_submit, mock_base_fee, client
-    deposit = acc1_usd_deposit_transaction_factory()
-    deposit.status = Transaction.STATUS.pending_anchor
-    deposit.save()
-    create_stellar_deposit(deposit.id)
-    assert (
-        Transaction.objects.get(id=deposit.id).status
-        == Transaction.STATUS.pending_trust
-    )
-
-
-@pytest.mark.django_db
-@patch("stellar_sdk.server.Server.fetch_base_fee", return_value=100)
-@patch(
-    "stellar_sdk.server.Server.load_account", side_effect=mock_load_not_exist_account
-)
-@patch(
-    "stellar_sdk.server.Server.submit_transaction",
-    return_value=HORIZON_SUCCESS_RESPONSE,
-)
-def test_deposit_stellar_no_account(
-    mock_load_account, mock_base_fee, client, acc1_usd_deposit_transaction_factory,
-):
-    """
-    `create_stellar_deposit` sets the transaction with the provided `transaction_id` to
-    status `pending_trust` if the provided transaction's `stellar_account` does not
-    exist yet. This condition is mocked by throwing an error when attempting to load
-    information for the provided account.
-    Normally, this function creates the account. We have mocked out that functionality,
-    as it relies on network calls to Horizon.
-    """
-    del mock_load_account, mock_base_fee, client
-    deposit = acc1_usd_deposit_transaction_factory()
-    deposit.status = Transaction.STATUS.pending_anchor
-    deposit.save()
-    create_stellar_deposit(deposit.id)
-    assert (
-        Transaction.objects.get(id=deposit.id).status
-        == Transaction.STATUS.pending_trust
-    )
-
-
-@pytest.mark.django_db
-@patch("stellar_sdk.server.Server.fetch_base_fee", return_value=100)
-@patch(
-    "stellar_sdk.server.Server.load_account",
-    Mock(return_value=Account(Keypair.random().public_key, 1)),
-)
-@patch(
-    "stellar_sdk.server.Server.submit_transaction",
-    return_value=HORIZON_SUCCESS_RESPONSE,
-)
-def test_deposit_stellar_success(
-    mock_submit, mock_base_fee, client, acc1_usd_deposit_transaction_factory,
-):
-    """
-    `create_stellar_deposit` succeeds if the provided transaction's `stellar_account`
-    has a trustline to the issuer for its `asset`, and the Stellar transaction completes
-    successfully. All of these conditions and actions are mocked in this test to avoid
-    network calls.
-    """
-    del mock_submit, mock_base_fee, client
-    deposit = acc1_usd_deposit_transaction_factory()
-    deposit.status = Transaction.STATUS.pending_anchor
-    deposit.save()
-    create_stellar_deposit(deposit.id)
-    assert Transaction.objects.get(id=deposit.id).status == Transaction.STATUS.completed
-
-
-@pytest.mark.django_db
-@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
-def test_deposit_interactive_confirm_success(
-    mock_auth, client, acc1_usd_deposit_transaction_factory,
-):
-    """
-    `POST /deposit` and `GET /transactions/deposit/webapp` succeed with valid `account`
-    and `asset_code`.
-    """
-    del mock_auth
-    deposit = acc1_usd_deposit_transaction_factory()
-
-    response = client.post(
-        DEPOSIT_PATH,
-        {"asset_code": "USD", "account": deposit.stellar_account},
-        follow=True,
-    )
-    content = json.loads(response.content)
-    assert response.status_code == 200
-    assert content["type"] == "interactive_customer_info_needed"
-
-    transaction_id = content["id"]
-    url = content["url"]
-    # Authenticate session
-    response = client.get(url)
-    assert response.status_code == 200
-    assert client.session["authenticated"] is True
-
-    amount = 20
-    url, args_str = url.split("?")
-    response = client.post(url + "/submit?" + args_str, {"amount": amount})
-    assert response.status_code == 302
-    assert (
-        Transaction.objects.get(id=transaction_id).status
-        == Transaction.STATUS.pending_user_transfer_start
-    )
-
-
-@pytest.mark.django_db
-@patch("stellar_sdk.server.Server.fetch_base_fee", return_value=100)
-@patch(
-    "stellar_sdk.server.Server.submit_transaction",
-    return_value=HORIZON_SUCCESS_RESPONSE,
-)
-@patch(
-    "stellar_sdk.call_builder.accounts_call_builder.AccountsCallBuilder.call",
-    return_value={
-        "id": 1,
-        "sequence": 1,
-        "balances": [{"asset_code": "USD", "asset_issuer": USD_ISSUER_ACCOUNT,}],
-        "thresholds": {"low_threshold": 1, "med_threshold": 1, "high_threshold": 1},
-        "signers": [{"key": STELLAR_ACCOUNT_1, "weight": 1}],
-    },
-)
-def test_deposit_check_trustlines_success(
-    mock_account,
-    mock_submit,
-    mock_base_fee,
-    client,
-    acc1_usd_deposit_transaction_factory,
-):
-    """
-    Creates a transaction with status `pending_trust` and checks that
-    `check_trustlines` changes its status to `completed`. All the necessary
-    functionality and conditions are mocked for determinism.
-    """
-    del mock_account, mock_submit, mock_base_fee, client
-    deposit = acc1_usd_deposit_transaction_factory()
-    deposit.status = Transaction.STATUS.pending_trust
-    deposit.save()
-    assert (
-        Transaction.objects.get(id=deposit.id).status
-        == Transaction.STATUS.pending_trust
-    )
-    CheckTrustlinesCMD.check_trustlines()
-    assert Transaction.objects.get(id=deposit.id).status == Transaction.STATUS.completed
 
 
 @pytest.mark.django_db

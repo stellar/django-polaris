@@ -30,13 +30,9 @@ logger = Logger(__name__)
 @validate_sep10_token("sep6")
 def deposit(account: str, request: Request) -> Response:
     args = parse_request_args(request)
-    if args["error"]:
+    if "error" in args:
         return args["error"]
-    elif account != args["account_id"]:
-        return render_error_response(
-            _("The account specified does not match authorization token"),
-            status_code=403,
-        )
+    args["account_id"] = account
 
     # All request arguments are validated in parse_request_args()
     # except 'type'. An invalid 'type' is the only reason
@@ -48,7 +44,7 @@ def deposit(account: str, request: Request) -> Response:
 
     try:
         response, status_code = validate_response(args, integration_response)
-    except ValueError:
+    except (ValueError, KeyError):
         return render_error_response(
             _("unable to process the request"), status_code=500
         )
@@ -62,7 +58,7 @@ def deposit(account: str, request: Request) -> Response:
             kind=Transaction.KIND.deposit,
             status=Transaction.STATUS.pending_user_transfer_start,
             deposit_memo=args["memo"],
-            deposit_memo_type=args["memo_type"],
+            deposit_memo_type=args["memo_type"] or Transaction.MEMO_TYPES.text,
             to_address=account,
             protocol=Transaction.PROTOCOL.sep6,
         )
@@ -83,8 +79,12 @@ def validate_response(args: Dict, integration_response: Dict) -> Tuple[Dict, int
     response = {
         "min_amount": round(asset.deposit_min_amount, asset.significant_decimals),
         "max_amount": round(asset.deposit_max_amount, asset.significant_decimals),
-        "how": integration_response.get("how"),
+        "how": integration_response["how"],
     }
+    if not isinstance(response["how"], str):
+        logger.error("Invalid 'how' returned from process_sep6_request()")
+        raise ValueError()
+
     if calculate_fee == registered_fee_func:
         # Polaris user has not replaced default fee function, so fee_fixed
         # and fee_percent are still used.
@@ -92,8 +92,12 @@ def validate_response(args: Dict, integration_response: Dict) -> Tuple[Dict, int
             fee_fixed=round(asset.deposit_fee_fixed, asset.significant_decimals),
             fee_percent=asset.deposit_fee_percent,
         )
+
     if "extra_info" in integration_response:
         response["extra_info"] = integration_response["extra_info"]
+        if not isinstance(response["extra_info"], dict):
+            logger.error("Invalid 'extra_info' returned from process_sep6_request()")
+            raise ValueError()
 
     return response, 200
 
@@ -123,7 +127,7 @@ def parse_request_args(request: Request) -> Dict:
 
     memo = None
     memo_type = request.GET.get("memo_type")
-    if memo_type not in Transaction.MEMO_TYPES:
+    if memo_type and memo_type not in Transaction.MEMO_TYPES:
         return {"error": render_error_response(_("invalid 'memo_type'"))}
 
     try:
