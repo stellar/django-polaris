@@ -12,6 +12,27 @@ from polaris.integrations import (
 )
 
 
+@api_view()
+def info(request: Request) -> Response:
+    info_data = {
+        "deposit": {},
+        "withdraw": {},
+        "fee": {"enabled": True, "authentication_required": True},
+        "transactions": {"enabled": True, "authentication_required": True},
+        "transaction": {"enabled": True, "authentication_required": True},
+    }
+    for asset in Asset.objects.filter(sep6_enabled=True):
+        fields_and_types = registered_info_func(asset)
+        info_data["deposit"][asset.code] = _get_asset_info(
+            asset, "deposit", fields_and_types.get("fields", {})
+        )
+        info_data["withdraw"][asset.code] = _get_asset_info(
+            asset, "withdrawal", fields_and_types.get("types", {})
+        )
+
+    return Response(info_data)
+
+
 def _get_asset_info(asset: Asset, op_type: str, fields_or_types: Dict) -> Dict:
     if not getattr(asset, f"{op_type}_enabled"):
         return {"enabled": False}
@@ -35,24 +56,3 @@ def _get_asset_info(asset: Asset, op_type: str, fields_or_types: Dict) -> Dict:
         asset_info["types"] = fields_or_types
 
     return asset_info
-
-
-@api_view()
-def info(request: Request) -> Response:
-    info_data = {
-        "deposit": {},
-        "withdraw": {},
-        "fee": {"enabled": True, "authentication_required": True},
-        "transactions": {"enabled": True, "authentication_required": True},
-        "transaction": {"enabled": True, "authentication_required": True},
-    }
-    for asset in Asset.objects.filter(sep6_enabled=True):
-        fields_and_types = registered_info_func(asset)
-        info_data["deposit"][asset.code] = _get_asset_info(
-            asset, "deposit", fields_and_types.get("fields", {})
-        )
-        info_data["withdraw"][asset.code] = _get_asset_info(
-            asset, "withdrawal", fields_and_types.get("types", {})
-        )
-
-    return Response(info_data)

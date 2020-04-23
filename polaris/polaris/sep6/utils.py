@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Optional
 
 from polaris.utils import Logger
 from polaris.integrations import registered_customer_integration as rci
@@ -7,7 +7,7 @@ from polaris.integrations import registered_customer_integration as rci
 logger = Logger(__name__)
 
 
-def validate_403_response(account: str, integration_response: Dict) -> Dict:
+def validate_403_response(account: Optional[str], integration_response: Dict) -> Dict:
     statuses = ["pending", "denied"]
     types = ["customer_info_status", "non_interactive_customer_info_needed"]
     response = {"type": integration_response["type"]}
@@ -20,9 +20,10 @@ def validate_403_response(account: str, integration_response: Dict) -> Dict:
             logger.error("Invalid 'status' returned from process_sep6_request()")
             raise ValueError()
         response["status"] = integration_response["status"]
-        more_info_url = rci.more_info_url(account)
-        if more_info_url:
-            response["more_info_url"] = more_info_url
+        if account:
+            more_info_url = rci.more_info_url(account)
+            if more_info_url:
+                response["more_info_url"] = more_info_url
 
     else:
         if "fields" not in integration_response:

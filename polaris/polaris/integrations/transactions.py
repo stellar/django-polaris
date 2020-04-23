@@ -346,6 +346,11 @@ class WithdrawalIntegration:
         """
         pass
 
+    def process_sep6_request(self, params: Dict) -> Dict:
+        raise NotImplementedError(
+            "`process_sep6_request` must be implemented if SEP-6 is active"
+        )
+
 
 registered_deposit_integration = DepositIntegration()
 registered_withdrawal_integration = WithdrawalIntegration()
