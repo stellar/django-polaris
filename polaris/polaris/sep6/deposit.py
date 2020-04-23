@@ -9,6 +9,7 @@ from stellar_sdk.keypair import Keypair
 from stellar_sdk.memo import IdMemo, HashMemo, TextMemo
 from stellar_sdk.exceptions import Ed25519PublicKeyInvalidError, MemoInvalidException
 
+from polaris import settings
 from polaris.models import Asset, Transaction
 from polaris.locale.utils import validate_language, activate_lang_for_request
 from polaris.utils import render_error_response, Logger, create_transaction_id
@@ -62,6 +63,7 @@ def deposit(account: str, request: Request) -> Response:
             status=Transaction.STATUS.pending_user_transfer_start,
             deposit_memo=args["memo"],
             deposit_memo_type=args["memo_type"],
+            to_address=account,
         )
         logger.info(f"Created deposit transaction {transaction_id}")
 
@@ -101,6 +103,10 @@ def parse_request_args(request: Request) -> Dict:
     ).first()
     if not asset:
         return {"error": render_error_response(_("invalid 'asset_code'"))}
+    elif asset.code not in settings.ASSETS:
+        return {
+            "error": render_error_response(_("unsupported asset type: %s") % asset.code)
+        }
 
     lang = request.GET.get("lang")
     if lang:

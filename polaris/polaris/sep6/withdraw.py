@@ -37,6 +37,8 @@ def withdraw(account: str, request: Request) -> Response:
             _("The account specified does not match authorization token"),
             status_code=403,
         )
+    elif not args["account"]:
+        args["account"] = account
 
     # All request arguments are validated in parse_request_args()
     # except 'type', 'dest', and 'dest_extra'. Since Polaris doesn't know
@@ -53,18 +55,22 @@ def withdraw(account: str, request: Request) -> Response:
             _("unable to process the request"), status_code=500
         )
 
+    distribution_address = settings.ASSETS[args["asset"].code][
+        "DISTRIBUTION_ACCOUNT_ADDRESS"
+    ]
     if status_code == 200:
         transaction_id = create_transaction_id()
         Transaction.objects.create(
             id=transaction_id,
             stellar_account=account,
             asset=args["asset"],
-            kind=Transaction.KIND.deposit,
+            kind=Transaction.KIND.withdrawal,
             status=Transaction.STATUS.pending_user_transfer_start,
-            deposit_memo=args["memo"],
-            deposit_memo_type=args["memo_type"],
+            withdraw_anchor_account=distribution_address,
+            withdraw_memo=args["memo"],
+            withdraw_memo_type=args["memo_type"],
         )
-        logger.info(f"Created deposit transaction {transaction_id}")
+        logger.info(f"Created withdraw transaction {transaction_id}")
 
     return Response(response, status=status_code)
 
@@ -75,6 +81,10 @@ def parse_request_args(request: Request) -> Dict:
     ).first()
     if not asset:
         return {"error": render_error_response(_("invalid 'asset_code'"))}
+    elif asset.code not in settings.ASSETS:
+        return {
+            "error": render_error_response(_("unsupported asset type: %s") % asset.code)
+        }
 
     lang = request.GET.get("lang")
     if lang:
