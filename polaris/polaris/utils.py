@@ -291,7 +291,7 @@ def make_memo(transaction: Transaction) -> Optional[Memo]:
     elif getattr(transaction, memo_type_attr) == Transaction.MEMO_TYPES.text:
         return TextMemo(getattr(transaction, memo_attr))
     else:
-        return HashMemo(bytes.fromhex(getattr(transaction, memo_attr)))
+        return HashMemo(getattr(transaction, memo_attr))
 
 
 SEP_9_FIELDS = {

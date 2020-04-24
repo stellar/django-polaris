@@ -111,7 +111,7 @@ class MissingHowDepositIntegration(DepositIntegration):
 @pytest.mark.django_db
 @patch("polaris.sep6.deposit.rdi", new_callable=MissingHowDepositIntegration)
 @patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
-def test_deposit_bad_integration_response(
+def test_deposit_missing_integration_response(
     mock_check, mock_integration, client, acc1_usd_deposit_transaction_factory
 ):
     del mock_check, mock_integration
@@ -133,7 +133,7 @@ class BadExtraInfoDepositIntegration(DepositIntegration):
 @pytest.mark.django_db
 @patch("polaris.sep6.deposit.rdi", new_callable=BadExtraInfoDepositIntegration)
 @patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
-def test_deposit_bad_integration_response(
+def test_deposit_bad_extra_info_integration(
     mock_check, mock_integration, client, acc1_usd_deposit_transaction_factory
 ):
     del mock_check, mock_integration
@@ -236,7 +236,7 @@ class MissingFieldsInfoNeededDepositIntegration(DepositIntegration):
     "polaris.sep6.deposit.rdi", new_callable=MissingFieldsInfoNeededDepositIntegration
 )
 @patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
-def test_deposit_bad_integration_bad_type(
+def test_deposit_missing_fields_integration(
     mock_check, mock_integration, client, acc1_usd_deposit_transaction_factory
 ):
     del mock_check, mock_integration
@@ -261,7 +261,7 @@ class BadFieldsInfoNeededDepositIntegration(DepositIntegration):
 @pytest.mark.django_db
 @patch("polaris.sep6.deposit.rdi", new_callable=BadFieldsInfoNeededDepositIntegration)
 @patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
-def test_deposit_bad_integration_bad_type(
+def test_deposit_bad_fields_integration(
     mock_check, mock_integration, client, acc1_usd_deposit_transaction_factory
 ):
     del mock_check, mock_integration
@@ -285,7 +285,7 @@ class GoodCustomerInfoStatusDepositIntegration(DepositIntegration):
     "polaris.sep6.deposit.rdi", new_callable=GoodCustomerInfoStatusDepositIntegration
 )
 @patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
-def test_deposit_bad_integration_bad_type(
+def test_deposit_good_integration_customer_info(
     mock_check, mock_integration, client, acc1_usd_deposit_transaction_factory
 ):
     del mock_check, mock_integration
@@ -310,7 +310,7 @@ class BadStatusCustomerInfoStatusDepositIntegration(DepositIntegration):
     new_callable=BadStatusCustomerInfoStatusDepositIntegration,
 )
 @patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
-def test_deposit_bad_integration_bad_type(
+def test_deposit_bad_integration_bad_status(
     mock_check, mock_integration, client, acc1_usd_deposit_transaction_factory
 ):
     del mock_check, mock_integration
@@ -322,3 +322,11 @@ def test_deposit_bad_integration_bad_type(
     content = json.loads(response.content)
     assert response.status_code == 500
     assert content == {"error": "unable to process the request"}
+
+
+@pytest.mark.django_db
+def test_deposit_bad_auth(client):
+    response = client.get(DEPOSIT_PATH, {})
+    content = json.loads(response.content)
+    assert response.status_code == 403
+    assert content == {"type": "authentication_required"}

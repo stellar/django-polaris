@@ -5,9 +5,8 @@ from rest_framework.decorators import api_view, renderer_classes
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.renderers import JSONRenderer
-from stellar_sdk.keypair import Keypair
 from stellar_sdk.memo import IdMemo, HashMemo, TextMemo
-from stellar_sdk.exceptions import Ed25519PublicKeyInvalidError, MemoInvalidException
+from stellar_sdk.exceptions import MemoInvalidException
 
 from polaris import settings
 from polaris.models import Asset, Transaction
@@ -127,11 +126,11 @@ def parse_request_args(request: Request) -> Dict:
 
     try:
         if memo_type == Transaction.MEMO_TYPES.id:
-            memo = IdMemo(int(request.GET.get("memo"))).memo_id
+            memo = str(IdMemo(int(request.GET.get("memo"))).memo_id)
         elif memo_type == Transaction.MEMO_TYPES.hash:
-            memo = HashMemo(bytes.fromhex(request.GET.get("memo"))).memo_hash
+            memo = HashMemo(request.GET.get("memo")).memo_hash.decode()
         elif memo_type == Transaction.MEMO_TYPES.text:
-            memo = TextMemo(request.GET.get("memo")).memo_text
+            memo = TextMemo(request.GET.get("memo")).memo_text.decode()
     except (ValueError, MemoInvalidException):
         return {"error": render_error_response(_("invalid 'memo' for 'memo_type'"))}
 
