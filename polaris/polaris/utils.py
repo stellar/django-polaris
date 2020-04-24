@@ -11,6 +11,7 @@ from rest_framework.response import Response
 from stellar_sdk.transaction_builder import TransactionBuilder
 from stellar_sdk.exceptions import BaseHorizonError
 from stellar_sdk.xdr.StellarXDR_type import TransactionResult
+from stellar_sdk import Memo, TextMemo, IdMemo, HashMemo
 
 from polaris import settings
 from polaris.models import Transaction
@@ -161,6 +162,7 @@ def create_stellar_deposit(transaction_id: str) -> bool:
         transaction.asset.significant_decimals,
     )
     asset = transaction.asset
+    memo = make_memo(transaction)
 
     # If the given Stellar account does not exist, create
     # the account with at least enough XLM for the minimum
@@ -220,12 +222,15 @@ def create_stellar_deposit(transaction_id: str) -> bool:
     # transaction to completed at the current time. If it fails due to a
     # trustline error, we update the database accordingly. Else, we do not update.
 
-    transaction_envelope = builder.append_payment_op(
+    builder.append_payment_op(
         destination=stellar_account,
         asset_code=asset.code,
         asset_issuer=asset.issuer,
         amount=str(payment_amount),
-    ).build()
+    )
+    if memo:
+        builder.add_memo(memo)
+    transaction_envelope = builder.build()
     transaction_envelope.sign(asset.distribution_seed)
     try:
         response = server.submit_transaction(transaction_envelope)
@@ -269,6 +274,24 @@ def create_stellar_deposit(transaction_id: str) -> bool:
     transaction.save()
     logger.info(f"Transaction {transaction.id} completed.")
     return True
+
+
+def make_memo(transaction: Transaction) -> Optional[Memo]:
+    if Transaction.kind == Transaction.KIND.deposit:
+        memo_attr = "deposit_memo"
+        memo_type_attr = "deposit_memo_type"
+    else:
+        memo_attr = "withdraw_memo"
+        memo_type_attr = "withdraw_memo_attr"
+
+    if not getattr(transaction, memo_attr):
+        return None
+    elif getattr(transaction, memo_type_attr) == Transaction.MEMO_TYPES.id:
+        return IdMemo(int(getattr(transaction, memo_attr)))
+    elif getattr(transaction, memo_type_attr) == Transaction.MEMO_TYPES.text:
+        return TextMemo(getattr(transaction, memo_attr))
+    else:
+        return HashMemo(bytes.fromhex(getattr(transaction, memo_attr)))
 
 
 SEP_9_FIELDS = {

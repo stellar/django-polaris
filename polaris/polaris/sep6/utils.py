@@ -1,6 +1,6 @@
 from typing import Dict, Optional
 
-from polaris.utils import Logger
+from polaris.utils import Logger, SEP_9_FIELDS
 from polaris.integrations import registered_customer_integration as rci
 
 
@@ -27,8 +27,15 @@ def validate_403_response(account: Optional[str], integration_response: Dict) ->
 
     else:
         if "fields" not in integration_response:
-            logger.error(f"Missing 'fields' for {types[1]}")
+            logger.error(f"missing 'fields' for {types[1]}")
             raise ValueError()
-        response["fields"] = integration_response["fields"]
+        elif not isinstance(integration_response["fields"], list):
+            logger.error(f"invalid 'fields' for {types[1]}")
+            raise ValueError()
+        elif not all(f in SEP_9_FIELDS for f in integration_response["fields"]):
+            logger.error(f"invalid 'fields' for {types[1]}")
+            raise ValueError()
+        else:
+            response["fields"] = integration_response["fields"]
 
     return response

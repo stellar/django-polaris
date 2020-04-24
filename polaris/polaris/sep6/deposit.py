@@ -120,11 +120,6 @@ def parse_request_args(request: Request) -> Dict:
             return {"error": err_resp}
         activate_lang_for_request(lang)
 
-    try:
-        kp = Keypair.from_public_key(request.GET.get("account_id"))
-    except (ValueError, TypeError, Ed25519PublicKeyInvalidError):
-        return {"error": _("invalid 'account_id'")}
-
     memo = None
     memo_type = request.GET.get("memo_type")
     if memo_type and memo_type not in Transaction.MEMO_TYPES:
@@ -134,15 +129,14 @@ def parse_request_args(request: Request) -> Dict:
         if memo_type == Transaction.MEMO_TYPES.id:
             memo = IdMemo(int(request.GET.get("memo"))).memo_id
         elif memo_type == Transaction.MEMO_TYPES.hash:
-            memo = HashMemo(request.GET.get("memo")).memo_hash
+            memo = HashMemo(bytes.fromhex(request.GET.get("memo"))).memo_hash
         elif memo_type == Transaction.MEMO_TYPES.text:
             memo = TextMemo(request.GET.get("memo")).memo_text
-    except MemoInvalidException:
-        return {"error": _("Invalid 'memo' for 'memo_type'")}
+    except (ValueError, MemoInvalidException):
+        return {"error": render_error_response(_("invalid 'memo' for 'memo_type'"))}
 
     return {
         "asset": asset,
-        "account_id": kp.public_key,
         "memo_type": memo_type,
         "memo": memo,
         "type": request.GET.get("type"),
