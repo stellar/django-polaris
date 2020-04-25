@@ -31,10 +31,9 @@ client_seed = "SDKWSBERDHP3SXW5A3LXSI7FWMMO5H7HG33KNYBKWH2HYOXJG2DXQHQY"
 
 
 @pytest.mark.django_db
-@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
-def test_deposit_success(mock_check, client, acc1_usd_deposit_transaction_factory):
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_deposit_success(client, acc1_usd_deposit_transaction_factory):
     """`POST /transactions/deposit/interactive` succeeds with no optional arguments."""
-    del mock_check
     deposit = acc1_usd_deposit_transaction_factory()
     response = client.post(
         DEPOSIT_PATH, {"asset_code": "USD", "account": deposit.stellar_account},
@@ -43,13 +42,13 @@ def test_deposit_success(mock_check, client, acc1_usd_deposit_transaction_factor
     assert content["type"] == "interactive_customer_info_needed"
 
 
-@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
-def test_deposit_no_params(mock_check, client):
+@pytest.mark.django_db
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_deposit_no_params(client):
     """`POST /transactions/deposit/interactive` fails with no required parameters."""
     # Because this test does not use the database, the changed setting
     # earlier in the file is not persisted when the tests not requiring
     # a database are run. Thus, we set that flag again here.
-    del mock_check
     response = client.post(DEPOSIT_PATH, {}, follow=True)
     content = json.loads(response.content)
 
@@ -57,10 +56,9 @@ def test_deposit_no_params(mock_check, client):
     assert content == {"error": "`asset_code` and `account` are required parameters"}
 
 
-@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
-def test_deposit_no_account(mock_check, client):
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_deposit_no_account(client):
     """`POST /transactions/deposit/interactive` fails with no `account` parameter."""
-    del mock_check
     response = client.post(DEPOSIT_PATH, {"asset_code": "NADA"}, follow=True)
     content = json.loads(response.content)
 
@@ -69,10 +67,9 @@ def test_deposit_no_account(mock_check, client):
 
 
 @pytest.mark.django_db
-@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
-def test_deposit_no_asset(mock_check, client, acc1_usd_deposit_transaction_factory):
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_deposit_no_asset(client, acc1_usd_deposit_transaction_factory):
     """`POST /transactions/deposit/interactive` fails with no `asset_code` parameter."""
-    del mock_check
     deposit = acc1_usd_deposit_transaction_factory()
     response = client.post(
         DEPOSIT_PATH, {"account": deposit.stellar_account}, follow=True
@@ -84,12 +81,9 @@ def test_deposit_no_asset(mock_check, client, acc1_usd_deposit_transaction_facto
 
 
 @pytest.mark.django_db
-@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
-def test_deposit_invalid_account(
-    mock_check, client, acc1_usd_deposit_transaction_factory
-):
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_deposit_invalid_account(client, acc1_usd_deposit_transaction_factory):
     """`POST /transactions/deposit/interactive` fails with an invalid `account` parameter."""
-    del mock_check
     acc1_usd_deposit_transaction_factory()
     response = client.post(
         DEPOSIT_PATH,
@@ -106,12 +100,9 @@ def test_deposit_invalid_account(
 
 
 @pytest.mark.django_db
-@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
-def test_deposit_invalid_asset(
-    mock_check, client, acc1_usd_deposit_transaction_factory
-):
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_deposit_invalid_asset(client, acc1_usd_deposit_transaction_factory):
     """`POST /transactions/deposit/interactive` fails with an invalid `asset_code` parameter."""
-    del mock_check
     deposit = acc1_usd_deposit_transaction_factory()
     response = client.post(
         DEPOSIT_PATH,
@@ -184,7 +175,7 @@ def test_deposit_no_jwt(client, acc1_usd_deposit_transaction_factory):
 
 
 @pytest.mark.django_db
-def test_interactive_deposit_no_token(client, acc1_usd_deposit_transaction_factory):
+def test_interactive_deposit_no_token(client):
     """
     `GET /deposit/webapp` fails without token argument
 

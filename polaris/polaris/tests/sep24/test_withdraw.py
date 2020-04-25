@@ -1,5 +1,7 @@
 """This module tests the `/withdraw` endpoint."""
 import json
+import time
+import jwt
 from unittest.mock import patch
 
 import pytest
@@ -7,20 +9,16 @@ from stellar_sdk.keypair import Keypair
 from stellar_sdk.transaction_envelope import TransactionEnvelope
 
 from polaris import settings
-from polaris.utils import format_memo_horizon
-from polaris.management.commands.watch_transactions import Command
-from polaris.models import Transaction
-from polaris.tests.helpers import mock_check_auth_success
+from polaris.tests.helpers import mock_check_auth_success, interactive_jwt_payload
 
 WEBAPP_PATH = "/sep24/transactions/withdraw/webapp"
 WITHDRAW_PATH = "/sep24/transactions/withdraw/interactive"
 
 
 @pytest.mark.django_db
-@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
-def test_withdraw_success(mock_check, client, acc1_usd_withdrawal_transaction_factory):
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_withdraw_success(client, acc1_usd_withdrawal_transaction_factory):
     """`GET /withdraw` succeeds with no optional arguments."""
-    del mock_check
     acc1_usd_withdrawal_transaction_factory()
     response = client.post(WITHDRAW_PATH, {"asset_code": "USD"}, follow=True)
     content = json.loads(response.content)
@@ -28,12 +26,9 @@ def test_withdraw_success(mock_check, client, acc1_usd_withdrawal_transaction_fa
 
 
 @pytest.mark.django_db
-@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
-def test_withdraw_invalid_asset(
-    mock_check, client, acc1_usd_withdrawal_transaction_factory
-):
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_withdraw_invalid_asset(client, acc1_usd_withdrawal_transaction_factory):
     """`GET /withdraw` fails with an invalid asset argument."""
-    del mock_check
     acc1_usd_withdrawal_transaction_factory()
     response = client.post(WITHDRAW_PATH, {"asset_code": "ETH"}, follow=True)
     content = json.loads(response.content)
@@ -42,10 +37,9 @@ def test_withdraw_invalid_asset(
 
 
 @pytest.mark.django_db
-@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
-def test_withdraw_no_asset(mock_check, client):
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_withdraw_no_asset(client):
     """`GET /withdraw fails with no asset argument."""
-    del mock_check
     response = client.post(WITHDRAW_PATH, follow=True)
     content = json.loads(response.content)
     assert response.status_code == 400
@@ -53,267 +47,112 @@ def test_withdraw_no_asset(mock_check, client):
 
 
 @pytest.mark.django_db
-@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 @patch("polaris.sep24.utils.authenticate_session_helper")
 def test_withdraw_interactive_no_txid(
-    mock_check, mock_auth, client, acc1_usd_withdrawal_transaction_factory
+    mock_auth, client, acc1_usd_withdrawal_transaction_factory
 ):
     """
     `GET /transactions/withdraw/webapp` fails with no transaction_id.
     """
-    del mock_check, mock_auth
-    acc1_usd_withdrawal_transaction_factory()
-    response = client.get(WEBAPP_PATH, follow=True)
+    del mock_auth
+    withdraw = acc1_usd_withdrawal_transaction_factory()
+    response = client.get(
+        f"{WEBAPP_PATH}?asset_code={withdraw.asset.code}", follow=True
+    )
     assert response.status_code == 400
 
 
 @pytest.mark.django_db
-@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 @patch("polaris.sep24.utils.authenticate_session_helper")
 def test_withdraw_interactive_no_asset(
-    mock_check, mock_auth, client, acc1_usd_withdrawal_transaction_factory
+    mock_auth, client, acc1_usd_withdrawal_transaction_factory
 ):
     """
     `GET /transactions/withdraw/webapp` fails with no asset_code.
     """
-    del mock_check, mock_auth
+    del mock_auth
     acc1_usd_withdrawal_transaction_factory()
     response = client.get(f"{WEBAPP_PATH}?transaction_id=2", follow=True)
     assert response.status_code == 400
 
 
 @pytest.mark.django_db
-@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 @patch("polaris.sep24.utils.authenticate_session_helper")
 def test_withdraw_interactive_invalid_asset(
-    mock_check, mock_auth, client, acc1_usd_withdrawal_transaction_factory
+    mock_auth, client, acc1_usd_withdrawal_transaction_factory
 ):
     """
     `GET /transactions/withdraw/webapp` fails with invalid asset_code.
     """
-    del mock_check, mock_auth
+    del mock_auth
     acc1_usd_withdrawal_transaction_factory()
     response = client.get(f"{WEBAPP_PATH}?transaction_id=2&asset_code=ETH", follow=True)
     assert response.status_code == 400
 
 
-# TODO: Decompose the below tests, since they call the same logic. The issue: Pytest complains
-# about decomposition when passing fixtures to a helper function.
+@pytest.mark.django_db
+def test_interactive_withdraw_no_token(client):
+    """
+    `GET /withdraw/webapp` fails without token argument
+
+    The endpoint returns HTML so we cannot extract the error message from the
+    response.
+    """
+    response = client.get(WEBAPP_PATH)
+    assert "Missing authentication token" in str(response.content)
+    assert response.status_code == 403
 
 
 @pytest.mark.django_db
-@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
-def test_withdraw_interactive_failure_no_memotype(
-    mock_check, client, acc1_usd_withdrawal_transaction_factory
+def test_interactive_deposit_bad_issuer(
+    client, acc1_usd_withdrawal_transaction_factory
 ):
-    """
-    `GET /transactions/withdraw/webapp` fails with no `memo_type` in Horizon response.
-    """
-    del mock_check
-    acc1_usd_withdrawal_transaction_factory()
-    response = client.post(WITHDRAW_PATH, {"asset_code": "USD"}, follow=True)
-    content = json.loads(response.content)
-    assert content["type"] == "interactive_customer_info_needed"
+    withdraw = acc1_usd_withdrawal_transaction_factory()
 
-    transaction_id = content["id"]
-    url = content["url"]
-    response = client.get(url)
-    assert response.status_code == 200
-    assert client.session["authenticated"] is True
+    payload = interactive_jwt_payload(withdraw, "withdraw")
+    payload["iss"] = "bad iss"
+    encoded_token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256")
+    token = encoded_token.decode("ascii")
 
-    url, args_str = url.split("?")
-    response = client.post(
-        url + "/submit?" + args_str,
-        {"amount": 20, "bank_account": "123456", "bank": "Bank", "account": "Account"},
-    )
-    assert response.status_code == 302
-    assert (
-        Transaction.objects.get(id=transaction_id).status
-        == Transaction.STATUS.pending_user_transfer_start
-    )
+    response = client.get(f"{WEBAPP_PATH}?token={token}")
+    assert "Invalid token issuer" in str(response.content)
+    assert response.status_code == 403
 
 
 @pytest.mark.django_db
-@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
-def test_withdraw_interactive_failure_incorrect_memotype(
-    mock_check, client, acc1_usd_withdrawal_transaction_factory
-):
-    """
-    `GET /transactions/withdraw/webapp` fails with incorrect `memo_type` in Horizon response.
-    """
-    del mock_check
-    acc1_usd_withdrawal_transaction_factory()
-    response = client.post(WITHDRAW_PATH, {"asset_code": "USD"}, follow=True)
-    content = json.loads(response.content)
-    assert content["type"] == "interactive_customer_info_needed"
+def test_interactive_deposit_past_exp(client, acc1_usd_withdrawal_transaction_factory):
+    withdraw = acc1_usd_withdrawal_transaction_factory()
 
-    transaction_id = content["id"]
-    url = content["url"]
-    response = client.get(url)
-    assert response.status_code == 200
-    assert client.session["authenticated"] is True
+    payload = interactive_jwt_payload(withdraw, "withdraw")
+    payload["exp"] = time.time()
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode(
+        "ascii"
+    )
 
-    url, args_str = url.split("?")
-    response = client.post(
-        url + "/submit?" + args_str,
-        {"amount": 20, "bank_account": "123456", "bank": "Bank", "account": "Account"},
-    )
-    assert response.status_code == 302
-    assert (
-        Transaction.objects.get(id=transaction_id).status
-        == Transaction.STATUS.pending_user_transfer_start
-    )
+    response = client.get(f"{WEBAPP_PATH}?token={token}")
+    assert "Token is not yet valid or is expired" in str(response.content)
+    assert response.status_code == 403
 
 
 @pytest.mark.django_db
-@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
-def test_withdraw_interactive_failure_no_memo(
-    mock_check, client, acc1_usd_withdrawal_transaction_factory
+def test_interactive_deposit_no_transaction(
+    client, acc1_usd_withdrawal_transaction_factory
 ):
-    """
-    `GET /transactions/withdraw/webapp` fails with no `memo` in Horizon response.
-    """
-    del mock_check
-    acc1_usd_withdrawal_transaction_factory()
-    response = client.post(WITHDRAW_PATH, {"asset_code": "USD"}, follow=True)
-    content = json.loads(response.content)
-    assert content["type"] == "interactive_customer_info_needed"
+    withdraw = acc1_usd_withdrawal_transaction_factory()
 
-    transaction_id = content["id"]
-    url = content["url"]
-    response = client.get(url)
-    assert response.status_code == 200
-    assert client.session["authenticated"] is True
+    payload = interactive_jwt_payload(withdraw, "withdraw")
+    withdraw.delete()  # remove from database
 
-    url, args_str = url.split("?")
-    response = client.post(
-        url + "/submit?" + args_str,
-        {"amount": 20, "bank_account": "123456", "bank": "Bank", "account": "Account"},
-    )
-    assert response.status_code == 302
-    assert (
-        Transaction.objects.get(id=transaction_id).status
-        == Transaction.STATUS.pending_user_transfer_start
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode(
+        "ascii"
     )
 
-
-@pytest.mark.django_db
-@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
-def test_withdraw_interactive_failure_incorrect_memo(
-    mock_check, client, acc1_usd_withdrawal_transaction_factory
-):
-    """
-    `GET /transactions/withdraw/webapp` fails with incorrect `memo` in Horizon response.
-    """
-    del mock_check
-    acc1_usd_withdrawal_transaction_factory()
-    response = client.post(WITHDRAW_PATH, {"asset_code": "USD"}, follow=True)
-    content = json.loads(response.content)
-    assert content["type"] == "interactive_customer_info_needed"
-
-    transaction_id = content["id"]
-    url = content["url"]
-    response = client.get(url)
-    assert response.status_code == 200
-    assert client.session["authenticated"] is True
-
-    url, args_str = url.split("?")
-    response = client.post(
-        url + "/submit?" + args_str,
-        {"amount": 20, "bank_account": "123456", "bank": "Bank", "account": "Account"},
-    )
-    assert response.status_code == 302
-    assert (
-        Transaction.objects.get(id=transaction_id).status
-        == Transaction.STATUS.pending_user_transfer_start
-    )
-
-
-@pytest.mark.django_db
-@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
-def test_withdraw_interactive_success_transaction_unsuccessful(
-    mock_check, client, acc1_usd_withdrawal_transaction_factory
-):
-    """
-    `GET /transactions/withdraw/webapp` changes transaction to `pending_stellar`
-    with unsuccessful transaction.
-    """
-    del mock_check
-    acc1_usd_withdrawal_transaction_factory()
-    response = client.post(WITHDRAW_PATH, {"asset_code": "USD"}, follow=True)
-    content = json.loads(response.content)
-    assert content["type"] == "interactive_customer_info_needed"
-
-    transaction_id = content["id"]
-    url = content["url"]
-    response = client.get(url)
-    assert response.status_code == 200
-    assert client.session["authenticated"] is True
-
-    url, args_str = url.split("?")
-    response = client.post(
-        url + "/submit?" + args_str,
-        {"amount": 50, "bank_account": "123456", "bank": "Bank", "account": "Account"},
-    )
-    assert response.status_code == 302
-    transaction = Transaction.objects.get(id=transaction_id)
-    assert transaction.status == Transaction.STATUS.pending_user_transfer_start
-
-    withdraw_memo = transaction.withdraw_memo
-    mock_response = {
-        "memo_type": "hash",
-        "memo": format_memo_horizon(withdraw_memo),
-        "successful": False,
-        "id": "c5e8ada72c0e3c248ac7e1ec0ec97e204c06c295113eedbe632020cd6dc29ff8",
-        "envelope_xdr": "AAAAAEU1B1qeJrucdqkbk1mJsnuFaNORfrOAzJyaAy1yzW8TAAAAZAAE2s4AAAABAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAAoUKq+1Z2GGB98qurLSmocHafvG6S+YzKNE6oiHIXo6kAAAABVVNEAAAAAACnUE2lfwuFZ+G+dkc+qiL0MwxB0CoR0au324j+JC9exQAAAAAdzWUAAAAAAAAAAAA=",
-    }
-    Command.update_transaction(mock_response, transaction)
-    assert Transaction.objects.get(id=transaction_id).status == Transaction.STATUS.error
-
-
-@pytest.mark.django_db
-@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
-def test_withdraw_interactive_success_transaction_successful(
-    mock_check, client, acc1_usd_withdrawal_transaction_factory
-):
-    """
-    `GET /transactions/withdraw/webapp` changes transaction to `completed`
-    with successful transaction.
-    """
-    del mock_check
-    acc1_usd_withdrawal_transaction_factory()
-    response = client.post(WITHDRAW_PATH, {"asset_code": "USD"}, follow=True)
-    content = json.loads(response.content)
-    assert content["type"] == "interactive_customer_info_needed"
-
-    transaction_id = content["id"]
-    url = content["url"]
-    response = client.get(url)
-    assert response.status_code == 200
-    assert client.session["authenticated"] is True
-
-    url, args_str = url.split("?")
-    response = client.post(
-        url + "/submit?" + args_str,
-        {"amount": 50, "bank_account": "123456", "bank": "Bank", "account": "Account"},
-    )
-    assert response.status_code == 302
-    transaction = Transaction.objects.get(id=transaction_id)
-    assert transaction.status == Transaction.STATUS.pending_user_transfer_start
-
-    withdraw_memo = transaction.withdraw_memo
-    mock_response = {
-        "memo_type": "hash",
-        "memo": format_memo_horizon(withdraw_memo),
-        "successful": True,
-        "id": "c5e8ada72c0e3c248ac7e1ec0ec97e204c06c295113eedbe632020cd6dc29ff8",
-        "envelope_xdr": "AAAAAEU1B1qeJrucdqkbk1mJsnuFaNORfrOAzJyaAy1yzW8TAAAAZAAE2s4AAAABAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAAoUKq+1Z2GGB98qurLSmocHafvG6S+YzKNE6oiHIXo6kAAAABVVNEAAAAAACnUE2lfwuFZ+G+dkc+qiL0MwxB0CoR0au324j+JC9exQAAAAAdzWUAAAAAAAAAAAA=",
-        "paging_token": "123456789",
-    }
-    Command.update_transaction(mock_response, transaction)
-
-    assert transaction.status == Transaction.STATUS.completed
-    assert transaction.completed_at
+    response = client.get(f"{WEBAPP_PATH}?token={token}")
+    assert "Transaction for account not found" in str(response.content)
+    assert response.status_code == 403
 
 
 @pytest.mark.django_db

@@ -16,15 +16,13 @@ endpoint = "/sep24/transaction"
 
 
 @pytest.mark.django_db
-@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 def test_transaction_requires_param(
-    mock_check,
     client,
     acc1_usd_deposit_transaction_factory,
     acc2_eth_withdrawal_transaction_factory,
 ):
     """Fails without parameters."""
-    del mock_check
     acc1_usd_deposit_transaction_factory()
     acc2_eth_withdrawal_transaction_factory()
 
