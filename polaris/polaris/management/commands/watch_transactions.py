@@ -136,14 +136,13 @@ class Command(BaseCommand):
 
         # memo from response must match transaction.memo if present
         memo = None if memo_type == "none" else response["memo"]
-        if memo_type == "hash" and memo != format_memo_horizon(
-            transaction.withdraw_memo
-        ):
+        if memo_type == "hash":
             # The memo on the response will be base 64 string, due to XDR, while
             # the memo parameter is base 16. Thus, we convert the parameter
             # from hex to base 64, and then to a string without trailing whitespace.
-            return False
-        if memo and memo != transaction.withdraw_memo:
+            if memo != format_memo_horizon(transaction.withdraw_memo):
+                return False
+        elif memo and memo != transaction.withdraw_memo:
             # text and id memos from horizon are strings, no formatting necessary
             return False
 
@@ -155,6 +154,8 @@ class Command(BaseCommand):
             if cls._check_payment_op(
                 operation, transaction.asset, transaction.amount_in
             ):
+                if not transaction.amount_in:
+                    transaction.amount_in = Decimal(operation.amount)
                 transaction.stellar_transaction_id = stellar_transaction_id
                 transaction.from_address = horizon_tx.source.public_key
                 transaction.save()
