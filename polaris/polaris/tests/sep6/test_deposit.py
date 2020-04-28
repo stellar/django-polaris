@@ -27,7 +27,7 @@ def test_deposit_success(
     deposit = acc1_usd_deposit_transaction_factory(sep6=True)
     asset = deposit.asset
     response = client.get(
-        DEPOSIT_PATH, {"asset_code": asset.code, "account_id": deposit.stellar_account},
+        DEPOSIT_PATH, {"asset_code": asset.code, "account": deposit.stellar_account},
     )
     content = json.loads(response.content)
     assert response.status_code == 200
@@ -53,7 +53,7 @@ def test_deposit_bad_memo_type(
         DEPOSIT_PATH,
         {
             "asset_code": asset.code,
-            "account_id": deposit.stellar_account,
+            "account": deposit.stellar_account,
             "memo_type": "none",
         },
     )
@@ -72,7 +72,7 @@ def test_deposit_bad_memo(mock_check, client, acc1_usd_deposit_transaction_facto
         DEPOSIT_PATH,
         {
             "asset_code": asset.code,
-            "account_id": deposit.stellar_account,
+            "account": deposit.stellar_account,
             "memo_type": "id",
             "memo": "not an id",
         },
@@ -94,7 +94,7 @@ def test_deposit_bad_type(
         DEPOSIT_PATH,
         {
             "asset_code": deposit.asset.code,
-            "account_id": deposit.stellar_account,
+            "account": deposit.stellar_account,
             "type": "bad type",
         },
     )
@@ -118,7 +118,7 @@ def test_deposit_missing_integration_response(
     deposit = acc1_usd_deposit_transaction_factory(sep6=True)
     response = client.get(
         DEPOSIT_PATH,
-        {"asset_code": deposit.asset.code, "account_id": deposit.stellar_account,},
+        {"asset_code": deposit.asset.code, "account": deposit.stellar_account,},
     )
     content = json.loads(response.content)
     assert response.status_code == 500
@@ -140,7 +140,7 @@ def test_deposit_bad_extra_info_integration(
     deposit = acc1_usd_deposit_transaction_factory(sep6=True)
     response = client.get(
         DEPOSIT_PATH,
-        {"asset_code": deposit.asset.code, "account_id": deposit.stellar_account,},
+        {"asset_code": deposit.asset.code, "account": deposit.stellar_account,},
     )
     content = json.loads(response.content)
     assert response.status_code == 500
@@ -159,7 +159,7 @@ def test_deposit_transaction_created(
         DEPOSIT_PATH,
         {
             "asset_code": deposit.asset.code,
-            "account_id": deposit.stellar_account,
+            "account": deposit.stellar_account,
             "memo_type": "id",
             "memo": 123,
         },
@@ -194,7 +194,7 @@ def test_deposit_non_interactive_customer_info_needed(
     deposit = acc1_usd_deposit_transaction_factory(sep6=True)
     response = client.get(
         DEPOSIT_PATH,
-        {"asset_code": deposit.asset.code, "account_id": deposit.stellar_account,},
+        {"asset_code": deposit.asset.code, "account": deposit.stellar_account,},
     )
     content = json.loads(response.content)
     assert response.status_code == 403
@@ -219,7 +219,7 @@ def test_deposit_bad_integration_bad_type(
     deposit = acc1_usd_deposit_transaction_factory(sep6=True)
     response = client.get(
         DEPOSIT_PATH,
-        {"asset_code": deposit.asset.code, "account_id": deposit.stellar_account,},
+        {"asset_code": deposit.asset.code, "account": deposit.stellar_account,},
     )
     content = json.loads(response.content)
     assert response.status_code == 500
@@ -243,7 +243,7 @@ def test_deposit_missing_fields_integration(
     deposit = acc1_usd_deposit_transaction_factory(sep6=True)
     response = client.get(
         DEPOSIT_PATH,
-        {"asset_code": deposit.asset.code, "account_id": deposit.stellar_account,},
+        {"asset_code": deposit.asset.code, "account": deposit.stellar_account,},
     )
     content = json.loads(response.content)
     assert response.status_code == 500
@@ -268,7 +268,7 @@ def test_deposit_bad_fields_integration(
     deposit = acc1_usd_deposit_transaction_factory(sep6=True)
     response = client.get(
         DEPOSIT_PATH,
-        {"asset_code": deposit.asset.code, "account_id": deposit.stellar_account,},
+        {"asset_code": deposit.asset.code, "account": deposit.stellar_account,},
     )
     content = json.loads(response.content)
     assert response.status_code == 500
@@ -292,9 +292,10 @@ def test_deposit_good_integration_customer_info(
     deposit = acc1_usd_deposit_transaction_factory(sep6=True)
     response = client.get(
         DEPOSIT_PATH,
-        {"asset_code": deposit.asset.code, "account_id": deposit.stellar_account,},
+        {"asset_code": deposit.asset.code, "account": deposit.stellar_account,},
     )
     content = json.loads(response.content)
+    print(content)
     assert response.status_code == 403
     assert content == {"type": "customer_info_status", "status": "pending"}
 
@@ -317,7 +318,7 @@ def test_deposit_bad_integration_bad_status(
     deposit = acc1_usd_deposit_transaction_factory(sep6=True)
     response = client.get(
         DEPOSIT_PATH,
-        {"asset_code": deposit.asset.code, "account_id": deposit.stellar_account,},
+        {"asset_code": deposit.asset.code, "account": deposit.stellar_account,},
     )
     content = json.loads(response.content)
     assert response.status_code == 500

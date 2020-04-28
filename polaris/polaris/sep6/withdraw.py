@@ -14,6 +14,7 @@ from polaris.utils import (
     render_error_response,
     create_transaction_id,
     extract_sep9_fields,
+    memo_base64_to_hex,
 )
 from polaris.sep6.utils import validate_403_response
 from polaris.sep10.utils import validate_sep10_token
@@ -101,7 +102,8 @@ def parse_request_args(request: Request) -> Dict:
         if memo_type == Transaction.MEMO_TYPES.id:
             memo = str(IdMemo(int(request.GET.get("memo"))).memo_id)
         elif memo_type == Transaction.MEMO_TYPES.hash:
-            memo = HashMemo(request.GET.get("memo")).memo_hash.decode()
+            memo = memo_base64_to_hex(request.GET.get("memo"))
+            HashMemo(memo)
         elif memo_type == Transaction.MEMO_TYPES.text:
             memo = TextMemo(request.GET.get("memo")).memo_text.decode()
     except (ValueError, MemoInvalidException):

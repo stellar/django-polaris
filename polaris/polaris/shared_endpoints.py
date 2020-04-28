@@ -111,7 +111,9 @@ def transactions(request: Request, account: str, sep6: bool = False) -> Response
 
 def transaction(request: Request, account: str, sep6: bool = False) -> Response:
     try:
-        request_transaction = _get_transaction_from_request(request, account=account)
+        request_transaction = _get_transaction_from_request(
+            request, account=account, sep6=sep6
+        )
     except (AttributeError, ValidationError) as exc:
         return render_error_response(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
     except Transaction.DoesNotExist:

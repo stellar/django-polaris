@@ -86,12 +86,18 @@ def render_error_response(
     return Response(**resp_data)
 
 
-def format_memo_horizon(memo):
+def memo_hex_to_base64(memo):
     """
     Formats a hex memo, as in the Transaction model, to match
     the base64 Horizon response.
     """
     return (codecs.encode(codecs.decode(memo, "hex"), "base64").decode("utf-8")).strip()
+
+
+def memo_base64_to_hex(memo):
+    return (
+        codecs.encode(codecs.decode(memo.encode(), "base64"), "hex").decode("utf-8")
+    ).strip()
 
 
 def create_transaction_id():

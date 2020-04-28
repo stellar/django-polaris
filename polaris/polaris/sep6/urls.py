@@ -8,5 +8,5 @@ urlpatterns = [
     path("fee", fee.fee),
     path("transaction", transaction.transaction),
     path("transactions", transaction.transactions),
-    path("transaction/more_info", transaction.more_info, name="more_info"),
+    path("transaction/more_info", transaction.more_info, name="more_info_sep6"),
 ]

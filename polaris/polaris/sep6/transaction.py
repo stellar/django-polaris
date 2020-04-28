@@ -33,6 +33,7 @@ def transactions(account: str, request: Request) -> Response:
     See: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#transaction-history
     """
     if account != request.GET.get("account"):
+        print(account, request.GET.get("account"))
         return render_error_response(
             _("The account specified does not match authorization token"),
             status_code=403,

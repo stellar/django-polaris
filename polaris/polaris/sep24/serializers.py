@@ -22,7 +22,10 @@ class TransactionSerializer(serializers.ModelSerializer):
         if not request_from_context:
             raise ValueError("Unable to construct url for transaction.")
 
-        path = reverse("more_info")
+        if "sep6" in self.context.get("request").build_absolute_uri():
+            path = reverse("more_info_sep6")
+        else:
+            path = reverse("more_info")
         path_params = f"{path}?id={transaction_instance.id}"
         return request_from_context.build_absolute_uri(path_params)
 
@@ -47,7 +50,7 @@ class TransactionSerializer(serializers.ModelSerializer):
 
         for suffix in ["in", "out", "fee"]:
             field = f"amount_{suffix}"
-            if not getattr(instance, field):
+            if getattr(instance, field) is None:
                 continue
             data[field] = str(
                 round(getattr(instance, field), asset.significant_decimals)

@@ -15,6 +15,7 @@ from polaris.utils import (
     render_error_response,
     Logger,
     create_transaction_id,
+    memo_base64_to_hex,
     extract_sep9_fields,
 )
 from polaris.sep6.utils import validate_403_response
@@ -36,7 +37,7 @@ def deposit(account: str, request: Request) -> Response:
     args = parse_request_args(request)
     if "error" in args:
         return args["error"]
-    args["account_id"] = account
+    args["account"] = account
 
     try:
         integration_response = rdi.process_sep6_request(args)
@@ -72,7 +73,7 @@ def validate_response(args: Dict, integration_response: Dict) -> Tuple[Dict, int
     """
     Validate /deposit response returned from integration function
     """
-    account = args["account_id"]
+    account = args["account"]
     asset = args["asset"]
     if "type" in integration_response:
         return validate_403_response(account, integration_response), 403
@@ -130,7 +131,8 @@ def parse_request_args(request: Request) -> Dict:
         if memo_type == Transaction.MEMO_TYPES.id:
             memo = str(IdMemo(int(request.GET.get("memo"))).memo_id)
         elif memo_type == Transaction.MEMO_TYPES.hash:
-            memo = HashMemo(request.GET.get("memo")).memo_hash.decode()
+            memo = memo_base64_to_hex(request.GET.get("memo"))
+            HashMemo(memo)
         elif memo_type == Transaction.MEMO_TYPES.text:
             memo = TextMemo(request.GET.get("memo")).memo_text.decode()
     except (ValueError, MemoInvalidException):

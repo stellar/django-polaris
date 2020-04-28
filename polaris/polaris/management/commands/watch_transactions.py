@@ -13,9 +13,13 @@ from stellar_sdk.server import Server
 from stellar_sdk.client.aiohttp_client import AiohttpClient
 
 from polaris import settings
-from polaris.models import Transaction, Asset
-from polaris.integrations import registered_withdrawal_integration as rwi
-from polaris.utils import format_memo_horizon, Logger
+from polaris.models import Asset
+from polaris.models import Transaction
+from polaris.integrations import (
+    registered_withdrawal_integration as rwi,
+    registered_fee_func as rfi,
+)
+from polaris.utils import memo_hex_to_base64, Logger
 
 logger = Logger(__name__)
 
@@ -140,7 +144,13 @@ class Command(BaseCommand):
             # The memo on the response will be base 64 string, due to XDR, while
             # the memo parameter is base 16. Thus, we convert the parameter
             # from hex to base 64, and then to a string without trailing whitespace.
-            if memo != format_memo_horizon(transaction.withdraw_memo):
+            if memo == "+dwG0JPijCi0vIPJKnwVKX3jr36r+HzGeUy86M7kUrQ=":
+                print(
+                    memo,
+                    transaction.withdraw_memo,
+                    memo_hex_to_base64(transaction.withdraw_memo),
+                )
+            if memo != memo_hex_to_base64(transaction.withdraw_memo):
                 return False
         elif memo and memo != transaction.withdraw_memo:
             # text and id memos from horizon are strings, no formatting necessary
@@ -156,6 +166,13 @@ class Command(BaseCommand):
             ):
                 if not transaction.amount_in:
                     transaction.amount_in = Decimal(operation.amount)
+                    transaction.amount_fee = rfi(
+                        {
+                            "amount": transaction.amount_in,
+                            "asset_code": transaction.asset.code,
+                            "operation": settings.OPERATION_WITHDRAWAL,
+                        }
+                    )
                 transaction.stellar_transaction_id = stellar_transaction_id
                 transaction.from_address = horizon_tx.source.public_key
                 transaction.save()

@@ -150,6 +150,16 @@ class MyDepositIntegration(DepositIntegration):
         for deposit in pending_deposits:
             bank_deposit = client.get_deposit(memo=deposit.external_extra)
             if bank_deposit and bank_deposit.status == "complete":
+                if not deposit.amount_in:
+                    deposit.amount_in = Decimal(103)
+                    deposit.amount_fee = calculate_fee(
+                        {
+                            "amount": 103,
+                            "operation": settings.OPERATION_DEPOSIT,
+                            "asset_code": deposit.asset.code,
+                        }
+                    )
+                    deposit.save()
                 ready_deposits.append(deposit)
 
         return ready_deposits
@@ -224,7 +234,7 @@ class MyDepositIntegration(DepositIntegration):
 
     def process_sep6_request(self, params: Dict) -> Dict:
         account = (
-            PolarisStellarAccount.objects.filter(account=params["account_id"])
+            PolarisStellarAccount.objects.filter(account=params["account"])
             .select_related("user")
             .first()
         )
@@ -315,7 +325,7 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
 
     def process_sep6_request(self, params: Dict) -> Dict:
         account = (
-            PolarisStellarAccount.objects.filter(account=params["account_id"])
+            PolarisStellarAccount.objects.filter(account=params["account"])
             .select_related("user")
             .first()
         )
