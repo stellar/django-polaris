@@ -246,7 +246,7 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
     def content_for_transaction(
         cls, transaction: Transaction, post_data=None, amount=None
     ) -> Optional[Dict]:
-        kyc_content = check_kyc(transaction)
+        kyc_content = check_kyc(transaction, post_data)
         if kyc_content:
             return kyc_content
 
