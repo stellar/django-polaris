@@ -12,6 +12,7 @@ class AnchorConfig(AppConfig):
             get_stellar_toml,
             scripts,
             calculate_custom_fee,
+            info_integration,
         )
 
         register_integrations(
@@ -20,4 +21,5 @@ class AnchorConfig(AppConfig):
             toml_func=get_stellar_toml,
             scripts_func=scripts,
             fee_func=calculate_custom_fee,
+            info_func=info_integration,
         )

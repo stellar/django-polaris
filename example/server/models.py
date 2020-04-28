@@ -14,6 +14,8 @@ class PolarisUser(models.Model):
     first_name = models.CharField(max_length=254)
     last_name = models.CharField(max_length=254)
     email = models.EmailField(unique=True)
+    bank_account_number = models.CharField(max_length=254, null=True)
+    bank_number = models.CharField(max_length=254, null=True)
 
     objects = models.Manager()
 

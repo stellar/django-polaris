@@ -1,9 +1,10 @@
 from typing import Dict
 
 from django.utils.translation import gettext as _
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, renderer_classes
 from rest_framework.request import Request
 from rest_framework.response import Response
+from rest_framework.renderers import JSONRenderer, BrowsableAPIRenderer
 
 from polaris.models import Asset
 from polaris.utils import render_error_response, Logger
@@ -18,6 +19,7 @@ logger = Logger(__name__)
 
 
 @api_view(["GET"])
+@renderer_classes([JSONRenderer, BrowsableAPIRenderer])
 def info(request: Request) -> Response:
     info_data = {
         "deposit": {},
@@ -49,12 +51,19 @@ def info(request: Request) -> Response:
 
 
 def validate_integration(fields_and_types: Dict):
+    if not isinstance(fields_and_types, dict):
+        raise ValueError("info integration must return a dictionary")
+    elif not fields_and_types:
+        # the anchor doesn't require additional arguments
+        return
     fields = fields_and_types.get("fields")
     types = fields_and_types.get("types")
     if not set(fields_and_types.keys()).issubset({"fields", "types"}):
         raise ValueError("unexpected keys returned from info integration")
-    if not (isinstance(fields, dict) and isinstance(types, dict)):
-        raise ValueError("'types' and 'fields' must be dictionaries")
+    if fields and not isinstance(fields, dict):
+        raise ValueError("'fields' must be a dictionary")
+    if types and not isinstance(types, dict):
+        raise ValueError("'types' must be a dictionary")
     if fields:
         validate_fields(fields)
     for t, val in types.items():

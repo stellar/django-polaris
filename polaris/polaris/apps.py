@@ -7,8 +7,15 @@ class PolarisConfig(AppConfig):
 
     def ready(self):
         """
-        Initialize the app. Currently a no-op.
+        Initialize the app
         """
         from polaris.sep24.utils import check_middleware
+        from django.conf import settings
 
-        check_middleware()
+        if not hasattr(settings, "ACTIVE_SEPS"):
+            raise AttributeError(
+                "ACTIVE_SEPS must be defined in your django settings file."
+            )
+
+        if "sep-24" in settings.ACTIVE_SEPS:
+            check_middleware()

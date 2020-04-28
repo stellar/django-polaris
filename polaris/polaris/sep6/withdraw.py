@@ -9,7 +9,12 @@ from stellar_sdk.memo import IdMemo, HashMemo, TextMemo
 from stellar_sdk.exceptions import MemoInvalidException
 
 from polaris import settings
-from polaris.utils import Logger, render_error_response, create_transaction_id
+from polaris.utils import (
+    Logger,
+    render_error_response,
+    create_transaction_id,
+    extract_sep9_fields,
+)
 from polaris.sep6.utils import validate_403_response
 from polaris.sep10.utils import validate_sep10_token
 from polaris.locale.utils import validate_language, activate_lang_for_request
@@ -115,6 +120,7 @@ def parse_request_args(request: Request) -> Dict:
         "type": request.GET.get("type"),
         "dest": request.GET.get("dest"),
         "dest_extra": request.GET.get("dest_extra"),
+        **extract_sep9_fields(request.GET),
     }
 
 

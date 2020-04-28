@@ -11,7 +11,12 @@ from stellar_sdk.exceptions import MemoInvalidException
 from polaris import settings
 from polaris.models import Asset, Transaction
 from polaris.locale.utils import validate_language, activate_lang_for_request
-from polaris.utils import render_error_response, Logger, create_transaction_id
+from polaris.utils import (
+    render_error_response,
+    Logger,
+    create_transaction_id,
+    extract_sep9_fields,
+)
 from polaris.sep6.utils import validate_403_response
 from polaris.sep10.utils import validate_sep10_token
 from polaris.integrations import (
@@ -33,13 +38,10 @@ def deposit(account: str, request: Request) -> Response:
         return args["error"]
     args["account_id"] = account
 
-    # All request arguments are validated in parse_request_args()
-    # except 'type'. An invalid 'type' is the only reason
-    # process_sep6_request() should throw an exception.
     try:
         integration_response = rdi.process_sep6_request(args)
-    except ValueError:
-        return render_error_response(_("invalid 'type'"))
+    except ValueError as e:
+        return render_error_response(str(e))
 
     try:
         response, status_code = validate_response(args, integration_response)
@@ -138,5 +140,7 @@ def parse_request_args(request: Request) -> Dict:
         "asset": asset,
         "memo_type": memo_type,
         "memo": memo,
+        "lang": lang,
         "type": request.GET.get("type"),
+        **extract_sep9_fields(request.GET),
     }

@@ -1,8 +1,9 @@
 """This module defines the logic for the `/info` endpoint."""
 from typing import Dict
 
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, renderer_classes
 from rest_framework.response import Response
+from rest_framework.renderers import JSONRenderer, BrowsableAPIRenderer
 
 from polaris.models import Asset
 from polaris.integrations import (
@@ -33,6 +34,7 @@ def _get_asset_info(asset: Asset, op_type: str) -> Dict:
 
 
 @api_view()
+@renderer_classes([JSONRenderer, BrowsableAPIRenderer])
 def info(request):
     """
     Definition of the /info endpoint, in accordance with SEP-0024.
