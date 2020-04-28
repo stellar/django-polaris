@@ -13,7 +13,7 @@ DEPOSIT_PATH = "/sep6/deposit"
 class GoodDepositIntegration(DepositIntegration):
     def process_sep6_request(self, params: Dict) -> Dict:
         if params.get("type") not in [None, "good_type"]:
-            raise ValueError("bad type")
+            raise ValueError("invalid 'type'")
         return {"how": "test", "extra_info": {"test": "test"}}
 
 

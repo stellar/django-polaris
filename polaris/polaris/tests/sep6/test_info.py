@@ -119,16 +119,6 @@ def test_good_info_response(client, usd_asset_factory):
     }
 
 
-def empty_info_integration(asset, lang):
-    return {}
-
-
-@pytest.mark.django_db
-@patch("polaris.sep6.info.registered_info_func", empty_info_integration)
-def test_empty_info_integration(client, usd_asset_factory):
-    server_error(client, usd_asset_factory)
-
-
 def bad_fields_type_integration(asset, lang):
     return {"fields": "not a dict"}
 
