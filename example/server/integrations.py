@@ -314,7 +314,52 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
             )
 
     def process_sep6_request(self, params: Dict) -> Dict:
-        pass
+        account = (
+            PolarisStellarAccount.objects.filter(account=params["account_id"])
+            .select_related("user")
+            .first()
+        )
+        if not account:
+            return {
+                "type": "non_interactive_customer_info_needed",
+                "fields": [
+                    "first_name",
+                    "last_name",
+                    "email_address",
+                    "bank_number",
+                    "bank_account_number",
+                ],
+            }
+        elif params["type"] != "bank_account":
+            raise ValueError(_("'type' must be 'bank_account'"))
+        elif not account.confirmed:
+            # Here is where you would normally return something like this:
+            # {
+            #     "type": "customer_info_status",
+            #     "status": "pending"
+            # }
+            # However, we're not going to block the client from completing
+            # the flow since this is a reference server.
+            pass
+
+        asset = params["asset"]
+        code = asset.code
+        response = {
+            "account_id": settings.ASSETS[code]["DISTRIBUTION_ACCOUNT_ADDRESS"],
+            "min_amount": round(
+                asset.withdrawal_min_amount, asset.significant_decimals
+            ),
+            "max_amount": round(
+                asset.withdrawal_max_amount, asset.significant_decimals
+            ),
+            "fee_fixed": round(asset.withdrawal_fee_fixed, asset.significant_decimals),
+            "fee_percent": asset.withdrawal_fee_percent,
+        }
+        if params["memo_type"] and params["memo"]:
+            response["memo_type"] = params["memo_type"]
+            response["memo"] = params["memo"]
+
+        return response
 
 
 class MyCustomerIntegration(CustomerIntegration):
@@ -374,7 +419,7 @@ class MyCustomerIntegration(CustomerIntegration):
         account.user.delete()
 
 
-def get_stellar_toml():
+def toml_integration():
     return {
         "DOCUMENTATION": {
             "ORG_NAME": "Stellar Development Foundation",
@@ -406,7 +451,7 @@ def get_stellar_toml():
     }
 
 
-def scripts(page_content: Optional[Dict]):
+def scripts_integration(page_content: Optional[Dict]):
     tags = [
         # Google Analytics
         """
@@ -480,7 +525,7 @@ def scripts(page_content: Optional[Dict]):
     return tags
 
 
-def calculate_custom_fee(fee_params: Dict) -> Decimal:
+def fee_integration(fee_params: Dict) -> Decimal:
     """
     This function replaces the default registered_fee_func for demonstration
     purposes.
