@@ -9,6 +9,7 @@ class AnchorConfig(AppConfig):
         from .integrations import (
             MyDepositIntegration,
             MyWithdrawalIntegration,
+            MyCustomerIntegration,
             toml_integration,
             scripts_integration,
             fee_integration,
@@ -22,4 +23,5 @@ class AnchorConfig(AppConfig):
             scripts_func=scripts_integration,
             fee_func=fee_integration,
             info_func=info_integration,
+            customer=MyCustomerIntegration(),
         )

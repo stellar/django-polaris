@@ -238,17 +238,20 @@ class MyDepositIntegration(DepositIntegration):
             .select_related("user")
             .first()
         )
+        info_needed_resp = {
+            "type": "non_interactive_customer_info_needed",
+            "fields": [
+                "first_name",
+                "last_name",
+                "email_address",
+                "bank_number",
+                "bank_account_number",
+            ],
+        }
         if not account:
-            return {
-                "type": "non_interactive_customer_info_needed",
-                "fields": [
-                    "first_name",
-                    "last_name",
-                    "email_address",
-                    "bank_number",
-                    "bank_account_number",
-                ],
-            }
+            return info_needed_resp
+        elif not (account.user.bank_account_number and account.user.bank_number):
+            return info_needed_resp
         elif params["type"] != "bank_account":
             raise ValueError(_("'type' must be 'bank_account'"))
         elif not account.confirmed:
@@ -329,19 +332,26 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
             .select_related("user")
             .first()
         )
+        info_needed_resp = {
+            "type": "non_interactive_customer_info_needed",
+            "fields": [
+                "first_name",
+                "last_name",
+                "email_address",
+                "bank_number",
+                "bank_account_number",
+            ],
+        }
         if not account:
-            return {
-                "type": "non_interactive_customer_info_needed",
-                "fields": [
-                    "first_name",
-                    "last_name",
-                    "email_address",
-                    "bank_number",
-                    "bank_account_number",
-                ],
-            }
+            return info_needed_resp
+        elif not (account.user.bank_account_number and account.user.bank_number):
+            return info_needed_resp
         elif params["type"] != "bank_account":
             raise ValueError(_("'type' must be 'bank_account'"))
+        elif not params["dest"]:
+            raise ValueError(_("'dest' is required"))
+        elif not params["dest_extra"]:
+            raise ValueError(_("'dest_extra' is required"))
         elif params["dest"] != account.user.bank_account_number:
             raise ValueError(_("'dest' must match bank account number for account"))
         elif params["dest_extra"] != account.user.bank_number:
@@ -391,7 +401,7 @@ class MyCustomerIntegration(CustomerIntegration):
         if not all(val in params for val in required_fields):
             raise ValueError(f"required fields: {', '.join(required_fields)}")
 
-        user = PolarisUser.objects.filter(email=params["email"]).first()
+        user = PolarisUser.objects.filter(email=params["email_address"]).first()
         if not user:
             # the client could be trying to update to a new email, so try to
             # find the user based on the account
@@ -402,7 +412,7 @@ class MyCustomerIntegration(CustomerIntegration):
                 user = PolarisUser.objects.create(
                     first_name=params["first_name"],
                     last_name=params["last_name"],
-                    email=params["email"],
+                    email=params["email_address"],
                     bank_number=params["bank_number"],
                     bank_account_number=params["bank_account_number"],
                 )
@@ -412,7 +422,7 @@ class MyCustomerIntegration(CustomerIntegration):
 
             else:
                 user = account.user
-                user.email = params["email"]
+                user.email = params["email_address"]
                 user.first_name = params["first_name"]
                 user.last_name = params["last_name"]
                 user.bank_number = params["bank_number"]

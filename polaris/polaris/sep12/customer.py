@@ -28,7 +28,7 @@ def put_customer(account: str, request: Request) -> Response:
     except ValueError as e:
         return render_error_response(str(e), status_code=400)
     else:
-        return Response(status=202)
+        return Response({}, status=202)
 
 
 @api_view(["DELETE"])
@@ -43,4 +43,4 @@ def delete_customer(account_from_auth: str, request: Request, account: str) -> R
     except ValueError:
         return not_found
     else:
-        return Response(status=200)
+        return Response({}, status=200)
