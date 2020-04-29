@@ -13,12 +13,15 @@ from rest_framework.decorators import api_view, renderer_classes
 from rest_framework.response import Response
 from rest_framework.request import Request
 from rest_framework.renderers import TemplateHTMLRenderer, JSONRenderer
+from stellar_sdk.exceptions import MemoInvalidException
 
 from polaris import settings
 from polaris.utils import (
     render_error_response,
     Logger,
     extract_sep9_fields,
+    memo_str,
+    memo_base64_to_hex,
 )
 from polaris.sep24.utils import (
     create_transaction_id,
@@ -251,6 +254,16 @@ def withdraw(account: str, request: Request) -> Response:
     lang = request.POST.get("lang")
     asset_code = request.POST.get("asset_code")
     sep9_fields = extract_sep9_fields(request.POST)
+    memo = request.POST.get("memo")
+    memo_type = request.POST.get("memo_type")
+    if memo:
+        if memo_type == Transaction.MEMO_TYPES.hash:
+            memo = memo_base64_to_hex(memo)
+        try:
+            memo = memo_str(memo, memo_type)
+        except (ValueError, MemoInvalidException):
+            return render_error_response(_("invalid `memo` for `memo_type`"))
+
     if lang:
         err_resp = validate_language(lang)
         if err_resp:
@@ -274,15 +287,7 @@ def withdraw(account: str, request: Request) -> Response:
         # specified in the request.
         return render_error_response(str(e))
 
-    # We use the transaction ID as a memo on the Stellar transaction for the
-    # payment in the withdrawal. This lets us identify that as uniquely
-    # corresponding to this `Transaction` in the database. But a UUID4 is a 32
-    # character hex string, while the Stellar HashMemo requires a 64 character
-    # hex-encoded (32 byte) string. So, we zero-pad the ID to create an
-    # appropriately sized string for the `HashMemo`.
     transaction_id = create_transaction_id()
-    transaction_id_hex = transaction_id.hex
-    withdraw_memo = "0" * (64 - len(transaction_id_hex)) + transaction_id_hex
     Transaction.objects.create(
         id=transaction_id,
         stellar_account=account,
@@ -290,8 +295,8 @@ def withdraw(account: str, request: Request) -> Response:
         kind=Transaction.KIND.withdrawal,
         status=Transaction.STATUS.incomplete,
         withdraw_anchor_account=asset.distribution_account,
-        withdraw_memo=withdraw_memo,
-        withdraw_memo_type=Transaction.MEMO_TYPES.hash,
+        withdraw_memo=memo,
+        withdraw_memo_type=memo_type or Transaction.MEMO_TYPES.text,
     )
     logger.info(f"Created withdrawal transaction {transaction_id}")
 

@@ -4,6 +4,7 @@ Celery tasks are called synchronously. Horizon calls are mocked for speed and co
 """
 import json
 from unittest.mock import patch, Mock
+import os
 import jwt
 import time
 
@@ -16,7 +17,6 @@ from stellar_sdk.account import Account
 from polaris import settings
 from polaris.utils import create_stellar_deposit
 from polaris.tests.conftest import (
-    STELLAR_ACCOUNT_1_SEED,
     STELLAR_ACCOUNT_1,
     USD_ISSUER_ACCOUNT,
 )
@@ -24,13 +24,13 @@ from polaris.management.commands.create_stellar_deposit import (
     SUCCESS_XDR,
     TRUSTLINE_FAILURE_XDR,
 )
-from polaris.management.commands.poll_pending_deposits import execute_deposit
 from polaris.management.commands.check_trustlines import Command as CheckTrustlinesCMD
 from polaris.models import Transaction
+from polaris.utils import memo_hex_to_base64, memo_base64_to_hex
+from polaris.tests.transaction_test import endpoint as transaction_endpoint
 from polaris.tests.helpers import (
     mock_check_auth_success,
     mock_load_not_exist_account,
-    sep10,
     interactive_jwt_payload,
 )
 
@@ -98,6 +98,71 @@ def test_deposit_no_asset(mock_check, client, acc1_usd_deposit_transaction_facto
 
     assert response.status_code == 400
     assert content == {"error": "`asset_code` and `account` are required parameters"}
+
+
+@pytest.mark.django_db
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_deposit_hash_memo(client, acc1_usd_deposit_transaction_factory):
+    deposit = acc1_usd_deposit_transaction_factory()
+    memo = memo_hex_to_base64(os.urandom(32).hex())
+    response = client.post(
+        DEPOSIT_PATH,
+        {
+            "account": deposit.stellar_account,
+            "asset_code": deposit.asset.code,
+            "memo": memo,
+            "memo_type": "hash",
+        },
+    )
+    content = json.loads(response.content)
+    assert content["id"]
+    assert content["type"] == "interactive_customer_info_needed"
+
+    response = client.get(transaction_endpoint + f"?id={content['id']}")
+    content = json.loads(response.content)
+    assert content["transaction"]["deposit_memo"] == memo_base64_to_hex(memo)
+
+
+@pytest.mark.django_db
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_deposit_id_memo(client, acc1_usd_deposit_transaction_factory):
+    deposit = acc1_usd_deposit_transaction_factory()
+    response = client.post(
+        DEPOSIT_PATH,
+        {
+            "account": deposit.stellar_account,
+            "asset_code": deposit.asset.code,
+            "memo": 123,
+            "memo_type": "id",
+        },
+    )
+    content = json.loads(response.content)
+    assert content["type"] == "interactive_customer_info_needed"
+
+    response = client.get(transaction_endpoint + f"?id={content['id']}")
+    content = json.loads(response.content)
+    assert content["transaction"]["deposit_memo"] == "123"
+
+
+@pytest.mark.django_db
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_deposit_text_memo(client, acc1_usd_deposit_transaction_factory):
+    deposit = acc1_usd_deposit_transaction_factory()
+    response = client.post(
+        DEPOSIT_PATH,
+        {
+            "account": deposit.stellar_account,
+            "asset_code": deposit.asset.code,
+            "memo": "testing",
+            "memo_type": "text",
+        },
+    )
+    content = json.loads(response.content)
+    assert content["type"] == "interactive_customer_info_needed"
+
+    response = client.get(transaction_endpoint + f"?id={content['id']}")
+    content = json.loads(response.content)
+    assert content["transaction"]["deposit_memo"] == "testing"
 
 
 @pytest.mark.django_db

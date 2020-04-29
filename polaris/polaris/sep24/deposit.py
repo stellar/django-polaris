@@ -15,13 +15,15 @@ from rest_framework.response import Response
 from rest_framework.request import Request
 from rest_framework.renderers import TemplateHTMLRenderer, JSONRenderer
 from stellar_sdk.keypair import Keypair
-from stellar_sdk.exceptions import Ed25519PublicKeyInvalidError
+from stellar_sdk.exceptions import Ed25519PublicKeyInvalidError, MemoInvalidException
 
 from polaris import settings
 from polaris.utils import (
     render_error_response,
     Logger,
     extract_sep9_fields,
+    memo_str,
+    memo_base64_to_hex,
 )
 from polaris.sep10.utils import validate_sep10_token
 from polaris.sep24.utils import (
@@ -253,7 +255,17 @@ def deposit(account: str, request: Request) -> Response:
     asset_code = request.POST.get("asset_code")
     stellar_account = request.POST.get("account")
     lang = request.POST.get("lang")
+    memo = request.POST.get("memo")
+    memo_type = request.POST.get("memo_type")
     sep9_fields = extract_sep9_fields(request.POST)
+    if memo:
+        if memo_type == Transaction.MEMO_TYPES.hash:
+            memo = memo_base64_to_hex(memo)
+        try:
+            memo = memo_str(memo, memo_type)
+        except (ValueError, MemoInvalidException):
+            return render_error_response(_("invalid `memo` for `memo_type`"))
+
     if lang:
         err_resp = validate_language(lang)
         if err_resp:
@@ -295,6 +307,8 @@ def deposit(account: str, request: Request) -> Response:
         kind=Transaction.KIND.deposit,
         status=Transaction.STATUS.incomplete,
         to_address=account,
+        deposit_memo=memo,
+        deposit_memo_type=memo_type or Transaction.MEMO_TYPES.text,
     )
     logger.info(f"Created deposit transaction {transaction_id}")
 

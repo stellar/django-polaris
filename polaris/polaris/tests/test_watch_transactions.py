@@ -5,7 +5,7 @@ from copy import deepcopy
 from stellar_sdk.keypair import Keypair
 
 from polaris.models import Transaction
-from polaris.utils import format_memo_horizon
+from polaris.utils import memo_hex_to_base64
 from polaris.management.commands.watch_transactions import Command
 from polaris.tests.conftest import USD_ISSUER_ACCOUNT, USD_DISTRIBUTION_SEED
 
@@ -47,7 +47,7 @@ def test_process_response_success(
     json = deepcopy(TRANSACTION_JSON)
     json["successful"] = True
     json["id"] = transaction.id
-    json["memo"] = format_memo_horizon(transaction.withdraw_memo)
+    json["memo"] = memo_hex_to_base64(transaction.withdraw_memo)
 
     Command.process_response(json)
 
@@ -65,7 +65,7 @@ def test_process_response_unsuccessful(
     json = deepcopy(TRANSACTION_JSON)
     json["successful"] = False
     json["id"] = transaction.id
-    json["memo"] = format_memo_horizon(transaction.withdraw_memo)
+    json["memo"] = memo_hex_to_base64(transaction.withdraw_memo)
 
     Command.process_response(json)
 
@@ -88,7 +88,7 @@ def test_process_response_bad_integration(
     json = deepcopy(TRANSACTION_JSON)
     json["successful"] = True
     json["id"] = transaction.id
-    json["memo"] = format_memo_horizon(transaction.withdraw_memo)
+    json["memo"] = memo_hex_to_base64(transaction.withdraw_memo)
 
     Command.process_response(json)
 

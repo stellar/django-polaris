@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from stellar_sdk.transaction_builder import TransactionBuilder
 from stellar_sdk.exceptions import BaseHorizonError
 from stellar_sdk.xdr.StellarXDR_type import TransactionResult
+from stellar_sdk.memo import IdMemo, HashMemo, TextMemo, Memo
 
 from polaris import settings
 from polaris.models import Transaction
@@ -78,12 +79,39 @@ def render_error_response(
     return Response(**resp_data)
 
 
-def format_memo_horizon(memo):
+def memo_hex_to_base64(memo):
     """
     Formats a hex memo, as in the Transaction model, to match
     the base64 Horizon response.
     """
     return (codecs.encode(codecs.decode(memo, "hex"), "base64").decode("utf-8")).strip()
+
+
+def memo_base64_to_hex(memo):
+    return (
+        codecs.encode(codecs.decode(memo.encode(), "base64"), "hex").decode("utf-8")
+    ).strip()
+
+
+def memo_str(memo: str, memo_type: str) -> str:
+    memo = make_memo(memo, memo_type)
+    if isinstance(memo, IdMemo):
+        return str(memo.memo_id)
+    elif isinstance(memo, HashMemo):
+        return memo.memo_hash.hex()
+    else:
+        return memo.memo_text.decode()
+
+
+def make_memo(memo: str, memo_type: str) -> Memo:
+    if memo_type == Transaction.MEMO_TYPES.id:
+        return IdMemo(int(memo))
+    elif memo_type == Transaction.MEMO_TYPES.hash:
+        return HashMemo(memo)
+    elif memo_type == Transaction.MEMO_TYPES.text:
+        return TextMemo(memo)
+    else:
+        raise ValueError()
 
 
 def create_stellar_deposit(transaction_id: str) -> bool:
@@ -181,6 +209,11 @@ def create_stellar_deposit(transaction_id: str) -> bool:
     # asset via a Stellar payment. If that payment succeeds, we update the
     # transaction to completed at the current time. If it fails due to a
     # trustline error, we update the database accordingly. Else, we do not update.
+
+    if transaction.deposit_memo:
+        builder.add_memo(
+            make_memo(transaction.deposit_memo, transaction.deposit_memo_type)
+        )
 
     transaction_envelope = builder.append_payment_op(
         destination=stellar_account,

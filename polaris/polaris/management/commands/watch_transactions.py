@@ -15,7 +15,7 @@ from stellar_sdk.client.aiohttp_client import AiohttpClient
 from polaris import settings
 from polaris.models import Transaction, Asset
 from polaris.integrations import registered_withdrawal_integration as rwi
-from polaris.utils import format_memo_horizon, Logger
+from polaris.utils import memo_hex_to_base64, Logger
 
 logger = Logger(__name__)
 
@@ -119,10 +119,9 @@ class Command(BaseCommand):
     def match_transaction(cls, response: Dict, transaction: Transaction) -> bool:
         """
         Determines whether or not the given ``response`` represents the given
-        ``transaction``. Polaris does this by constructing the transaction memo
-        from the transaction ID passed in the initial withdrawal request to
-        ``/transactions/withdraw/interactive``. To be sure, we also check for
-        ``transaction``'s payment operation in ``response``.
+        ``transaction``. Polaris does this by checking the 'memo' field in the horizon
+        response matches the `transaction.memo` if present, as well as ensuring the
+        transaction includes a payment operation of the anchored asset.
 
         :param response: a response body returned from Horizon for the transaction
         :param transaction: a database model object representing the transaction
@@ -145,10 +144,16 @@ class Command(BaseCommand):
             )
             return False
 
-        # The memo on the response will be base 64 string, due to XDR, while
-        # the memo parameter is base 16. Thus, we convert the parameter
-        # from hex to base 64, and then to a string without trailing whitespace.
-        if response_memo != format_memo_horizon(transaction.withdraw_memo):
+        # memo from response must match transaction.memo if present
+        memo = None if memo_type == "none" else response["memo"]
+        if memo_type == "hash":
+            # The memo on the response will be base 64 string, due to XDR, while
+            # the memo parameter is base 16. Thus, we convert the parameter
+            # from hex to base 64, and then to a string without trailing whitespace.
+            if memo != memo_hex_to_base64(transaction.withdraw_memo):
+                return False
+        elif memo and memo != transaction.withdraw_memo:
+            # text and id memos from horizon are strings, no formatting necessary
             return False
 
         horizon_tx = TransactionEnvelope.from_xdr(

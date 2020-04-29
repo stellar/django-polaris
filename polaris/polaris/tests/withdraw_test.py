@@ -7,7 +7,7 @@ from stellar_sdk.keypair import Keypair
 from stellar_sdk.transaction_envelope import TransactionEnvelope
 
 from polaris import settings
-from polaris.utils import format_memo_horizon
+from polaris.utils import memo_hex_to_base64
 from polaris.management.commands.watch_transactions import Command
 from polaris.models import Transaction
 from polaris.tests.helpers import mock_check_auth_success
@@ -259,10 +259,8 @@ def test_withdraw_interactive_success_transaction_unsuccessful(
     transaction = Transaction.objects.get(id=transaction_id)
     assert transaction.status == Transaction.STATUS.pending_user_transfer_start
 
-    withdraw_memo = transaction.withdraw_memo
     mock_response = {
-        "memo_type": "hash",
-        "memo": format_memo_horizon(withdraw_memo),
+        "memo_type": "none",
         "successful": False,
         "id": "c5e8ada72c0e3c248ac7e1ec0ec97e204c06c295113eedbe632020cd6dc29ff8",
         "envelope_xdr": "AAAAAEU1B1qeJrucdqkbk1mJsnuFaNORfrOAzJyaAy1yzW8TAAAAZAAE2s4AAAABAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAAoUKq+1Z2GGB98qurLSmocHafvG6S+YzKNE6oiHIXo6kAAAABVVNEAAAAAACnUE2lfwuFZ+G+dkc+qiL0MwxB0CoR0au324j+JC9exQAAAAAdzWUAAAAAAAAAAAA=",
@@ -301,10 +299,8 @@ def test_withdraw_interactive_success_transaction_successful(
     transaction = Transaction.objects.get(id=transaction_id)
     assert transaction.status == Transaction.STATUS.pending_user_transfer_start
 
-    withdraw_memo = transaction.withdraw_memo
     mock_response = {
-        "memo_type": "hash",
-        "memo": format_memo_horizon(withdraw_memo),
+        "memo_type": "none",
         "successful": True,
         "id": "c5e8ada72c0e3c248ac7e1ec0ec97e204c06c295113eedbe632020cd6dc29ff8",
         "envelope_xdr": "AAAAAEU1B1qeJrucdqkbk1mJsnuFaNORfrOAzJyaAy1yzW8TAAAAZAAE2s4AAAABAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAAoUKq+1Z2GGB98qurLSmocHafvG6S+YzKNE6oiHIXo6kAAAABVVNEAAAAAACnUE2lfwuFZ+G+dkc+qiL0MwxB0CoR0au324j+JC9exQAAAAAdzWUAAAAAAAAAAAA=",
