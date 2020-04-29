@@ -342,6 +342,12 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
             }
         elif params["type"] != "bank_account":
             raise ValueError(_("'type' must be 'bank_account'"))
+        elif params["dest"] != account.user.bank_account_number:
+            raise ValueError(_("'dest' must match bank account number for account"))
+        elif params["dest_extra"] != account.user.bank_number:
+            raise ValueError(
+                _("'dest_extra' must match bank routing number for account")
+            )
         elif not account.confirmed:
             # Here is where you would normally return something like this:
             # {
