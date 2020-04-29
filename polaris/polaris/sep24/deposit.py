@@ -299,11 +299,7 @@ def deposit(account: str, request: Request) -> Response:
     logger.info(f"Created deposit transaction {transaction_id}")
 
     url = interactive_url(
-        request,
-        str(transaction_id),
-        stellar_account,
-        asset_code,
-        settings.OPERATION_DEPOSIT,
+        request, str(transaction_id), account, asset_code, settings.OPERATION_DEPOSIT,
     )
     return Response(
         {"type": "interactive_customer_info_needed", "url": url, "id": transaction_id},

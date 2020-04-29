@@ -3,6 +3,7 @@ import json
 import time
 
 from polaris import settings
+from polaris.models import Asset
 from stellar_sdk import Account
 from stellar_sdk.client.response import Response
 from stellar_sdk.exceptions import NotFoundError
@@ -38,9 +39,10 @@ def sep10(client, address, seed):
 
 
 def mock_load_not_exist_account(account_id):
-    accounts = []
-    for vals in settings.ASSETS.values():
-        accounts.extend(vals.values())
+    accounts = [
+        asset.distribution_account
+        for asset in Asset.objects.exclude(distribution_seed__isnull=True)
+    ]
 
     if account_id not in accounts:
         raise NotFoundError(

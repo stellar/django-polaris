@@ -12,6 +12,7 @@ from django.utils.translation import gettext_lazy as _
 from django.db import models
 from model_utils.models import TimeStampedModel
 from model_utils import Choices
+from stellar_sdk.keypair import Keypair
 
 
 def utc_now():
@@ -112,6 +113,15 @@ class Asset(TimeStampedModel):
         default=decimal.MAX_EMAX, blank=True, max_digits=30, decimal_places=7
     )
     """Optional maximum amount. No limit if not specified."""
+
+    distribution_seed = models.TextField(null=True)
+    """The distribution stellar account secret key"""
+
+    @property
+    def distribution_account(self):
+        if not self.distribution_seed:
+            return None
+        return Keypair.from_secret(str(self.distribution_seed)).public_key
 
     objects = models.Manager()
 

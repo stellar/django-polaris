@@ -115,22 +115,14 @@ environment or included in ``PROJECT_ROOT/.env``.
     DJANGO_SECRET_KEY="yoursupersecretkey"
     DJANGO_DEBUG=False
 
-    ASSETS="USD"
-    USD_DISTRIBUTION_ACCOUNT_SEED=""
-    USD_ISSUER_ACCOUNT_ADDRESS=""
-
+    SIGNING_SEED = <your signing seed here>
     STELLAR_NETWORK_PASSPHRASE="Test SDF Network ; September 2015"
     HORIZON_URI="https://horizon-testnet.stellar.org/"
     SERVER_JWT_KEY="yoursupersecretjwtkey"
     HOST_URL="https://example.com"
 
-Polaris supports anchoring multiple assets on the Stellar network. ``ASSETS``
-should be a comma-separated list of asset codes such as "USD", "ETH", or "MYCOIN".
-
-For every asset code listed, you should add a pair of variables for the distribution
-account's private key and issuer account's public key. Note that each pair of variable
-names should be prepended with the asset code. The SDF has built a small `CLI tool`_
-for creating these accounts on testnet.
+``SIGNING_SEED`` should be the secret key of the account used to sign
+SEP-10 challenge transactions.
 
 Python Code and Bash Commands
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
