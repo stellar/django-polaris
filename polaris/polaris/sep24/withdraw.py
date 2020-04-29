@@ -263,9 +263,8 @@ def withdraw(account: str, request: Request) -> Response:
     asset = Asset.objects.filter(code=asset_code).first()
     if not (asset and asset.withdrawal_enabled):
         return render_error_response(_("invalid operation for asset %s") % asset_code)
-    elif asset.code not in settings.ASSETS:
+    elif not asset.distribution_account:
         return render_error_response(_("unsupported asset type: %s") % asset_code)
-    distribution_address = settings.ASSETS[asset.code]["DISTRIBUTION_ACCOUNT_ADDRESS"]
 
     try:
         rwi.save_sep9_fields(account, sep9_fields, lang)
@@ -290,7 +289,7 @@ def withdraw(account: str, request: Request) -> Response:
         asset=asset,
         kind=Transaction.KIND.withdrawal,
         status=Transaction.STATUS.incomplete,
-        withdraw_anchor_account=distribution_address,
+        withdraw_anchor_account=asset.distribution_account,
         withdraw_memo=withdraw_memo,
         withdraw_memo_type=Transaction.MEMO_TYPES.hash,
     )

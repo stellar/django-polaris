@@ -3,7 +3,7 @@ This module tests the `/deposit` endpoint.
 Celery tasks are called synchronously. Horizon calls are mocked for speed and correctness.
 """
 import json
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 import jwt
 import time
 
@@ -11,10 +11,15 @@ import pytest
 from stellar_sdk import Keypair, TransactionEnvelope
 from stellar_sdk.client.response import Response
 from stellar_sdk.exceptions import BadRequestError
+from stellar_sdk.account import Account
 
 from polaris import settings
 from polaris.utils import create_stellar_deposit
-from polaris.tests.conftest import STELLAR_ACCOUNT_1_SEED, STELLAR_ACCOUNT_1
+from polaris.tests.conftest import (
+    STELLAR_ACCOUNT_1_SEED,
+    STELLAR_ACCOUNT_1,
+    USD_ISSUER_ACCOUNT,
+)
 from polaris.management.commands.create_stellar_deposit import (
     SUCCESS_XDR,
     TRUSTLINE_FAILURE_XDR,
@@ -139,6 +144,10 @@ def test_deposit_invalid_asset(
 @pytest.mark.django_db
 @patch("stellar_sdk.server.Server.fetch_base_fee", return_value=100)
 @patch(
+    "stellar_sdk.server.Server.load_account",
+    Mock(return_value=Account(Keypair.random().public_key, 1)),
+)
+@patch(
     "stellar_sdk.server.Server.submit_transaction",
     side_effect=BadRequestError(
         response=Response(
@@ -204,6 +213,10 @@ def test_deposit_stellar_no_account(
 @pytest.mark.django_db
 @patch("stellar_sdk.server.Server.fetch_base_fee", return_value=100)
 @patch(
+    "stellar_sdk.server.Server.load_account",
+    Mock(return_value=Account(Keypair.random().public_key, 1)),
+)
+@patch(
     "stellar_sdk.server.Server.submit_transaction",
     return_value=HORIZON_SUCCESS_RESPONSE,
 )
@@ -225,29 +238,21 @@ def test_deposit_stellar_success(
 
 
 @pytest.mark.django_db
-@patch("stellar_sdk.server.Server.fetch_base_fee", return_value=100)
-@patch(
-    "stellar_sdk.server.Server.submit_transaction",
-    return_value=HORIZON_SUCCESS_RESPONSE,
-)
+@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
 def test_deposit_interactive_confirm_success(
-    mock_submit, mock_base_fee, client, acc1_usd_deposit_transaction_factory,
+    mock_auth, client, acc1_usd_deposit_transaction_factory,
 ):
     """
-    `GET /deposit` and `GET /transactions/deposit/webapp` succeed with valid `account`
+    `POST /deposit` and `GET /transactions/deposit/webapp` succeed with valid `account`
     and `asset_code`.
     """
-    del mock_submit, mock_base_fee
+    del mock_auth
     deposit = acc1_usd_deposit_transaction_factory()
-
-    encoded_jwt = sep10(client, deposit.stellar_account, STELLAR_ACCOUNT_1_SEED)
-    header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
 
     response = client.post(
         DEPOSIT_PATH,
         {"asset_code": "USD", "account": deposit.stellar_account},
         follow=True,
-        **header,
     )
     content = json.loads(response.content)
     assert response.status_code == 200
@@ -269,15 +274,6 @@ def test_deposit_interactive_confirm_success(
         == Transaction.STATUS.pending_user_transfer_start
     )
 
-    transaction = Transaction.objects.get(id=transaction_id)
-    execute_deposit(transaction)
-
-    # We've mocked submit_transaction, but the status should be marked as
-    # completed after executing the function above.
-    transaction.refresh_from_db()
-    assert float(transaction.amount_in) == amount
-    assert transaction.status == Transaction.STATUS.completed
-
 
 @pytest.mark.django_db
 @patch("stellar_sdk.server.Server.fetch_base_fee", return_value=100)
@@ -290,12 +286,7 @@ def test_deposit_interactive_confirm_success(
     return_value={
         "id": 1,
         "sequence": 1,
-        "balances": [
-            {
-                "asset_code": "USD",
-                "asset_issuer": settings.ASSETS["USD"]["ISSUER_ACCOUNT_ADDRESS"],
-            }
-        ],
+        "balances": [{"asset_code": "USD", "asset_issuer": USD_ISSUER_ACCOUNT,}],
         "thresholds": {"low_threshold": 1, "med_threshold": 1, "high_threshold": 1},
         "signers": [{"key": STELLAR_ACCOUNT_1, "weight": 1}],
     },

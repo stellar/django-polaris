@@ -11,6 +11,7 @@ import toml
 from django.http.response import HttpResponse
 from polaris import settings
 from polaris.integrations import registered_toml_func
+from polaris.models import Asset
 
 
 def generate_toml(request):
@@ -20,7 +21,8 @@ def generate_toml(request):
         "TRANSFER_SERVER_SEP0024": os.path.join(settings.HOST_URL, "sep24"),
         "WEB_AUTH_ENDPOINT": os.path.join(settings.HOST_URL, "auth"),
         "ACCOUNTS": [
-            asset["DISTRIBUTION_ACCOUNT_ADDRESS"] for asset in settings.ASSETS.values()
+            asset.distribution_account
+            for asset in Asset.objects.exclude(distribution_seed__isnull=True)
         ],
         "VERSION": "0.1.0",
         "SIGNING_KEY": settings.SIGNING_KEY,

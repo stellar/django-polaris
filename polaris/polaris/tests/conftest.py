@@ -6,12 +6,17 @@ import pytest
 import datetime
 
 from polaris.models import Asset, Transaction
-from polaris import settings
+from stellar_sdk.keypair import Keypair
 
 STELLAR_ACCOUNT_1 = "GAIRMDK7VDAXKXCX54UQ7WQUXZVITPBBYH33ADXQIADMDTDVJMQGBQ6V"
 STELLAR_ACCOUNT_1_SEED = "SBB57BRFU7OFBVGUNJH4PMTQR72VCGKKFXBRQJJX7CHRSTZATAB5645L"
 STELLAR_ACCOUNT_2 = "GAWGLF7Y6WFNPMFLIZ7AZU7TCHRRMTVKSB64XUSLJUGMXS3KFCOZXJWC"
 STELLAR_ACCOUNT_2_SEED = "SAANDCFGMTWUQX27URREU47QL2HSJRCTB6YXZIOBHZJCAUBBEFJTGASY"
+
+USD_DISTRIBUTION_SEED = Keypair.random().secret
+USD_ISSUER_ACCOUNT = Keypair.random().public_key
+ETH_DISTRIBUTION_SEED = Keypair.random().secret
+ETH_ISSUER_ACCOUNT = Keypair.random().public_key
 
 
 @pytest.fixture(scope="session", name="usd_asset_factory")
@@ -25,7 +30,8 @@ def fixture_usd_asset_factory():
         """
         usd_asset = Asset.objects.create(
             code="USD",
-            issuer=settings.ASSETS["USD"]["ISSUER_ACCOUNT_ADDRESS"],
+            issuer=USD_ISSUER_ACCOUNT,
+            distribution_seed=USD_DISTRIBUTION_SEED,
             # Deposit Info
             deposit_enabled=True,
             deposit_fee_fixed=5,
@@ -57,6 +63,8 @@ def fixture_eth_asset_factory():
         """
         eth_asset, _ = Asset.objects.get_or_create(
             code="ETH",
+            issuer=ETH_ISSUER_ACCOUNT,
+            distribution_seed=ETH_DISTRIBUTION_SEED,
             # Deposit Info
             deposit_enabled=True,
             deposit_fee_fixed=0.002,

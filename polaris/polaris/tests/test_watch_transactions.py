@@ -2,10 +2,12 @@ import pytest
 from unittest.mock import patch, Mock
 from copy import deepcopy
 
+from stellar_sdk.keypair import Keypair
+
 from polaris.models import Transaction
-from polaris import settings
 from polaris.utils import format_memo_horizon
 from polaris.management.commands.watch_transactions import Command
+from polaris.tests.conftest import USD_ISSUER_ACCOUNT, USD_DISTRIBUTION_SEED
 
 test_module = "polaris.management.commands.watch_transactions"
 TRANSACTION_JSON = {
@@ -21,11 +23,9 @@ mock_envelope = Mock(
     transaction=Mock(
         operations=[
             Mock(
-                asset=Mock(
-                    issuer=settings.ASSETS["USD"]["ISSUER_ACCOUNT_ADDRESS"], code="USD",
-                ),
+                asset=Mock(issuer=USD_ISSUER_ACCOUNT, code="USD",),
                 amount=50,
-                destination=settings.ASSETS["USD"]["DISTRIBUTION_ACCOUNT_ADDRESS"],
+                destination=Keypair.from_secret(USD_DISTRIBUTION_SEED).public_key,
                 type_code=Mock(return_value=1),
             )
         ],

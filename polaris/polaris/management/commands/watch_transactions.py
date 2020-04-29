@@ -13,7 +13,7 @@ from stellar_sdk.server import Server
 from stellar_sdk.client.aiohttp_client import AiohttpClient
 
 from polaris import settings
-from polaris.models import Transaction
+from polaris.models import Transaction, Asset
 from polaris.integrations import registered_withdrawal_integration as rwi
 from polaris.utils import format_memo_horizon, Logger
 
@@ -45,8 +45,8 @@ class Command(BaseCommand):
     async def watch_transactions(self):  # pragma: no cover
         await asyncio.gather(
             *[
-                self._for_account(code, asset["DISTRIBUTION_ACCOUNT_ADDRESS"])
-                for code, asset in settings.ASSETS.items()
+                self._for_account(code, asset.distribution_account)
+                for code, asset in Asset.objects.exclude(distribution_seed__isnull=True)
             ]
         )
 
@@ -158,7 +158,7 @@ class Command(BaseCommand):
         found_matching_payment_op = False
         for operation in horizon_tx.operations:
             if cls._check_payment_op(
-                operation, transaction.asset.code, transaction.amount_in
+                operation, transaction.asset, transaction.amount_in
             ):
                 transaction.stellar_transaction_id = stellar_transaction_id
                 transaction.from_address = horizon_tx.source.public_key
@@ -200,18 +200,15 @@ class Command(BaseCommand):
 
     @staticmethod
     def _check_payment_op(
-        operation: Operation, want_asset: str, want_amount: Decimal
+        operation: Operation, want_asset: Asset, want_amount: Decimal
     ) -> bool:
         # TODO: Add test cases!
         issuer = operation.asset.issuer
         code = operation.asset.code
-        asset = settings.ASSETS.get(code, {})
         return (
             operation.type_code() == Xdr.const.PAYMENT
-            and str(operation.destination) == asset.get("DISTRIBUTION_ACCOUNT_ADDRESS")
-            and str(code) == want_asset
-            and
-            # TODO: Handle multiple possible asset issuance accounts
-            str(issuer) == asset.get("ISSUER_ACCOUNT_ADDRESS")
+            and str(operation.destination) == want_asset.distribution_account
+            and str(code) == want_asset.code
+            and str(issuer) == want_asset.issuer
             and Decimal(operation.amount) == want_amount
         )
