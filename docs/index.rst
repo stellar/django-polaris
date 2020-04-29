@@ -9,7 +9,7 @@ What is Polaris?
 .. _Stellar Development Foundation: https://www.stellar.org/
 .. _github: https://github.com/stellar/django-polaris
 .. _example: https://github.com/stellar/django-polaris/tree/master/example
-.. _django reusable-app: https://docs.djangoproject.com/en/3.0/intro/reusable-apps/
+.. _django app: https://docs.djangoproject.com/en/3.0/intro/reusable-apps/
 .. _here: https://stellar-anchor-server.herokuapp.com
 .. _anchor: https://www.stellar.org/developers/guides/anchor/
 .. _stellar.toml: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0001.md
@@ -21,7 +21,7 @@ wallets and anchors interoperable, meaning any wallet can communicate with any
 anchor_ for the purpose of withdrawing or depositing assets on the stellar network.
 
 Polaris is not a library or a framework; its an `extendable`
-`django-app`_.  Like many django apps, it comes with fully-implemented
+`django app`_.  Like many django apps, it comes with fully-implemented
 endpoints, templates, and database models.
 
 To use Polaris, developers must implement it's provided
