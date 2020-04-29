@@ -3,6 +3,11 @@
 from django.db import migrations, models
 
 
+def set_existing_assets(apps, schema_editor):
+    Asset = apps.get_model("polaris", "Asset")
+    Asset.objects.update(sep24_enabled=True)
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -20,4 +25,5 @@ class Migration(migrations.Migration):
             name="sep6_enabled",
             field=models.BooleanField(default=False),
         ),
+        migrations.RunPython(set_existing_assets),
     ]
