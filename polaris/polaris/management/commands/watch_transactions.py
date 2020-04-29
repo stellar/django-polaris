@@ -210,9 +210,6 @@ class Command(BaseCommand):
         # TODO: Add test cases!
         issuer = operation.asset.issuer
         code = operation.asset.code
-        print(want_asset, want_amount)
-        print(operation.destination, want_asset.distribution_account)
-        print(str(issuer), want_asset.issuer)
         return (
             operation.type_code() == Xdr.const.PAYMENT
             and str(operation.destination) == want_asset.distribution_account
