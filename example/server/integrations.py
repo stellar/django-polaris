@@ -1,4 +1,3 @@
-import time
 from smtplib import SMTPException
 from decimal import Decimal
 from typing import List, Dict, Optional
@@ -13,7 +12,7 @@ from django.core.mail import send_mail
 from django.conf import settings as server_settings
 from django.template.loader import render_to_string
 
-from polaris.models import Transaction
+from polaris.models import Transaction, Asset
 from polaris.utils import Logger
 from polaris.integrations import (
     DepositIntegration,
@@ -295,14 +294,14 @@ def get_stellar_toml():
         },
         "CURRENCIES": [
             {
-                "code": code.upper(),
-                "issuer": settings.ASSETS[code]["ISSUER_ACCOUNT_ADDRESS"],
+                "code": asset.code.upper(),
+                "issuer": asset.issuer,
                 "status": "test",
                 "is_asset_anchored": False,
                 "anchor_asset_type": "other",
                 "desc": "A fake anchored asset to use with this example anchor server.",
             }
-            for code in settings.ASSETS
+            for asset in Asset.objects.all()
         ],
         "PRINCIPALS": [
             {
