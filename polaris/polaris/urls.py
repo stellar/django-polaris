@@ -28,7 +28,7 @@ if "sep-10" in settings.ACTIVE_SEPS:
     urlpatterns.append(path("auth", include("polaris.sep10.urls")))
 
 if "sep-12" in settings.ACTIVE_SEPS:
-    urlpatterns.append(path("sep6/", include("polaris.sep12.urls")))
+    urlpatterns.append(path("kyc", include("polaris.sep12.urls")))
 
 if "sep-24" in settings.ACTIVE_SEPS:
     urlpatterns.append(path("sep24/", include("polaris.sep24.urls")))
