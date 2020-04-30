@@ -122,11 +122,11 @@ def verify_valid_asset_operation(
         )
     elif not (min_amount <= amount <= max_amount):
         return render_error_response(
-            _("Asset amount must be within bounds [%s, %s]")
-            % (
-                round(min_amount, asset.significant_decimals),
-                round(max_amount, asset.significant_decimals),
-            ),
+            _("Asset amount must be within bounds [%(min)s, %(max)s]")
+            % {
+                "min": round(min_amount, asset.significant_decimals),
+                "max": round(max_amount, asset.significant_decimals),
+            },
             content_type=content_type,
         )
 

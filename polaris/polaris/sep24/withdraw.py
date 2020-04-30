@@ -283,7 +283,6 @@ def withdraw(account: str, request: Request) -> Response:
     transaction_id = create_transaction_id()
     transaction_id_hex = transaction_id.hex
     withdraw_memo = "0" * (64 - len(transaction_id_hex)) + transaction_id_hex
-    print(withdraw_memo)
     Transaction.objects.create(
         id=transaction_id,
         stellar_account=account,

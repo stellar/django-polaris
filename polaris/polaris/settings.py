@@ -21,12 +21,15 @@ if "sep-10" in settings.ACTIVE_SEPS:
     SIGNING_SEED = env("SIGNING_SEED")
     SIGNING_KEY = Keypair.from_secret(SIGNING_SEED).public_key
 
+SERVER_JWT_KEY = None
+if any(sep in settings.ACTIVE_SEPS for sep in ["sep-6", "sep-10", "sep-24"]):
+    SERVER_JWT_KEY = env("SERVER_JWT_KEY")
+
 STELLAR_NETWORK_PASSPHRASE = env(
     "STELLAR_NETWORK_PASSPHRASE", default="Test SDF Network ; September 2015"
 )
 HORIZON_URI = env("HORIZON_URI", default="https://horizon-testnet.stellar.org/")
 HORIZON_SERVER = Server(horizon_url=HORIZON_URI)
-SERVER_JWT_KEY = env("SERVER_JWT_KEY")
 OPERATION_DEPOSIT = "deposit"
 OPERATION_WITHDRAWAL = "withdraw"
 ACCOUNT_STARTING_BALANCE = str(2.01)
