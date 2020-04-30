@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: 1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-02-07 01:11+0000\n"
+"POT-Creation-Date: 2020-04-30 15:56+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,84 +17,110 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: forms.py:9
+#: forms.py:11
 msgid "First Name"
 msgstr "Primeiro Nome"
 
-#: forms.py:14
+#: forms.py:16
 msgid "Last Name"
 msgstr "Sobrenome"
 
-#: forms.py:17
+#: forms.py:22
 msgid "Email"
 msgstr "Email"
 
-#: forms.py:22
+#: forms.py:31
+msgid "Enter the bank account number for withdrawal."
+msgstr "Insira a conta de banco para o saque."
+
+#: forms.py:35
+msgid "Bank Account"
+msgstr "Conta de Banco"
+
+#: forms.py:40
+msgid "Enter the bank to withdraw from."
+msgstr "Insira o banco no qual será realizado o saque."
+
+#: forms.py:44
+msgid "Bank"
+msgstr "Banco"
+
+#: forms.py:49
 msgid "Text"
 msgstr "Texto"
 
-#: forms.py:23
+#: forms.py:50
 msgid "Checkbox"
 msgstr "Caixa de seleção"
 
-#: forms.py:25 forms.py:30
+#: forms.py:52 forms.py:57
 msgid "Option 1"
 msgstr "Opção 1"
 
-#: forms.py:25 forms.py:30
+#: forms.py:52 forms.py:57
 msgid "Option 2"
 msgstr "Opção 2"
 
-#: forms.py:25 forms.py:30
+#: forms.py:52 forms.py:57
 msgid "Option 3"
 msgstr "Opção 3"
 
-#: forms.py:27
+#: forms.py:54
 msgid "Select"
 msgstr "Selecione"
 
-#: forms.py:32
+#: forms.py:59
 msgid "Multiple Choice"
 msgstr "Múltiplas Escolhas"
 
-#: forms.py:34
+#: forms.py:61
 msgid "Datetime"
 msgstr "Data hora"
 
-#: forms.py:35
+#: forms.py:62
 msgid "Date"
 msgstr "Data"
 
-#: forms.py:36
+#: forms.py:63
 msgid "Time"
 msgstr "Tempo"
 
-#: forms.py:37
+#: forms.py:64
 msgid "File"
 msgstr "Arquivo"
 
-#: forms.py:39
+#: forms.py:66
 msgid "Textarea"
 msgstr "Área de Texto"
 
-#: forms.py:42
+#: forms.py:69
 msgid "Password"
 msgstr "Senha"
 
-#: integrations.py:31 integrations.py:119 templates/confirmation_email.html:125
+#: integrations.py:30 templates/confirmation_email.html:8
+#: templates/confirmation_email.html:124
 msgid "Confirm Email"
 msgstr "Confirmar Email"
 
-#: integrations.py:108 integrations.py:124 integrations.py:220
-#: integrations.py:261
+#: integrations.py:50
+msgid "Reference Anchor Server: Confirm Email"
+msgstr "Servidor Âncora de Referência: Confirmação de Email"
+
+#: integrations.py:52
+#, python-format
+msgid "Confirm your email by pasting this URL in your browser: %s"
+msgstr "Confirme seu email colando essa URL no seu navegador: %s"
+
+#: integrations.py:116 integrations.py:132 integrations.py:216
+#: integrations.py:263
 msgid "Stellar Development Foundation"
 msgstr "Stellar Development Foundation"
 
-#: integrations.py:109
+#: integrations.py:117
 msgid "Polaris KYC Information"
 msgstr "Informações de KYC do Polaris"
 
-#: integrations.py:112
+#: integrations.py:120
 msgid ""
 "We're legally required to know our customers. Please enter the information "
 "requested."
@@ -102,13 +128,14 @@ msgstr ""
 "Para seguir regulações, temos que conhecer nossos usuários. Por favor "
 "forneça as seguintes informações."
 
-#: integrations.py:121
+#: integrations.py:129
 msgid ""
 "We sent you a confirmation email. Once confirmed, continue on this page."
 msgstr ""
-"Um email de confirmação foi enviado. Uma vez que a confirmação for feita, continue nesta página."
+"Um email de confirmação foi enviado. Uma vez que a confirmação for feita, "
+"continue nesta página."
 
-#: integrations.py:197
+#: integrations.py:189
 #, python-format
 msgid ""
 "Include this code as the memo when making the deposit: <strong>%s</strong>. "
@@ -121,43 +148,43 @@ msgstr ""
 "(Este depósito é automaticamente confirmado para fins de demonstração. Por "
 "favor aguarde.)"
 
-#: integrations.py:218 integrations.py:260
+#: integrations.py:214 integrations.py:262
 msgid "Polaris Transaction Information"
 msgstr "Informações de Transações do Polaris"
 
-#: integrations.py:219
+#: integrations.py:215
 msgid "Please enter the amount you would like to transfer."
 msgstr "Por favor informe o valor que você quer transferir."
 
-#: integrations.py:264
+#: integrations.py:266
 msgid ""
 "Please enter the banking details for the account you would like to receive "
 "your funds."
 msgstr ""
 "Por favor informe os detalhes bancários da conta que vai receber os fundos."
 
-#: settings.py:118
+#: settings.py:106
 msgid "English"
 msgstr "Inglês"
 
-#: settings.py:118
+#: settings.py:106
 msgid "Portuguese"
 msgstr "Português"
 
-#: templates/confirmation_email.html:116
+#: templates/confirmation_email.html:115
 #, python-format
 msgid "Hi %(first_name)s,"
 msgstr "Olá %(first_name)s,"
 
-#: templates/confirmation_email.html:117
+#: templates/confirmation_email.html:116
 msgid ""
 "Thanks for using the Stellar Development Foundation's reference anchor "
 "server. Click the button below to confirm your email."
 msgstr ""
-"Obrigado por user o servidor de referência da Stellar Development Foundation,"
-" Clique no botão abaixo para confirmar o seu email."
+"Obrigado por user o servidor de referência da Stellar Development "
+"Foundation, Clique no botão abaixo para confirmar o seu email."
 
-#: templates/confirmation_email.html:133
+#: templates/confirmation_email.html:132
 msgid "The reference server is powered by "
 msgstr "O servidor de referência funciona utilizando o "
 
@@ -174,8 +201,8 @@ msgid ""
 "Your email has been confirmed! Please continue with your deposit or "
 "withdrawal on the original page."
 msgstr ""
-"Seu email foi confirmado! Por favor continue o seu deposito ou "
-"saque na página original."
+"Seu email foi confirmado! Por favor continue o seu deposito ou saque na "
+"página original."
 
 #: templates/readonly_login.html:21
 msgid "Please correct the error below."
@@ -194,23 +221,14 @@ msgstr ""
 "Você está autenticado como %(username)s, mas não está autorizaado a acessar "
 "essa página. Você gostaria de realizar o acesso com outra conta?"
 
-#: templates/readonly_login.html:61
+#: templates/readonly_login.html:64
 msgid "Forgotten your password or username?"
 msgstr "Esqueceu a senha ou usuário?"
 
-#: templates/readonly_login.html:65
+#: templates/readonly_login.html:68
 msgid "Log in"
 msgstr "Entrar"
 
-#: views.py:17
+#: views.py:19
 msgid "This form contains every field type."
 msgstr "Este formulário possui todos os tipos de campos."
-
-#: integrations.py:47
-msgid "Reference Anchor Server: Confirm Email"
-msgstr "Servidor Âncora de Referência: Confirmação de Email"
-
-#: integrations.py:49
-#, python-format
-msgid "Confirm your email by pasting this URL in your browser: %s"
-msgstr "Confirme seu email colando essa URL no seu navegador: %s"
