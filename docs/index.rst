@@ -10,20 +10,23 @@ What is Polaris?
 .. _django app: https://docs.djangoproject.com/en/3.0/intro/reusable-apps/
 .. _demo client: http://sep24.stellar.org/#HOME_DOMAIN=%22https://testanchor.stellar.org%22&TRANSFER_SERVER=%22%22&WEB_AUTH_ENDPOINT=%22%22&USER_SK=%22SBBMVOJQLRJTQISVSUPBI2ZNQLZYNR4ARGWFPDDEL2U7444HPDII4VCX%22&HORIZON_URL=%22https://horizon-testnet.stellar.org%22&ASSET_CODE=%22SRT%22&ASSET_ISSUER=%22%22&EMAIL_ADDRESS=%22%22&STRICT_MODE=false&AUTO_ADVANCE=true&PUBNET=false
 
-Polaris is an extendable `django app`_ of Stellar Ecosystem Proposal (SEP) implementations
+Polaris is an extendable `django app`_ for Stellar Ecosystem Proposal (SEP) implementations
 maintained by the `Stellar Development Foundation`_ (SDF). Using Polaris, you can run a web
 server supporting any combination of SEP-1, 6, 10, 12, and 24.
 
-Each SEP includes functionality that can only be implemented by the developer using Polaris.
-For example, only an anchor can implement the integration with their partner bank. This is
-why each SEP implemented by Polaris comes with a programmable interface for developers to
-inject their own business logic.
+While Polaris handles the majority of the business logic described in each SEP, there are
+pieces of functionality that can only be implemented by the developer using Polaris.
+For example, only an anchor can implement the integration with their partner bank.
+
+This is why each SEP implemented by Polaris comes with a programmable interface, or
+integrations, for developers to inject their own business logic.
 
 Polaris is completely open source and available on github_. The SDF also runs a reference
 server using Polaris that can be tested using our `demo client`_.
 
-The instructions below outline the common set up needed for any Polaris configuration, but
-make sure to check out the documentation for each SEP implementation you plan to use.
+The instructions below outline the common set up needed for any Polaris deployment, but
+each SEP implementation has its own configuration and integration requirements. These
+requirements are described in the documentation for each SEP.
 
 Installation and Configuration
 ==============================
@@ -34,8 +37,8 @@ and then run
 
     pip install django-polaris
 
-Configuring settings.py
-^^^^^^^^^^^^^^^^^^^^^^^
+Settings
+^^^^^^^^
 
 Add the following to ``INSTALLED_APPS`` in settings.py.
 ::
@@ -83,8 +86,8 @@ environment or included in ``PROJECT_ROOT/.env``.
     SERVER_JWT_KEY="yoursupersecretjwtkey"
     HOST_URL="https://example.com"
 
-Python Code and Bash Commands
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Endpoints
+^^^^^^^^^
 
 Add the Polaris endpoints in ``urls.py``
 ::
@@ -96,6 +99,45 @@ Add the Polaris endpoints in ``urls.py``
         ...,
         path("", include(polaris.urls)),
     ]
+
+Database Models
+^^^^^^^^^^^^^^^
+
+.. _psycopg2: https://pypi.org/project/psycopg2/
+.. _repository: https://github.com/stellar/django-polaris/issues
+
+SEP-1, 6, and 24 require Polaris' database models. Polaris currently only supports
+PostgreSQL and uses psycopg2_ to connect to the database. If you use another
+database, file an issue in the project's github repository_.
+
+Run migrations to create these tables in your database.
+::
+
+    python manage.py migrate
+
+Now, create an ``Asset`` database object for each asset you intend to anchor. Get
+into your python shell, then run something like this:
+::
+
+    from polaris.models import Asset
+    Asset.objects.create(
+        code="USD",
+        issuer="<the issuer address>",
+        distribution_seed="<distribution account secret key>",
+        significant_digits=2,
+        deposit_fee_fixed=1,
+        deposit_fee_percent=2,
+        withdraw_fee_fixed=1,
+        withdraw_fee_percent=2,
+        deposit_min_amount=10,
+        deposit_max_amount=10000,
+        withdrawal_min_amount=10,
+        withdrawal_min_amount=10000,
+        sep24_enabled=True,
+        sep6_enabled=True
+    )
+
+See the :doc:`Asset </models/index>` documentation for more information on the fields used.
 
 At this point, you should configure Polaris for one or more of the
 SEPs currently supported. Once configured, check out how to run the

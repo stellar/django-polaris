@@ -25,45 +25,14 @@ and cons, so make sure you understand the proposals before choosing.
 Configuration
 =============
 
-Add the SEPs to ``ACTIVE_SEPS`` in in your settings file:
+Simply add the SEPs to ``ACTIVE_SEPS`` in in your settings file. This is all
+that is required for SEP-6.
 ::
 
     ACTIVE_SEPS = ["sep-1", "sep-6", "sep-24", ...]
 
-Run the migrations to create the models Polaris uses to facilitate the transfers.
-::
-
-    python manage.py migrate
-
-Now, create an ``Asset`` database object for each asset you intend to anchor. Get
-into your python shell, then run something like this:
-::
-
-    from polaris.models import Asset
-    Asset.objects.create(
-        code="USD",
-        issuer="<the issuer address>",
-        distribution_seed="<distribution account secret key>",
-        significant_digits=2,
-        deposit_fee_fixed=1,
-        deposit_fee_percent=2,
-        withdraw_fee_fixed=1,
-        withdraw_fee_percent=2,
-        deposit_min_amount=10,
-        deposit_max_amount=10000,
-        withdrawal_min_amount=10,
-        withdrawal_min_amount=10000,
-        sep24_enabled=True,
-        sep6_enabled=True
-    )
-
-See the :doc:`Asset </models/index>` documentation for more information on the fields used.
-
-
 SEP-24 Configuration
 --------------------
-
-This section only applies to SEP-24.
 
 In additional to the apps listed on the home page, add the following to
 ``INSTALLED_APPS`` in settings.py. Any app that overrides a static asset

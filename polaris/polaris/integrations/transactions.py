@@ -87,7 +87,7 @@ class DepositIntegration:
         containing the key-value pairs as shown below.
         ::
 
-            def content_for_transaction(cls, transaction, post_data = None, amount = None):
+            def content_for_transaction(self, transaction, post_data = None, amount = None):
                 if post_data:
                     form = TransactionForm(transaction, post_data)
                 else:
@@ -247,6 +247,52 @@ class DepositIntegration:
         pass
 
     def process_sep6_request(self, params: Dict) -> Dict:
+        """
+        .. _deposit: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#deposit
+        .. _Deposit no additional information needed: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#1-success-no-additional-information-needed
+        .. _Customer information needed: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#2-customer-information-needed-non-interactive
+        .. _Customer Information Status: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#4-customer-information-status
+
+        Process the request arguments passed to the deposit_ endpoint and return one of the
+        following responses as a dictionary:
+
+        `Deposit no additional information needed`_
+
+        Polaris creates most of the attributes described in this response. Simply return the
+        'how' and optionally 'extra_info' attributes. For example:
+        ::
+
+            return {
+                "how": "<your bank account address>",
+                "extra_info": {
+                    "message": "Deposit the funds to the bank account specified in 'how'"
+                }
+            }
+
+        `Customer information needed`_
+
+        Return the response as described in SEP.
+        ::
+
+            return {
+              "type": "non_interactive_customer_info_needed",
+              "fields" : ["family_name", "given_name", "address", "tax_id"]
+            }
+
+        `Customer Information Status`_
+
+        Return the 'type' and 'status' attributes. If ``CustomerIntegration.more_info_url()``
+        is implemented, Polaris will include the 'more_info_url' attribute in the response as
+        well.
+        ::
+
+            return {
+              "type": "customer_info_status",
+              "status": "denied",
+            }
+
+        :param params: the request parameters as described in /deposit_
+        """
         raise NotImplementedError(
             "`process_sep6_request` must be implemented if SEP-6 is active"
         )
@@ -263,8 +309,6 @@ class WithdrawalIntegration:
     def process_withdrawal(self, response: Dict, transaction: Transaction):
         """
         .. _endpoint: https://www.stellar.org/developers/horizon/reference/resources/transaction.html
-
-        **OVERRIDE REQUIRED**
 
         This method should implement the transfer of the amount of the
         anchored asset specified by `transaction` to the user who requested
@@ -347,6 +391,28 @@ class WithdrawalIntegration:
         pass
 
     def process_sep6_request(self, params: Dict) -> Dict:
+        """
+        .. _/withdraw: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#deposit
+        .. _Withdraw no additional information needed: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#1-success-no-additional-information-needed-1
+
+        Process the request arguments passed to the withdraw_ endpoint and return one of the
+        following responses as a dictionary:
+
+        `Withdraw no additional information needed`_
+
+        Polaris populates most of the attributes for this response. Simply return an 'extra_info'
+        attribute if applicable:
+        ::
+
+            {
+                "extra_info": {
+                    "message": "Send the funds to the following stellar account including 'memo'"
+                }
+            }
+
+        You may also return the `Customer information needed`_ and `Customer Information Status`_
+        responses as described in ``DepositIntegration.process_sep6_request``.
+        """
         raise NotImplementedError(
             "`process_sep6_request` must be implemented if SEP-6 is active"
         )
