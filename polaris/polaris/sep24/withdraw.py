@@ -20,6 +20,7 @@ from polaris.utils import (
     Logger,
     extract_sep9_fields,
     create_transaction_id,
+    memo_hex_to_base64,
 )
 from polaris.sep24.utils import (
     interactive_url,
@@ -282,7 +283,8 @@ def withdraw(account: str, request: Request) -> Response:
     # appropriately sized string for the `HashMemo`.
     transaction_id = create_transaction_id()
     transaction_id_hex = transaction_id.hex
-    withdraw_memo = "0" * (64 - len(transaction_id_hex)) + transaction_id_hex
+    padded_hex_memo = "0" * (64 - len(transaction_id_hex)) + transaction_id_hex
+    withdraw_memo = memo_hex_to_base64(padded_hex_memo)
     Transaction.objects.create(
         id=transaction_id,
         stellar_account=account,

@@ -140,14 +140,7 @@ class Command(BaseCommand):
 
         # memo from response must match transaction.memo if present
         memo = None if memo_type == "none" else response["memo"]
-        if memo_type == "hash":
-            # The memo on the response will be base 64 string, due to XDR, while
-            # the memo parameter is base 16. Thus, we convert the parameter
-            # from hex to base 64, and then to a string without trailing whitespace.
-            if memo != memo_hex_to_base64(transaction.withdraw_memo):
-                return False
-        elif memo and memo != transaction.withdraw_memo:
-            # text and id memos from horizon are strings, no formatting necessary
+        if memo and memo != transaction.withdraw_memo:
             return False
 
         horizon_tx = TransactionEnvelope.from_xdr(

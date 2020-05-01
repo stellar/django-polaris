@@ -168,7 +168,7 @@ def create_stellar_deposit(transaction_id: str) -> bool:
         transaction.asset.significant_decimals,
     )
     asset = transaction.asset
-    memo = make_memo(transaction)
+    memo = make_memo(transaction.deposit_memo, transaction.deposit_memo_type)
 
     # If the given Stellar account does not exist, create
     # the account with at least enough XLM for the minimum
@@ -282,22 +282,29 @@ def create_stellar_deposit(transaction_id: str) -> bool:
     return True
 
 
-def make_memo(transaction: Transaction) -> Optional[Memo]:
-    if Transaction.kind == Transaction.KIND.deposit:
-        memo_attr = "deposit_memo"
-        memo_type_attr = "deposit_memo_type"
+def memo_str(memo: str, memo_type: str) -> Optional[str]:
+    memo = make_memo(memo, memo_type)
+    if not memo:
+        return memo
+    if isinstance(memo, IdMemo):
+        return str(memo.memo_id)
+    elif isinstance(memo, HashMemo):
+        return memo_hex_to_base64(memo.memo_hash.hex())
     else:
-        memo_attr = "withdraw_memo"
-        memo_type_attr = "withdraw_memo_attr"
+        return memo.memo_text.decode()
 
-    if not getattr(transaction, memo_attr):
+
+def make_memo(memo: str, memo_type: str) -> Optional[Memo]:
+    if not memo:
         return None
-    elif getattr(transaction, memo_type_attr) == Transaction.MEMO_TYPES.id:
-        return IdMemo(int(getattr(transaction, memo_attr)))
-    elif getattr(transaction, memo_type_attr) == Transaction.MEMO_TYPES.text:
-        return TextMemo(getattr(transaction, memo_attr))
+    if memo_type == Transaction.MEMO_TYPES.id:
+        return IdMemo(int(memo))
+    elif memo_type == Transaction.MEMO_TYPES.hash:
+        return HashMemo(memo_base64_to_hex(memo))
+    elif memo_type == Transaction.MEMO_TYPES.text:
+        return TextMemo(memo)
     else:
-        return HashMemo(getattr(transaction, memo_attr))
+        raise ValueError()
 
 
 SEP_9_FIELDS = {

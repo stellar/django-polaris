@@ -5,7 +5,6 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, renderer_classes
 from rest_framework.renderers import JSONRenderer
-from stellar_sdk.memo import IdMemo, HashMemo, TextMemo
 from stellar_sdk.exceptions import MemoInvalidException
 
 from polaris import settings
@@ -14,7 +13,7 @@ from polaris.utils import (
     render_error_response,
     create_transaction_id,
     extract_sep9_fields,
-    memo_base64_to_hex,
+    memo_str,
 )
 from polaris.sep6.utils import validate_403_response
 from polaris.sep10.utils import validate_sep10_token
@@ -93,19 +92,12 @@ def parse_request_args(request: Request) -> Dict:
             return {"error": err_resp}
         activate_lang_for_request(lang)
 
-    memo = None
     memo_type = request.GET.get("memo_type")
     if memo_type and memo_type not in Transaction.MEMO_TYPES:
         return {"error": render_error_response(_("invalid 'memo_type'"))}
 
     try:
-        if memo_type == Transaction.MEMO_TYPES.id:
-            memo = str(IdMemo(int(request.GET.get("memo"))).memo_id)
-        elif memo_type == Transaction.MEMO_TYPES.hash:
-            memo = memo_base64_to_hex(request.GET.get("memo"))
-            HashMemo(memo)
-        elif memo_type == Transaction.MEMO_TYPES.text:
-            memo = TextMemo(request.GET.get("memo")).memo_text.decode()
+        memo = memo_str(request.GET.get("memo"), memo_type)
     except (ValueError, MemoInvalidException):
         return {"error": render_error_response(_("invalid 'memo' for 'memo_type'"))}
 

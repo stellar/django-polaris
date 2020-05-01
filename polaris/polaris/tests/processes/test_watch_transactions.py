@@ -47,7 +47,7 @@ def test_process_response_success(
     json = deepcopy(TRANSACTION_JSON)
     json["successful"] = True
     json["id"] = transaction.id
-    json["memo"] = memo_hex_to_base64(transaction.withdraw_memo)
+    json["memo"] = transaction.withdraw_memo
 
     Command.process_response(json)
 
@@ -70,7 +70,7 @@ def test_process_response_unsuccessful(
     json = deepcopy(TRANSACTION_JSON)
     json["successful"] = False
     json["id"] = transaction.id
-    json["memo"] = memo_hex_to_base64(transaction.withdraw_memo)
+    json["memo"] = transaction.withdraw_memo
 
     Command.process_response(json)
 
@@ -93,7 +93,7 @@ def test_process_response_bad_integration(
     json = deepcopy(TRANSACTION_JSON)
     json["successful"] = True
     json["id"] = transaction.id
-    json["memo"] = memo_hex_to_base64(transaction.withdraw_memo)
+    json["memo"] = transaction.withdraw_memo
 
     Command.process_response(json)
 
@@ -116,7 +116,7 @@ def test_match_with_no_amount(
     json = deepcopy(TRANSACTION_JSON)
     json["successful"] = True
     json["id"] = transaction.id
-    json["memo"] = memo_hex_to_base64(transaction.withdraw_memo)
+    json["memo"] = transaction.withdraw_memo
 
     Command.process_response(json)
 

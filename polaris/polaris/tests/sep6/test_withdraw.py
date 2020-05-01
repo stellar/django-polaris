@@ -274,6 +274,7 @@ def test_withdraw_non_interactive_customer_info_needed(
         {"asset_code": withdraw.asset.code, "type": "good type", "dest": "test"},
     )
     content = json.loads(response.content)
+    print(content)
     assert response.status_code == 403
     assert content == {
         "type": "non_interactive_customer_info_needed",
