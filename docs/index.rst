@@ -97,7 +97,9 @@ Add the Polaris endpoints in ``urls.py``
         path("", include(polaris.urls)),
     ]
 
-At this point, you are now ready to run the Polaris server!
+At this point, you should configure Polaris for one or more of the
+SEPs currently supported. Once configured, check out how to run the
+server as described in the next section.
 
 Running the Web Server
 ======================
