@@ -2,12 +2,16 @@ import pytest
 import json
 from unittest.mock import patch, Mock
 
+from stellar_sdk import Keypair
 from stellar_sdk import Account
 from stellar_sdk.client.response import Response
 from stellar_sdk.exceptions import NotFoundError, BaseHorizonError
 
-from polaris import settings
-from polaris.tests.conftest import STELLAR_ACCOUNT_1
+from polaris.tests.conftest import (
+    STELLAR_ACCOUNT_1,
+    USD_DISTRIBUTION_SEED,
+    ETH_DISTRIBUTION_SEED,
+)
 from polaris.tests.sep24.test_deposit import HORIZON_SUCCESS_RESPONSE
 from polaris.management.commands.create_stellar_deposit import TRUSTLINE_FAILURE_XDR
 from polaris.utils import create_stellar_deposit
@@ -23,7 +27,8 @@ def test_bad_status(acc1_usd_deposit_transaction_factory):
 
 def mock_load_account_no_account(account_id):
     if account_id not in [
-        v["DISTRIBUTION_ACCOUNT_ADDRESS"] for v in settings.ASSETS.values()
+        Keypair.from_secret(v).public_key
+        for v in [USD_DISTRIBUTION_SEED, ETH_DISTRIBUTION_SEED]
     ]:
         raise NotFoundError(
             response=Response(

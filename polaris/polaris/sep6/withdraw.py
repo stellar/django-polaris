@@ -53,9 +53,6 @@ def withdraw(account: str, request: Request) -> Response:
             _("unable to process the request"), status_code=500
         )
 
-    distribution_address = settings.ASSETS[args["asset"].code][
-        "DISTRIBUTION_ACCOUNT_ADDRESS"
-    ]
     if status_code == 200:
         transaction_id = create_transaction_id()
         Transaction.objects.create(
@@ -64,7 +61,7 @@ def withdraw(account: str, request: Request) -> Response:
             asset=args["asset"],
             kind=Transaction.KIND.withdrawal,
             status=Transaction.STATUS.pending_user_transfer_start,
-            withdraw_anchor_account=distribution_address,
+            withdraw_anchor_account=args["asset"].distribution_account,
             withdraw_memo=args["memo"],
             withdraw_memo_type=args["memo_type"] or Transaction.MEMO_TYPES.text,
             protocol=Transaction.PROTOCOL.sep6,
@@ -80,10 +77,6 @@ def parse_request_args(request: Request) -> Dict:
     ).first()
     if not asset:
         return {"error": render_error_response(_("invalid 'asset_code'"))}
-    elif asset.code not in settings.ASSETS:
-        return {
-            "error": render_error_response(_("unsupported asset type: %s") % asset.code)
-        }
 
     lang = request.GET.get("lang")
     if lang:
@@ -125,7 +118,7 @@ def validate_response(args: Dict, integration_response: Dict) -> Tuple[Dict, int
         return validate_403_response(account, integration_response), 403
 
     response = {
-        "account_id": settings.ASSETS[asset.code]["DISTRIBUTION_ACCOUNT_ADDRESS"],
+        "account_id": asset.distribution_account,
         "min_amount": round(asset.withdrawal_min_amount, asset.significant_decimals),
         "max_amount": round(asset.withdrawal_max_amount, asset.significant_decimals),
     }

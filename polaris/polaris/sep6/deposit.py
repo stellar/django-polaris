@@ -109,10 +109,6 @@ def parse_request_args(request: Request) -> Dict:
     ).first()
     if not asset:
         return {"error": render_error_response(_("invalid 'asset_code'"))}
-    elif asset.code not in settings.ASSETS:
-        return {
-            "error": render_error_response(_("unsupported asset type: %s") % asset.code)
-        }
 
     lang = request.GET.get("lang")
     if lang:

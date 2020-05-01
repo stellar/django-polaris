@@ -3,7 +3,10 @@ import json
 from typing import Dict
 from unittest.mock import patch
 
+from stellar_sdk.keypair import Keypair
+
 from polaris import settings
+from polaris.tests.conftest import USD_DISTRIBUTION_SEED
 from polaris.tests.helpers import mock_check_auth_success
 from polaris.integrations import WithdrawalIntegration
 from polaris.models import Transaction
@@ -38,9 +41,7 @@ def test_good_withdrawal_integration(client, acc1_usd_withdrawal_transaction_fac
     content = json.loads(response.content)
     assert response.status_code == 200
     assert content == {
-        "account_id": settings.ASSETS[withdraw.asset.code][
-            "DISTRIBUTION_ACCOUNT_ADDRESS"
-        ],
+        "account_id": Keypair.from_secret(USD_DISTRIBUTION_SEED).public_key,
         "min_amount": round(
             withdraw.asset.withdrawal_min_amount, withdraw.asset.significant_decimals
         ),
@@ -134,9 +135,7 @@ def test_withdraw_empty_integration_response(
     content = json.loads(response.content)
     assert response.status_code == 200
     assert content == {
-        "account_id": settings.ASSETS[withdraw.asset.code][
-            "DISTRIBUTION_ACCOUNT_ADDRESS"
-        ],
+        "account_id": Keypair.from_secret(USD_DISTRIBUTION_SEED).public_key,
         "min_amount": round(
             withdraw.asset.withdrawal_min_amount, withdraw.asset.significant_decimals
         ),
@@ -226,9 +225,7 @@ def test_withdrawal_transaction_created(
     client, acc1_usd_withdrawal_transaction_factory
 ):
     withdraw = acc1_usd_withdrawal_transaction_factory(sep6=True)
-    distribution_address = settings.ASSETS[withdraw.asset.code][
-        "DISTRIBUTION_ACCOUNT_ADDRESS"
-    ]
+    distribution_address = Keypair.from_secret(USD_DISTRIBUTION_SEED).public_key
     client.get(
         WITHDRAW_PATH,
         {

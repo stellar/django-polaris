@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import patch, Mock
 
-from polaris import settings
+from polaris.tests.conftest import USD_ISSUER_ACCOUNT
 from polaris.models import Transaction
 from polaris.tests.conftest import STELLAR_ACCOUNT_1
 from polaris.management.commands.check_trustlines import Command as CheckTrustlinesCMD
@@ -19,9 +19,7 @@ mock_server = Mock(
                             "balances": [
                                 {
                                     "asset_code": "USD",
-                                    "asset_issuer": settings.ASSETS["USD"][
-                                        "ISSUER_ACCOUNT_ADDRESS"
-                                    ],
+                                    "asset_issuer": USD_ISSUER_ACCOUNT,
                                 }
                             ],
                             "thresholds": {

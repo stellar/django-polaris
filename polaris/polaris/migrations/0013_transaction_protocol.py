@@ -14,7 +14,7 @@ def default_sep24(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("polaris", "0011_auto_20200420_2205"),
+        ("polaris", "0012_auto_20200420_2205"),
     ]
 
     operations = [
