@@ -65,16 +65,12 @@ def render_error_response(
     description: str,
     status_code: int = status.HTTP_400_BAD_REQUEST,
     content_type: str = "application/json",
-    sep6: bool = False,
 ) -> Response:
     """
     Renders an error response in Django.
 
     Currently supports HTML or JSON responses.
     """
-    if sep6:
-        return Response({"type": "authentication_required"}, status=403)
-
     resp_data = {
         "data": {"error": description},
         "status": status_code,

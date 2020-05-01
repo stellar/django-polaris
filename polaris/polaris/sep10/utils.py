@@ -4,8 +4,10 @@ import os
 from jwt.exceptions import InvalidTokenError
 from rest_framework import status
 from rest_framework.request import Request
+from rest_framework.response import Response
 
 from polaris import settings
+from polaris.models import Transaction
 from polaris.utils import render_error_response
 
 
@@ -17,13 +19,14 @@ def check_auth(request, func, sep, content_type: str = "application/json"):
     try:
         account = validate_jwt_request(request)
     except ValueError as e:
-        sep6 = sep == "sep6"
-        return render_error_response(
-            str(e),
-            content_type=content_type,
-            status_code=status.HTTP_403_FORBIDDEN,
-            sep6=sep6,
-        )
+        if sep == Transaction.PROTOCOL.sep6:
+            return Response({"type": "authentication_required"}, status=403)
+        else:
+            return render_error_response(
+                str(e),
+                content_type=content_type,
+                status_code=status.HTTP_403_FORBIDDEN,
+            )
     return func(account, request)
 
 
