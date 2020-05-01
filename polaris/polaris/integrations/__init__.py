@@ -27,11 +27,9 @@ def register_integrations(
     customer: CustomerIntegration = None,
 ):
     """
-    Registers instances of user-defined subclasses of
-    ``WithdrawalIntegration`` and
-    ``DepositIntegration`` with Polaris.
+    Registers the integration classes and functions with Polaris
 
-    Call this function in the relevant Django AppConfig.ready() function:
+    Call this function in your app's Django AppConfig.ready() function:
     ::
 
         from django.apps import AppConfig
@@ -42,20 +40,27 @@ def register_integrations(
 
             def ready(self):
                 from polaris.integrations import register_integrations
-                from myapp.integrations import (MyDepositIntegration,
-                                                MyWithdrawalIntegration)
-
+                from myapp.integrations import (
+                    MyDepositIntegration,
+                    MyWithdrawalIntegration,
+                    MyCustomerIntegration,
+                    toml_integration,
+                    fee_integrations,
+                    scripts_integration,
+                    info_integration
+                )
 
                 register_integrations(
                     deposit=MyDepositIntegration(),
-                    withdrawal=MyWithdrawalIntegration()
+                    withdrawal=MyWithdrawalIntegration(),
+                    customer=MyCustomerIntegration(),
+                    toml_func=toml_integration,
+                    scripts_func=scripts_integration,
+                    info_func=info_integration,
+                    fee_func=fee_integration
                 )
 
-    These integration classes provide a structured interface for implementing
-    user-defined logic used by Polaris, specifically for deposit and withdrawal
-    flows.
-
-    See the integration classes for more information on implementation.
+    Simply pass the integration classes or functions you use.
 
     :param deposit: the ``DepositIntegration`` subclass instance to be
         used by Polaris

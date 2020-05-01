@@ -52,7 +52,7 @@ into your python shell, then run something like this:
         sep6_enabled=True
     )
 
-See the `Asset </models/index>` documentation for more information on the fields used.
+See the :doc:`Asset </models/index>` documentation for more information on the fields used.
 
 
 SEP-24 Configuration
@@ -108,6 +108,8 @@ This allows Polaris to override django's default HTML widgets to provide
 a great UI out of the box. See the `Static Files`_ django page for more
 information.
 
+Compile these static assets using the following commands:
+
 | Compile static assets: ``python manage.py compilescss``
 | Collect static assets: ``python manage.py collectstatic --no-input``
 
@@ -121,12 +123,13 @@ Shared Integrations
 
 Because they share a common objective, Polaris' SEP-6 and SEP-24 implementations
 share many of the same integrations. We'll go over these integrations first, then
-the the integrations specific to each SEP.
+the integrations specific to each SEP.
 
 Polaris provides a set of base classes that should be subclassed for processing
 transactions, ``DepositIntegration`` and ``WithdrawalIntegration``. These subclasses,
 along with several other integration functions, should be registered with Polaris once
-implemented. See the `Registering Integrations`_ section for more information.
+implemented. See the :doc:`Registering Integrations</register_integrations/index>`
+section for more information.
 
 Banking Rails
 ^^^^^^^^^^^^^
@@ -146,10 +149,19 @@ Fee Integration
 
 .. autofunction:: polaris.integrations.calculate_fee
 
+Deposit Instructions
+^^^^^^^^^^^^^^^^^^^^
+
+.. autofunction:: polaris.integrations.DepositIntegration.instructions_for_pending_deposit
+
 SEP-6 Integrations
 ------------------
 
+.. autofunction:: polaris.integrations.DepositIntegration.process_sep6_request
 
+.. autofunction:: polaris.integrations.WithdrawalIntegration.process_sep6_request
+
+.. autofunction:: polaris.integrations.default_info_func
 
 SEP-24 Integrations
 -------------------
@@ -207,22 +219,10 @@ parameter can also be included in the URL.
 
 .. autofunction:: polaris.integrations.WithdrawalIntegration.interactive_url
 
-Registering Integrations
-------------------------
-In order for Polaris to use the integration classes you've defined, you
-must register them.
-
-.. autofunction:: polaris.integrations.register_integrations
-
 Javascript Integration
-----------------------
+^^^^^^^^^^^^^^^^^^^^^^
 
 .. autofunction:: polaris.integrations.scripts
-
-Deposit Instructions
---------------------
-
-.. autofunction:: polaris.integrations.DepositIntegration.instructions_for_pending_deposit
 
 Running the Service
 ===================

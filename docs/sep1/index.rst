@@ -1,8 +1,17 @@
 =====
 SEP-1
 =====
-stellar.toml Integration
-------------------------
+
+Configuration
+-------------
+
+Simply add the SEP to your ``ACTIVE_SEPS`` list in settings.py:
+::
+
+    ACTIVE_SEPS = ["sep-1", "sep-10", ...]
+
+Integrations
+------------
 
 Every anchor must define a stellar.toml file to describe the anchors's supported
 assets, any validators that are run, and other meta data. Polaris provides a

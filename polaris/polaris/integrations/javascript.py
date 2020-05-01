@@ -5,6 +5,10 @@ def scripts(page_content: Optional[Dict]) -> List[str]:
     """
     .. _`example reference server`: https://github.com/stellar/django-polaris/tree/master/example
 
+    Replace this function with another by passing it to
+    ``register_integrations()`` as described in
+    :doc:`Registering Integrations</register_integrations/index>`.
+
     Return a list of strings containing script tags that will be added to the
     bottom of the HTML body served for the current request. The scripts
     will be rendered like so:
@@ -23,22 +27,6 @@ def scripts(page_content: Optional[Dict]) -> List[str]:
     `example reference server`_ uses this functionality to inject Google
     Analytics into our deployment of Polaris, and to refresh the Confirm Email
     page every time the window is brought back into focus.
-
-    Replace this function with another by passing it to
-    ``polaris.integrations.register_integrations`` like so:
-    ::
-
-        from myapp.integrations import (
-            scripts,
-            MyDepositIntegration,
-            MyWithdrawalIntegration
-        )
-
-        register_integrations(
-            deposit=MyDepositIntegration(),
-            withdrawal=MyWithdrawalIntegration(),
-            scripts_func=scripts
-        )
 
     Note that the scripts will be executed in the order in which they are
     returned.

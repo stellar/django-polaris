@@ -9,6 +9,15 @@ def calculate_fee(fee_params: Dict) -> Decimal:
     """
     .. _`/fee`: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md#fee
 
+    Replace this function with another by passing it to
+    ``register_integrations()`` as described in
+    :doc:`Registering Integrations</register_integrations/index>`.
+
+    If this function is replaced with your own, `/info` responses will no
+    longer contain the `fee_fixed` and `fee_percent` attributes per-asset.
+    This is because Polaris can no longer assume fees are determined using
+    those attributes alone.
+
     Calculate the fee to be charged for the transaction described by `fee_params`.
 
     `fee_params` will always contain the following key-value pairs: `amount`,
@@ -20,30 +29,6 @@ def calculate_fee(fee_params: Dict) -> Decimal:
     interactive flow's ``TransactionForm`` submission, `fee_params` will also
     include any key-value pairs from `form.cleaned_data`. This allows anchors to
     use the fields collected via their TransactionForm in fee calculation.
-
-    Replace this function by registering another through
-    ``register_integrations``:
-    ::
-
-        from myapp.integrations import (
-            calculate_complex_fee,
-            MyDepositIntegration,
-            MyWithdrawalIntegration
-        )
-
-        register_integrations(
-            deposit=MyDepositIntegration(),
-            withdrawal=MyWithdrawalIntegration(),
-            fee_func=calculate_complex_fee
-        )
-
-    If this function is replaced with your own, `/info` responses will no
-    longer contain the `fee_fixed` and `fee_percent` attributes per-asset.
-    This is because Polaris can no longer assume fees are determined using
-    those attributes alone.
-
-    Note that any registered function must accept the same parameters and
-    return the same type.
     """
     amount = fee_params["amount"]
     asset = Asset.objects.filter(code=fee_params["asset_code"]).first()
