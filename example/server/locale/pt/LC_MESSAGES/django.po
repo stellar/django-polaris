@@ -158,7 +158,7 @@ msgstr "Por favor informe o valor que você quer transferir."
 
 #: integrations.py:256 integrations.py:350
 msgid "'type' must be 'bank_account'"
-msgstr ""
+msgstr "o ‘type’ deve ser ‘bank_account’"
 
 #: integrations.py:312
 msgid ""
@@ -169,31 +169,31 @@ msgstr ""
 
 #: integrations.py:352
 msgid "'dest' is required"
-msgstr ""
+msgstr "'dest' é necessário"
 
 #: integrations.py:354
 msgid "'dest_extra' is required"
-msgstr ""
+msgstr "'dest_extra' é necessário"
 
 #: integrations.py:356
 msgid "'dest' must match bank account number for account"
-msgstr ""
+msgstr "'dest' deve corresponder ao número da conta de banco"
 
 #: integrations.py:359
 msgid "'dest_extra' must match bank routing number for account"
-msgstr ""
+msgstr "'dest_extra' deve corresponder ao número de roteamento da conta"
 
 #: integrations.py:574
 msgid "'bank_account' is the only value supported'"
-msgstr ""
+msgstr "'bank_account' é o único valor suportado"
 
 #: integrations.py:581
 msgid "bank account number"
-msgstr ""
+msgstr "número da conta de banco"
 
 #: integrations.py:582
 msgid "bank routing number"
-msgstr ""
+msgstr "número de roteamento bancário"
 
 #: settings.py:106
 msgid "English"

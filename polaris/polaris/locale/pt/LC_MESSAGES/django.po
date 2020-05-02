@@ -194,7 +194,7 @@ msgstr "Tipo de ativo não suportado: %s"
 
 #: sep6/deposit.py:51 sep6/info.py:41 sep6/withdraw.py:54
 msgid "unable to process the request"
-msgstr ""
+msgstr "não foi possível processar a requisição"
 
 #: sep6/deposit.py:128 sep6/withdraw.py:99
 #, fuzzy
@@ -208,7 +208,7 @@ msgstr "`memo` inválido para o `memo_type`"
 
 #: sep6/transaction.py:38
 msgid "The account specified does not match authorization token"
-msgstr ""
+msgstr "a conta especificada não corresponde ao token de autorização"
 
 #: sep6/withdraw.py:113
 #, fuzzy
@@ -323,9 +323,9 @@ msgstr "Continuar"
 #: utils.py:120
 #, python-format
 msgid "the specified operation is not available for '%s'"
-msgstr ""
+msgstr "a operação especificada não está disponível para '%s'"
 
 #: utils.py:125
 #, python-format
 msgid "Asset amount must be within bounds [%(min)s, %(max)s]"
-msgstr ""
+msgstr "O montante do ativo deve estar dentro dos limites [%(min)s, %(max)s]"
