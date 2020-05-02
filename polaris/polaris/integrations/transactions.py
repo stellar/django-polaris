@@ -392,10 +392,10 @@ class WithdrawalIntegration:
 
     def process_sep6_request(self, params: Dict) -> Dict:
         """
-        .. _/withdraw: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#deposit
+        .. _/withdraw: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#withdraw
         .. _Withdraw no additional information needed: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#1-success-no-additional-information-needed-1
 
-        Process the request arguments passed to the withdraw_ endpoint and return one of the
+        Process the request arguments passed to the `/withdraw`_ endpoint and return one of the
         following responses as a dictionary:
 
         `Withdraw no additional information needed`_
