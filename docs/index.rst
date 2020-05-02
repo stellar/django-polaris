@@ -31,6 +31,11 @@ requirements are described in the documentation for each SEP.
 Installation and Configuration
 ==============================
 
+.. _Django docs: https://docs.djangoproject.com/en/3.0/
+
+These instructions assume you have already set up a django project. If you haven't,
+take a look at the `Django docs`_.
+
 First make sure you have ``cd``'ed into your django project's main directory
 and then run
 ::
@@ -78,12 +83,8 @@ Polaris uses environment variables that should be defined in the
 environment or included in ``PROJECT_ROOT/.env``.
 ::
 
-    DJANGO_SECRET_KEY="yoursupersecretkey"
-    DJANGO_DEBUG=False
-
     STELLAR_NETWORK_PASSPHRASE="Test SDF Network ; September 2015"
     HORIZON_URI="https://horizon-testnet.stellar.org/"
-    SERVER_JWT_KEY="yoursupersecretjwtkey"
     HOST_URL="https://example.com"
 
 Endpoints
