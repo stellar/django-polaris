@@ -60,8 +60,9 @@ def more_info(request: Request, sep6: bool = False) -> Response:
 
 
 def transactions(request: Request, account: str, sep6: bool = False) -> Response:
-    limit = request.GET.get("limit")
-    if limit and int(limit) < 1:
+    try:
+        limit = _validate_limit(request.GET.get("limit"))
+    except ValueError:
         return render_error_response(
             "invalid limit", status_code=status.HTTP_400_BAD_REQUEST
         )
@@ -184,6 +185,8 @@ def fee(request: Request) -> Response:
 
 
 def _validate_limit(limit):
+    if not limit:
+        return limit
     limit = int(limit)
     if limit < 1:
         raise ValueError
