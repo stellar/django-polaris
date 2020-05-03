@@ -60,9 +60,8 @@ def more_info(request: Request, sep6: bool = False) -> Response:
 
 
 def transactions(request: Request, account: str, sep6: bool = False) -> Response:
-    try:
-        limit = _validate_limit(request.GET.get("limit"))
-    except ValueError:
+    limit = request.GET.get("limit")
+    if limit and int(limit) < 1:
         return render_error_response(
             "invalid limit", status_code=status.HTTP_400_BAD_REQUEST
         )
@@ -97,9 +96,10 @@ def transactions(request: Request, account: str, sep6: bool = False) -> Response
         qset_filter["started_at__lt"] = start_transaction.started_at
 
     protocol = Transaction.PROTOCOL.sep6 if sep6 else Transaction.PROTOCOL.sep24
-    transactions_qset = Transaction.objects.filter(protocol=protocol, **qset_filter)[
-        :limit
-    ]
+    transactions_qset = Transaction.objects.filter(protocol=protocol, **qset_filter)
+    if limit:
+        transactions_qset = transactions_qset[:limit]
+
     serializer = TransactionSerializer(
         transactions_qset,
         many=True,
@@ -184,7 +184,7 @@ def fee(request: Request) -> Response:
 
 
 def _validate_limit(limit):
-    limit = int(limit or settings.DEFAULT_PAGE_SIZE)
+    limit = int(limit)
     if limit < 1:
         raise ValueError
     return limit

@@ -22,8 +22,12 @@ class DepositIntegration:
         """
         This function should poll the appropriate financial entity for the
         state of all `pending_deposits` and return the ones that have
-        externally completed. Make sure to save the transaction's `from_address`
-        field with the account number/address the funds originated from.
+        externally completed.
+
+        Make sure to save the transaction's ``from_address`` field with the
+        account number/address the funds originated from, as well as the
+        ``amount_in`` and ``amount_fee`` fields if the transaction was
+        initiated via SEP-6.
 
         For every transaction that is returned, Polaris will submit it to the
         Stellar network. If a transaction was completed on the network, the
@@ -52,7 +56,10 @@ class DepositIntegration:
         :return: a list of Transaction database objects which correspond to
             successful user deposits to the anchor's account.
         """
-        return list(pending_deposits)
+        raise NotImplementedError(
+            "`poll_pending_deposits()` must be implemented in order to execute "
+            "deposits on the network"
+        )
 
     def after_deposit(self, transaction: Transaction):
         """

@@ -1,6 +1,7 @@
 """This module defines a serializer for the transaction model."""
 from rest_framework import serializers
 from django.urls import reverse
+from django.conf import settings
 
 from polaris.models import Transaction
 
@@ -23,11 +24,17 @@ class TransactionSerializer(serializers.ModelSerializer):
             raise ValueError("Unable to construct url for transaction.")
 
         if "sep6" in self.context.get("request").build_absolute_uri():
-            path = reverse("more_info_sep6")
+            path = None
+            if "sass_processor" in settings.INSTALLED_APPS:
+                path = reverse("more_info_sep6")
         else:
             path = reverse("more_info")
-        path_params = f"{path}?id={transaction_instance.id}"
-        return request_from_context.build_absolute_uri(path_params)
+
+        if path:
+            path_params = f"{path}?id={transaction_instance.id}"
+            return request_from_context.build_absolute_uri(path_params)
+        else:
+            return path
 
     def round_decimals(self, data, instance):
         """

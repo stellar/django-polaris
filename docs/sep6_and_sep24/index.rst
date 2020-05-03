@@ -31,8 +31,15 @@ that is required for SEP-6.
 
     ACTIVE_SEPS = ["sep-1", "sep-6", "sep-24", ...]
 
-SEP-24 Configuration
---------------------
+Static Assets
+-------------
+
+Polaris comes with a UI for displaying forms and transaction information.
+**This is optional for SEP-6 but required for SEP-24.**
+
+If your Polaris deployment supports static assets, a ``more_info_url``
+attribute will be added to the `/transaction` response object for users
+to open in a browser.
 
 In additional to the apps listed on the home page, add the following to
 ``INSTALLED_APPS`` in settings.py. Any app that overrides a static asset
@@ -45,6 +52,27 @@ will find your asset before the Polaris default.
         "django.contrib.staticfiles",
         "sass_processor",
     ]
+
+Add the following to your settings.py as well:
+::
+
+    STATIC_ROOT = os.path.join(BASE_DIR, "<your static root directory>")
+    STATIC_URL = "<your static url path>"
+    STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+    STATICFILES_FINDERS = [
+        "django.contrib.staticfiles.finders.FileSystemFinder",
+        "django.contrib.staticfiles.finders.AppDirectoriesFinder",
+        "sass_processor.finders.CssFinder",
+    ]
+    SASS_PROCESSOR_ROOT = STATIC_ROOT
+
+Compile these static assets using the following commands:
+
+| Compile static assets: ``python manage.py compilescss``
+| Collect static assets: ``python manage.py collectstatic --no-input``
+
+SEP-24 Configuration
+--------------------
 
 SEP-24's interactive flow uses a short-lived JWT to authenticate users,
 so add the follow environment variable.
@@ -68,24 +96,10 @@ Add the following to your settings.py as well:
 ::
 
     FORM_RENDERER = "django.forms.renderers.TemplatesSetting"
-    STATIC_ROOT = os.path.join(BASE_DIR, "<your static root directory>")
-    STATIC_URL = "<your static url path>"
-    STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
-    STATICFILES_FINDERS = [
-        "django.contrib.staticfiles.finders.FileSystemFinder",
-        "django.contrib.staticfiles.finders.AppDirectoriesFinder",
-        "sass_processor.finders.CssFinder",
-    ]
-    SASS_PROCESSOR_ROOT = STATIC_ROOT
 
-This allows Polaris to override django's default HTML widgets to provide
+This allows Polaris to override django's default HTML form widgets to provide
 a great UI out of the box. See the `Static Files`_ django page for more
 information.
-
-Compile these static assets using the following commands:
-
-| Compile static assets: ``python manage.py compilescss``
-| Collect static assets: ``python manage.py collectstatic --no-input``
 
 Integrations
 ============
