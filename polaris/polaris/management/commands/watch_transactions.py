@@ -19,7 +19,7 @@ from polaris.integrations import (
     registered_withdrawal_integration as rwi,
     registered_fee_func as rfi,
 )
-from polaris.utils import memo_hex_to_base64, Logger
+from polaris.utils import Logger
 
 logger = Logger(__name__)
 
