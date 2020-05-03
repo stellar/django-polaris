@@ -80,9 +80,7 @@ def register_integrations(
     """
     this = sys.modules[__name__]
 
-    if not (deposit or withdrawal):
-        raise ValueError("Must pass at least one integration class")
-    elif deposit and not issubclass(deposit.__class__, DepositIntegration):
+    if deposit and not issubclass(deposit.__class__, DepositIntegration):
         raise TypeError("deposit must be a subclass of DepositIntegration")
     elif withdrawal and not issubclass(withdrawal.__class__, WithdrawalIntegration):
         raise TypeError("withdrawal must be a subclass of WithdrawalIntegration")

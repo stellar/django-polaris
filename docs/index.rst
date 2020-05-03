@@ -55,7 +55,8 @@ Add the following to ``INSTALLED_APPS`` in settings.py.
         "polaris",
     ]
 
-Add ``CorsMiddleware`` to your ``settings.MIDDLEWARE``.
+Add ``CorsMiddleware`` to your ``settings.MIDDLEWARE``. It should be listed above
+other middleware that can return responses such as ``CommonMiddleware``.
 ::
 
     MIDDLEWARE = [
@@ -63,6 +64,11 @@ Add ``CorsMiddleware`` to your ``settings.MIDDLEWARE``.
         'corsheaders.middleware.CorsMiddleware',
         ...
     ]
+
+Allow all hosts to make requests to your server. In settings.py, add:
+::
+
+    CORS_ORIGIN_ALLOW_ALL = True
 
 Polaris requires HTTPS, so redirect HTTP traffic:
 ::
@@ -74,7 +80,7 @@ Define ``PROJECT_ROOT`` in your project's settings.py. Polaris uses this to
 find your ``.env`` file.
 ::
 
-    PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    PROJECT_ROOT = "<path to directory containing .env file>"
 
 Environment Variables
 ^^^^^^^^^^^^^^^^^^^^^

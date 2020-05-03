@@ -18,17 +18,18 @@ from django.urls import path, include
 
 
 urlpatterns = []
-if "sep-1" in settings.ACTIVE_SEPS:
+active_seps = getattr(settings, "ACTIVE_SEPS")
+if "sep-1" in active_seps:
     urlpatterns.append(path(".well-known/", include("polaris.sep1.urls")))
 
-if "sep-6" in settings.ACTIVE_SEPS:
+if "sep-6" in active_seps:
     urlpatterns.append(path("sep6/", include("polaris.sep6.urls")))
 
-if "sep-10" in settings.ACTIVE_SEPS:
+if "sep-10" in active_seps:
     urlpatterns.append(path("auth", include("polaris.sep10.urls")))
 
-if "sep-12" in settings.ACTIVE_SEPS:
+if "sep-12" in active_seps:
     urlpatterns.append(path("kyc/", include("polaris.sep12.urls")))
 
-if "sep-24" in settings.ACTIVE_SEPS:
+if "sep-24" in active_seps:
     urlpatterns.append(path("sep24/", include("polaris.sep24.urls")))

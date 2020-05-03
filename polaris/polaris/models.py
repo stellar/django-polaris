@@ -46,7 +46,7 @@ class Asset(TimeStampedModel):
 
     # Deposit-related info
     deposit_enabled = models.BooleanField(default=True)
-    """``True`` if SEP-6 deposit for this asset is supported."""
+    """``True`` if deposit for this asset is supported."""
 
     deposit_fee_fixed = models.DecimalField(
         default=0, blank=True, max_digits=30, decimal_places=7
@@ -82,7 +82,7 @@ class Asset(TimeStampedModel):
 
     # Withdrawal-related info
     withdrawal_enabled = models.BooleanField(default=True)
-    """``True`` if SEP-6 withdrawal for this asset is supported."""
+    """``True`` if withdrawal for this asset is supported."""
 
     withdrawal_fee_fixed = models.DecimalField(
         default=0, blank=True, max_digits=30, decimal_places=7
