@@ -371,7 +371,7 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
         asset = params["asset"]
         code = asset.code
         response = {
-            "account_id": settings.ASSETS[code]["DISTRIBUTION_ACCOUNT_ADDRESS"],
+            "account_id": asset.distribution_account,
             "min_amount": round(
                 asset.withdrawal_min_amount, asset.significant_decimals
             ),
