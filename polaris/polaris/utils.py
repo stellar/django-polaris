@@ -152,10 +152,13 @@ def create_stellar_deposit(transaction_id: str) -> bool:
             f"unexpected transaction status {transaction.status} for "
             "create_stellar_deposit",
         )
-    elif not (transaction.amount_in and transaction.amount_fee):
-        raise ValueError(
+    elif transaction.amount_in is None or transaction.amount_fee is None:
+        transaction.status = Transaction.STATUS.error
+        transaction.status_message = (
             "`amount_in` and `amount_fee` must be populated, skipping transaction"
         )
+        transaction.save()
+        raise ValueError(transaction.status_message)
     transaction.status = Transaction.STATUS.pending_stellar
     transaction.save()
     logger.info(f"Transaction {transaction_id} now pending_stellar")
