@@ -8,7 +8,7 @@ from rest_framework.renderers import TemplateHTMLRenderer, JSONRenderer
 
 from django.views.decorators.clickjacking import xframe_options_exempt
 
-from polaris import shared_endpoints
+from polaris.shared import endpoints
 from polaris.sep10.utils import validate_sep10_token
 from polaris.utils import render_error_response
 
@@ -21,7 +21,7 @@ def more_info(request: Request) -> Response:
     Popup to display more information about a specific transaction.
     See table: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md#4-customer-information-status
     """
-    return shared_endpoints.more_info(request, sep6=True)
+    return endpoints.more_info(request, sep6=True)
 
 
 @api_view(["GET"])
@@ -33,12 +33,11 @@ def transactions(account: str, request: Request) -> Response:
     See: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#transaction-history
     """
     if account != request.GET.get("account"):
-        print(account, request.GET.get("account"))
         return render_error_response(
             _("The account specified does not match authorization token"),
             status_code=403,
         )
-    return shared_endpoints.transactions(request, account, sep6=True)
+    return endpoints.transactions(request, account, sep6=True)
 
 
 @api_view(["GET"])
@@ -49,4 +48,4 @@ def transaction(account: str, request: Request) -> Response:
     Definition of the /transaction endpoint, in accordance with SEP-0006.
     See: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#single-historical-transaction
     """
-    return shared_endpoints.transaction(request, account, sep6=True)
+    return endpoints.transaction(request, account, sep6=True)

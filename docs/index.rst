@@ -19,7 +19,7 @@ pieces of functionality that can only be implemented by the developer using Pola
 For example, only an anchor can implement the integration with their partner bank.
 
 This is why each SEP implemented by Polaris comes with a programmable interface, or
-integrations, for developers to inject their own business logic.
+integration points, for developers to inject their own business logic.
 
 Polaris is completely open source and available on github_. The SDF also runs a reference
 server using Polaris that can be tested using our `demo client`_.

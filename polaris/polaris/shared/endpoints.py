@@ -6,14 +6,13 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext as _
-from django.conf import settings
 
 from polaris import settings as polaris_settings
 from polaris.utils import render_error_response
 from polaris.models import Transaction, Asset
 from polaris.integrations import registered_fee_func
 from polaris.sep24.utils import verify_valid_asset_operation
-from polaris.sep24.serializers import TransactionSerializer
+from polaris.shared.serializers import TransactionSerializer
 from polaris.integrations import (
     registered_deposit_integration as rdi,
     registered_scripts_func,

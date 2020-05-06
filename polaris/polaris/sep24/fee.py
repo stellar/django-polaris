@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework.renderers import JSONRenderer
 from rest_framework.request import Request
 
-from polaris import shared_endpoints
+from polaris.shared import endpoints
 from polaris.sep10.utils import validate_sep10_token
 
 
@@ -16,4 +16,4 @@ def fee(account: str, request: Request) -> Response:
     """
     SEP-24 and SEP-6 /fee endpoints are identical
     """
-    return shared_endpoints.fee(request)
+    return endpoints.fee(request)
