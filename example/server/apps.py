@@ -9,15 +9,19 @@ class AnchorConfig(AppConfig):
         from .integrations import (
             MyDepositIntegration,
             MyWithdrawalIntegration,
-            get_stellar_toml,
-            scripts,
-            calculate_custom_fee,
+            MyCustomerIntegration,
+            toml_integration,
+            scripts_integration,
+            fee_integration,
+            info_integration,
         )
 
         register_integrations(
             deposit=MyDepositIntegration(),
             withdrawal=MyWithdrawalIntegration(),
-            toml_func=get_stellar_toml,
-            scripts_func=scripts,
-            fee_func=calculate_custom_fee,
+            toml_func=toml_integration,
+            scripts_func=scripts_integration,
+            fee_func=fee_integration,
+            info_func=info_integration,
+            customer=MyCustomerIntegration(),
         )

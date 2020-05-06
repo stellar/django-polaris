@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import patch, Mock
-from polaris.management.commands.poll_pending_deposits import Command, rdi, logger
 
+from polaris.management.commands.poll_pending_deposits import Command, rdi, logger
 from polaris.models import Transaction
 
 test_module = "polaris.management.commands.poll_pending_deposits"
@@ -12,10 +12,13 @@ test_module = "polaris.management.commands.poll_pending_deposits"
 def test_poll_pending_deposits_success(client, acc1_usd_deposit_transaction_factory):
     transaction = acc1_usd_deposit_transaction_factory()
     rdi.poll_pending_deposits = Mock(return_value=[transaction])
+    rdi.after_deposit = Mock()
     Command.execute_deposits()
     transaction.refresh_from_db()
     assert transaction.status == Transaction.STATUS.pending_anchor
     assert transaction.status_eta == 5
+    assert rdi.after_deposit.was_called
+    assert rdi.poll_pending_deposits.was_called
 
 
 @pytest.mark.django_db

@@ -16,15 +16,13 @@ endpoint = "/sep24/transaction"
 
 
 @pytest.mark.django_db
-@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 def test_transaction_requires_param(
-    mock_check,
     client,
     acc1_usd_deposit_transaction_factory,
     acc2_eth_withdrawal_transaction_factory,
 ):
     """Fails without parameters."""
-    del mock_check
     acc1_usd_deposit_transaction_factory()
     acc2_eth_withdrawal_transaction_factory()
 
@@ -80,8 +78,6 @@ def test_transaction_id_filter_and_format(
     )
     assert withdrawal_transaction["from"] is None
     assert withdrawal_transaction["to"] is None
-    assert withdrawal_transaction["external_extra"] is None
-    assert withdrawal_transaction["external_extra_text"] is None
     assert (
         withdrawal_transaction["withdraw_anchor_account"]
         == withdrawal.withdraw_anchor_account

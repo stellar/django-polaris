@@ -2,6 +2,7 @@
 import base64
 import json
 from urllib.parse import urlencode
+from unittest.mock import Mock
 
 from stellar_sdk.keypair import Keypair
 from stellar_sdk.transaction_envelope import TransactionEnvelope
@@ -9,6 +10,7 @@ from stellar_sdk.xdr import Xdr
 
 from polaris import settings
 from polaris.tests.conftest import STELLAR_ACCOUNT_1
+from polaris.sep10.utils import validate_sep10_token
 
 endpoint = "/auth"
 CLIENT_ADDRESS = "GDKFNRUATPH4BSZGVFDRBIGZ5QAFILVFRIRYNSQ4UO7V2ZQAPRNL73RI"
@@ -53,20 +55,17 @@ def test_auth_get_account(client):
     server_public_key.verify(tx_hash, server_signature.signature)
 
 
+auth_str = "Bearer {}"
+mock_request = Mock(META={})
+
+
 def test_auth_post_json_success(client):
     """`POST <auth>` succeeds when given a proper JSON-encoded transaction."""
     response = client.get(f"{endpoint}?account={CLIENT_ADDRESS}", follow=True)
     content = json.loads(response.content)
 
     # Sign the XDR with the client.
-    envelope_xdr = content["transaction"]
-    envelope_object = TransactionEnvelope.from_xdr(
-        envelope_xdr, network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE
-    )
-    client_signing_key = Keypair.from_secret(CLIENT_SEED)
-    envelope_object.sign(client_signing_key)
-    client_signed_envelope_xdr = envelope_object.to_xdr()
-
+    client_signed_envelope_xdr = sign_challenge(content)
     response = client.post(
         endpoint,
         data={"transaction": client_signed_envelope_xdr},
@@ -75,6 +74,8 @@ def test_auth_post_json_success(client):
 
     content = json.loads(response.content)
     assert content["token"]
+    mock_request.META["HTTP_AUTHORIZATION"] = auth_str.format(content["token"])
+    assert validate_sep10_token()(Mock(return_value=True))(mock_request) is True
 
 
 def test_auth_post_urlencode_success(client):
@@ -83,14 +84,7 @@ def test_auth_post_urlencode_success(client):
     content = json.loads(response.content)
 
     # Sign the XDR with the client.
-    envelope_xdr = content["transaction"]
-    envelope_object = TransactionEnvelope.from_xdr(
-        envelope_xdr, network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE
-    )
-    client_signing_key = Keypair.from_secret(CLIENT_SEED)
-    envelope_object.sign(client_signing_key)
-    client_signed_envelope_xdr = envelope_object.to_xdr()
-
+    client_signed_envelope_xdr = sign_challenge(content)
     response = client.post(
         endpoint,
         data=urlencode({"transaction": client_signed_envelope_xdr}),
@@ -98,3 +92,15 @@ def test_auth_post_urlencode_success(client):
     )
     content = json.loads(response.content)
     assert content["token"]
+    mock_request.META["HTTP_AUTHORIZATION"] = auth_str.format(content["token"])
+    assert validate_sep10_token()(Mock(return_value=True))(mock_request)
+
+
+def sign_challenge(content):
+    envelope_xdr = content["transaction"]
+    envelope_object = TransactionEnvelope.from_xdr(
+        envelope_xdr, network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE
+    )
+    client_signing_key = Keypair.from_secret(CLIENT_SEED)
+    envelope_object.sign(client_signing_key)
+    return envelope_object.to_xdr()

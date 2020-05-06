@@ -14,10 +14,9 @@ endpoint = "/sep24/fee"
 
 
 @pytest.mark.django_db
-@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
-def test_fee_no_params(mock_check, client):
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_fee_no_params(client):
     """Fails with no params provided."""
-    del mock_check
     response = client.get(endpoint, follow=True)
     content = json.loads(response.content)
 
@@ -26,10 +25,9 @@ def test_fee_no_params(mock_check, client):
 
 
 @pytest.mark.django_db
-@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
-def test_fee_wrong_asset_code(mock_check, client):
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_fee_wrong_asset_code(client):
     """Fails with an invalid `asset_code`."""
-    del mock_check
     response = client.get(f"{endpoint}?asset_code=NADA", follow=True)
     content = json.loads(response.content)
 
@@ -38,10 +36,9 @@ def test_fee_wrong_asset_code(mock_check, client):
 
 
 @pytest.mark.django_db
-@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
-def test_fee_no_operation(mock_check, client, usd_asset_factory):
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_fee_no_operation(client, usd_asset_factory):
     """Fails with no `operation` provided."""
-    del mock_check
     usd_asset_factory()
     response = client.get(f"{endpoint}?asset_code=USD&amount=100", follow=True)
     content = json.loads(response.content)
@@ -51,10 +48,9 @@ def test_fee_no_operation(mock_check, client, usd_asset_factory):
 
 
 @pytest.mark.django_db
-@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
-def test_fee_invalid_operation(mock_check, client, usd_asset_factory):
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_fee_invalid_operation(client, usd_asset_factory):
     """Fails with an invalid `operation` provided."""
-    del mock_check
     usd_asset_factory()
     response = client.get(
         f"{endpoint}?asset_code=USD&amount=100&operation=generate", follow=True
@@ -66,10 +62,9 @@ def test_fee_invalid_operation(mock_check, client, usd_asset_factory):
 
 
 @pytest.mark.django_db
-@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
-def test_fee_no_amount(mock_check, client, usd_asset_factory):
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_fee_no_amount(client, usd_asset_factory):
     """Fails with no amount provided."""
-    del mock_check
     usd_asset_factory()
     response = client.get(f"{endpoint}?asset_code=USD&operation=withdraw", follow=True)
     content = json.loads(response.content)
@@ -79,10 +74,9 @@ def test_fee_no_amount(mock_check, client, usd_asset_factory):
 
 
 @pytest.mark.django_db
-@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
-def test_fee_invalid_amount(mock_check, client, usd_asset_factory):
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_fee_invalid_amount(client, usd_asset_factory):
     """Fails with a non-float amount provided."""
-    del mock_check
     usd_asset_factory()
     response = client.get(
         f"{endpoint}?asset_code=USD&operation=withdraw&amount=TEXT", follow=True
@@ -94,10 +88,9 @@ def test_fee_invalid_amount(mock_check, client, usd_asset_factory):
 
 
 @pytest.mark.django_db
-@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
-def test_fee_withdraw_disabled(mock_check, client, eth_asset_factory):
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_fee_withdraw_disabled(client, eth_asset_factory):
     """Fails if the withdraw `operation` is not enabled for the `asset_code`."""
-    del mock_check
     eth_asset_factory()
 
     response = client.get(
@@ -110,10 +103,9 @@ def test_fee_withdraw_disabled(mock_check, client, eth_asset_factory):
 
 
 @pytest.mark.django_db
-@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
-def test_fee_deposit_disabled(mock_check, client, eth_asset_factory):
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_fee_deposit_disabled(client, eth_asset_factory):
     """Fails if the deposit `operation` is not enabled for `asset_code`."""
-    del mock_check
     asset = eth_asset_factory()
     asset.deposit_enabled = False
     asset.save()
@@ -128,10 +120,9 @@ def test_fee_deposit_disabled(mock_check, client, eth_asset_factory):
 
 
 @pytest.mark.django_db
-@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
-def test_fee_valid_deposit(mock_check, client, usd_asset_factory):
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_fee_valid_deposit(client, usd_asset_factory):
     """Succeeds for a valid deposit."""
-    del mock_check
     usd_asset_factory()
 
     response = client.get(
@@ -145,10 +136,9 @@ def test_fee_valid_deposit(mock_check, client, usd_asset_factory):
 
 # Fixed: 5.0 Percent = 1
 @pytest.mark.django_db
-@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
-def test_fee_valid_withdrawal(mock_check, client, usd_asset_factory):
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_fee_valid_withdrawal(client, usd_asset_factory):
     """Succeeds for a valid withdrawal."""
-    del mock_check
     usd_asset_factory()
 
     response = client.get(

@@ -19,9 +19,10 @@ from polaris.utils import (
     render_error_response,
     Logger,
     extract_sep9_fields,
+    create_transaction_id,
+    memo_hex_to_base64,
 )
 from polaris.sep24.utils import (
-    create_transaction_id,
     interactive_url,
     check_authentication,
     authenticate_session,
@@ -261,7 +262,7 @@ def withdraw(account: str, request: Request) -> Response:
 
     # Verify that the asset code exists in our database, with withdraw enabled.
     asset = Asset.objects.filter(code=asset_code).first()
-    if not (asset and asset.withdrawal_enabled):
+    if not (asset and asset.withdrawal_enabled and asset.sep24_enabled):
         return render_error_response(_("invalid operation for asset %s") % asset_code)
     elif not asset.distribution_account:
         return render_error_response(_("unsupported asset type: %s") % asset_code)
@@ -282,7 +283,8 @@ def withdraw(account: str, request: Request) -> Response:
     # appropriately sized string for the `HashMemo`.
     transaction_id = create_transaction_id()
     transaction_id_hex = transaction_id.hex
-    withdraw_memo = "0" * (64 - len(transaction_id_hex)) + transaction_id_hex
+    padded_hex_memo = "0" * (64 - len(transaction_id_hex)) + transaction_id_hex
+    withdraw_memo = memo_hex_to_base64(padded_hex_memo)
     Transaction.objects.create(
         id=transaction_id,
         stellar_account=account,
@@ -292,6 +294,7 @@ def withdraw(account: str, request: Request) -> Response:
         withdraw_anchor_account=asset.distribution_account,
         withdraw_memo=withdraw_memo,
         withdraw_memo_type=Transaction.MEMO_TYPES.hash,
+        protocol=Transaction.PROTOCOL.sep24,
     )
     logger.info(f"Created withdrawal transaction {transaction_id}")
 

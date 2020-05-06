@@ -11,14 +11,9 @@ endpoint = "/sep24/transaction/more_info"
 
 
 @pytest.mark.django_db
-def test_more_info_required_fields(client, acc1_usd_deposit_transaction_factory):
+def test_more_info_required_fields(client):
     """Fails if no required fields are provided."""
-    acc1_usd_deposit_transaction_factory(client_address)
-    encoded_jwt = sep10(client, client_address, client_seed)
-    # For testing, we make the key `HTTP_AUTHORIZATION`. This is the value that
-    # we expect due to the middleware.
-    header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
-    response = client.get(endpoint, follow=True, **header)
+    response = client.get(endpoint)
     assert response.status_code == 400
 
 
@@ -26,11 +21,7 @@ def test_more_info_required_fields(client, acc1_usd_deposit_transaction_factory)
 def test_more_info_id_filter(client, acc1_usd_deposit_transaction_factory):
     """Succeeds if a valid transaction ID is provided."""
     deposit = acc1_usd_deposit_transaction_factory(client_address)
-    encoded_jwt = sep10(client, client_address, client_seed)
-    # For testing, we make the key `HTTP_AUTHORIZATION`. This is the value that
-    # we expect due to the middleware.
-    header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
-    response = client.get(f"{endpoint}?id={deposit.id}", follow=True, **header)
+    response = client.get(f"{endpoint}?id={deposit.id}")
 
     assert response.status_code == 200
 
@@ -41,14 +32,8 @@ def test_more_info_stellar_filter(client, acc1_usd_deposit_transaction_factory):
     deposit = acc1_usd_deposit_transaction_factory(client_address)
     deposit.stellar_transaction_id = "test_stellar_id"
     deposit.save()
-    encoded_jwt = sep10(client, client_address, client_seed)
-    # For testing, we make the key `HTTP_AUTHORIZATION`. This is the value that
-    # we expect due to the middleware.
-    header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
     response = client.get(
         f"{endpoint}?stellar_transaction_id={deposit.stellar_transaction_id}",
-        follow=True,
-        **header,
     )
     assert response.status_code == 200
 
@@ -57,14 +42,8 @@ def test_more_info_stellar_filter(client, acc1_usd_deposit_transaction_factory):
 def test_more_info_external_filter(client, acc1_usd_deposit_transaction_factory):
     """Succeeds if a valid external transaction ID is provided."""
     deposit = acc1_usd_deposit_transaction_factory(client_address)
-    encoded_jwt = sep10(client, client_address, client_seed)
-    # For testing, we make the key `HTTP_AUTHORIZATION`. This is the value that
-    # we expect due to the middleware.
-    header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
     response = client.get(
         f"{endpoint}?external_transaction_id={deposit.external_transaction_id}",
-        follow=True,
-        **header,
     )
     assert response.status_code == 200
 
@@ -75,16 +54,10 @@ def test_more_info_multiple_filters(client, acc1_usd_deposit_transaction_factory
     deposit = acc1_usd_deposit_transaction_factory(client_address)
     deposit.stellar_transaction_id = "test_stellar_id"
     deposit.save()
-    encoded_jwt = sep10(client, client_address, client_seed)
-    # For testing, we make the key `HTTP_AUTHORIZATION`. This is the value that
-    # we expect due to the middleware.
-    header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
     response = client.get(
         f"{endpoint}?id={deposit.id}"
         f"&external_transaction_id={deposit.external_transaction_id}"
         f"&stellar_transaction_id={deposit.stellar_transaction_id}",
-        follow=True,
-        **header,
     )
     assert response.status_code == 200
 
@@ -98,15 +71,9 @@ def test_more_info_no_result(
     """Fails if an invalid combination of IDs is provided."""
     deposit = acc1_usd_deposit_transaction_factory(client_address)
     withdrawal = acc2_eth_withdrawal_transaction_factory(client_address)
-    encoded_jwt = sep10(client, client_address, client_seed)
-    # For testing, we make the key `HTTP_AUTHORIZATION`. This is the value that
-    # we expect due to the middleware.
-    header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
     response = client.get(
         f"{endpoint}?id={deposit.id}"
         f"&external_transaction_id={withdrawal.external_transaction_id}"
         f"&stellar_transaction_id={withdrawal.stellar_transaction_id}",
-        follow=True,
-        **header,
     )
     assert response.status_code == 404

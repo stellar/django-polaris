@@ -7,22 +7,9 @@ def get_stellar_toml():
     .. _SEP-1: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0001.md
     .. _`Account Info`: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0001.md#account-information
 
-    Returns the default info for stellar.toml as a dictionary. Replace this
-    function with another by passing it to
-    ``polaris.integrations.register_integrations`` like so:
-    ::
-
-        from myapp.integrations import (
-            get_toml_data,
-            MyDepositIntegration,
-            MyWithdrawalIntegration
-        )
-
-        register_integrations(
-            deposit=MyDepositIntegration(),
-            withdrawal=MyWithdrawalIntegration(),
-            toml_func=get_toml_data
-        )
+    Replace this function with another by passing it to
+    ``register_integrations()`` as described in
+    :doc:`Registering Integrations</register_integrations/index>`.
 
     The function you pass to the `toml_func` parameter should return a
     dictionary containing any of the following top level keys:

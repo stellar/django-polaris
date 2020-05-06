@@ -1,6 +1,7 @@
 """This module defines a serializer for the transaction model."""
 from rest_framework import serializers
 from django.urls import reverse
+from django.conf import settings
 
 from polaris.models import Transaction
 
@@ -12,6 +13,8 @@ class TransactionSerializer(serializers.ModelSerializer):
     amount_in = serializers.DecimalField(max_digits=30, decimal_places=7)
     amount_out = serializers.DecimalField(max_digits=30, decimal_places=7)
     amount_fee = serializers.DecimalField(max_digits=30, decimal_places=7)
+    external_extra = serializers.CharField()
+    external_extra_text = serializers.CharField()
     more_info_url = serializers.SerializerMethodField()
     message = serializers.CharField()
 
@@ -20,9 +23,26 @@ class TransactionSerializer(serializers.ModelSerializer):
         if not request_from_context:
             raise ValueError("Unable to construct url for transaction.")
 
-        path = reverse("more_info")
-        path_params = f"{path}?id={transaction_instance.id}"
-        return request_from_context.build_absolute_uri(path_params)
+        if "sep6" in self.context.get("request").build_absolute_uri():
+            path = None
+            # UI pages (including more_info) currently require the sass_processor
+            # django app to be installed. This is required for SEP-24 but optional
+            # for SEP-6. So if the transaction(s) being serialized are for SEP-6,
+            # we need to check if sass_processor is installed. If it is, Polaris
+            # populates the more_info_url attribute on the transaction(s) JSON.
+            #
+            # The requirement of having sass_processor installed will be removed
+            # before the next release.
+            if "sass_processor" in settings.INSTALLED_APPS:
+                path = reverse("more_info_sep6")
+        else:
+            path = reverse("more_info")
+
+        if path:
+            path_params = f"{path}?id={transaction_instance.id}"
+            return request_from_context.build_absolute_uri(path_params)
+        else:
+            return path
 
     def round_decimals(self, data, instance):
         """
@@ -45,7 +65,7 @@ class TransactionSerializer(serializers.ModelSerializer):
 
         for suffix in ["in", "out", "fee"]:
             field = f"amount_{suffix}"
-            if not getattr(instance, field):
+            if getattr(instance, field) is None:
                 continue
             data[field] = str(
                 round(getattr(instance, field), asset.significant_decimals)
@@ -68,6 +88,9 @@ class TransactionSerializer(serializers.ModelSerializer):
         else:  # withdrawal
             del data["deposit_memo"]
             del data["deposit_memo_type"]
+        if not self.context.get("sep6"):
+            del data["external_extra"]
+            del data["external_extra_text"]
         return data
 
     class Meta:

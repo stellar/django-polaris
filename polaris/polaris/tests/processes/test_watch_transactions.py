@@ -5,7 +5,7 @@ from copy import deepcopy
 from stellar_sdk.keypair import Keypair
 
 from polaris.models import Transaction
-from polaris.utils import format_memo_horizon
+from polaris.utils import memo_hex_to_base64
 from polaris.management.commands.watch_transactions import Command
 from polaris.tests.conftest import USD_ISSUER_ACCOUNT, USD_DISTRIBUTION_SEED
 
@@ -47,12 +47,17 @@ def test_process_response_success(
     json = deepcopy(TRANSACTION_JSON)
     json["successful"] = True
     json["id"] = transaction.id
-    json["memo"] = format_memo_horizon(transaction.withdraw_memo)
+    json["memo"] = transaction.withdraw_memo
 
     Command.process_response(json)
 
     transaction.refresh_from_db()
     assert transaction.status == Transaction.STATUS.completed
+    assert transaction.from_address
+    assert transaction.stellar_transaction_id
+    assert transaction.completed_at
+    assert transaction.status_eta == 0
+    assert transaction.amount_out
 
 
 @pytest.mark.django_db
@@ -65,7 +70,7 @@ def test_process_response_unsuccessful(
     json = deepcopy(TRANSACTION_JSON)
     json["successful"] = False
     json["id"] = transaction.id
-    json["memo"] = format_memo_horizon(transaction.withdraw_memo)
+    json["memo"] = transaction.withdraw_memo
 
     Command.process_response(json)
 
@@ -88,10 +93,33 @@ def test_process_response_bad_integration(
     json = deepcopy(TRANSACTION_JSON)
     json["successful"] = True
     json["id"] = transaction.id
-    json["memo"] = format_memo_horizon(transaction.withdraw_memo)
+    json["memo"] = transaction.withdraw_memo
 
     Command.process_response(json)
 
     transaction.refresh_from_db()
     assert transaction.status == Transaction.STATUS.error
     assert transaction.status_message == "test"
+
+
+@pytest.mark.django_db
+@patch(f"{test_module}.rwi.process_withdrawal")
+@patch(f"{test_module}.TransactionEnvelope.from_xdr", return_value=mock_envelope)
+def test_match_with_no_amount(
+    mock_withdrawal, mock_xdr, client, acc1_usd_withdrawal_transaction_factory
+):
+    del mock_withdrawal, mock_xdr
+
+    transaction = acc1_usd_withdrawal_transaction_factory()
+    transaction.amount_in = None
+    transaction.save()
+    json = deepcopy(TRANSACTION_JSON)
+    json["successful"] = True
+    json["id"] = transaction.id
+    json["memo"] = transaction.withdraw_memo
+
+    Command.process_response(json)
+
+    transaction.refresh_from_db()
+    assert transaction.status == Transaction.STATUS.completed
+    assert transaction.amount_in == 50

@@ -15,10 +15,9 @@ endpoint = "/sep24/transactions"
 
 
 @pytest.mark.django_db
-@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
-def test_required_fields(mock_check, client, acc2_eth_withdrawal_transaction_factory):
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_required_fields(client, acc2_eth_withdrawal_transaction_factory):
     """Fails without required parameters."""
-    del mock_check
     acc2_eth_withdrawal_transaction_factory()
 
     response = client.get(endpoint, follow=True)
@@ -29,12 +28,9 @@ def test_required_fields(mock_check, client, acc2_eth_withdrawal_transaction_fac
 
 
 @pytest.mark.django_db
-@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
-def test_required_asset_code(
-    mock_check, client, acc2_eth_withdrawal_transaction_factory
-):
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_required_asset_code(client, acc2_eth_withdrawal_transaction_factory):
     """Fails without `asset_code` parameter."""
-    del mock_check
     withdrawal = acc2_eth_withdrawal_transaction_factory()
 
     response = client.get(
@@ -167,8 +163,6 @@ def test_transactions_content(
     )
     assert withdrawal_transaction["from"] is None
     assert withdrawal_transaction["to"] is None
-    assert withdrawal_transaction["external_extra"] is None
-    assert withdrawal_transaction["external_extra_text"] is None
     assert (
         withdrawal_transaction["withdraw_anchor_account"]
         == withdrawal.withdraw_anchor_account
@@ -199,8 +193,6 @@ def test_transactions_content(
     )
     assert deposit_transaction["from"] is None
     assert deposit_transaction["to"] is None
-    assert deposit_transaction["external_extra"] is None
-    assert deposit_transaction["external_extra_text"] is None
     assert deposit_transaction["deposit_memo"] == deposit.deposit_memo
     assert deposit_transaction["deposit_memo_type"] == deposit.deposit_memo_type
 

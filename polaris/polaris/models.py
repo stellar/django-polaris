@@ -46,7 +46,7 @@ class Asset(TimeStampedModel):
 
     # Deposit-related info
     deposit_enabled = models.BooleanField(default=True)
-    """``True`` if SEP-6 deposit for this asset is supported."""
+    """``True`` if deposit for this asset is supported."""
 
     deposit_fee_fixed = models.DecimalField(
         default=0, blank=True, max_digits=30, decimal_places=7
@@ -82,7 +82,7 @@ class Asset(TimeStampedModel):
 
     # Withdrawal-related info
     withdrawal_enabled = models.BooleanField(default=True)
-    """``True`` if SEP-6 withdrawal for this asset is supported."""
+    """``True`` if withdrawal for this asset is supported."""
 
     withdrawal_fee_fixed = models.DecimalField(
         default=0, blank=True, max_digits=30, decimal_places=7
@@ -117,13 +117,19 @@ class Asset(TimeStampedModel):
     distribution_seed = models.TextField(null=True)
     """The distribution stellar account secret key"""
 
+    sep24_enabled = models.BooleanField(default=False)
+    """`True` if this asset is transferable via SEP-24"""
+
+    sep6_enabled = models.BooleanField(default=False)
+    """`True` if this asset is transferable via SEP-6"""
+
+    objects = models.Manager()
+
     @property
     def distribution_account(self):
         if not self.distribution_seed:
             return None
         return Keypair.from_secret(str(self.distribution_seed)).public_key
-
-    objects = models.Manager()
 
     class Meta:
         app_label = "polaris"
@@ -162,13 +168,16 @@ class Transaction(models.Model):
     MEMO_TYPES = PolarisChoices("text", "id", "hash")
     """Type for the ``deposit_memo``. Can be either `hash`, `id`, or `text`"""
 
+    PROTOCOL = PolarisChoices("sep6", "sep24")
+    """Values for `protocol` column"""
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     """Unique, anchor-generated id for the deposit/withdrawal."""
 
     paging_token = models.TextField(null=True)
     """The token to be used as a cursor for querying before or after this transaction"""
 
-    # Stellar account to watch, and asset that is being transactioned
+    # Stellar account to watch, and asset that is being transacted
     # NOTE: these fields should not be publicly exposed
     stellar_account = models.TextField(validators=[MinLengthValidator(1)])
     """The stellar source account for the transaction."""
@@ -336,6 +345,9 @@ class Transaction(models.Model):
 
     refunded = models.BooleanField(default=False)
     """True if the transaction was refunded, false otherwise."""
+
+    protocol = models.CharField(choices=PROTOCOL, null=True, max_length=5)
+    """Either 'sep6' or 'sep24'"""
 
     objects = models.Manager()
 
