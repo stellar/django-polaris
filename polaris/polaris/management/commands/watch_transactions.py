@@ -161,7 +161,7 @@ class Command(BaseCommand):
                         }
                     )
                 transaction.stellar_transaction_id = stellar_transaction_id
-                transaction.from_address = horizon_tx.source.public_key
+                transaction.from_address = horizon_tx.source.account_id
                 transaction.save()
                 found_matching_payment_op = True
                 break
@@ -214,7 +214,7 @@ class Command(BaseCommand):
 
         return (
             operation.type_code() == Xdr.const.PAYMENT
-            and str(operation.destination) == want_asset.distribution_account
+            and str(operation.destination.account_id) == want_asset.distribution_account
             and str(code) == want_asset.code
             and str(issuer) == want_asset.issuer
             and amounts_match
