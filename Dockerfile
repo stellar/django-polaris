@@ -19,9 +19,6 @@ COPY ./polaris /code/polaris/
 # variables will be overidden in production, and won't be defined
 # if a .env file already exists.
 RUN if [ ! -f /code/.env ]; then echo $'\
-ASSETS=FAKE\n\
-FAKE_DISTRIBUTION_ACCOUNT_SEED=SB4XM7E6ZP4NIQF3UNVMX5O5NH7RGHFHDLIS4Z5U4OMNQ7T4EDNKPVNU\n\
-FAKE_ISSUER_ACCOUNT_ADDRESS=GCYPVLFODQNRZAQTDBIZMBJ5QNSBYBXGM7KWHGS2SFIU73BTTDNSTWDH\n\
 SIGNING_SEED=SB4XM7E6ZP4NIQF3UNVMX5O5NH7RGHFHDLIS4Z5U4OMNQ7T4EDNKPVNU\n\
 HOST_URL=https://fake.com\n\
 SERVER_JWT_KEY=notsosecretkey\n\
@@ -32,8 +29,8 @@ DJANGO_SECRET_KEY=notsosecretkey\
 WORKDIR /code
 RUN pip install pipenv; pipenv install --dev --system
 
-# Compile static assets, collect static assets, run migrations
-RUN python manage.py compilescss; python manage.py collectstatic --no-input -v 0
+# collect static assets
+RUN python manage.py collectstatic --no-input --ignore=*.scss
 
 # Overridden by heroku.yml's run phrase in deployment
 CMD python manage.py migrate; python manage.py runsslserver --nostatic --certificate cert.pem --key key.pem 0.0.0.0:8000

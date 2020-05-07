@@ -24,17 +24,7 @@ class TransactionSerializer(serializers.ModelSerializer):
             raise ValueError("Unable to construct url for transaction.")
 
         if "sep6" in self.context.get("request").build_absolute_uri():
-            path = None
-            # UI pages (including more_info) currently require the sass_processor
-            # django app to be installed. This is required for SEP-24 but optional
-            # for SEP-6. So if the transaction(s) being serialized are for SEP-6,
-            # we need to check if sass_processor is installed. If it is, Polaris
-            # populates the more_info_url attribute on the transaction(s) JSON.
-            #
-            # The requirement of having sass_processor installed will be removed
-            # before the next release.
-            if "sass_processor" in settings.INSTALLED_APPS:
-                path = reverse("more_info_sep6")
+            path = reverse("more_info_sep6")
         else:
             path = reverse("more_info")
 

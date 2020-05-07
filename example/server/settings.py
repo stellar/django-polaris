@@ -36,7 +36,6 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "corsheaders",
-    "sass_processor",
     "server",
     "polaris",
     "sslserver",
@@ -83,16 +82,15 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "server.wsgi.application"
 
-
 # Database
 # https://docs.djangoproject.com/en/2.2/ref/settings/#databases
+
 DATABASES = {
     "default": env.db(
         "DATABASE_URL",
         default="sqlite:///" + os.path.join(PROJECT_ROOT, "data/db.sqlite3"),
     )
 }
-
 
 # Internationalization
 # https://docs.djangoproject.com/en/2.2/topics/i18n/
@@ -105,7 +103,6 @@ USE_TZ = True
 USE_THOUSAND_SEPARATOR = True
 LANGUAGES = [("en", _("English")), ("pt", _("Portuguese"))]
 
-
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.2/howto/static-files/
 
@@ -114,13 +111,6 @@ FORM_RENDERER = "django.forms.renderers.TemplatesSetting"
 STATIC_ROOT = os.path.join(BASE_DIR, "server/collectstatic")
 STATIC_URL = "/static/"
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
-STATICFILES_DIRS = ()
-STATICFILES_FINDERS = [
-    "django.contrib.staticfiles.finders.FileSystemFinder",
-    "django.contrib.staticfiles.finders.AppDirectoriesFinder",
-    "sass_processor.finders.CssFinder",
-]
-SASS_PROCESSOR_ROOT = STATIC_ROOT
 
 # Django Rest Framework Settings:
 
@@ -142,15 +132,12 @@ EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default=None)
 EMAIL_USE_TLS = True
 EMAIL_PORT = 587
 
-# API Config
-
-DEFAULT_PAGE_SIZE = 10
-
-
 # CORS configuration
+
 CORS_ORIGIN_ALLOW_ALL = True
 
 # Logging
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
