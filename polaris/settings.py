@@ -90,13 +90,6 @@ DATABASES = {
 STATIC_ROOT = os.path.join(BASE_DIR, "polaris/collectstatic")
 STATIC_URL = "/polaris/static/"
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
-STATICFILES_DIRS = ()
-STATICFILES_FINDERS = [
-    "django.contrib.staticfiles.finders.FileSystemFinder",
-    "django.contrib.staticfiles.finders.AppDirectoriesFinder",
-    "sass_processor.finders.CssFinder",
-]
-SASS_PROCESSOR_ROOT = STATIC_ROOT
 
 # Django Rest Framework Settings:
 # Attributes to add to parent project's REST_FRAMEWORK
@@ -109,9 +102,6 @@ REST_FRAMEWORK = {
     ],
     "PAGE_SIZE": 10,
 }
-
-# API Config
-DEFAULT_PAGE_SIZE = 10
 
 # CORS configuration
 CORS_ORIGIN_ALLOW_ALL = True

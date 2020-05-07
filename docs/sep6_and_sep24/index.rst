@@ -25,8 +25,7 @@ and cons, so make sure you understand the proposals before choosing.
 Configuration
 =============
 
-Simply add the SEPs to ``ACTIVE_SEPS`` in in your settings file. This is all
-that is required for SEP-6.
+Add the SEPs to ``ACTIVE_SEPS`` in in your settings file.
 ::
 
     ACTIVE_SEPS = ["sep-1", "sep-6", "sep-24", ...]
@@ -34,23 +33,22 @@ that is required for SEP-6.
 Static Assets
 -------------
 
-Polaris comes with a UI for displaying forms and transaction information.
-**This is optional for SEP-6 but required for SEP-24.**
+.. _serving static files: https://docs.djangoproject.com/en/3.0/howto/static-files/
 
-If your Polaris deployment supports static assets, a ``more_info_url``
-attribute will be added to the `/transaction` response object for users
-to open in a browser.
+Polaris comes with a UI for displaying forms and transaction information. While SEP-6 doesn't
+use HTML forms, this is required in order to display transaction details available from the
+`/more_info` endpoint.
 
-In additional to the apps listed on the home page, add the following to
-``INSTALLED_APPS`` in settings.py. Any app that overrides a static asset
-in Polaris should be listed `before` "polaris". This ensures that django
-will find your asset before the Polaris default.
+Make sure ``django.contrib.staticfiles`` is listed in ``INSTALLED_APPS``. Additionally,
+to serve static files in production, use the middleware provided by ``whitenoise``, which
+comes with your installation of Polaris. It should be near the top of the list for the
+best performance:
 ::
 
     INSTALLED_APPS = [
+        "whitenoise.middleware.WhiteNoiseMiddleware",
         ...,
         "django.contrib.staticfiles",
-        "sass_processor",
     ]
 
 Add the following to your settings.py as well:
@@ -59,17 +57,27 @@ Add the following to your settings.py as well:
     STATIC_ROOT = os.path.join(BASE_DIR, "<your static root directory>")
     STATIC_URL = "<your static url path>"
     STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
-    STATICFILES_FINDERS = [
-        "django.contrib.staticfiles.finders.FileSystemFinder",
-        "django.contrib.staticfiles.finders.AppDirectoriesFinder",
-        "sass_processor.finders.CssFinder",
-    ]
-    SASS_PROCESSOR_ROOT = STATIC_ROOT
 
-Compile these static assets using the following commands:
+Since ``whitenoise`` will now be serving your static files, use the ``--nostatic`` flag
+when using the ``runserver`` or ``runsslserver`` commands.
 
-| Compile static assets: ``python manage.py compilescss``
-| Collect static assets: ``python manage.py collectstatic --no-input``
+The last step is to collect the static files Polaris provides into your app:
+::
+
+    python manage.py collectstatic --no-input
+
+Its also possible to replace the static assets from Polaris. This allows anchors
+to customize the UI's appearance. One asset you will surely want to replace is the Stellar
+icon displayed at the top of each page.
+
+To replace this with your own icon, put a file within your static directory under the
+path `polaris/company-icon.svg`. The django app containing this file must be listed
+in ``INSTALLED_APPS`` `above` ``"polaris"`` in order for django to use it.
+
+In general, replacement asset files (.html, .css, etc.) must have the same path and
+name of the file its replacing.
+
+See the documentation on `serving static files`_ in Django for more information.
 
 SEP-24 Configuration
 --------------------
@@ -98,8 +106,8 @@ Add the following to your settings.py as well:
     FORM_RENDERER = "django.forms.renderers.TemplatesSetting"
 
 This allows Polaris to override django's default HTML form widgets to provide
-a great UI out of the box. See the `Static Files`_ django page for more
-information.
+a great UI out of the box. They can also be replaced with your own HTML widgets
+as described in the previous section.
 
 Integrations
 ============

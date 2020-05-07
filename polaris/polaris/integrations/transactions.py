@@ -112,8 +112,8 @@ class DepositIntegration:
         experience.
 
         Aside from the pieces of content returned from this function, the icon image
-        displayed at the top of each web page can be replaced by adding a
-        ``company-icon.svg`` in the top level of your app's static files directory.
+        displayed at the top of each web page can be replaced by adding a file
+        in your app's static files directory with the path ``polaris/company-icon.svg``
 
         After a form is submitted and validated, Polaris will call
         ``DepositIntegration.after_form_validation`` with the populated

@@ -33,7 +33,7 @@ MANIFEST
 # Static files
 polaris/polaris/collectstatic/*
 !polaris/polaris/collectstatic/__init__.py
-polaris/polaris/static/base.css
+polaris/polaris/static/polaris/base.css
 example/server/collectstatic/*
 !example/server/collectstatic/__init__.py
 
