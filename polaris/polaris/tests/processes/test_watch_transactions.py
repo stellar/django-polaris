@@ -25,12 +25,14 @@ mock_envelope = Mock(
             Mock(
                 asset=Mock(issuer=USD_ISSUER_ACCOUNT, code="USD",),
                 amount=50,
-                destination=Keypair.from_secret(USD_DISTRIBUTION_SEED).public_key,
+                destination=Mock(
+                    account_id=Keypair.from_secret(USD_DISTRIBUTION_SEED).public_key
+                ),
                 type_code=Mock(return_value=1),
             )
         ],
         source=Mock(
-            public_key="GCUZ6YLL5RQBTYLTTQLPCM73C5XAIUGK2TIMWQH7HPSGWVS2KJ2F3CHS"
+            account_id="GCUZ6YLL5RQBTYLTTQLPCM73C5XAIUGK2TIMWQH7HPSGWVS2KJ2F3CHS"
         ),
     )
 )
