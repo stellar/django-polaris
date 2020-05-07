@@ -10,17 +10,14 @@
 # `Pipfile.lock` and then regenerate `requirements*.txt`.
 ################################################################################
 
-django-compressor
 django-cors-headers
 django-environ
 django-model-utils
-django-sass-processor
 django-sslserver
 django<3.0
 djangorestframework
-libsass
 psycopg2-binary
 pyjwt
-stellar-sdk==2.1.3
+stellar-sdk~=2.4.0
 toml
 whitenoise
