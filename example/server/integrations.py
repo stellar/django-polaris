@@ -431,6 +431,12 @@ class MyCustomerIntegration(CustomerIntegration):
             send_confirmation_email(user, account)
 
         else:
+            # This user may have been created via SEP-24 deposit, which doesn't
+            # collect bank_number and bank_account_number
+            if not (user.bank_number and user.bank_account_number):
+                user.bank_number = params["bank_number"]
+                user.bank_account_number = params["bank_account_number"]
+                user.save()
             account, created = PolarisStellarAccount.objects.get_or_create(
                 user=user, account=params["account"]
             )
