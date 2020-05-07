@@ -10,12 +10,20 @@
 # `Pipfile.lock` and then regenerate `requirements*.txt`.
 ################################################################################
 
+# Added django-compressor, django-sass-processor, and libsass from development
+# requirements because polaris/settings.py requires them for compiling static assets
+# offline before each release. ReadTheDocs uses polaris/settings when building the
+# docs.
+
+django-compressor
+django-sass-processor
 django-cors-headers
 django-environ
 django-model-utils
 django-sslserver
 django<3.0
 djangorestframework
+libsass
 psycopg2-binary
 pyjwt
 stellar-sdk~=2.4.0
