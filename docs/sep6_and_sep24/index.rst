@@ -59,12 +59,15 @@ Add the following to your settings.py as well:
     STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 Since ``whitenoise`` will now be serving your static files, use the ``--nostatic`` flag
-when using the ``runserver`` or ``runsslserver`` commands.
+when using the ``runserver`` command locally.
 
 The last step is to collect the static files Polaris provides into your app:
 ::
 
     python manage.py collectstatic --no-input
+
+Replacing Polaris UI Assets
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Its also possible to replace the static assets from Polaris. This allows anchors
 to customize the UI's appearance. One asset you will surely want to replace is the Stellar

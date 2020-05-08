@@ -38,7 +38,6 @@ INSTALLED_APPS = [
     "corsheaders",
     "server",
     "polaris",
-    "sslserver",
 ]
 
 ACTIVE_SEPS = ["sep-1", "sep-6", "sep-10", "sep-12", "sep-24"]
@@ -56,9 +55,10 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
 ]
 
-# Redirect HTTP to HTTPS
-SECURE_SSL_REDIRECT = True
-SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+# Redirect HTTP to HTTPS if not in local mode
+SECURE_SSL_REDIRECT = not env.bool("LOCAL_MODE", default=False)
+if SECURE_SSL_REDIRECT:
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 APPEND_SLASH = False
 

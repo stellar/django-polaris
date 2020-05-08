@@ -33,4 +33,4 @@ RUN pip install pipenv; pipenv install --dev --system
 RUN python manage.py collectstatic --no-input --ignore=*.scss
 
 # Overridden by heroku.yml's run phrase in deployment
-CMD python manage.py migrate; python manage.py runsslserver --nostatic --certificate cert.pem --key key.pem 0.0.0.0:8000
+CMD python manage.py migrate; python manage.py runserver --nostatic 0.0.0.0:8000

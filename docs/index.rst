@@ -153,34 +153,45 @@ server as described in the next section.
 Running the Web Server
 ======================
 
-Polaris is an HTTPS-only server, so to run it locally you must have a
-self-signed SSL certificate and configure your browser to trust it.
+Production
+^^^^^^^^^^
 
-Run this command to generate a self-signed certificate for localhost:
+.. _gunicorn: https://gunicorn.org
+
+Polaris should only be deployed using HTTPS in production. You should do this
+by using a HTTPS web server or running Polaris behind a HTTPS reverse proxy.
+The steps below outline the settings necessary to ensure your deployment is
+secure.
+
+To redirect HTTP traffic to HTTPS, add the following to settings.py:
 ::
 
-    openssl req -x509 -out localhost.crt -keyout localhost.key \
-      -newkey rsa:2048 -nodes -sha256 \
-      -subj '/CN=localhost' -extensions EXT -config <( \
-       printf "[dn]\nCN=localhost\n[req]\ndistinguished_name = dn\n[EXT]\nsubjectAltName=DNS:localhost\nkeyUsage=digitalSignature\nextendedKeyUsage=serverAuth")
+    SECURE_SSL_REDIRECT = True
 
-Then, instead of using the usual ``runserver`` command, Polaris comes with the
-``runsslserver`` command. Just add the app to your ``INSTALLED_APPS``:
+And if you're running Polaris behind a HTTPS proxy:
 ::
 
-    INSTALLED_APPS = [
-        ...,
-        "polaris",
-        "sslserver"
-    ]
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
-Finally, run this commands:
+This tells Django what header to check and what value it should be in
+order to consider the incoming request secure.
+
+Local Development
+^^^^^^^^^^^^^^^^^
+
+Locally, Polaris can be run using Django's HTTP development server
 ::
 
-    python manage.py runsslserver --certificate <path to localhost.crt> --key <path to localhost.key>
+    python manage.py runserver
 
-At this point, you need to start implementing the integration points Polaris
-provides for the SEP implementations you'd like to use.
+If you're using Polaris' SEP-24 support, you also need to use the following
+environment variable:
+::
+
+    LOCAL_MODE=1
+
+This is necessary to disable SEP-24's interactive flow authentication mechanism,
+which requires HTTPS. **Do not use local mode in production**.
 
 Contributing
 ============

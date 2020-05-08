@@ -6,6 +6,7 @@ import uuid
 from typing import Optional
 
 from django.utils.translation import gettext as _
+from django.conf import settings as django_settings
 from rest_framework import status
 from rest_framework.response import Response
 from stellar_sdk.transaction_builder import TransactionBuilder
@@ -31,6 +32,8 @@ class Logger:
     """
 
     def __init__(self, namespace):
+        if not getattr(django_settings, "LOGGING"):
+            logging.basicConfig()
         self.logger = logging.getLogger("polaris")
         self.namespace = namespace
 
@@ -369,3 +372,41 @@ def extract_sep9_fields(args):
     for field in SEP_9_FIELDS:
         sep9_args[field] = args.get(field)
     return sep9_args
+
+
+def check_config():
+    from polaris.sep24.utils import check_sep24_config
+
+    if not hasattr(django_settings, "ACTIVE_SEPS"):
+        raise AttributeError(
+            "ACTIVE_SEPS must be defined in your django settings file."
+        )
+
+    check_middleware()
+    check_protocol()
+    if "sep-24" in django_settings.ACTIVE_SEPS:
+        check_sep24_config()
+
+
+def check_middleware():
+    err_msg = "{} is not installed in settings.MIDDLEWARE"
+    cors_middleware_path = "corsheaders.middleware.CorsMiddleware"
+    if cors_middleware_path not in django_settings.MIDDLEWARE:
+        raise ValueError(err_msg.format(cors_middleware_path))
+
+
+def check_protocol():
+    if settings.LOCAL_MODE:
+        logger.warning(
+            "Polaris in in local mode. This makes the SEP-24 interactive flow "
+            "insecure and should only be used for local development."
+        )
+    if not (settings.LOCAL_MODE or getattr(django_settings, "SECURE_SSL_REDIRECT")):
+        logger.warning(
+            "SECURE_SSL_REDIRECT is required to redirect HTTP traffic to HTTPS"
+        )
+    if getattr(django_settings, "SECURE_PROXY_SSL_HEADER"):
+        logger.warning(
+            "SECURE_PROXY_SSL_HEADER should only be set if Polaris is "
+            "running behind an HTTPS reverse proxy."
+        )
