@@ -18,7 +18,6 @@ def _get_asset_info(asset: Asset, op_type: str) -> Dict:
 
     asset_info = {
         "enabled": True,
-        "authentication_required": True,
         "min_amount": getattr(asset, f"{op_type}_min_amount"),
         "max_amount": getattr(asset, f"{op_type}_max_amount"),
     }
