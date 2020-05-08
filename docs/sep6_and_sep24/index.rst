@@ -42,10 +42,11 @@ use HTML forms, this is required in order to display transaction details availab
 Make sure ``django.contrib.staticfiles`` is listed in ``INSTALLED_APPS``. Additionally,
 to serve static files in production, use the middleware provided by ``whitenoise``, which
 comes with your installation of Polaris. It should be near the top of the list for the
-best performance:
+best performance, but still under CorsMiddleware.
 ::
 
     INSTALLED_APPS = [
+        "corsheaders.middleware.CorsMiddleware",
         "whitenoise.middleware.WhiteNoiseMiddleware",
         ...,
         "django.contrib.staticfiles",

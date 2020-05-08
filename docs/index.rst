@@ -70,12 +70,6 @@ Allow all hosts to make requests to your server. In settings.py, add:
 
     CORS_ORIGIN_ALLOW_ALL = True
 
-Polaris requires HTTPS, so redirect HTTP traffic:
-::
-
-    SECURE_SSL_REDIRECT = True
-    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-
 Define ``PROJECT_ROOT`` in your project's settings.py. Polaris uses this to
 find your ``.env`` file.
 ::
