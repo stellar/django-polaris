@@ -9,7 +9,7 @@ setup(
     version="0.11.0",
     description="An extendable Django server for Stellar Ecosystem Proposals",
     long_description=long_description,
-    long_description_content_type="text/markdown",
+    long_description_content_type="text/x-rst",
     url="https://django-polaris.readthedocs.io/en/stable",
     author="Jake Urban",
     author_email="jake@stellar.org",
