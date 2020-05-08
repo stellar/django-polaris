@@ -9,7 +9,6 @@ def _get_expected_response():
             "deposit": {
                 "USD": {
                     "enabled": true,
-                    "authentication_required": true,
                     "min_amount": 0.1,
                     "max_amount": 1000.0,
                     "fee_fixed": 5.0,
@@ -17,7 +16,6 @@ def _get_expected_response():
                 },
                 "ETH": {
                     "enabled": true,
-                    "authentication_required": true,
                     "min_amount": 0.0,
                     "max_amount": 10000000.0,
                     "fee_fixed": 0.002,
@@ -27,7 +25,6 @@ def _get_expected_response():
             "withdraw": {
                 "USD": {
                     "enabled": true,
-                    "authentication_required": true,
                     "min_amount": 0.1,
                     "max_amount": 1000.0,
                     "fee_fixed": 5.0,
