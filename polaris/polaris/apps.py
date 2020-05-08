@@ -10,6 +10,7 @@ class PolarisConfig(AppConfig):
         Initialize the app
         """
         from polaris import settings  # ensures internal settings are set
+        from polaris import cors  # loads CORS signals
         from polaris.utils import check_config
 
         check_config()
