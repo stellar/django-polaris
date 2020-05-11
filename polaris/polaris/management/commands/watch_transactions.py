@@ -49,12 +49,12 @@ class Command(BaseCommand):
     async def watch_transactions(self):  # pragma: no cover
         await asyncio.gather(
             *[
-                self._for_account(asset.code, asset.distribution_account)
+                self._for_account(asset.distribution_account)
                 for asset in Asset.objects.exclude(distribution_seed__isnull=True)
             ]
         )
 
-    async def _for_account(self, code: str, account: str):  # pragma: no cover
+    async def _for_account(self, account: str):  # pragma: no cover
         """
         Stream transactions for the server Stellar address.
         """
@@ -71,7 +71,7 @@ class Command(BaseCommand):
 
             last_completed_transaction = (
                 Transaction.objects.filter(
-                    asset__code=code,
+                    withdraw_anchor_account=account,
                     status=Transaction.STATUS.completed,
                     kind=Transaction.KIND.withdrawal,
                 )
@@ -85,23 +85,25 @@ class Command(BaseCommand):
 
             endpoint = server.transactions().for_account(account).cursor(cursor)
             async for response in endpoint.stream():
-                self.process_response(response)
+                self.process_response(response, account)
 
     @classmethod
-    def process_response(cls, response):
+    def process_response(cls, response, account):
+        # We should not match valid pending transactions with ones that were
+        # unsuccessful on the stellar network. If they were unsuccessful, the
+        # client is also aware of the failure and will likely attempt to
+        # resubmit it, in which case we should match the resubmitted transaction
+        if not response.get("successful"):
+            return
+
         pending_withdrawal_transactions = Transaction.objects.filter(
+            withdraw_anchor_account=account,
             status=Transaction.STATUS.pending_user_transfer_start,
             kind=Transaction.KIND.withdrawal,
         )
         for withdrawal_transaction in pending_withdrawal_transactions:
-            if not cls.match_transaction(response, withdrawal_transaction):
-                continue
-            elif not response["successful"]:
-                err_msg = "The transaction failed to execute on the Stellar network"
-                cls.update_transaction(
-                    response, withdrawal_transaction, error_msg=err_msg
-                )
-                logger.warning(err_msg)
+            payment_op = cls.find_matching_payment_op(response, withdrawal_transaction)
+            if not payment_op:
                 continue
             try:
                 rwi.process_withdrawal(response, withdrawal_transaction)
@@ -120,33 +122,37 @@ class Command(BaseCommand):
                 break
 
     @classmethod
-    def match_transaction(cls, response: Dict, transaction: Transaction) -> bool:
+    def find_matching_payment_op(
+        cls, response: Dict, transaction: Transaction
+    ) -> Optional[Operation]:
         """
         Determines whether or not the given ``response`` represents the given
         ``transaction``. Polaris does this by checking the 'memo' field in the horizon
-        response matches the `transaction.memo` if present, as well as ensuring the
+        response matches the `transaction.memo`, as well as ensuring the
         transaction includes a payment operation of the anchored asset.
 
         :param response: a response body returned from Horizon for the transaction
         :param transaction: a database model object representing the transaction
         """
         try:
-            memo_type = response["memo_type"]
-            successful = response["successful"]
             stellar_transaction_id = response["id"]
             envelope_xdr = response["envelope_xdr"]
         except KeyError:
-            return False
+            return
 
-        # memo from response must match transaction.memo if present
-        memo = None if memo_type == "none" else response["memo"]
-        if memo and memo != transaction.withdraw_memo:
-            return False
+        # memo from response must match transaction.memo
+        memo = response.get("memo")
+        if memo != transaction.withdraw_memo:
+            return
 
         horizon_tx = TransactionEnvelope.from_xdr(
             envelope_xdr, network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
         ).transaction
-        found_matching_payment_op = False
+        if horizon_tx.source.account_id != transaction.stellar_account:
+            # transaction wasn't created by sender of payment
+            return
+
+        matching_payment_op = None
         for operation in horizon_tx.operations:
             if cls._check_payment_op(
                 operation, transaction.asset, transaction.amount_in
@@ -163,10 +169,10 @@ class Command(BaseCommand):
                 transaction.stellar_transaction_id = stellar_transaction_id
                 transaction.from_address = horizon_tx.source.account_id
                 transaction.save()
-                found_matching_payment_op = True
+                matching_payment_op = operation
                 break
 
-        return found_matching_payment_op
+        return matching_payment_op
 
     @staticmethod
     def update_transaction(
@@ -203,19 +209,9 @@ class Command(BaseCommand):
         operation: Operation, want_asset: Asset, want_amount: Optional[Decimal]
     ) -> bool:
         # TODO: Add test cases!
-        issuer = operation.asset.issuer
-        code = operation.asset.code
-
-        # SEP-6 doesn't require 'amount' parameter when creating transaction
-        # so we can't use it to match the transaction. Only use it if present.
-        amounts_match = True
-        if want_amount:
-            amounts_match = want_amount == Decimal(operation.amount)
-
         return (
             operation.type_code() == Xdr.const.PAYMENT
             and str(operation.destination.account_id) == want_asset.distribution_account
-            and str(code) == want_asset.code
-            and str(issuer) == want_asset.issuer
-            and amounts_match
+            and str(operation.asset.code) == want_asset.code
+            and str(operation.asset.issuer) == want_asset.issuer
         )
