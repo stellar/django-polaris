@@ -45,6 +45,9 @@ and then run
 Settings
 ^^^^^^^^
 
+.. _corsheaders signal: https://github.com/adamchainz/django-cors-headers#signals
+.. _corsheaders documentation: https://github.com/adamchainz/django-cors-headers
+
 Add the following to ``INSTALLED_APPS`` in settings.py.
 ::
 
@@ -65,10 +68,10 @@ other middleware that can return responses such as ``CommonMiddleware``.
         ...
     ]
 
-Allow all hosts to make requests to your server. In settings.py, add:
-::
-
-    CORS_ORIGIN_ALLOW_ALL = True
+Polaris will now accept requests from all origins to its endpoints. It does this
+by adding `corsheaders signal`_ that checks the request URI. However this
+does not change the CORS policy for any other endpoint on the server. You can change
+this functionality using the settings listed in the `corsheaders documentation`_.
 
 Define ``PROJECT_ROOT`` in your project's settings.py. Polaris uses this to
 find your ``.env`` file.
