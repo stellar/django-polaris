@@ -42,10 +42,11 @@ use HTML forms, this is required in order to display transaction details availab
 Make sure ``django.contrib.staticfiles`` is listed in ``INSTALLED_APPS``. Additionally,
 to serve static files in production, use the middleware provided by ``whitenoise``, which
 comes with your installation of Polaris. It should be near the top of the list for the
-best performance:
+best performance, but still under CorsMiddleware.
 ::
 
     INSTALLED_APPS = [
+        "corsheaders.middleware.CorsMiddleware",
         "whitenoise.middleware.WhiteNoiseMiddleware",
         ...,
         "django.contrib.staticfiles",
@@ -59,12 +60,15 @@ Add the following to your settings.py as well:
     STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 Since ``whitenoise`` will now be serving your static files, use the ``--nostatic`` flag
-when using the ``runserver`` or ``runsslserver`` commands.
+when using the ``runserver`` command locally.
 
 The last step is to collect the static files Polaris provides into your app:
 ::
 
     python manage.py collectstatic --no-input
+
+Replacing Polaris UI Assets
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Its also possible to replace the static assets from Polaris. This allows anchors
 to customize the UI's appearance. One asset you will surely want to replace is the Stellar

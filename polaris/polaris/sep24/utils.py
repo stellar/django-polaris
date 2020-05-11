@@ -1,4 +1,3 @@
-import uuid
 import time
 import jwt
 from jwt.exceptions import InvalidTokenError
@@ -15,9 +14,13 @@ from django.conf import settings as django_settings
 from django.urls import reverse
 
 from polaris import settings
+from polaris.utils import Logger
 from polaris.middleware import import_path
 from polaris.models import Asset, Transaction
 from polaris.utils import render_error_response, verify_valid_asset_operation
+
+
+logger = Logger(__name__)
 
 
 def check_authentication(content_type: str = "text/html") -> Callable:
@@ -72,6 +75,11 @@ def authenticate_session_helper(r: Request):
         for any transaction
     - account: the stellar account address associated with the token
     """
+    # Don't authenticate in local mode, since session cookies will not be
+    # included in request/response headers without HTTPS
+    if settings.LOCAL_MODE:
+        return
+
     token = r.GET.get("token")
     if not token:
         # If there is no token, check if this session has already been authenticated,
@@ -120,6 +128,11 @@ def check_authentication_helper(r: Request):
     """
     Checks that the session associated with the request is authenticated
     """
+    # Don't authenticate in local mode, since session cookies will not be
+    # included in request/response headers without HTTPS
+    if settings.LOCAL_MODE:
+        return
+
     if not r.session.get("authenticated"):
         raise ValueError(_("Session is not authenticated"))
 
@@ -134,6 +147,11 @@ def invalidate_session(request: Request):
     """
     Invalidates request's session for the interactive flow.
     """
+    # Don't try to invalidate a session in local mode, since session cookies
+    # were never included in request/response headers
+    if settings.LOCAL_MODE:
+        return
+
     request.session["authenticated"] = False
 
 
@@ -209,14 +227,19 @@ def generate_interactive_jwt(
     return encoded_jwt.decode("ascii")
 
 
+def check_sep24_config():
+    check_middleware()
+    check_protocol()
+
+
 def check_middleware():
     """
     Ensures the Django app running Polaris has the correct middleware
-    configuration. Polaris requires SessionMiddleware and the custom
-    PolarisSameSiteMiddleware is installed.
+    configuration. Polaris requires SessionMiddleware and
+    PolarisSameSiteMiddleware to be installed.
     """
-    session_middleware_path = "django.contrib.sessions.middleware.SessionMiddleware"
     err_msg = "{} is not installed in settings.MIDDLEWARE"
+    session_middleware_path = "django.contrib.sessions.middleware.SessionMiddleware"
     if import_path not in django_settings.MIDDLEWARE:
         raise ValueError(err_msg.format(import_path))
     elif session_middleware_path not in django_settings.MIDDLEWARE:
@@ -226,6 +249,15 @@ def check_middleware():
     ) > django_settings.MIDDLEWARE.index(session_middleware_path):
         err_msg = f"{import_path} must be listed before {session_middleware_path}"
         raise ValueError(err_msg)
+
+
+def check_protocol():
+    if settings.LOCAL_MODE:
+        if getattr(django_settings, "SECURE_SSL_REDIRECT"):
+            logger.warning(
+                "Using SECURE_SSL_REDIRECT while in local mode does not make "
+                "interactive flows secure."
+            )
 
 
 def interactive_url(

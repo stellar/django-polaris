@@ -31,7 +31,7 @@ django_apps = [
     "django.contrib.staticfiles",
 ]
 
-third_party_apps = ["rest_framework", "corsheaders", "sslserver", "sass_processor"]
+third_party_apps = ["rest_framework", "corsheaders", "sass_processor"]
 if os.path.exists(BASE_DIR + "/server"):
     # The server app is present, add it to installed apps.
     #
