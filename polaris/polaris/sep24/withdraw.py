@@ -144,7 +144,6 @@ def post_interactive_withdraw(request: Request) -> Response:
             transaction_id_hex = transaction.id.hex
             padded_hex_memo = "0" * (64 - len(transaction_id_hex)) + transaction_id_hex
             transaction.withdraw_memo = memo_hex_to_base64(padded_hex_memo)
-            transaction.withdraw_memo_type = Transaction.MEMO_TYPES.hash
             # Update status
             # This signals to the wallet that the transaction can be submitted
             transaction.status = Transaction.STATUS.pending_user_transfer_start
