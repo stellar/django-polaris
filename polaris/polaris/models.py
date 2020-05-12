@@ -15,6 +15,7 @@ from django.core.validators import (
     MinValueValidator,
     MaxValueValidator,
 )
+from django.utils.encoding import force_bytes
 from django.utils.translation import gettext_lazy as _
 from django.db import models
 from model_utils.models import TimeStampedModel
@@ -61,7 +62,7 @@ class EncryptedTextField(models.TextField):
 
         decoded = b64d(value)
         salt, encrypted_value = decoded[:16], b64e(decoded[16:])
-        key = cls.get_key(settings.SECRET_KEY.encode(), salt)
+        key = cls.get_key(force_bytes(settings.SECRET_KEY), salt)
         return Fernet(key).decrypt(encrypted_value).decode()
 
     @classmethod
@@ -69,7 +70,7 @@ class EncryptedTextField(models.TextField):
         from django.conf import settings
 
         salt = secrets.token_bytes(16)
-        key = cls.get_key(settings.SECRET_KEY.encode(), salt)
+        key = cls.get_key(force_bytes(settings.SECRET_KEY), salt)
         encrypted_value = b64d(Fernet(key).encrypt(value.encode()))
         return b64e(b"%b%b" % (salt, encrypted_value))
 
