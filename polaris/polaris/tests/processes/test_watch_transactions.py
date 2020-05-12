@@ -5,16 +5,15 @@ from copy import deepcopy
 from stellar_sdk.keypair import Keypair
 
 from polaris.models import Transaction
-from polaris.utils import memo_hex_to_base64
 from polaris.management.commands.watch_transactions import Command
 from polaris.tests.conftest import USD_ISSUER_ACCOUNT, USD_DISTRIBUTION_SEED
 
 test_module = "polaris.management.commands.watch_transactions"
 TRANSACTION_JSON = {
     "id": "",
-    "successful": None,
+    "successful": True,
     "envelope_xdr": "",
-    "memo": "",
+    "memo": "AAAAAAAAAAAAAAAAAAAAAIDqc+oB00EajZzqIpme754=",
     "memo_type": "hash",
     "source": "GCUZ6YLL5RQBTYLTTQLPCM73C5XAIUGK2TIMWQH7HPSGWVS2KJ2F3CHS",
     "paging_token": "123456789",
@@ -45,13 +44,14 @@ def test_process_response_success(
     mock_withdrawal, mock_xdr, client, acc1_usd_withdrawal_transaction_factory
 ):
     del mock_withdrawal, mock_xdr
-    transaction = acc1_usd_withdrawal_transaction_factory()
+    mock_source_account = mock_envelope.transaction.source.account_id
+    transaction = acc1_usd_withdrawal_transaction_factory(mock_source_account)
     json = deepcopy(TRANSACTION_JSON)
     json["successful"] = True
     json["id"] = transaction.id
     json["memo"] = transaction.withdraw_memo
 
-    Command.process_response(json)
+    Command.process_response(json, None)
 
     transaction.refresh_from_db()
     assert transaction.status == Transaction.STATUS.completed
@@ -68,20 +68,18 @@ def test_process_response_unsuccessful(
     mock_xdr, client, acc1_usd_withdrawal_transaction_factory
 ):
     del mock_xdr
-    transaction = acc1_usd_withdrawal_transaction_factory()
+    mock_source_account = mock_envelope.transaction.source.account_id
+    transaction = acc1_usd_withdrawal_transaction_factory(mock_source_account)
     json = deepcopy(TRANSACTION_JSON)
     json["successful"] = False
     json["id"] = transaction.id
     json["memo"] = transaction.withdraw_memo
 
-    Command.process_response(json)
+    Command.process_response(json, None)
 
     transaction.refresh_from_db()
-    assert transaction.status == Transaction.STATUS.error
-    assert (
-        transaction.status_message
-        == "The transaction failed to execute on the Stellar network"
-    )
+    # the response from horizon should be skipped if unsuccessful
+    assert transaction.status == Transaction.STATUS.pending_user_transfer_start
 
 
 @pytest.mark.django_db
@@ -91,13 +89,14 @@ def test_process_response_bad_integration(
     mock_withdrawal, mock_xdr, client, acc1_usd_withdrawal_transaction_factory
 ):
     del mock_withdrawal, mock_xdr
-    transaction = acc1_usd_withdrawal_transaction_factory()
+    mock_source_account = mock_envelope.transaction.source.account_id
+    transaction = acc1_usd_withdrawal_transaction_factory(mock_source_account)
     json = deepcopy(TRANSACTION_JSON)
     json["successful"] = True
     json["id"] = transaction.id
     json["memo"] = transaction.withdraw_memo
 
-    Command.process_response(json)
+    Command.process_response(json, None)
 
     transaction.refresh_from_db()
     assert transaction.status == Transaction.STATUS.error
@@ -112,7 +111,8 @@ def test_match_with_no_amount(
 ):
     del mock_withdrawal, mock_xdr
 
-    transaction = acc1_usd_withdrawal_transaction_factory()
+    mock_source_account = mock_envelope.transaction.source.account_id
+    transaction = acc1_usd_withdrawal_transaction_factory(mock_source_account)
     transaction.amount_in = None
     transaction.save()
     json = deepcopy(TRANSACTION_JSON)
@@ -120,7 +120,7 @@ def test_match_with_no_amount(
     json["id"] = transaction.id
     json["memo"] = transaction.withdraw_memo
 
-    Command.process_response(json)
+    Command.process_response(json, None)
 
     transaction.refresh_from_db()
     assert transaction.status == Transaction.STATUS.completed
