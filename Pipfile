@@ -30,6 +30,7 @@ stellar-sdk = "~=2.4.0"
 django-cors-headers = "*"
 toml = "*"
 pyjwt = "*"
+cryptography = "*"
 
 [requires]
 python_version = "3.7"
