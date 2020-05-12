@@ -145,7 +145,7 @@ into your python shell, then run something like this:
 The ``distribution_seed`` column is encrypted at the database layer using `Fernet symmetric
 encryption`_, and only decrypted when held in memory within an ``Asset`` object. It uses
 your Django project's ``SECRET_KEY`` setting to generate the encryption key, **so make sure
-the value of ``SECRET_KEY`` is unguessable and kept a secret**.
+its value is unguessable and kept a secret**.
 
 See the :doc:`Asset </models/index>` documentation for more information on the fields used.
 
