@@ -29,7 +29,7 @@ class Command(BaseCommand):
     Streams transactions from stellar accounts provided in the configuration file
 
     For every response from the server, attempts to find a matching transaction in
-    the database with `match_transactions`, and processes the transactions
+    the database with `find_matching_payment_op`, and processes the transactions
     using `process_withdrawal`. Finally, the transaction is updated depending on
     the successful processing of the transaction with `update_transaction`.
 
@@ -208,7 +208,6 @@ class Command(BaseCommand):
     def _check_payment_op(
         operation: Operation, want_asset: Asset, want_amount: Optional[Decimal]
     ) -> bool:
-        # TODO: Add test cases!
         return (
             operation.type_code() == Xdr.const.PAYMENT
             and str(operation.destination.account_id) == want_asset.distribution_account
