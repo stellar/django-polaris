@@ -265,6 +265,11 @@ def deposit(account: str, request: Request) -> Response:
         return render_error_response(
             _("`asset_code` and `account` are required parameters")
         )
+    elif request.POST.get("memo"):
+        # Polaris SEP-24 doesn't support custodial wallets that depend on memos
+        # to disambiguate users using the same stellar account. Support would
+        # require new or adjusted integration points.
+        return render_error_response(_("`memo` parameter is not supported"))
 
     # Verify that the asset code exists in our database, with deposit enabled.
     asset = Asset.objects.filter(code=asset_code).first()
