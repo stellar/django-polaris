@@ -7,7 +7,6 @@ from rest_framework.response import Response
 from rest_framework.renderers import JSONRenderer
 from stellar_sdk.exceptions import MemoInvalidException
 
-from polaris import settings
 from polaris.models import Asset, Transaction
 from polaris.locale.utils import validate_language, activate_lang_for_request
 from polaris.utils import (
