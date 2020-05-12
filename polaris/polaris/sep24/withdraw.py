@@ -133,6 +133,20 @@ def post_interactive_withdraw(request: Request) -> Response:
                 f"Finished data collection and processing for transaction {transaction.id}"
             )
             invalidate_session(request)
+            # Add memo now that interactive flow is complete
+            #
+            # We use the transaction ID as a memo on the Stellar transaction for the
+            # payment in the withdrawal. This lets us identify that as uniquely
+            # corresponding to this `Transaction` in the database. But a UUID4 is a 32
+            # character hex string, while the Stellar HashMemo requires a 64 character
+            # hex-encoded (32 byte) string. So, we zero-pad the ID to create an
+            # appropriately sized string for the `HashMemo`.
+            transaction_id_hex = transaction.id.hex
+            padded_hex_memo = "0" * (64 - len(transaction_id_hex)) + transaction_id_hex
+            transaction.withdraw_memo = memo_hex_to_base64(padded_hex_memo)
+            transaction.withdraw_memo_type = Transaction.MEMO_TYPES.hash
+            # Update status
+            # This signals to the wallet that the transaction can be submitted
             transaction.status = Transaction.STATUS.pending_user_transfer_start
             transaction.save()
             url = reverse("more_info")
@@ -275,16 +289,7 @@ def withdraw(account: str, request: Request) -> Response:
         # specified in the request.
         return render_error_response(str(e))
 
-    # We use the transaction ID as a memo on the Stellar transaction for the
-    # payment in the withdrawal. This lets us identify that as uniquely
-    # corresponding to this `Transaction` in the database. But a UUID4 is a 32
-    # character hex string, while the Stellar HashMemo requires a 64 character
-    # hex-encoded (32 byte) string. So, we zero-pad the ID to create an
-    # appropriately sized string for the `HashMemo`.
     transaction_id = create_transaction_id()
-    transaction_id_hex = transaction_id.hex
-    padded_hex_memo = "0" * (64 - len(transaction_id_hex)) + transaction_id_hex
-    withdraw_memo = memo_hex_to_base64(padded_hex_memo)
     Transaction.objects.create(
         id=transaction_id,
         stellar_account=account,
@@ -292,7 +297,6 @@ def withdraw(account: str, request: Request) -> Response:
         kind=Transaction.KIND.withdrawal,
         status=Transaction.STATUS.incomplete,
         withdraw_anchor_account=asset.distribution_account,
-        withdraw_memo=withdraw_memo,
         withdraw_memo_type=Transaction.MEMO_TYPES.hash,
         protocol=Transaction.PROTOCOL.sep24,
     )
