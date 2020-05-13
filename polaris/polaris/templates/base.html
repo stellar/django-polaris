@@ -139,6 +139,39 @@
       anchorForm.addEventListener('submit', (e) => {
         submitButton.disabled = true;
       });
+
+      // Show fee and amount user will receive when amount field
+      // changes, if present.
+      let amountInput = document.querySelector('#amount-input');
+      let feeDiv = document.querySelector('#fee-div');
+      let amountOutDiv = document.querySelector('#amount-out-div');
+      if (amountInput) {
+        let fee_fixed = Number({{ fee_fixed }});
+        let fee_percent = Number({{ fee_percent }});
+        amountInput.addEventListener("input", (e) => {
+          let val = e.target.value;
+          let fee;
+          let amountOut;
+          if (isNaN(val)) return;
+          let num = Number(val);
+          if (fee_fixed && fee_percent) {
+            fee = fee_fixed + (num * (fee_percent/100));
+            amountOut = num - fee;
+          } else {
+            // Need to hit fee endpoint
+            let params = URLSearchParams();
+            params.append("operation", "{{ operation }}");
+            params.append("asset_code", "{{ asset_code }}");
+            params.append("amount", num);
+            let response = fetch("/sep24/fee?" + params.toString());
+            let json = response.json();
+            fee = json.fee;
+            amountOut = num - json.fee;
+          }
+          feeDiv.innerHTML = "<p>Fee: " + fee + "</p>";
+          amountOutDiv.innerHTML = "<p>You will receive " + amountOut = "</p>";
+        });
+      }
     </script>
 
     {# Rendered via Polaris javascript integrations #}
