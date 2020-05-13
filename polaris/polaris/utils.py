@@ -2,12 +2,17 @@
 import logging
 import codecs
 import datetime
+import uuid
+from typing import Optional
 
+from django.utils.translation import gettext as _
+from django.conf import settings as django_settings
 from rest_framework import status
 from rest_framework.response import Response
 from stellar_sdk.transaction_builder import TransactionBuilder
 from stellar_sdk.exceptions import BaseHorizonError
 from stellar_sdk.xdr.StellarXDR_type import TransactionResult
+from stellar_sdk import Memo, TextMemo, IdMemo, HashMemo
 
 from polaris import settings
 from polaris.models import Transaction
@@ -27,6 +32,8 @@ class Logger:
     """
 
     def __init__(self, namespace):
+        if not getattr(django_settings, "LOGGING"):
+            logging.basicConfig()
         self.logger = logging.getLogger("polaris")
         self.namespace = namespace
 
@@ -78,12 +85,49 @@ def render_error_response(
     return Response(**resp_data)
 
 
-def format_memo_horizon(memo):
+def memo_hex_to_base64(memo):
     """
     Formats a hex memo, as in the Transaction model, to match
     the base64 Horizon response.
     """
     return (codecs.encode(codecs.decode(memo, "hex"), "base64").decode("utf-8")).strip()
+
+
+def memo_base64_to_hex(memo):
+    return (
+        codecs.encode(codecs.decode(memo.encode(), "base64"), "hex").decode("utf-8")
+    ).strip()
+
+
+def create_transaction_id():
+    """Creates a unique UUID for a Transaction, via checking existing entries."""
+    while True:
+        transaction_id = uuid.uuid4()
+        if not Transaction.objects.filter(id=transaction_id).exists():
+            break
+    return transaction_id
+
+
+def verify_valid_asset_operation(
+    asset, amount, op_type, content_type="application/json"
+) -> Optional[Response]:
+    enabled = getattr(asset, f"{op_type}_enabled")
+    min_amount = getattr(asset, f"{op_type}_min_amount")
+    max_amount = getattr(asset, f"{op_type}_max_amount")
+    if not enabled:
+        return render_error_response(
+            _("the specified operation is not available for '%s'") % asset.code,
+            content_type=content_type,
+        )
+    elif not (min_amount <= amount <= max_amount):
+        return render_error_response(
+            _("Asset amount must be within bounds [%(min)s, %(max)s]")
+            % {
+                "min": round(min_amount, asset.significant_decimals),
+                "max": round(max_amount, asset.significant_decimals),
+            },
+            content_type=content_type,
+        )
 
 
 def create_stellar_deposit(transaction_id: str) -> bool:
@@ -111,6 +155,13 @@ def create_stellar_deposit(transaction_id: str) -> bool:
             f"unexpected transaction status {transaction.status} for "
             "create_stellar_deposit",
         )
+    elif transaction.amount_in is None or transaction.amount_fee is None:
+        transaction.status = Transaction.STATUS.error
+        transaction.status_message = (
+            "`amount_in` and `amount_fee` must be populated, skipping transaction"
+        )
+        transaction.save()
+        raise ValueError(transaction.status_message)
     transaction.status = Transaction.STATUS.pending_stellar
     transaction.save()
     logger.info(f"Transaction {transaction_id} now pending_stellar")
@@ -123,6 +174,7 @@ def create_stellar_deposit(transaction_id: str) -> bool:
         transaction.asset.significant_decimals,
     )
     asset = transaction.asset
+    memo = make_memo(transaction.deposit_memo, transaction.deposit_memo_type)
 
     # If the given Stellar account does not exist, create
     # the account with at least enough XLM for the minimum
@@ -182,12 +234,15 @@ def create_stellar_deposit(transaction_id: str) -> bool:
     # transaction to completed at the current time. If it fails due to a
     # trustline error, we update the database accordingly. Else, we do not update.
 
-    transaction_envelope = builder.append_payment_op(
+    builder.append_payment_op(
         destination=stellar_account,
         asset_code=asset.code,
         asset_issuer=asset.issuer,
         amount=str(payment_amount),
-    ).build()
+    )
+    if memo:
+        builder.add_memo(memo)
+    transaction_envelope = builder.build()
     transaction_envelope.sign(asset.distribution_seed)
     try:
         response = server.submit_transaction(transaction_envelope)
@@ -231,6 +286,31 @@ def create_stellar_deposit(transaction_id: str) -> bool:
     transaction.save()
     logger.info(f"Transaction {transaction.id} completed.")
     return True
+
+
+def memo_str(memo: str, memo_type: str) -> Optional[str]:
+    memo = make_memo(memo, memo_type)
+    if not memo:
+        return memo
+    if isinstance(memo, IdMemo):
+        return str(memo.memo_id)
+    elif isinstance(memo, HashMemo):
+        return memo_hex_to_base64(memo.memo_hash.hex())
+    else:
+        return memo.memo_text.decode()
+
+
+def make_memo(memo: str, memo_type: str) -> Optional[Memo]:
+    if not memo:
+        return None
+    if memo_type == Transaction.MEMO_TYPES.id:
+        return IdMemo(int(memo))
+    elif memo_type == Transaction.MEMO_TYPES.hash:
+        return HashMemo(memo_base64_to_hex(memo))
+    elif memo_type == Transaction.MEMO_TYPES.text:
+        return TextMemo(memo)
+    else:
+        raise ValueError()
 
 
 SEP_9_FIELDS = {
@@ -292,3 +372,41 @@ def extract_sep9_fields(args):
     for field in SEP_9_FIELDS:
         sep9_args[field] = args.get(field)
     return sep9_args
+
+
+def check_config():
+    from polaris.sep24.utils import check_sep24_config
+
+    if not hasattr(django_settings, "ACTIVE_SEPS"):
+        raise AttributeError(
+            "ACTIVE_SEPS must be defined in your django settings file."
+        )
+
+    check_middleware()
+    check_protocol()
+    if "sep-24" in django_settings.ACTIVE_SEPS:
+        check_sep24_config()
+
+
+def check_middleware():
+    err_msg = "{} is not installed in settings.MIDDLEWARE"
+    cors_middleware_path = "corsheaders.middleware.CorsMiddleware"
+    if cors_middleware_path not in django_settings.MIDDLEWARE:
+        raise ValueError(err_msg.format(cors_middleware_path))
+
+
+def check_protocol():
+    if settings.LOCAL_MODE:
+        logger.warning(
+            "Polaris in in local mode. This makes the SEP-24 interactive flow "
+            "insecure and should only be used for local development."
+        )
+    if not (settings.LOCAL_MODE or getattr(django_settings, "SECURE_SSL_REDIRECT")):
+        logger.warning(
+            "SECURE_SSL_REDIRECT is required to redirect HTTP traffic to HTTPS"
+        )
+    if getattr(django_settings, "SECURE_PROXY_SSL_HEADER"):
+        logger.warning(
+            "SECURE_PROXY_SSL_HEADER should only be set if Polaris is "
+            "running behind an HTTPS reverse proxy."
+        )

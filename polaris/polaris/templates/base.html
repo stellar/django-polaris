@@ -1,4 +1,4 @@
-{% load sass_tags %} {% load static %} {% load i18n %}
+{% load static %} {% load i18n %}
 {% get_current_language as LANGUAGE_CODE %}
 <!DOCTYPE html>
 <html>
@@ -11,13 +11,13 @@
     {% endblock %}
 
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Cabin&display=swap">
-    <link rel="stylesheet" href="{% sass_src 'base.scss' %}" />
+    <link rel="stylesheet" href="{% static 'polaris/base.css' %}" />
     <style>
       {% comment %}
       Due to the static image, can't put the background in .scss
       {% endcomment %}
       .control select:not([multiple]) {
-        background-image: url("{% static "chevron-down.svg" %}");
+        background-image: url("{% static "polaris/chevron-down.svg" %}");
         background-repeat: no-repeat;
         background-position: right 1em top 50%, 0 0;
       }
@@ -27,7 +27,7 @@
     {% block "header" %}
     <nav class="navbar" role="navigation" aria-label="main navigation">
       <div class="navbar-brand">
-        <img width="60" height="60" src="{% static 'company-icon.svg' %}" alt="" />
+        <img width="60" height="60" src="{% static 'polaris/company-icon.svg' %}" alt="" />
         {% if icon_label %}
         <a class="title" href="#">
             {{ icon_label|safe }}

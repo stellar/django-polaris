@@ -1,8 +1,9 @@
 """This module defines the logic for the `/info` endpoint."""
 from typing import Dict
 
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, renderer_classes
 from rest_framework.response import Response
+from rest_framework.renderers import JSONRenderer, BrowsableAPIRenderer
 
 from polaris.models import Asset
 from polaris.integrations import (
@@ -17,7 +18,6 @@ def _get_asset_info(asset: Asset, op_type: str) -> Dict:
 
     asset_info = {
         "enabled": True,
-        "authentication_required": True,
         "min_amount": getattr(asset, f"{op_type}_min_amount"),
         "max_amount": getattr(asset, f"{op_type}_max_amount"),
     }
@@ -33,6 +33,7 @@ def _get_asset_info(asset: Asset, op_type: str) -> Dict:
 
 
 @api_view()
+@renderer_classes([JSONRenderer, BrowsableAPIRenderer])
 def info(request):
     """
     Definition of the /info endpoint, in accordance with SEP-0024.
@@ -47,7 +48,7 @@ def info(request):
         "transaction": {"enabled": True},
     }
 
-    for asset in Asset.objects.all():
+    for asset in Asset.objects.filter(sep24_enabled=True):
         info_data["deposit"][asset.code] = _get_asset_info(asset, "deposit")
         info_data["withdraw"][asset.code] = _get_asset_info(asset, "withdrawal")
 

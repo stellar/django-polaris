@@ -22,10 +22,10 @@ from polaris.utils import (
     render_error_response,
     Logger,
     extract_sep9_fields,
+    create_transaction_id,
 )
 from polaris.sep10.utils import validate_sep10_token
 from polaris.sep24.utils import (
-    create_transaction_id,
     check_authentication,
     interactive_url,
     authenticate_session,
@@ -270,7 +270,7 @@ def deposit(account: str, request: Request) -> Response:
     asset = Asset.objects.filter(code=asset_code).first()
     if not asset:
         return render_error_response(_("unknown asset: %s") % asset_code)
-    elif not asset.deposit_enabled:
+    elif not (asset.deposit_enabled and asset.sep24_enabled):
         return render_error_response(_("invalid operation for asset %s") % asset_code)
 
     try:
@@ -295,6 +295,7 @@ def deposit(account: str, request: Request) -> Response:
         kind=Transaction.KIND.deposit,
         status=Transaction.STATUS.incomplete,
         to_address=account,
+        protocol=Transaction.PROTOCOL.sep24,
     )
     logger.info(f"Created deposit transaction {transaction_id}")
 

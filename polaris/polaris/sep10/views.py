@@ -56,7 +56,7 @@ class SEP10Auth(APIView):
 
         try:
             transaction = self._challenge_transaction(account)
-        except Ed25519PublicKeyInvalidError as e:
+        except ValueError as e:
             return JsonResponse({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         logger.info(f"Returning SEP-10 challenge for account {account}")

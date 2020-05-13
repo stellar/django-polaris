@@ -1,6 +1,6 @@
 """This module defines custom management commands for the app admin."""
 import asyncio
-from typing import Dict
+from typing import Dict, Optional
 from decimal import Decimal
 import datetime
 
@@ -13,9 +13,13 @@ from stellar_sdk.server import Server
 from stellar_sdk.client.aiohttp_client import AiohttpClient
 
 from polaris import settings
-from polaris.models import Transaction, Asset
-from polaris.integrations import registered_withdrawal_integration as rwi
-from polaris.utils import format_memo_horizon, Logger
+from polaris.models import Asset
+from polaris.models import Transaction
+from polaris.integrations import (
+    registered_withdrawal_integration as rwi,
+    registered_fee_func as rfi,
+)
+from polaris.utils import Logger
 
 logger = Logger(__name__)
 
@@ -122,49 +126,45 @@ class Command(BaseCommand):
     def match_transaction(cls, response: Dict, transaction: Transaction) -> bool:
         """
         Determines whether or not the given ``response`` represents the given
-        ``transaction``. Polaris does this by constructing the transaction memo
-        from the transaction ID passed in the initial withdrawal request to
-        ``/transactions/withdraw/interactive``. To be sure, we also check for
-        ``transaction``'s payment operation in ``response``.
+        ``transaction``. Polaris does this by checking the 'memo' field in the horizon
+        response matches the `transaction.memo` if present, as well as ensuring the
+        transaction includes a payment operation of the anchored asset.
 
         :param response: a response body returned from Horizon for the transaction
         :param transaction: a database model object representing the transaction
         """
         try:
             memo_type = response["memo_type"]
-            response_memo = response["memo"]
             successful = response["successful"]
             stellar_transaction_id = response["id"]
             envelope_xdr = response["envelope_xdr"]
         except KeyError:
-            logger.warning(
-                f"Stellar response for transaction missing expected arguments"
-            )
             return False
 
-        if memo_type != "hash":
-            logger.warning(
-                f"Transaction memo for {transaction.id} was not of type hash"
-            )
-            return False
-
-        # The memo on the response will be base 64 string, due to XDR, while
-        # the memo parameter is base 16. Thus, we convert the parameter
-        # from hex to base 64, and then to a string without trailing whitespace.
-        if response_memo != format_memo_horizon(transaction.withdraw_memo):
+        # memo from response must match transaction.memo if present
+        memo = None if memo_type == "none" else response["memo"]
+        if memo and memo != transaction.withdraw_memo:
             return False
 
         horizon_tx = TransactionEnvelope.from_xdr(
-            response["envelope_xdr"],
-            network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
+            envelope_xdr, network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
         ).transaction
         found_matching_payment_op = False
         for operation in horizon_tx.operations:
             if cls._check_payment_op(
                 operation, transaction.asset, transaction.amount_in
             ):
+                if not transaction.amount_in:
+                    transaction.amount_in = Decimal(operation.amount)
+                    transaction.amount_fee = rfi(
+                        {
+                            "amount": transaction.amount_in,
+                            "asset_code": transaction.asset.code,
+                            "operation": settings.OPERATION_WITHDRAWAL,
+                        }
+                    )
                 transaction.stellar_transaction_id = stellar_transaction_id
-                transaction.from_address = horizon_tx.source.public_key
+                transaction.from_address = horizon_tx.source.account_id
                 transaction.save()
                 found_matching_payment_op = True
                 break
@@ -203,18 +203,22 @@ class Command(BaseCommand):
 
     @staticmethod
     def _check_payment_op(
-        operation: Operation, want_asset: Asset, want_amount: Decimal
+        operation: Operation, want_asset: Asset, want_amount: Optional[Decimal]
     ) -> bool:
         # TODO: Add test cases!
         issuer = operation.asset.issuer
         code = operation.asset.code
-        print(want_asset, want_amount)
-        print(operation.destination, want_asset.distribution_account)
-        print(str(issuer), want_asset.issuer)
+
+        # SEP-6 doesn't require 'amount' parameter when creating transaction
+        # so we can't use it to match the transaction. Only use it if present.
+        amounts_match = True
+        if want_amount:
+            amounts_match = want_amount == Decimal(operation.amount)
+
         return (
             operation.type_code() == Xdr.const.PAYMENT
-            and str(operation.destination) == want_asset.distribution_account
+            and str(operation.destination.account_id) == want_asset.distribution_account
             and str(code) == want_asset.code
             and str(issuer) == want_asset.issuer
-            and Decimal(operation.amount) == want_amount
+            and amounts_match
         )

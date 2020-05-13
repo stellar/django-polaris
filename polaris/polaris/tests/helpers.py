@@ -3,15 +3,11 @@ import json
 import time
 
 from polaris import settings
-from polaris.models import Asset
-from stellar_sdk import Account
-from stellar_sdk.client.response import Response
-from stellar_sdk.exceptions import NotFoundError
 from stellar_sdk.keypair import Keypair
 from stellar_sdk.transaction_envelope import TransactionEnvelope
 
 
-def mock_check_auth_success(request, func, content_type: str = "application/json"):
+def mock_check_auth_success(request, func, sep, content_type: str = "application/json"):
     """Mocks `sep10.utils.check_auth`, for success."""
     return func("test source address", request)
 
@@ -36,21 +32,6 @@ def sep10(client, address, seed):
     encoded_jwt = content["token"]
     assert encoded_jwt
     return encoded_jwt
-
-
-def mock_load_not_exist_account(account_id):
-    accounts = [
-        asset.distribution_account
-        for asset in Asset.objects.exclude(distribution_seed__isnull=True)
-    ]
-
-    if account_id not in accounts:
-        raise NotFoundError(
-            response=Response(
-                status_code=404, headers={}, url="", text=json.dumps(dict(status=404))
-            )
-        )
-    return Account(account_id, 1)
 
 
 def interactive_jwt_payload(transaction, transaction_type):

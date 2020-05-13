@@ -5,38 +5,36 @@ Introduction
 What is Polaris?
 ================
 
-.. _SEP-24: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md
 .. _Stellar Development Foundation: https://www.stellar.org/
 .. _github: https://github.com/stellar/django-polaris
-.. _example: https://github.com/stellar/django-polaris/tree/master/example
-.. _django reusable-app: https://docs.djangoproject.com/en/3.0/intro/reusable-apps/
-.. _here: https://stellar-anchor-server.herokuapp.com
-.. _anchor: https://www.stellar.org/developers/guides/anchor/
-.. _stellar.toml: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0001.md
+.. _django app: https://docs.djangoproject.com/en/3.0/intro/reusable-apps/
 .. _demo client: http://sep24.stellar.org/#HOME_DOMAIN=%22https://testanchor.stellar.org%22&TRANSFER_SERVER=%22%22&WEB_AUTH_ENDPOINT=%22%22&USER_SK=%22SBBMVOJQLRJTQISVSUPBI2ZNQLZYNR4ARGWFPDDEL2U7444HPDII4VCX%22&HORIZON_URL=%22https://horizon-testnet.stellar.org%22&ASSET_CODE=%22SRT%22&ASSET_ISSUER=%22%22&EMAIL_ADDRESS=%22%22&STRICT_MODE=false&AUTO_ADVANCE=true&PUBNET=false
 
-Polaris implements SEP-24_ and is maintained by the
-`Stellar Development Foundation`_ (SDF). SEP-24 is a standard defined to make
-wallets and anchors interoperable, meaning any wallet can communicate with any
-anchor_ for the purpose of withdrawing or depositing assets on the stellar network.
+Polaris is an extendable `django app`_ for Stellar Ecosystem Proposal (SEP) implementations
+maintained by the `Stellar Development Foundation`_ (SDF). Using Polaris, you can run a web
+server supporting any combination of SEP-1, 6, 10, 12, and 24.
 
-Polaris is not a library or a framework; its an `extendable`
-`django-app`_.  Like many django apps, it comes with fully-implemented
-endpoints, templates, and database models.
+While Polaris handles the majority of the business logic described in each SEP, there are
+pieces of functionality that can only be implemented by the developer using Polaris.
+For example, only an anchor can implement the integration with their partner bank.
 
-To use Polaris, developers must implement it's provided
-:doc:`integrations points </integrations/index>`. These integration points
-allow developers to inject their own business logic into the transaction
-processing flow, customize their stellar.toml, and more.
+This is why each SEP implemented by Polaris comes with a programmable interface, or
+integration points, for developers to inject their own business logic.
 
-The SDF maintains a Polaris server at that can be tested using the SEP-24
-`demo client`_ and is completely open source and available on the SDF's github_.
+Polaris is completely open source and available on github_. The SDF also runs a reference
+server using Polaris that can be tested using our `demo client`_.
+
+The instructions below outline the common set up needed for any Polaris deployment, but
+each SEP implementation has its own configuration and integration requirements. These
+requirements are described in the documentation for each SEP.
 
 Installation and Configuration
 ==============================
 
-.. _CLI tool: https://github.com/msfeldstein/create-stellar-token
-.. _Static Files: https://docs.djangoproject.com/en/2.2/howto/static-files/
+.. _Django docs: https://docs.djangoproject.com/en/3.0/
+
+These instructions assume you have already set up a django project. If you haven't,
+take a look at the `Django docs`_.
 
 First make sure you have ``cd``'ed into your django project's main directory
 and then run
@@ -44,66 +42,42 @@ and then run
 
     pip install django-polaris
 
-Configuring settings.py
-^^^^^^^^^^^^^^^^^^^^^^^
+Settings
+^^^^^^^^
 
-Add the following to ``INSTALLED_APPS`` in settings.py. Any app that overrides
-a static asset in Polaris should be listed `before` "polaris". This ensures that
-django will find your asset before the Polaris default.
+.. _corsheaders signal: https://github.com/adamchainz/django-cors-headers#signals
+.. _corsheaders documentation: https://github.com/adamchainz/django-cors-headers
+
+Add the following to ``INSTALLED_APPS`` in settings.py.
 ::
 
     INSTALLED_APPS = [
         ...,
-        "django.contrib.staticfiles",
         "corsheaders",
         "rest_framework",
-        "sass_processor",
         "polaris",
     ]
 
-Add Polaris' :doc:`PolarisSameSiteMiddleware </middleware/index>`,
-and ``CorsMiddleware`` to your ``settings.MIDDLEWARE``.
-``SessionMiddleware`` must be listed `below` ``PolarisSameSiteMiddleware``.
+Add ``CorsMiddleware`` to your ``settings.MIDDLEWARE``. It should be listed above
+other middleware that can return responses such as ``CommonMiddleware``.
 ::
 
     MIDDLEWARE = [
         ...,
-        'polaris.middleware.PolarisSameSiteMiddleware',
-        'django.contrib.sessions.middleware.SessionMiddleware',
         'corsheaders.middleware.CorsMiddleware',
         ...
     ]
 
-Polaris requires HTTPS, so redirect HTTP traffic:
-::
-
-    SECURE_SSL_REDIRECT = True
-    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+Polaris will now accept requests from all origins to its endpoints. It does this
+by adding `corsheaders signal`_ that checks the request URI. However this
+does not change the CORS policy for any other endpoint on the server. You can change
+this functionality using the settings listed in the `corsheaders documentation`_.
 
 Define ``PROJECT_ROOT`` in your project's settings.py. Polaris uses this to
 find your ``.env`` file.
 ::
 
-    PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-Add the following to your settings.py as well:
-::
-
-    FORM_RENDERER = "django.forms.renderers.TemplatesSetting"
-    STATIC_ROOT = os.path.join(BASE_DIR, "<your static root directory>")
-    STATIC_URL = "<your static url path>"
-    STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
-    STATICFILES_FINDERS = [
-        "django.contrib.staticfiles.finders.FileSystemFinder",
-        "django.contrib.staticfiles.finders.AppDirectoriesFinder",
-        "sass_processor.finders.CssFinder",
-    ]
-    SASS_PROCESSOR_ROOT = STATIC_ROOT
-    DEFAULT_PAGE_SIZE = <your default page size>
-
-This allows Polaris to override django's default HTML widgets to provide
-a great UI out of the box. See the `Static Files`_ django page for more
-information.
+    PROJECT_ROOT = "<path to directory containing .env file>"
 
 Environment Variables
 ^^^^^^^^^^^^^^^^^^^^^
@@ -112,20 +86,12 @@ Polaris uses environment variables that should be defined in the
 environment or included in ``PROJECT_ROOT/.env``.
 ::
 
-    DJANGO_SECRET_KEY="yoursupersecretkey"
-    DJANGO_DEBUG=False
-
-    SIGNING_SEED = <your signing seed here>
     STELLAR_NETWORK_PASSPHRASE="Test SDF Network ; September 2015"
     HORIZON_URI="https://horizon-testnet.stellar.org/"
-    SERVER_JWT_KEY="yoursupersecretjwtkey"
     HOST_URL="https://example.com"
 
-``SIGNING_SEED`` should be the secret key of the account used to sign
-SEP-10 challenge transactions.
-
-Python Code and Bash Commands
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Endpoints
+^^^^^^^^^
 
 Add the Polaris endpoints in ``urls.py``
 ::
@@ -138,18 +104,31 @@ Add the Polaris endpoints in ``urls.py``
         path("", include(polaris.urls)),
     ]
 
-| Run migrations: ``python manage.py migrate``
-| Compile static assets: ``python manage.py compilescss``
-| Collect static assets: ``python manage.py collectstatic --no-input``
+Database Models
+^^^^^^^^^^^^^^^
 
-The last step is to add an ``Asset`` database object for every token you
-intend to anchor. Get into your python shell, then run something like this:
+.. _psycopg2: https://pypi.org/project/psycopg2/
+.. _repository: https://github.com/stellar/django-polaris/issues
+.. _Fernet symmetric encryption: https://cryptography.io/en/latest/fernet/
+
+SEP-1, 6, and 24 require Polaris' database models. Polaris currently only supports
+PostgreSQL and uses psycopg2_ to connect to the database. If you use another
+database, file an issue in the project's github repository_.
+
+Run migrations to create these tables in your database.
+::
+
+    python manage.py migrate
+
+Now, create an ``Asset`` database object for each asset you intend to anchor. Get
+into your python shell, then run something like this:
 ::
 
     from polaris.models import Asset
     Asset.objects.create(
         code="USD",
         issuer="<the issuer address>",
+        distribution_seed="<distribution account secret key>",
         significant_digits=2,
         deposit_fee_fixed=1,
         deposit_fee_percent=2,
@@ -158,107 +137,64 @@ intend to anchor. Get into your python shell, then run something like this:
         deposit_min_amount=10,
         deposit_max_amount=10000,
         withdrawal_min_amount=10,
-        withdrawal_min_amount=10000
+        withdrawal_min_amount=10000,
+        sep24_enabled=True,
+        sep6_enabled=True
     )
+
+The ``distribution_seed`` column is encrypted at the database layer using `Fernet symmetric
+encryption`_, and only decrypted when held in memory within an ``Asset`` object. It uses
+your Django project's ``SECRET_KEY`` setting to generate the encryption key, **so make sure
+its value is unguessable and kept a secret**.
 
 See the :doc:`Asset </models/index>` documentation for more information on the fields used.
 
-At this point, you are now ready to run the Polaris anchor server!
-
-Running the Service
-===================
-
-Polaris is a multi-process application. The main process, the web server,
-implements SEP-24, but there are three other processes that perform necessary
-functions.
-
-Polling Pending Deposits
-^^^^^^^^^^^^^^^^^^^^^^^^
-
-When a user initiates a deposit transaction, the anchor must wait for the user
-to send the deposit amount to the anchor's bank account. When this happens, the
-anchor should notice and deposit the same amount of the tokenized asset into the
-user's stellar account.
-
-Polaris provides the ``poll_pending_deposits`` integration function for this
-purpose, which will be run periodically via the ``poll_pending_deposits`` command-line
-tool:
-::
-
-    python manage.py poll_pending_deposits --loop --interval 10
-
-This process will continue indefinitely, calling the associated integration
-function, sleeping for 10 seconds, and then calling it again.
-
-Watching for Withdrawals
-^^^^^^^^^^^^^^^^^^^^^^^^
-
-When a user initiates a withdrawal transaction, the anchor must wait for the
-user to send the tokenized amount to the anchor's stellar account. Polaris'
-``watch_transactions`` command line tool streams transactions from every
-anchored asset's distribution account and attempts to match every incoming
-deposit with a pending withdrawal.
-
-If it finds a match, it will update the transaction's status and call
-the ``process_withdrawal`` integration function. Use this function to
-connect to your banking rails and send the transaction amount to the user's
-bank account.
-
-Run the process like so:
-::
-
-    python manage.py watch_transactions
-
-Checking Trustlines
-^^^^^^^^^^^^^^^^^^^
-
-Sometimes, a user will initiate a deposit to an account that does not exist yet,
-or the user's account won't have a trustline to the asset's issuer account. In
-these cases, the transaction database object gets assigned the ``pending_trust``
-status.
-
-``check_trustlines`` is a command line tool that periodically checks if the
-transactions with this status now have a trustline to the relevant asset. If one
-does, Polaris will submit the transaction to the stellar network and call the
-``after_deposit`` integration function once its completed.
-
-``check_trustlines`` has the same arguments as ``poll_pending_deposits``:
-::
-
-    python manage.py check_trustlines --loop --interval 60
+At this point, you should configure Polaris for one or more of the
+SEPs currently supported. Once configured, check out how to run the
+server as described in the next section.
 
 Running the Web Server
-^^^^^^^^^^^^^^^^^^^^^^
+======================
 
-Polaris is an HTTPS-only server, so to run it locally you must have a
-self-signed SSL certificate and configure your browser to trust it.
+Production
+^^^^^^^^^^
 
-Run this command to generate a self-signed certificate for localhost:
+.. _gunicorn: https://gunicorn.org
+
+Polaris should only be deployed using HTTPS in production. You should do this
+by using a HTTPS web server or running Polaris behind a HTTPS reverse proxy.
+The steps below outline the settings necessary to ensure your deployment is
+secure.
+
+To redirect HTTP traffic to HTTPS, add the following to settings.py:
 ::
 
-    openssl req -x509 -out localhost.crt -keyout localhost.key \
-      -newkey rsa:2048 -nodes -sha256 \
-      -subj '/CN=localhost' -extensions EXT -config <( \
-       printf "[dn]\nCN=localhost\n[req]\ndistinguished_name = dn\n[EXT]\nsubjectAltName=DNS:localhost\nkeyUsage=digitalSignature\nextendedKeyUsage=serverAuth")
+    SECURE_SSL_REDIRECT = True
 
-Then, instead of using the usual ``runserver`` command, Polaris comes with the
-``runsslserver`` command. Just add the app to your ``INSTALLED_APPS``:
+And if you're running Polaris behind a HTTPS proxy:
 ::
 
-    INSTALLED_APPS = [
-        ...,
-        "polaris",
-        "sslserver"
-    ]
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
-Finally, run this commands:
+This tells Django what header to check and what value it should be in
+order to consider the incoming request secure.
+
+Local Development
+^^^^^^^^^^^^^^^^^
+
+Locally, Polaris can be run using Django's HTTP development server
 ::
 
-    python manage.py runsslserver --certificate <path to localhost.crt> --key <path to localhost.key>
+    python manage.py runserver
 
-At this point, you need to start implementing the integration points Polaris
-provides. Check out the :doc:`Integrations </integrations/index>` section
-for more information.
+If you're using Polaris' SEP-24 support, you also need to use the following
+environment variable:
+::
+
+    LOCAL_MODE=1
+
+This is necessary to disable SEP-24's interactive flow authentication mechanism,
+which requires HTTPS. **Do not use local mode in production**.
 
 Contributing
 ============

@@ -17,6 +17,7 @@ from polaris.utils import Logger
 from polaris.integrations import (
     DepositIntegration,
     WithdrawalIntegration,
+    CustomerIntegration,
     calculate_fee,
 )
 from polaris import settings
@@ -30,11 +31,6 @@ logger = Logger(__name__)
 CONFIRM_EMAIL_PAGE_TITLE = _("Confirm Email")
 
 
-def get_confirmation_url(user: PolarisUser, account: PolarisStellarAccount):
-    args = urlencode({"token": account.confirmation_token, "email": user.email})
-    return f"{settings.HOST_URL}{reverse('confirm_email')}?{args}"
-
-
 def send_confirmation_email(user: PolarisUser, account: PolarisStellarAccount):
     """
     Sends a confirmation email to user.email
@@ -44,7 +40,8 @@ def send_confirmation_email(user: PolarisUser, account: PolarisStellarAccount):
     like Celery. This reference server is not intended to handle heavy
     traffic so we are making an exception here.
     """
-    url = get_confirmation_url(user, account)
+    args = urlencode({"token": account.confirmation_token, "email": user.email})
+    url = f"{settings.HOST_URL}{reverse('confirm_email')}?{args}"
     try:
         send_mail(
             _("Reference Anchor Server: Confirm Email"),
@@ -61,83 +58,84 @@ def send_confirmation_email(user: PolarisUser, account: PolarisStellarAccount):
         logger.error(f"Unable to send email to {user.email}: {e}")
 
 
-def track_user_activity(form: forms.Form, transaction: Transaction):
-    """
-    Creates a PolarisUserTransaction object, and depending on the form
-    passed, also creates a new PolarisStellarAccount and potentially a
-    new PolarisUser. This function ensures an accurate record of a
-    particular person's activity.
-    """
-    if isinstance(form, KYCForm):
-        data = form.cleaned_data
-        user = PolarisUser.objects.filter(email=data.get("email")).first()
-        if not user:
-            user = PolarisUser.objects.create(
-                first_name=data.get("first_name"),
-                last_name=data.get("last_name"),
-                email=data.get("email"),
-            )
-
-        account = PolarisStellarAccount.objects.create(
-            account=transaction.stellar_account, user=user
-        )
-        if server_settings.EMAIL_HOST_USER:
-            send_confirmation_email(user, account)
-    else:
-        try:
-            account = PolarisStellarAccount.objects.get(
-                account=transaction.stellar_account
-            )
-        except PolarisStellarAccount.DoesNotExist:
-            raise RuntimeError(
-                f"Unknown address: {transaction.stellar_account}," " KYC required."
-            )
-
-    PolarisUserTransaction.objects.get_or_create(
-        account=account, transaction=transaction
-    )
-
-
-def check_kyc(transaction: Transaction, post_data=None) -> Optional[Dict]:
-    """
-    Returns a KYCForm if there is no record of this stellar account,
-    otherwise returns None.
-    """
-    account = PolarisStellarAccount.objects.filter(
-        account=transaction.stellar_account
-    ).first()
-    if not account:  # Unknown stellar account, get KYC info
-        if post_data:
-            form = KYCForm(post_data)
-        else:
-            form = KYCForm()
-        return {
-            "form": form,
-            "icon_label": _("Stellar Development Foundation"),
-            "title": _("Polaris KYC Information"),
-            "guidance": (
-                _(
-                    "We're legally required to know our customers. "
-                    "Please enter the information requested."
+class SEP24KYC:
+    @staticmethod
+    def track_user_activity(form: forms.Form, transaction: Transaction):
+        """
+        Creates a PolarisUserTransaction object, and depending on the form
+        passed, also creates a new PolarisStellarAccount and potentially a
+        new PolarisUser. This function ensures an accurate record of a
+        particular person's activity.
+        """
+        if isinstance(form, KYCForm):
+            data = form.cleaned_data
+            user = PolarisUser.objects.filter(email=data.get("email")).first()
+            if not user:
+                user = PolarisUser.objects.create(
+                    first_name=data.get("first_name"),
+                    last_name=data.get("last_name"),
+                    email=data.get("email"),
                 )
-            ),
-        }
-    elif server_settings.EMAIL_HOST_USER and not account.confirmed:
-        return {
-            "title": CONFIRM_EMAIL_PAGE_TITLE,
-            "guidance": _(
-                "We sent you a confirmation email. Once confirmed, "
-                "continue on this page."
-            ),
-            "icon_label": _("Stellar Development Foundation"),
-        }
-    else:
-        return None
+
+            account = PolarisStellarAccount.objects.create(
+                account=transaction.stellar_account, user=user
+            )
+            if server_settings.EMAIL_HOST_USER:
+                send_confirmation_email(user, account)
+        else:
+            try:
+                account = PolarisStellarAccount.objects.get(
+                    account=transaction.stellar_account
+                )
+            except PolarisStellarAccount.DoesNotExist:
+                raise RuntimeError(
+                    f"Unknown address: {transaction.stellar_account}, KYC required."
+                )
+
+        PolarisUserTransaction.objects.get_or_create(
+            account=account, transaction=transaction
+        )
+
+    @staticmethod
+    def check_kyc(transaction: Transaction, post_data=None) -> Optional[Dict]:
+        """
+        Returns a KYCForm if there is no record of this stellar account,
+        otherwise returns None.
+        """
+        account = PolarisStellarAccount.objects.filter(
+            account=transaction.stellar_account
+        ).first()
+        if not account:  # Unknown stellar account, get KYC info
+            if post_data:
+                form = KYCForm(post_data)
+            else:
+                form = KYCForm()
+            return {
+                "form": form,
+                "icon_label": _("Stellar Development Foundation"),
+                "title": _("Polaris KYC Information"),
+                "guidance": (
+                    _(
+                        "We're legally required to know our customers. "
+                        "Please enter the information requested."
+                    )
+                ),
+            }
+        elif server_settings.EMAIL_HOST_USER and not account.confirmed:
+            return {
+                "title": CONFIRM_EMAIL_PAGE_TITLE,
+                "guidance": _(
+                    "We sent you a confirmation email. Once confirmed, "
+                    "continue on this page."
+                ),
+                "icon_label": _("Stellar Development Foundation"),
+            }
+        else:
+            return None
 
 
 class MyDepositIntegration(DepositIntegration):
-    @classmethod
-    def poll_pending_deposits(cls, pending_deposits: QuerySet) -> List[Transaction]:
+    def poll_pending_deposits(self, pending_deposits: QuerySet) -> List[Transaction]:
         """
         Anchors should implement their banking rails here, as described
         in the :class:`.DepositIntegration` docstrings.
@@ -152,12 +150,21 @@ class MyDepositIntegration(DepositIntegration):
         for deposit in pending_deposits:
             bank_deposit = client.get_deposit(memo=deposit.external_extra)
             if bank_deposit and bank_deposit.status == "complete":
+                if not deposit.amount_in:
+                    deposit.amount_in = Decimal(103)
+                    deposit.amount_fee = calculate_fee(
+                        {
+                            "amount": 103,
+                            "operation": settings.OPERATION_DEPOSIT,
+                            "asset_code": deposit.asset.code,
+                        }
+                    )
+                    deposit.save()
                 ready_deposits.append(deposit)
 
         return ready_deposits
 
-    @classmethod
-    def after_deposit(cls, transaction: Transaction):
+    def after_deposit(self, transaction: Transaction):
         """
         Deposit was successful, do any post-processing necessary.
 
@@ -168,8 +175,7 @@ class MyDepositIntegration(DepositIntegration):
         transaction.external_extra = None
         transaction.save()
 
-    @classmethod
-    def instructions_for_pending_deposit(cls, transaction: Transaction):
+    def instructions_for_pending_deposit(self, transaction: Transaction):
         """
         This function provides a message to the user containing instructions for
         how to initiate a bank deposit to the anchor's account.
@@ -195,11 +201,10 @@ class MyDepositIntegration(DepositIntegration):
             % transaction.external_extra
         )
 
-    @classmethod
     def content_for_transaction(
-        cls, transaction: Transaction, post_data=None, amount=None
+        self, transaction: Transaction, post_data=None, amount=None
     ) -> Optional[Dict]:
-        kyc_content = check_kyc(transaction, post_data=post_data)
+        kyc_content = SEP24KYC.check_kyc(transaction, post_data=post_data)
         if kyc_content:
             return kyc_content
 
@@ -216,10 +221,9 @@ class MyDepositIntegration(DepositIntegration):
             "icon_label": _("Stellar Development Foundation"),
         }
 
-    @classmethod
-    def after_form_validation(cls, form: forms.Form, transaction: Transaction):
+    def after_form_validation(self, form: forms.Form, transaction: Transaction):
         try:
-            track_user_activity(form, transaction)
+            SEP24KYC.track_user_activity(form, transaction)
         except RuntimeError:
             # Since no polaris account exists for this transaction, KYCForm
             # will be returned from the next form_for_transaction() call
@@ -228,10 +232,53 @@ class MyDepositIntegration(DepositIntegration):
                 f"{transaction.stellar_account}"
             )
 
+    def process_sep6_request(self, params: Dict) -> Dict:
+        account = (
+            PolarisStellarAccount.objects.filter(account=params["account"])
+            .select_related("user")
+            .first()
+        )
+        info_needed_resp = {
+            "type": "non_interactive_customer_info_needed",
+            "fields": [
+                "first_name",
+                "last_name",
+                "email_address",
+                "bank_number",
+                "bank_account_number",
+            ],
+        }
+        if not account:
+            return info_needed_resp
+        elif not (account.user.bank_account_number and account.user.bank_number):
+            return info_needed_resp
+        elif params["type"] != "bank_account":
+            raise ValueError(_("'type' must be 'bank_account'"))
+        elif not account.confirmed:
+            # Here is where you would normally return something like this:
+            # {
+            #     "type": "customer_info_status",
+            #     "status": "pending"
+            # }
+            # However, we're not going to block the client from completing
+            # the flow since this is a reference server.
+            pass
+
+        # request is valid, return success data
+        return {
+            "how": "fake bank account number",
+            "extra_info": {
+                "message": (
+                    "'how' would normally contain a terse explanation for how "
+                    "to deposit the asset with the anchor, and 'extra_info' "
+                    "would provide any additional information."
+                )
+            },
+        }
+
 
 class MyWithdrawalIntegration(WithdrawalIntegration):
-    @classmethod
-    def process_withdrawal(cls, response: Dict, transaction: Transaction):
+    def process_withdrawal(self, response: Dict, transaction: Transaction):
         logger.info(f"Processing transaction {transaction.id}")
 
         mock_bank_account_id = "XXXXXXXXXXXXX"
@@ -241,11 +288,10 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
             amount=transaction.amount_in - transaction.amount_fee,
         )
 
-    @classmethod
     def content_for_transaction(
-        cls, transaction: Transaction, post_data=None, amount=None
+        self, transaction: Transaction, post_data=None, amount=None
     ) -> Optional[Dict]:
-        kyc_content = check_kyc(transaction, post_data)
+        kyc_content = SEP24KYC.check_kyc(transaction, post_data)
         if kyc_content:
             return kyc_content
 
@@ -269,10 +315,9 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
             ),
         }
 
-    @classmethod
-    def after_form_validation(cls, form: forms.Form, transaction: Transaction):
+    def after_form_validation(self, form: forms.Form, transaction: Transaction):
         try:
-            track_user_activity(form, transaction)
+            SEP24KYC.track_user_activity(form, transaction)
         except RuntimeError:
             # Since no polaris account exists for this transaction, KYCForm
             # will be returned from the next form_for_transaction() call
@@ -281,8 +326,131 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
                 f"{transaction.stellar_account}"
             )
 
+    def process_sep6_request(self, params: Dict) -> Dict:
+        account = (
+            PolarisStellarAccount.objects.filter(account=params["account"])
+            .select_related("user")
+            .first()
+        )
+        info_needed_resp = {
+            "type": "non_interactive_customer_info_needed",
+            "fields": [
+                "first_name",
+                "last_name",
+                "email_address",
+                "bank_number",
+                "bank_account_number",
+            ],
+        }
+        if not account:
+            return info_needed_resp
+        elif not (account.user.bank_account_number and account.user.bank_number):
+            return info_needed_resp
+        elif params["type"] != "bank_account":
+            raise ValueError(_("'type' must be 'bank_account'"))
+        elif not params["dest"]:
+            raise ValueError(_("'dest' is required"))
+        elif not params["dest_extra"]:
+            raise ValueError(_("'dest_extra' is required"))
+        elif params["dest"] != account.user.bank_account_number:
+            raise ValueError(_("'dest' must match bank account number for account"))
+        elif params["dest_extra"] != account.user.bank_number:
+            raise ValueError(
+                _("'dest_extra' must match bank routing number for account")
+            )
+        elif not account.confirmed:
+            # Here is where you would normally return something like this:
+            # {
+            #     "type": "customer_info_status",
+            #     "status": "pending"
+            # }
+            # However, we're not going to block the client from completing
+            # the flow since this is a reference server.
+            pass
 
-def get_stellar_toml():
+        asset = params["asset"]
+        response = {
+            "account_id": asset.distribution_account,
+            "min_amount": round(
+                asset.withdrawal_min_amount, asset.significant_decimals
+            ),
+            "max_amount": round(
+                asset.withdrawal_max_amount, asset.significant_decimals
+            ),
+            "fee_fixed": round(asset.withdrawal_fee_fixed, asset.significant_decimals),
+            "fee_percent": asset.withdrawal_fee_percent,
+        }
+        if params["memo_type"] and params["memo"]:
+            response["memo_type"] = params["memo_type"]
+            response["memo"] = params["memo"]
+
+        return response
+
+
+class MyCustomerIntegration(CustomerIntegration):
+    def put(self, params: Dict):
+        required_fields = [
+            "account",
+            "first_name",
+            "last_name",
+            "email_address",
+            "bank_account_number",
+            "bank_number",
+        ]
+        if not all(val in params for val in required_fields):
+            raise ValueError(f"required fields: {', '.join(required_fields)}")
+
+        user = PolarisUser.objects.filter(email=params["email_address"]).first()
+        if not user:
+            # the client could be trying to update to a new email, so try to
+            # find the user based on the account
+            account = PolarisStellarAccount.objects.filter(
+                account=params["account"]
+            ).first()
+            if not account:
+                user = PolarisUser.objects.create(
+                    first_name=params["first_name"],
+                    last_name=params["last_name"],
+                    email=params["email_address"],
+                    bank_number=params["bank_number"],
+                    bank_account_number=params["bank_account_number"],
+                )
+                account = PolarisStellarAccount.objects.create(
+                    account=params["account"], user=user
+                )
+
+            else:
+                user = account.user
+                user.email = params["email_address"]
+                user.first_name = params["first_name"]
+                user.last_name = params["last_name"]
+                user.bank_number = params["bank_number"]
+                user.bank_account_number = params["bank_account_number"]
+                user.save()
+
+            send_confirmation_email(user, account)
+
+        else:
+            # This user may have been created via SEP-24 deposit, which doesn't
+            # collect bank_number and bank_account_number
+            if not (user.bank_number and user.bank_account_number):
+                user.bank_number = params["bank_number"]
+                user.bank_account_number = params["bank_account_number"]
+                user.save()
+            account, created = PolarisStellarAccount.objects.get_or_create(
+                user=user, account=params["account"]
+            )
+            if created:
+                send_confirmation_email(user, account)
+
+    def delete(self, account: str):
+        account = PolarisStellarAccount.objects.filter(account=account).first()
+        if not account:
+            raise ValueError()
+        account.user.delete()
+
+
+def toml_integration():
     return {
         "DOCUMENTATION": {
             "ORG_NAME": "Stellar Development Foundation",
@@ -314,7 +482,7 @@ def get_stellar_toml():
     }
 
 
-def scripts(page_content: Optional[Dict]):
+def scripts_integration(page_content: Optional[Dict]):
     tags = [
         # Google Analytics
         """
@@ -388,7 +556,7 @@ def scripts(page_content: Optional[Dict]):
     return tags
 
 
-def calculate_custom_fee(fee_params: Dict) -> Decimal:
+def fee_integration(fee_params: Dict) -> Decimal:
     """
     This function replaces the default registered_fee_func for demonstration
     purposes.
@@ -398,3 +566,26 @@ def calculate_custom_fee(fee_params: Dict) -> Decimal:
     """
     logger.info("Using custom fee function")
     return calculate_fee(fee_params)
+
+
+def info_integration(asset: Asset, lang: str):
+    # Not using `asset` since this reference server only supports SRT
+    languages = [l[0] for l in server_settings.LANGUAGES]
+    if lang and lang not in languages:
+        raise ValueError()
+    return {
+        "fields": {
+            "type": {
+                "description": _("'bank_account' is the only value supported'"),
+                "choices": ["bank_account"],
+            },
+        },
+        "types": {
+            "bank_account": {
+                "fields": {
+                    "dest": {"description": _("bank account number")},
+                    "dest_extra": {"description": _("bank routing number")},
+                }
+            }
+        },
+    }

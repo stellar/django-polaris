@@ -1,9 +1,14 @@
 import sys
 from typing import Callable
+from polaris.integrations.info import default_info_func, registered_info_func
 from polaris.integrations.fees import calculate_fee, registered_fee_func
 from polaris.integrations.forms import TransactionForm, CreditCardForm
 from polaris.integrations.toml import get_stellar_toml, registered_toml_func
 from polaris.integrations.javascript import scripts, registered_scripts_func
+from polaris.integrations.customers import (
+    CustomerIntegration,
+    registered_customer_integration,
+)
 from polaris.integrations.transactions import (
     DepositIntegration,
     WithdrawalIntegration,
@@ -18,13 +23,13 @@ def register_integrations(
     toml_func: Callable = None,
     scripts_func: Callable = None,
     fee_func: Callable = None,
+    info_func: Callable = None,
+    customer: CustomerIntegration = None,
 ):
     """
-    Registers instances of user-defined subclasses of
-    ``WithdrawalIntegration`` and
-    ``DepositIntegration`` with Polaris.
+    Registers the integration classes and functions with Polaris
 
-    Call this function in the relevant Django AppConfig.ready() function:
+    Call this function in your app's Django AppConfig.ready() function:
     ::
 
         from django.apps import AppConfig
@@ -35,20 +40,27 @@ def register_integrations(
 
             def ready(self):
                 from polaris.integrations import register_integrations
-                from myapp.integrations import (MyDepositIntegration,
-                                                MyWithdrawalIntegration)
-
+                from myapp.integrations import (
+                    MyDepositIntegration,
+                    MyWithdrawalIntegration,
+                    MyCustomerIntegration,
+                    toml_integration,
+                    fee_integrations,
+                    scripts_integration,
+                    info_integration
+                )
 
                 register_integrations(
                     deposit=MyDepositIntegration(),
-                    withdrawal=MyWithdrawalIntegration()
+                    withdrawal=MyWithdrawalIntegration(),
+                    customer=MyCustomerIntegration(),
+                    toml_func=toml_integration,
+                    scripts_func=scripts_integration,
+                    info_func=info_integration,
+                    fee_func=fee_integration
                 )
 
-    These integration classes provide a structured interface for implementing
-    user-defined logic used by Polaris, specifically for deposit and withdrawal
-    flows.
-
-    See the integration classes for more information on implementation.
+    Simply pass the integration classes or functions you use.
 
     :param deposit: the ``DepositIntegration`` subclass instance to be
         used by Polaris
@@ -58,15 +70,17 @@ def register_integrations(
     :param scripts_func: a function that returns a list of script tags as
         strings
     :param fee_func: a function that returns the fee that would be charged
+    :param info_func: a function that returns the /info `fields` or `types`
+        values for an Asset
+    :param customer: the ``CustomerIntegration`` subclass instance to be used
+        by Polaris
     :raises ValueError: missing argument(s)
     :raises TypeError: arguments are not subclasses of DepositIntegration or
         Withdrawal
     """
     this = sys.modules[__name__]
 
-    if not (deposit or withdrawal):
-        raise ValueError("Must pass at least one integration class")
-    elif deposit and not issubclass(deposit.__class__, DepositIntegration):
+    if deposit and not issubclass(deposit.__class__, DepositIntegration):
         raise TypeError("deposit must be a subclass of DepositIntegration")
     elif withdrawal and not issubclass(withdrawal.__class__, WithdrawalIntegration):
         raise TypeError("withdrawal must be a subclass of WithdrawalIntegration")
@@ -76,6 +90,10 @@ def register_integrations(
         raise TypeError("javascript_func is not callable")
     elif fee_func and not callable(fee_func):
         raise TypeError("javascript_func is not callable")
+    elif info_func and not callable(info_func):
+        raise TypeError("info_func is not callable")
+    elif customer and not issubclass(customer.__class__, CustomerIntegration):
+        raise TypeError("info_func is not callable")
 
     for obj, attr in [
         (deposit, "registered_deposit_integration"),
@@ -83,6 +101,8 @@ def register_integrations(
         (toml_func, "registered_toml_func"),
         (scripts_func, "registered_scripts_func"),
         (fee_func, "registered_fee_func"),
+        (info_func, "registered_info_func"),
+        (customer, "registered_customer_integration"),
     ]:
         if obj:
             setattr(this, attr, obj)

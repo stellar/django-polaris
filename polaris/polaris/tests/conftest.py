@@ -23,7 +23,7 @@ ETH_ISSUER_ACCOUNT = Keypair.random().public_key
 def fixture_usd_asset_factory():
     """Factory method fixture to populate the test database with a USD asset."""
 
-    def create_usd_asset():
+    def create_usd_asset(sep6: bool = False):
         """
         Creates a test USD asset that composes the example /info response, according
         to https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md#response-2
@@ -44,6 +44,8 @@ def fixture_usd_asset_factory():
             withdrawal_fee_percent=0,
             withdrawal_min_amount=0.1,
             withdrawal_max_amount=1000,
+            sep6_enabled=sep6,
+            sep24_enabled=not sep6,
         )
         usd_asset.save()
 
@@ -56,7 +58,7 @@ def fixture_usd_asset_factory():
 def fixture_eth_asset_factory():
     """Factory method fixture to populate the test database with an ETH asset."""
 
-    def create_eth_asset():
+    def create_eth_asset(sep6: bool = False):
         """
         Creates a test ETH asset that composes the example /info response, according
         to https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md#response-2
@@ -77,6 +79,8 @@ def fixture_eth_asset_factory():
             withdrawal_fee_percent=0,
             withdrawal_min_amount=0,
             withdrawal_max_amount=0,
+            sep6_enabled=sep6,
+            sep24_enabled=not sep6,
         )
 
         return eth_asset
@@ -88,9 +92,11 @@ def fixture_eth_asset_factory():
 def acc1_usd_deposit_transaction_factory(usd_asset_factory):
     """Factory method fixture to populate the test database with a USD deposit transaction."""
 
-    def create_deposit_transaction(stellar_account: str = STELLAR_ACCOUNT_1):
-        usd_asset = usd_asset_factory()
-
+    def create_deposit_transaction(
+        stellar_account: str = STELLAR_ACCOUNT_1, sep6: bool = False
+    ):
+        usd_asset = usd_asset_factory(sep6=sep6)
+        protocol = Transaction.PROTOCOL.sep6 if sep6 else Transaction.PROTOCOL.sep24
         return Transaction.objects.create(
             stellar_account=stellar_account,
             asset=usd_asset,
@@ -103,6 +109,7 @@ def acc1_usd_deposit_transaction_factory(usd_asset_factory):
             amount_in=18.34,
             amount_out=18.24,
             amount_fee=0.1,
+            protocol=protocol,
         )
 
     return create_deposit_transaction
@@ -112,8 +119,11 @@ def acc1_usd_deposit_transaction_factory(usd_asset_factory):
 def acc1_usd_withdrawal_transaction_factory(usd_asset_factory):
     """Factory method fixture to populate the test database with a USD withdrawal transaction."""
 
-    def create_withdrawal_transaction(stellar_account: str = STELLAR_ACCOUNT_1):
-        usd_asset = usd_asset_factory()
+    def create_withdrawal_transaction(
+        stellar_account: str = STELLAR_ACCOUNT_1, sep6: bool = False
+    ):
+        usd_asset = usd_asset_factory(sep6=sep6)
+        protocol = Transaction.PROTOCOL.sep6 if sep6 else Transaction.PROTOCOL.sep24
         return Transaction.objects.create(
             id="80ea73ea-01d3-411a-8d9c-ea22999eef9e",
             stellar_account=stellar_account,
@@ -124,8 +134,9 @@ def acc1_usd_withdrawal_transaction_factory(usd_asset_factory):
             amount_fee=0,
             completed_at=datetime.datetime.now(datetime.timezone.utc),
             stellar_transaction_id="c5e8ada72c0e3c248ac7e1ec0ec97e204c06c295113eedbe632020cd6dc29ff8",
-            withdraw_memo="0000000000000000000000000000000080ea73ea01d3411a8d9cea22999eef9e",
+            withdraw_memo="AAAAAAAAAAAAAAAAAAAAAIDqc+oB00EajZzqIpme754=",
             withdraw_memo_type=Transaction.MEMO_TYPES.hash,
+            protocol=protocol,
         )
 
     return create_withdrawal_transaction
@@ -137,9 +148,11 @@ def acc2_eth_withdrawal_transaction_factory(eth_asset_factory):
     Factory method fixture to populate the test database with a ETH withdrawal transaction.
     """
 
-    def create_withdrawal_transaction(stellar_account: str = STELLAR_ACCOUNT_2):
-        eth_asset = eth_asset_factory()
-
+    def create_withdrawal_transaction(
+        stellar_account: str = STELLAR_ACCOUNT_2, sep6: bool = False
+    ):
+        eth_asset = eth_asset_factory(sep6=sep6)
+        protocol = Transaction.PROTOCOL.sep6 if sep6 else Transaction.PROTOCOL.sep24
         return Transaction.objects.create(
             stellar_account=stellar_account,
             asset=eth_asset,
@@ -158,6 +171,7 @@ def acc2_eth_withdrawal_transaction_factory(eth_asset_factory):
             withdraw_anchor_account="1xb914",
             withdraw_memo="Deposit for Mr. John Doe (id: 1001)",
             withdraw_memo_type=Transaction.MEMO_TYPES.text,
+            protocol=protocol,
         )
 
     return create_withdrawal_transaction
@@ -169,9 +183,11 @@ def acc2_eth_deposit_transaction_factory(eth_asset_factory):
     Factory method fixture to populate the test database with an ETH deposit transaction.
     """
 
-    def create_deposit_transaction(stellar_account: str = STELLAR_ACCOUNT_2):
+    def create_deposit_transaction(
+        stellar_account: str = STELLAR_ACCOUNT_2, sep6: bool = False
+    ):
         eth_asset = eth_asset_factory()
-
+        protocol = Transaction.PROTOCOL.sep6 if sep6 else Transaction.PROTOCOL.sep24
         return Transaction.objects.create(
             stellar_account=stellar_account,
             asset=eth_asset,
@@ -185,6 +201,7 @@ def acc2_eth_deposit_transaction_factory(eth_asset_factory):
             ),
             deposit_memo="86dbfaae9990b66a2a37b4",
             deposit_memo_type=Transaction.MEMO_TYPES.hash,
+            protocol=protocol,
         )
 
     return create_deposit_transaction

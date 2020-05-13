@@ -2,12 +2,20 @@
 import uuid
 import decimal
 import datetime
+import secrets
+from base64 import urlsafe_b64encode as b64e, urlsafe_b64decode as b64d
+
+from cryptography.fernet import Fernet
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
 from django.core.validators import (
     MinLengthValidator,
     MinValueValidator,
     MaxValueValidator,
 )
+from django.utils.encoding import force_bytes
 from django.utils.translation import gettext_lazy as _
 from django.db import models
 from model_utils.models import TimeStampedModel
@@ -24,6 +32,57 @@ class PolarisChoices(Choices):
 
     def __repr__(self):
         return str(Choices)
+
+
+class EncryptedTextField(models.TextField):
+    """
+    A custom field for ensuring its data is always encrypted at the DB
+    layer and only decrypted by this object when in memory.
+
+    Uses Fernet (https://cryptography.io/en/latest/fernet/) encryption,
+    which relies on Django's SECRET_KEY setting for generating
+    cryptographically secure keys.
+    """
+
+    @staticmethod
+    def get_key(secret, salt):
+        return b64e(
+            PBKDF2HMAC(
+                algorithm=hashes.SHA256(),
+                length=32,
+                salt=salt,
+                iterations=100000,
+                backend=default_backend(),
+            ).derive(secret)
+        )
+
+    @classmethod
+    def decrypt(cls, value):
+        from django.conf import settings
+
+        decoded = b64d(value.encode())
+        salt, encrypted_value = decoded[:16], b64e(decoded[16:])
+        key = cls.get_key(force_bytes(settings.SECRET_KEY), salt)
+        return Fernet(key).decrypt(encrypted_value).decode()
+
+    @classmethod
+    def encrypt(cls, value):
+        from django.conf import settings
+
+        salt = secrets.token_bytes(16)
+        key = cls.get_key(force_bytes(settings.SECRET_KEY), salt)
+        encrypted_value = b64d(Fernet(key).encrypt(value.encode()))
+        return b64e(b"%b%b" % (salt, encrypted_value)).decode()
+
+    def from_db_value(self, value, *args):
+        if value is None:
+            return value
+        return self.decrypt(value)
+
+    def get_db_prep_value(self, value, *args, **kwargs):
+        if value is None:
+            return value
+        return self.encrypt(value)
 
 
 class Asset(TimeStampedModel):
@@ -46,7 +105,7 @@ class Asset(TimeStampedModel):
 
     # Deposit-related info
     deposit_enabled = models.BooleanField(default=True)
-    """``True`` if SEP-6 deposit for this asset is supported."""
+    """``True`` if deposit for this asset is supported."""
 
     deposit_fee_fixed = models.DecimalField(
         default=0, blank=True, max_digits=30, decimal_places=7
@@ -82,7 +141,7 @@ class Asset(TimeStampedModel):
 
     # Withdrawal-related info
     withdrawal_enabled = models.BooleanField(default=True)
-    """``True`` if SEP-6 withdrawal for this asset is supported."""
+    """``True`` if withdrawal for this asset is supported."""
 
     withdrawal_fee_fixed = models.DecimalField(
         default=0, blank=True, max_digits=30, decimal_places=7
@@ -114,16 +173,26 @@ class Asset(TimeStampedModel):
     )
     """Optional maximum amount. No limit if not specified."""
 
-    distribution_seed = models.TextField(null=True)
-    """The distribution stellar account secret key"""
+    distribution_seed = EncryptedTextField(null=True)
+    """
+    The distribution stellar account secret key.
+    The value is stored in the database using Fernet symmetric encryption,
+    and only decrypted when in the Asset object is in memory.
+    """
+
+    sep24_enabled = models.BooleanField(default=False)
+    """`True` if this asset is transferable via SEP-24"""
+
+    sep6_enabled = models.BooleanField(default=False)
+    """`True` if this asset is transferable via SEP-6"""
+
+    objects = models.Manager()
 
     @property
     def distribution_account(self):
         if not self.distribution_seed:
             return None
         return Keypair.from_secret(str(self.distribution_seed)).public_key
-
-    objects = models.Manager()
 
     class Meta:
         app_label = "polaris"
@@ -162,13 +231,16 @@ class Transaction(models.Model):
     MEMO_TYPES = PolarisChoices("text", "id", "hash")
     """Type for the ``deposit_memo``. Can be either `hash`, `id`, or `text`"""
 
+    PROTOCOL = PolarisChoices("sep6", "sep24")
+    """Values for `protocol` column"""
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     """Unique, anchor-generated id for the deposit/withdrawal."""
 
     paging_token = models.TextField(null=True)
     """The token to be used as a cursor for querying before or after this transaction"""
 
-    # Stellar account to watch, and asset that is being transactioned
+    # Stellar account to watch, and asset that is being transacted
     # NOTE: these fields should not be publicly exposed
     stellar_account = models.TextField(validators=[MinLengthValidator(1)])
     """The stellar source account for the transaction."""
@@ -336,6 +408,9 @@ class Transaction(models.Model):
 
     refunded = models.BooleanField(default=False)
     """True if the transaction was refunded, false otherwise."""
+
+    protocol = models.CharField(choices=PROTOCOL, null=True, max_length=5)
+    """Either 'sep6' or 'sep24'"""
 
     objects = models.Manager()
 

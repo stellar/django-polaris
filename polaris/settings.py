@@ -31,7 +31,7 @@ django_apps = [
     "django.contrib.staticfiles",
 ]
 
-third_party_apps = ["rest_framework", "corsheaders", "sslserver", "sass_processor"]
+third_party_apps = ["rest_framework", "corsheaders", "sass_processor"]
 if os.path.exists(BASE_DIR + "/server"):
     # The server app is present, add it to installed apps.
     #
@@ -43,7 +43,7 @@ third_party_apps.append("polaris")
 
 INSTALLED_APPS = django_apps + third_party_apps
 
-ACTIVE_SEPS = ["sep-1", "sep-10", "sep-24"]
+ACTIVE_SEPS = ["sep-1", "sep-6", "sep-10", "sep-12", "sep-24"]
 
 # Modules to add to parent project's MIDDLEWARE
 MIDDLEWARE = [
@@ -90,13 +90,6 @@ DATABASES = {
 STATIC_ROOT = os.path.join(BASE_DIR, "polaris/collectstatic")
 STATIC_URL = "/polaris/static/"
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
-STATICFILES_DIRS = ()
-STATICFILES_FINDERS = [
-    "django.contrib.staticfiles.finders.FileSystemFinder",
-    "django.contrib.staticfiles.finders.AppDirectoriesFinder",
-    "sass_processor.finders.CssFinder",
-]
-SASS_PROCESSOR_ROOT = STATIC_ROOT
 
 # Django Rest Framework Settings:
 # Attributes to add to parent project's REST_FRAMEWORK
@@ -109,9 +102,6 @@ REST_FRAMEWORK = {
     ],
     "PAGE_SIZE": 10,
 }
-
-# API Config
-DEFAULT_PAGE_SIZE = 10
 
 # CORS configuration
 CORS_ORIGIN_ALLOW_ALL = True

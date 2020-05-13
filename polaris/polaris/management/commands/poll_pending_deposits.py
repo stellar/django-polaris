@@ -53,7 +53,6 @@ class Command(BaseCommand):
             "--interval",
             "-i",
             type=int,
-            nargs=1,
             help="The number of seconds to wait before "
             "restarting command. Defaults to 10.",
         )

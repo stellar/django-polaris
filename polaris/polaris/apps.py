@@ -7,8 +7,10 @@ class PolarisConfig(AppConfig):
 
     def ready(self):
         """
-        Initialize the app. Currently a no-op.
+        Initialize the app
         """
-        from polaris.sep24.utils import check_middleware
+        from polaris import settings  # ensures internal settings are set
+        from polaris import cors  # loads CORS signals
+        from polaris.utils import check_config
 
-        check_middleware()
+        check_config()
