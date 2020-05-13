@@ -15,6 +15,7 @@
 # offline before each release. ReadTheDocs uses polaris/settings when building the
 # docs.
 
+cryptography
 django-compressor
 django-sass-processor
 django-cors-headers
