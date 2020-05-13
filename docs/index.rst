@@ -109,6 +109,7 @@ Database Models
 
 .. _psycopg2: https://pypi.org/project/psycopg2/
 .. _repository: https://github.com/stellar/django-polaris/issues
+.. _Fernet symmetric encryption: https://cryptography.io/en/latest/fernet/
 
 SEP-1, 6, and 24 require Polaris' database models. Polaris currently only supports
 PostgreSQL and uses psycopg2_ to connect to the database. If you use another
@@ -140,6 +141,11 @@ into your python shell, then run something like this:
         sep24_enabled=True,
         sep6_enabled=True
     )
+
+The ``distribution_seed`` column is encrypted at the database layer using `Fernet symmetric
+encryption`_, and only decrypted when held in memory within an ``Asset`` object. It uses
+your Django project's ``SECRET_KEY`` setting to generate the encryption key, **so make sure
+its value is unguessable and kept a secret**.
 
 See the :doc:`Asset </models/index>` documentation for more information on the fields used.
 

@@ -2,12 +2,20 @@
 import uuid
 import decimal
 import datetime
+import secrets
+from base64 import urlsafe_b64encode as b64e, urlsafe_b64decode as b64d
+
+from cryptography.fernet import Fernet
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
 from django.core.validators import (
     MinLengthValidator,
     MinValueValidator,
     MaxValueValidator,
 )
+from django.utils.encoding import force_bytes
 from django.utils.translation import gettext_lazy as _
 from django.db import models
 from model_utils.models import TimeStampedModel
@@ -24,6 +32,57 @@ class PolarisChoices(Choices):
 
     def __repr__(self):
         return str(Choices)
+
+
+class EncryptedTextField(models.TextField):
+    """
+    A custom field for ensuring its data is always encrypted at the DB
+    layer and only decrypted by this object when in memory.
+
+    Uses Fernet (https://cryptography.io/en/latest/fernet/) encryption,
+    which relies on Django's SECRET_KEY setting for generating
+    cryptographically secure keys.
+    """
+
+    @staticmethod
+    def get_key(secret, salt):
+        return b64e(
+            PBKDF2HMAC(
+                algorithm=hashes.SHA256(),
+                length=32,
+                salt=salt,
+                iterations=100000,
+                backend=default_backend(),
+            ).derive(secret)
+        )
+
+    @classmethod
+    def decrypt(cls, value):
+        from django.conf import settings
+
+        decoded = b64d(value)
+        salt, encrypted_value = decoded[:16], b64e(decoded[16:])
+        key = cls.get_key(force_bytes(settings.SECRET_KEY), salt)
+        return Fernet(key).decrypt(encrypted_value).decode()
+
+    @classmethod
+    def encrypt(cls, value):
+        from django.conf import settings
+
+        salt = secrets.token_bytes(16)
+        key = cls.get_key(force_bytes(settings.SECRET_KEY), salt)
+        encrypted_value = b64d(Fernet(key).encrypt(value.encode()))
+        return b64e(b"%b%b" % (salt, encrypted_value))
+
+    def from_db_value(self, value, *args):
+        if value is None:
+            return value
+        return self.decrypt(value)
+
+    def get_db_prep_value(self, value, *args, **kwargs):
+        if value is None:
+            return value
+        return self.encrypt(value)
 
 
 class Asset(TimeStampedModel):
@@ -114,8 +173,12 @@ class Asset(TimeStampedModel):
     )
     """Optional maximum amount. No limit if not specified."""
 
-    distribution_seed = models.TextField(null=True)
-    """The distribution stellar account secret key"""
+    distribution_seed = EncryptedTextField(null=True)
+    """
+    The distribution stellar account secret key.
+    The value is stored in the database using Fernet symmetric encryption,
+    and only decrypted when in the Asset object is in memory.
+    """
 
     sep24_enabled = models.BooleanField(default=False)
     """`True` if this asset is transferable via SEP-24"""
