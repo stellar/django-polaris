@@ -60,7 +60,7 @@ class EncryptedTextField(models.TextField):
     def decrypt(cls, value):
         from django.conf import settings
 
-        decoded = b64d(value)
+        decoded = b64d(value.encode())
         salt, encrypted_value = decoded[:16], b64e(decoded[16:])
         key = cls.get_key(force_bytes(settings.SECRET_KEY), salt)
         return Fernet(key).decrypt(encrypted_value).decode()
@@ -72,7 +72,7 @@ class EncryptedTextField(models.TextField):
         salt = secrets.token_bytes(16)
         key = cls.get_key(force_bytes(settings.SECRET_KEY), salt)
         encrypted_value = b64d(Fernet(key).encrypt(value.encode()))
-        return b64e(b"%b%b" % (salt, encrypted_value))
+        return b64e(b"%b%b" % (salt, encrypted_value)).decode()
 
     def from_db_value(self, value, *args):
         if value is None:
