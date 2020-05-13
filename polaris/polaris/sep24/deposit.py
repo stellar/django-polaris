@@ -142,6 +142,13 @@ def post_interactive_deposit(request: Request) -> Response:
 
     else:
         content.update(form=form)
+        if issubclass(form.__class__, TransactionForm):
+            content.update(
+                operation=settings.OPERATION_DEPOSIT,
+                asset_code=asset.code,
+                fee_fixed=round(asset.deposit_fee_fixed, asset.significant_decimals),
+                fee_percent=asset.deposit_fee_percent,
+            )
         return Response(content, template_name="deposit/form.html", status=422)
 
 
@@ -235,7 +242,15 @@ def get_interactive_deposit(request: Request) -> Response:
 
     post_url = f"{reverse('post_interactive_deposit')}?{urlencode(url_args)}"
     get_url = f"{reverse('get_interactive_deposit')}?{urlencode(url_args)}"
-    content.update(post_url=post_url, get_url=get_url, scripts=scripts)
+    content.update(
+        post_url=post_url,
+        get_url=get_url,
+        scripts=scripts,
+        operation=settings.OPERATION_DEPOSIT,
+        asset_code=asset.code,
+        fee_fixed=round(asset.deposit_fee_fixed, asset.significant_decimals),
+        fee_percent=asset.deposit_fee_percent,
+    )
 
     return Response(content, template_name="deposit/form.html")
 
