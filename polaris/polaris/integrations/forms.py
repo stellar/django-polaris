@@ -133,8 +133,6 @@ class TransactionForm(forms.Form):
         if limit_str:
             self.fields["amount"].label += " " + limit_str
 
-        self.fields["amount"].widget.attrs.update(id="amount-input")
-
     amount = forms.DecimalField(
         min_value=0,
         widget=forms.NumberInput(attrs={"class": "input", "inputmode": "decimal"}),

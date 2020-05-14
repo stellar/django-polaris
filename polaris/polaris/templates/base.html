@@ -142,31 +142,29 @@
 
       // Show fee and amount user will receive when amount field
       // changes, if present.
-      let amountInput = document.querySelector('#amount-input');
+      let amountInput = document.querySelector('.amount-input');
       let feeInfoDiv = document.querySelector('#fee-div');
       if (amountInput) {
-        let fee_fixed = Number({{ fee_fixed }});
-        let fee_percent = Number({{ fee_percent }});
         amountInput.addEventListener("input", (e) => {
-          let val = e.target.value;
+          if (isNaN(e.target.value)) return;
+          let amountIn = Number(e.target.value);
           let fee;
           let amountOut;
-          if (isNaN(val)) return;
-          let num = Number(val);
           if (fee_fixed || fee_percent) {
-            fee = fee_fixed + (num * (fee_percent/100));
-            amountOut = num - fee;
+            let fee_fixed = Number({{ fee_fixed }});
+            let fee_percent = Number({{ fee_percent }});
+            fee = fee_fixed + (amountIn * (fee_percent/100));
+            amountOut = amountIn - fee;
           } else {
             // Need to hit fee endpoint
             let params = new URLSearchParams();
             params.append("operation", "{{ operation }}");
             params.append("asset_code", "{{ asset_code }}");
-            params.append("amount", num);
+            params.append("amount", amountIn);
             let response = fetch("/sep24/fee?" + params.toString());
             let json = response.json();
-            console.log(json);
             fee = json.fee;
-            amountOut = num - json.fee;
+            amountOut = amountIn - json.fee;
           }
           feeInfoDiv.innerHTML = "Fee: " + fee;
         });
