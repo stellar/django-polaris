@@ -40,7 +40,7 @@
 
     <div class="info-item">
         <div class="info-label">
-            {% trans "amount" %}
+            {% trans "amount received" %}
         </div>
         <div class="field-value">
             {{ amount_in }}
@@ -53,6 +53,19 @@
         </div>
         <div class="field-value">
             {{ amount_fee }}
+        </div>
+    </div>
+
+    <div class="info-item">
+        <div class="info-label">
+            {% if transaction.kind == "deposit" %}
+            {% trans "amount deposited" %}
+            {% else %}
+            {% trans "amount withdrawn" %}
+            {% endif %}
+        </div>
+        <div class="field-value">
+            {{ amount_out }}
         </div>
     </div>
 

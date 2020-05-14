@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gettext-tools 0.18.3\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-04-30 16:18+0000\n"
+"POT-Creation-Date: 2020-05-13 00:00+0000\n"
 "PO-Revision-Date: 2014-01-07 15:19+0900\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -63,58 +63,58 @@ msgstr "O valor mínimo é: %s"
 msgid "The maximum amount is: %s"
 msgstr "O valor máximo é: %s"
 
-#: models.py:142
+#: models.py:152
 msgid "complete"
 msgstr "completa"
 
-#: models.py:143
+#: models.py:153
 msgid "waiting on an external entity"
 msgstr "esperando entidade externa"
 
-#: models.py:144
+#: models.py:154
 #, fuzzy
 #| msgid "processing"
 msgid "Processing"
 msgstr "processando"
 
-#: models.py:145
+#: models.py:155
 msgid "stellar is executing the transaction"
 msgstr "stellar está executando a transação"
 
-#: models.py:146
+#: models.py:156
 msgid "waiting for a trustline to be established"
 msgstr "esperando a trustline ser estabelecida"
 
-#: models.py:147
+#: models.py:157
 msgid "waiting on user action"
 msgstr "esperando ação do usuário"
 
-#: models.py:148
+#: models.py:158
 msgid "waiting on the user to transfer funds"
 msgstr "esperando o usuário transferir os fundos"
 
-#: models.py:149
+#: models.py:159
 msgid "incomplete"
 msgstr "incompleta"
 
-#: models.py:150
+#: models.py:160
 msgid "no market for the asset"
 msgstr "sem mercado para o ativo"
 
-#: models.py:151
+#: models.py:161
 msgid "the transaction amount is too small"
 msgstr "o valor da transação é muito pequeno"
 
-#: models.py:152
+#: models.py:162
 msgid "the transaction amount is too big"
 msgstr "o valor da transação é muito grande"
 
-#: models.py:153
+#: models.py:163
 msgid "error"
 msgstr "erro"
 
-#: sep24/deposit.py:91 sep24/deposit.py:217 sep24/withdraw.py:88
-#: sep24/withdraw.py:215
+#: sep24/deposit.py:91 sep24/deposit.py:217 sep24/withdraw.py:89
+#: sep24/withdraw.py:216
 msgid ""
 "The anchor did not provide content, is the interactive flow already complete?"
 msgstr "A âncora não forneceu conteúdo, o fluxo interativo já está completo?"
@@ -125,15 +125,15 @@ msgstr "A âncora não forneceu conteúdo, o fluxo interativo já está completo
 msgid "The anchor did not provide form content, unable to serve page."
 msgstr "A âncora não retornou um conteúdo, não é possível mostrar a página."
 
-#: sep24/deposit.py:106 sep24/withdraw.py:103
+#: sep24/deposit.py:106 sep24/withdraw.py:104
 msgid "Unable to validate form submission."
 msgstr "Incapaz de validar o envio do formulário."
 
-#: sep24/deposit.py:163 sep24/withdraw.py:161
+#: sep24/deposit.py:163 sep24/withdraw.py:162
 msgid "Missing id parameter in URL"
 msgstr "O parâmetro id está faltando na URL"
 
-#: sep24/deposit.py:223 sep24/withdraw.py:94 sep24/withdraw.py:221
+#: sep24/deposit.py:223 sep24/withdraw.py:95 sep24/withdraw.py:222
 msgid "The anchor did not provide content, unable to serve page."
 msgstr "A âncora não retornou um conteúdo, não é possível mostrar a página."
 
@@ -146,87 +146,78 @@ msgstr "Os parâmetros `asset_code` e `account` são necessários"
 msgid "unknown asset: %s"
 msgstr "avito desconhecido: %s"
 
-#: sep24/deposit.py:274 sep24/withdraw.py:265
+#: sep24/deposit.py:274 sep24/withdraw.py:266
 #, python-format
 msgid "invalid operation for asset %s"
 msgstr "Valor é maior que o máximo para esse ativo: %s"
 
 #: sep24/deposit.py:279
 msgid "invalid 'account'"
-msgstr "'asset_code' inválido"
+msgstr "'account' inválido"
 
-#: sep24/utils.py:100
+#: sep24/utils.py:108
 msgid "Invalid token issuer"
 msgstr "Token de emissor inválido"
 
-#: sep24/utils.py:102
+#: sep24/utils.py:110
 msgid "Token is not yet valid or is expired"
 msgstr "Token ainda não é valido ou expirou"
 
-#: sep24/utils.py:108 sep24/utils.py:130
+#: sep24/utils.py:116 sep24/utils.py:143
 msgid "Transaction for account not found"
 msgstr "Transação para conta não encontrada"
 
-#: sep24/utils.py:124
+#: sep24/utils.py:137
 msgid "Session is not authenticated"
 msgstr "A sessão não está autenticada"
 
-#: sep24/utils.py:156
+#: sep24/utils.py:174
 msgid "no 'transaction_id' provided"
 msgstr "o 'transaction_id' não foi disponibilizado"
 
-#: sep24/utils.py:162 sep6/deposit.py:112 sep6/withdraw.py:83
+#: sep24/utils.py:180 sep6/deposit.py:111 sep6/withdraw.py:79
 msgid "invalid 'asset_code'"
 msgstr "'asset_code' inválido"
 
-#: sep24/utils.py:170
+#: sep24/utils.py:188
 msgid "Transaction with ID and asset_code not found"
 msgstr "Transação com ID e asset_code não encontrada"
 
-#: sep24/withdraw.py:260
+#: sep24/withdraw.py:261
 msgid "'asset_code' is required"
 msgstr "'asset_code' é necessário"
 
-#: sep24/withdraw.py:267 sep6/deposit.py:115 sep6/withdraw.py:86
+#: sep24/withdraw.py:268
 #, python-format
 msgid "unsupported asset type: %s"
 msgstr "Tipo de ativo não suportado: %s"
 
-#: sep6/deposit.py:51 sep6/info.py:41 sep6/withdraw.py:54
+#: sep6/deposit.py:50 sep6/info.py:41 sep6/withdraw.py:53
 msgid "unable to process the request"
 msgstr "não foi possível processar a requisição"
 
-#: sep6/deposit.py:128 sep6/withdraw.py:99
-#, fuzzy
-#| msgid "invalid 'account'"
 msgid "invalid 'memo_type'"
-msgstr "'asset_code' inválido"
+msgstr "'memo_type' inválido"
 
-#: sep6/deposit.py:139 sep6/withdraw.py:110
+#: sep6/deposit.py:127 sep6/withdraw.py:95
 msgid "invalid 'memo' for 'memo_type'"
 msgstr "`memo` inválido para o `memo_type`"
 
-#: sep6/transaction.py:38
+#: sep6/transaction.py:37
 msgid "The account specified does not match authorization token"
 msgstr "a conta especificada não corresponde ao token de autorização"
 
-#: sep6/withdraw.py:113
-#, fuzzy
-#| msgid "'asset_code' is required"
 msgid "'type' is required"
-msgstr "'asset_code' é necessário"
+msgstr "'type' é necessário"
 
-#: sep6/withdraw.py:115
-#, fuzzy
-#| msgid "'asset_code' is required"
 msgid "'dest' is required"
-msgstr "'asset_code' é necessário"
+msgstr "'dest' é necessário"
 
-#: shared_endpoints.py:30
+#: shared/endpoints.py:29
 msgid "transaction not found"
 msgstr "transação não encontrada"
 
-#: shared_endpoints.py:216
+#: shared/endpoints.py:219
 msgid ""
 "at least one of id, stellar_transaction_id, or external_transaction_id must "
 "be provided"
@@ -259,10 +250,6 @@ msgstr "Atualizar"
 msgid "Select a file"
 msgstr "Selecione um arquivo"
 
-#: templates/django/forms/widgets/input.html:3
-msgid "$"
-msgstr "R$"
-
 #: templates/error.html:4 templates/error.html:9
 #, python-format
 msgid "Error: %(status_code)s"
@@ -293,22 +280,30 @@ msgid "ID"
 msgstr "ID"
 
 #: templates/transaction/more_info.html:43
-msgid "amount"
-msgstr "Valor"
+msgid "amount received"
+msgstr "valor recebido"
 
 #: templates/transaction/more_info.html:52
 msgid "fee"
 msgstr "taxa"
 
-#: templates/transaction/more_info.html:61
+#: templates/transaction/more_info.html:62
+msgid "amount deposited"
+msgstr "valor depositado"
+
+#: templates/transaction/more_info.html:64
+msgid "amount withdrawn"
+msgstr "valor sacado"
+
+#: templates/transaction/more_info.html:74
 msgid "status"
 msgstr "estado"
 
-#: templates/transaction/more_info.html:70
+#: templates/transaction/more_info.html:83
 msgid "start"
 msgstr "começar"
 
-#: templates/transaction/more_info.html:80
+#: templates/transaction/more_info.html:93
 msgid "completed"
 msgstr "finalizado"
 
@@ -320,12 +315,12 @@ msgstr "Formulário de Informações de Saque Interativo"
 msgid "Continue"
 msgstr "Continuar"
 
-#: utils.py:120
+#: utils.py:119
 #, python-format
 msgid "the specified operation is not available for '%s'"
 msgstr "a operação especificada não está disponível para '%s'"
 
-#: utils.py:125
+#: utils.py:124
 #, python-format
 msgid "Asset amount must be within bounds [%(min)s, %(max)s]"
 msgstr "O montante do ativo deve estar dentro dos limites [%(min)s, %(max)s]"
