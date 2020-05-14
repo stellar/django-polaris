@@ -153,7 +153,7 @@ msgstr "Valor é maior que o máximo para esse ativo: %s"
 
 #: sep24/deposit.py:279
 msgid "invalid 'account'"
-msgstr "'asset_code' inválido"
+msgstr "'account' inválido"
 
 #: sep24/utils.py:108
 msgid "Invalid token issuer"
@@ -196,11 +196,8 @@ msgstr "Tipo de ativo não suportado: %s"
 msgid "unable to process the request"
 msgstr "não foi possível processar a requisição"
 
-#: sep6/deposit.py:122 sep6/withdraw.py:90
-#, fuzzy
-#| msgid "invalid 'account'"
 msgid "invalid 'memo_type'"
-msgstr "'asset_code' inválido"
+msgstr "'memo_type' inválido"
 
 #: sep6/deposit.py:127 sep6/withdraw.py:95
 msgid "invalid 'memo' for 'memo_type'"
@@ -210,17 +207,11 @@ msgstr "`memo` inválido para o `memo_type`"
 msgid "The account specified does not match authorization token"
 msgstr "a conta especificada não corresponde ao token de autorização"
 
-#: sep6/withdraw.py:98
-#, fuzzy
-#| msgid "'asset_code' is required"
 msgid "'type' is required"
-msgstr "'asset_code' é necessário"
+msgstr "'type' é necessário"
 
-#: sep6/withdraw.py:100
-#, fuzzy
-#| msgid "'asset_code' is required"
 msgid "'dest' is required"
-msgstr "'asset_code' é necessário"
+msgstr "'dest' é necessário"
 
 #: shared/endpoints.py:29
 msgid "transaction not found"
@@ -259,10 +250,6 @@ msgstr "Atualizar"
 msgid "Select a file"
 msgstr "Selecione um arquivo"
 
-#: templates/django/forms/widgets/input.html:3
-msgid "$"
-msgstr "R$"
-
 #: templates/error.html:4 templates/error.html:9
 #, python-format
 msgid "Error: %(status_code)s"
@@ -294,23 +281,19 @@ msgstr "ID"
 
 #: templates/transaction/more_info.html:43
 msgid "amount received"
-msgstr ""
+msgstr "valor recebido"
 
 #: templates/transaction/more_info.html:52
 msgid "fee"
 msgstr "taxa"
 
 #: templates/transaction/more_info.html:62
-#, fuzzy
-#| msgid "deposit"
 msgid "amount deposited"
-msgstr "depósito"
+msgstr "valor depositado"
 
 #: templates/transaction/more_info.html:64
-#, fuzzy
-#| msgid "withdrawal"
 msgid "amount withdrawn"
-msgstr "saque"
+msgstr "valor sacado"
 
 #: templates/transaction/more_info.html:74
 msgid "status"
@@ -341,6 +324,3 @@ msgstr "a operação especificada não está disponível para '%s'"
 #, python-format
 msgid "Asset amount must be within bounds [%(min)s, %(max)s]"
 msgstr "O montante do ativo deve estar dentro dos limites [%(min)s, %(max)s]"
-
-#~ msgid "amount"
-#~ msgstr "Valor"
