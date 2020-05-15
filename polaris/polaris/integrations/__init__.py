@@ -25,6 +25,7 @@ def register_integrations(
     fee_func: Callable = None,
     info_func: Callable = None,
     customer: CustomerIntegration = None,
+    sep31_info_func: Callable = None,
 ):
     """
     Registers the integration classes and functions with Polaris
@@ -94,6 +95,8 @@ def register_integrations(
         raise TypeError("info_func is not callable")
     elif customer and not issubclass(customer.__class__, CustomerIntegration):
         raise TypeError("info_func is not callable")
+    elif sep31_info_func and not callable(sep31_info_func):
+        raise TypeError("sep31_info_func is not callable")
 
     for obj, attr in [
         (deposit, "registered_deposit_integration"),
@@ -103,6 +106,7 @@ def register_integrations(
         (fee_func, "registered_fee_func"),
         (info_func, "registered_info_func"),
         (customer, "registered_customer_integration"),
+        (sep31_info_func, "registered_sep31_info_func"),
     ]:
         if obj:
             setattr(this, attr, obj)

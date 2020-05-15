@@ -189,6 +189,38 @@ class Asset(TimeStampedModel):
     sep31_enabled = models.BooleanField(default=False)
     """`True` if this asset is enabled for receiving via SEP-31"""
 
+    sep31_send_fee_fixed = models.DecimalField(
+        default=0, blank=True, max_digits=30, decimal_places=7
+    )
+    """
+    Optional fixed (base) fee for deposit. In units of the deposited asset. 
+    This is in addition to any ``fee_percent``. Omit if there is no fee or the fee 
+    schedule is complex.
+    """
+
+    sep31_send_fee_percent = models.DecimalField(
+        default=0,
+        blank=True,
+        max_digits=30,
+        decimal_places=7,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+    )
+    """
+    Optional percentage fee for deposit. In percentage points. This is in 
+    addition to any ``fee_fixed``. Omit if there is no fee or the fee schedule
+    is complex.
+    """
+
+    sep31_send_min_amount = models.DecimalField(
+        default=0, blank=True, max_digits=30, decimal_places=7
+    )
+    """Optional minimum amount. No limit if not specified."""
+
+    sep31_send_max_amount = models.DecimalField(
+        default=decimal.MAX_EMAX, blank=True, max_digits=30, decimal_places=7
+    )
+    """Optional maximum amount. No limit if not specified."""
+
     objects = models.Manager()
 
     @property

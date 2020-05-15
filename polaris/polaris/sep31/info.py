@@ -11,7 +11,7 @@ from polaris.utils import render_error_response, Logger
 from polaris.integrations import (
     registered_fee_func,
     calculate_fee,
-    registered_info_func,
+    registered_sep31_info_func
 )
 
 
@@ -26,22 +26,20 @@ def info(request: Request) -> Response:
     }
     for asset in Asset.objects.filter(sep31_enabled=True):
         try:
-            fields_and_types = registered_info_func(asset, request.GET.get("lang"))
+            fields = registered_sep31_info_func(asset, request.GET.get("lang"))
         except ValueError:
             return render_error_response("unsupported 'lang'")
         try:
-            validate_integration(fields_and_types)
+            validate_integration(fields)
         except ValueError as e:
             logger.error(f"info integration error: {str(e)}")
             return render_error_response(
                 _("unable to process the request"), status_code=500
             )
-        info_data["deposit"][asset.code] = get_asset_info(
-            asset, "deposit", fields_and_types.get("fields", {})
+        info_data["send"][asset.code] = get_asset_info(
+            asset, fields.get("fields", {})
         )
-        info_data["withdraw"][asset.code] = get_asset_info(
-            asset, "withdrawal", fields_and_types.get("types", {})
-        )
+      
 
     return Response(info_data)
 
@@ -53,26 +51,11 @@ def validate_integration(fields_and_types: Dict):
         # the anchor doesn't require additional arguments
         return
     fields = fields_and_types.get("fields")
-    types = fields_and_types.get("types")
-    if not set(fields_and_types.keys()).issubset({"fields", "types"}):
-        raise ValueError("unexpected keys returned from info integration")
-    if fields and not isinstance(fields, dict):
+    if not fields or not isinstance(fields, dict):
         raise ValueError("'fields' must be a dictionary")
-    if types and not isinstance(types, dict):
-        raise ValueError("'types' must be a dictionary")
-    if fields:
-        validate_fields(fields)
-    for t, val in types.items():
-        try:
-            fields = val["fields"]
-        except KeyError:
-            raise ValueError(f"missing 'fields' key from {t}")
-        if not isinstance(fields, dict):
-            raise ValueError(f"'fields' key from {t} must be a dictionary")
-        if len(val) != 1:
-            raise ValueError(f"unexpected keys in {t} type")
-        validate_fields(fields)
-
+    validate_fields(fields.get("sender"))
+    validate_fields(fields.get("receiver"))
+    validate_fields(fields.get("transaction"))
 
 def validate_fields(fields: Dict):
     for val in fields.values():
@@ -91,27 +74,22 @@ def validate_fields(fields: Dict):
             raise ValueError("'choices' must be a list")
 
 
-def get_asset_info(asset: Asset, op_type: str, fields_or_types: Dict) -> Dict:
-    if not getattr(asset, f"{op_type}_enabled"):
+def get_asset_info(asset: Asset, fields: Dict) -> Dict:
+    if not getattr(asset, f"sep31_enabled"):
         return {"enabled": False}
 
     asset_info = {
         "enabled": True,
-        "authentication_required": True,
-        "min_amount": getattr(asset, f"{op_type}_min_amount"),
-        "max_amount": getattr(asset, f"{op_type}_max_amount"),
+        "min_amount": getattr(asset, f"sep31_send_min_amount"),
+        "max_amount": getattr(asset, f"sep31_send_max_amount"),
     }
     if registered_fee_func == calculate_fee:
         # the anchor has not replaced the default fee function
         # so `fee_fixed` and `fee_percent` are still relevant.
         asset_info.update(
-            fee_fixed=getattr(asset, f"{op_type}_fee_fixed"),
-            fee_percent=getattr(asset, f"{op_type}_fee_percent"),
+            fee_fixed=getattr(asset, f"sep31_send_fee_fixed"),
+            fee_percent=getattr(asset, f"sep31_send_fee_percent"),
         )
 
-    if op_type == "deposit":
-        asset_info["fields"] = fields_or_types
-    else:
-        asset_info["types"] = fields_or_types
-
+    asset_info["fields"] = fields
     return asset_info

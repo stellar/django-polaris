@@ -14,6 +14,7 @@ class AnchorConfig(AppConfig):
             scripts_integration,
             fee_integration,
             info_integration,
+            sep31_info_integration
         )
 
         register_integrations(
@@ -24,4 +25,5 @@ class AnchorConfig(AppConfig):
             fee_func=fee_integration,
             info_func=info_integration,
             customer=MyCustomerIntegration(),
+            sep31_info_func=sep31_info_integration
         )
