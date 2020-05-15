@@ -122,6 +122,16 @@ class TransactionForm(forms.Form):
             self.min_default = Asset._meta.get_field("withdrawal_min_amount").default
             self.max_default = Asset._meta.get_field("withdrawal_max_amount").default
 
+        # Re-initialize the 'amount' field now that we have all the parameters necessary
+        self.fields["amount"].__init__(
+            widget=forms.NumberInput(attrs={"class": "input", "inputmode": "decimal"}),
+            min_value=self.min_amount,
+            max_value=self.max_amount,
+            decimal_places=self.decimal_places,
+            label=_("Amount"),
+            localize=True,
+        )
+
         limit_str = ""
         if self.min_amount > self.min_default and self.max_amount < self.max_default:
             limit_str = f"({intcomma(self.min_amount)} - {intcomma(self.max_amount)})"
@@ -133,14 +143,7 @@ class TransactionForm(forms.Form):
         if limit_str:
             self.fields["amount"].label += " " + limit_str
 
-    amount = forms.DecimalField(
-        min_value=0,
-        widget=forms.NumberInput(attrs={"class": "input", "inputmode": "decimal"}),
-        max_digits=30,
-        decimal_places=7,
-        label=_("Amount"),
-        localize=True,
-    )
+    amount = forms.DecimalField()
 
     def clean_amount(self):
         """Validate the provided amount of an asset."""

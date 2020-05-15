@@ -143,30 +143,63 @@
       // Show fee and amount user will receive when amount field
       // changes, if present.
       let amountInput = document.querySelector('.amount-input');
-      let feeInfoDiv = document.querySelector('#fee-div');
+      let feeTag = document.querySelector('.fee');
+      let amountOutTag = document.querySelector('.amount-out');
       if (amountInput) {
         amountInput.addEventListener("input", (e) => {
           if (isNaN(e.target.value)) return;
+          let fee_fixed;
+          let fee_percent;
           let amountIn = Number(e.target.value);
+          if (amountIn === 0) {
+            feeTag.innerHTML = 0;
+            amountOutTag.innerHTML = 0;
+            return;
+          }
+          let op = "{{ operation }}";
+          if (op === "deposit") {
+            fee_fixed = {{ asset.deposit_fee_fixed|default:0 }}
+            fee_percent = {{ asset.deposit_fee_percent|default:0 }}
+          } else {
+            fee_fixed = {{ asset.withdrawal_fee_fixed|default:0 }}
+            fee_percent = {{ asset.withdrawal_fee_percent|default:0 }}
+          }
           let fee;
           let amountOut;
-          if (fee_fixed || fee_percent) {
-            let fee_fixed = Number({{ fee_fixed }});
-            let fee_percent = Number({{ fee_percent }});
+          if ("{{ use_fee_endpoint }}" !== "True") {
             fee = fee_fixed + (amountIn * (fee_percent/100));
             amountOut = amountIn - fee;
           } else {
             // Need to hit fee endpoint
             let params = new URLSearchParams();
-            params.append("operation", "{{ operation }}");
-            params.append("asset_code", "{{ asset_code }}");
+            params.append("operation", op);
+            params.append("asset_code", "{{ asset.code }}");
             params.append("amount", amountIn);
-            let response = fetch("/sep24/fee?" + params.toString());
-            let json = response.json();
-            fee = json.fee;
-            amountOut = amountIn - json.fee;
+            fetch("/sep24/fee?" + params.toString()).then(
+              response => response.json()
+            ).then(json => {
+               if (!json.error) {
+                 fee = json.fee;
+                 amountOut = amountIn - json.fee;
+               }
+            });
           }
-          feeInfoDiv.innerHTML = "Fee: " + fee;
+          function calcFee() {
+            feeTag.innerHTML = (-1 * fee).toFixed({{ asset.significant_decimals }});
+            amountOutTag.innerHTML = amountOut.toFixed({{ asset.significant_decimals }});
+          }
+          function waitForAmountOut() {
+            if (!amountOut) {
+              setTimeout(waitForAmountOut, 100);
+            } else {
+              calcFee();
+            }
+          }
+          if (!amountOut) {
+            setTimeout(waitForAmountOut, 100);
+          } else {
+            calcFee();
+          }
         });
       }
     </script>

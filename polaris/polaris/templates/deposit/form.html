@@ -35,15 +35,15 @@
         </div>
       {% endfor %}
 
+      <table class="fee-table">
+        <tr class="fee-row"><td class="fee-label">{% trans "Fee " %}</td><td class="fee">0</td></tr>
+        <tr class="amount-out-row"><td class="amount-out-label">{% trans "Total " %}</td><td class="amount-out">0</td></tr>
+      </table>
 
       <div class="field at-bottom">
         <div class="control">
             <button class="button submit" type="submit" test-action="submit">{% trans "Submit" %}</button>
         </div>
-      </div>
-
-      <div id="fee-div" align="center">
-        <div id="fee-line">{% trans "Fee: " %}<span id="fee-amount">0</span></div>
       </div>
 
     </form>

@@ -39,6 +39,7 @@ from polaris.integrations import (
     registered_deposit_integration as rdi,
     registered_scripts_func,
     registered_fee_func,
+    calculate_fee,
 )
 
 logger = Logger(__name__)
@@ -247,9 +248,9 @@ def get_interactive_deposit(request: Request) -> Response:
         get_url=get_url,
         scripts=scripts,
         operation=settings.OPERATION_DEPOSIT,
+        asset=asset,
         asset_code=asset.code,
-        fee_fixed=round(asset.deposit_fee_fixed, asset.significant_decimals),
-        fee_percent=asset.deposit_fee_percent,
+        use_fee_endpoint=registered_fee_func != calculate_fee,
     )
 
     return Response(content, template_name="deposit/form.html")
