@@ -152,8 +152,13 @@
           let fee_percent;
           let amountIn = Number(e.target.value);
           if (amountIn === 0) {
-            feeTag.innerHTML = 0;
-            amountOutTag.innerHTML = 0;
+            // The user is likely deleting all characters.
+            // Wait a bit for the last fetch() call to resolve,
+            // so its results don't overwrite this 0.
+            setTimeout(() => {
+              feeTag.innerHTML = "{{ asset.symbol }}" + "0";
+              amountOutTag.innerHTML = "{{ asset.symbol }}" + "0";
+            }, 100);
             return;
           }
           let op = "{{ operation }}";
@@ -185,8 +190,10 @@
             });
           }
           function calcFee() {
-            feeTag.innerHTML = (-1 * fee).toFixed({{ asset.significant_decimals }});
-            amountOutTag.innerHTML = amountOut.toFixed({{ asset.significant_decimals }});
+            let feeVal = (-1 * fee).toFixed({{ asset.significant_decimals }});
+            let amountOutVal = amountOut.toFixed({{ asset.significant_decimals }});
+            feeTag.innerHTML = "{{ asset.symbol }}" + ((Number(feeVal) === 0) ? "0" : feeVal);
+            amountOutTag.innerHTML = "{{ asset.symbol }}" + ((Number(amountOutVal) === 0) ? "0" : amountOutVal);
           }
           function waitForAmountOut() {
             if (!amountOut) {

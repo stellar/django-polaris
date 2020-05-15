@@ -36,8 +36,8 @@
       {% endfor %}
 
       <table class="fee-table">
-        <tr class="fee-row"><td class="fee-label">{% trans "Fee " %}</td><td class="fee">0</td></tr>
-        <tr class="amount-out-row"><td class="amount-out-label">{% trans "Total " %}</td><td class="amount-out">0</td></tr>
+        <tr class="fee-row"><td class="fee-label">{% trans "Fee " %}</td><td class="fee">{{ asset.symbol }}0</td></tr>
+        <tr class="amount-out-row"><td class="amount-out-label">{% trans "Total " %}</td><td class="amount-out">{{ asset.symbol }}0</td></tr>
       </table>
 
       <div class="field at-bottom">

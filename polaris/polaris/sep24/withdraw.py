@@ -37,6 +37,7 @@ from polaris.integrations import (
     registered_withdrawal_integration as rwi,
     registered_scripts_func,
     registered_fee_func,
+    calculate_fee,
 )
 
 logger = Logger(__name__)
@@ -153,7 +154,24 @@ def post_interactive_withdraw(request: Request) -> Response:
             return redirect(f"{url}?{args}")
 
     else:
-        content.update(form=form)
+        scripts = registered_scripts_func(content)
+
+        url_args = {"transaction_id": transaction.id, "asset_code": asset.code}
+        if callback:
+            url_args["callback"] = callback
+        if amount:
+            url_args["amount"] = amount
+
+        post_url = f"{reverse('post_interactive_deposit')}?{urlencode(url_args)}"
+        get_url = f"{reverse('get_interactive_deposit')}?{urlencode(url_args)}"
+        content.update(
+            post_url=post_url,
+            get_url=get_url,
+            scripts=scripts,
+            operation=settings.OPERATION_WITHDRAWAL,
+            asset=asset,
+            use_fee_endpoint=registered_fee_func != calculate_fee,
+        )
         return Response(content, template_name="withdraw/form.html", status=422)
 
 
@@ -247,7 +265,14 @@ def get_interactive_withdraw(request: Request) -> Response:
 
     post_url = f"{reverse('post_interactive_withdraw')}?{urlencode(url_args)}"
     get_url = f"{reverse('get_interactive_withdraw')}?{urlencode(url_args)}"
-    content.update(post_url=post_url, get_url=get_url, scripts=scripts)
+    content.update(
+        post_url=post_url,
+        get_url=get_url,
+        scripts=scripts,
+        operation=settings.OPERATION_WITHDRAWAL,
+        asset=asset,
+        use_fee_endpoint=registered_fee_func != calculate_fee,
+    )
 
     return Response(content, template_name="withdraw/form.html")
 

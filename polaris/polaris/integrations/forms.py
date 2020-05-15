@@ -124,7 +124,13 @@ class TransactionForm(forms.Form):
 
         # Re-initialize the 'amount' field now that we have all the parameters necessary
         self.fields["amount"].__init__(
-            widget=forms.NumberInput(attrs={"class": "input", "inputmode": "decimal"}),
+            widget=forms.NumberInput(
+                attrs={
+                    "class": "input",
+                    "inputmode": "decimal",
+                    "symbol": self.asset.symbol,
+                }
+            ),
             min_value=self.min_amount,
             max_value=self.max_amount,
             decimal_places=self.decimal_places,
