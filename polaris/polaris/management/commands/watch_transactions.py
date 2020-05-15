@@ -84,19 +84,16 @@ class Command(BaseCommand):
                 cursor = last_completed_transaction.paging_token
 
             endpoint = server.transactions().for_account(account).cursor(cursor)
-            logger.info(f"beginning stream for {account}")
             async for response in endpoint.stream():
                 self.process_response(response)
 
     @classmethod
     def process_response(cls, response):
-        logger.info(f"id {response.get('id')}")
         pending_withdrawal_transactions = Transaction.objects.filter(
             status=Transaction.STATUS.pending_user_transfer_start,
             kind=Transaction.KIND.withdrawal,
         )
         for withdrawal_transaction in pending_withdrawal_transactions:
-            logger.info(f"attempting match with {withdrawal_transaction.id}")
             if not cls.match_transaction(response, withdrawal_transaction):
                 continue
             elif not response["successful"]:
