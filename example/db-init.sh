@@ -14,7 +14,8 @@ Asset.objects.get_or_create(
   issuer=os.environ["SRT_ISSUER_ACCOUNT_ADDRESS"],
   distribution_seed=os.environ["SRT_DISTRIBUTION_ACCOUNT_SEED"],
   sep6_enabled=True,
-  sep24_enabled=True
+  sep24_enabled=True,
+  sep31_enabled=True
 )
 
 EOF

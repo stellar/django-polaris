@@ -186,6 +186,9 @@ class Asset(TimeStampedModel):
     sep6_enabled = models.BooleanField(default=False)
     """`True` if this asset is transferable via SEP-6"""
 
+    sep31_enabled = models.BooleanField(default=False)
+    """`True` if this asset is enabled for receiving via SEP-31"""
+
     objects = models.Manager()
 
     @property

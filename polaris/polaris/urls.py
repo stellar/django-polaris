@@ -33,3 +33,6 @@ if "sep-12" in active_seps:
 
 if "sep-24" in active_seps:
     urlpatterns.append(path("sep24/", include("polaris.sep24.urls")))
+
+if "sep-31" in active_seps:
+    urlpatterns.append(path("sep31/", include("polaris.sep31.urls")))

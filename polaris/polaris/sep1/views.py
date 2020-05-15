@@ -32,6 +32,8 @@ def generate_toml(request):
     if "sep-24" in django_settings.ACTIVE_SEPS:
         toml_dict["TRANSFER_SERVER"] = os.path.join(settings.HOST_URL, "sep24")
         toml_dict["TRANSFER_SERVER_SEP0024"] = toml_dict["TRANSFER_SERVER"]
+    if "sep-31" in django_settings.ACTIVE_SEPS:
+        toml_dict["DIRECT_PAYMENT_SERVER"] = os.path.join(settings.HOST_URL, "sep31")
     if "sep-6" in django_settings.ACTIVE_SEPS:
         toml_dict["TRANSFER_SERVER"] = os.path.join(settings.HOST_URL, "sep6")
     if "sep-10" in django_settings.ACTIVE_SEPS:
