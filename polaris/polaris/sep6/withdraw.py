@@ -7,13 +7,13 @@ from rest_framework.decorators import api_view, renderer_classes
 from rest_framework.renderers import JSONRenderer
 from stellar_sdk.exceptions import MemoInvalidException
 
-from polaris import settings
 from polaris.utils import (
     Logger,
     render_error_response,
     create_transaction_id,
     extract_sep9_fields,
     memo_str,
+    memo_hex_to_base64,
 )
 from polaris.sep6.utils import validate_403_response
 from polaris.sep10.utils import validate_sep10_token
@@ -55,6 +55,9 @@ def withdraw(account: str, request: Request) -> Response:
 
     if status_code == 200:
         transaction_id = create_transaction_id()
+        transaction_id_hex = transaction_id.hex
+        padded_hex_memo = "0" * (64 - len(transaction_id_hex)) + transaction_id_hex
+        withdraw_memo = memo_hex_to_base64(padded_hex_memo)
         Transaction.objects.create(
             id=transaction_id,
             stellar_account=account,
@@ -62,10 +65,12 @@ def withdraw(account: str, request: Request) -> Response:
             kind=Transaction.KIND.withdrawal,
             status=Transaction.STATUS.pending_user_transfer_start,
             withdraw_anchor_account=args["asset"].distribution_account,
-            withdraw_memo=args["memo"],
-            withdraw_memo_type=args["memo_type"] or Transaction.MEMO_TYPES.text,
+            withdraw_memo=withdraw_memo,
+            withdraw_memo_type=Transaction.MEMO_TYPES.hash,
             protocol=Transaction.PROTOCOL.sep6,
         )
+        response["memo"] = withdraw_memo
+        response["memo_type"] = Transaction.MEMO_TYPES.hash
         logger.info(f"Created withdraw transaction {transaction_id}")
 
     return Response(response, status=status_code)
@@ -136,9 +141,5 @@ def validate_response(args: Dict, integration_response: Dict) -> Tuple[Dict, int
             logger.info("invalid 'extra_info' returned from integration")
             raise ValueError()
         response["extra_info"] = integration_response["extra_info"]
-
-    if args["memo_type"]:
-        response["memo_type"] = args["memo_type"]
-        response["memo"] = args["memo"]
 
     return response, 200

@@ -23,6 +23,7 @@ from polaris.utils import (
     Logger,
     extract_sep9_fields,
     create_transaction_id,
+    memo_str,
 )
 from polaris.sep10.utils import validate_sep10_token
 from polaris.sep24.utils import (
@@ -266,6 +267,12 @@ def deposit(account: str, request: Request) -> Response:
             _("`asset_code` and `account` are required parameters")
         )
 
+    # Ensure memo won't cause stellar transaction to fail when submitted
+    try:
+        memo = memo_str(request.POST.get("memo"), request.POST.get("memo_type"))
+    except ValueError:
+        return render_error_response(_("invalid 'memo' for 'memo_type'"))
+
     # Verify that the asset code exists in our database, with deposit enabled.
     asset = Asset.objects.filter(code=asset_code).first()
     if not asset:
@@ -296,6 +303,8 @@ def deposit(account: str, request: Request) -> Response:
         status=Transaction.STATUS.incomplete,
         to_address=account,
         protocol=Transaction.PROTOCOL.sep24,
+        deposit_memo=memo,
+        deposit_memo_type=request.POST.get("memo_type") or Transaction.MEMO_TYPES.hash,
     )
     logger.info(f"Created deposit transaction {transaction_id}")
 

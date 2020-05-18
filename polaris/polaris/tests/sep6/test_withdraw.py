@@ -40,6 +40,8 @@ def test_good_withdrawal_integration(client, acc1_usd_withdrawal_transaction_fac
     )
     content = json.loads(response.content)
     assert response.status_code == 200
+    assert content.pop("memo")
+    assert content.pop("memo_type") == Transaction.MEMO_TYPES.hash
     assert content == {
         "account_id": Keypair.from_secret(USD_DISTRIBUTION_SEED).public_key,
         "min_amount": round(
@@ -134,6 +136,8 @@ def test_withdraw_empty_integration_response(
     )
     content = json.loads(response.content)
     assert response.status_code == 200
+    assert content.pop("memo")
+    assert content.pop("memo_type") == Transaction.MEMO_TYPES.hash
     assert content == {
         "account_id": Keypair.from_secret(USD_DISTRIBUTION_SEED).public_key,
         "min_amount": round(
@@ -236,9 +240,13 @@ def test_withdrawal_transaction_created(
             "memo": "test",
         },
     )
-    t = Transaction.objects.filter(withdraw_memo="test").first()
+    t = (
+        Transaction.objects.filter(kind=Transaction.KIND.withdrawal)
+        .order_by("-started_at")
+        .first()
+    )
     assert t
-    assert t.withdraw_memo_type == Transaction.MEMO_TYPES.text
+    assert t.withdraw_memo_type == Transaction.MEMO_TYPES.hash
     assert t.withdraw_anchor_account == distribution_address
     assert t.stellar_account == "test source address"
     assert not t.amount_in

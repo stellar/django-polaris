@@ -317,9 +317,25 @@ class WithdrawalIntegration:
         """
         .. _endpoint: https://www.stellar.org/developers/horizon/reference/resources/transaction.html
 
-        This method should implement the transfer of the amount of the
-        anchored asset specified by `transaction` to the user who requested
-        the withdrawal.
+        This method is called when the transacted asset's distribution account receives
+        a payment from a transaction with a memo matching `transaction.memo`.
+
+        If `transaction` was created via SEP-24, it is very important to confirm
+        the amount sent in on the network matches the amount specified by
+        `transaction.amount_in`. This does not apply to SEP-6 transactions since
+        withdrawal amounts are not specified in the initial request.
+
+        If the amounts match, or in the SEP-6 case, the amount sent is within the
+        asset's minimum and maximum limits, make the corresponding deposit to the
+        user's non-stellar account.
+
+        If the amount doesn't match, you must decide whether or not to complete the
+        withdraw or refund the sender. If the amount sent was greater than originally
+        expected, you could also deposit the amount specified by `amount_in` and
+        refund the remaining amount back to the sender.
+
+        If you chose to refund the payment in its entirety, raise an exception with
+        an appropriate message and update `transaction.refunded` to ``True``.
 
         If an error is raised from this function, the transaction's status
         will be changed to ``error`` and its ``status_message`` will be
