@@ -40,8 +40,12 @@ class PolarisSameSiteMiddleware:
         # Code to be executed for each request/response after
         # the view is called.
         from django.conf import settings
+        from polaris import settings as polaris_settings
 
-        if settings.SESSION_COOKIE_NAME in response.cookies:
+        if (
+            settings.SESSION_COOKIE_NAME in response.cookies
+            and not polaris_settings.LOCAL_MODE
+        ):
             response.cookies[settings.SESSION_COOKIE_NAME]["samesite"] = "None"
             response.cookies[settings.SESSION_COOKIE_NAME]["secure"] = True
 
