@@ -324,3 +324,9 @@ msgstr "a operação especificada não está disponível para '%s'"
 #, python-format
 msgid "Asset amount must be within bounds [%(min)s, %(max)s]"
 msgstr "O montante do ativo deve estar dentro dos limites [%(min)s, %(max)s]"
+
+msgid "Fee"
+msgstr "Taxa"
+
+msgid "Total"
+msgstr "Total"

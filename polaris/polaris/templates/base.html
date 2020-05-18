@@ -190,7 +190,7 @@
             });
           }
           function calcFee() {
-            let feeVal = (-1 * fee).toFixed({{ asset.significant_decimals }});
+            let feeVal = fee.toFixed({{ asset.significant_decimals }});
             let amountOutVal = amountOut.toFixed({{ asset.significant_decimals }});
             feeTag.innerHTML = "{{ asset.symbol }}" + ((Number(feeVal) === 0) ? "0" : feeVal);
             amountOutTag.innerHTML = "{{ asset.symbol }}" + ((Number(amountOutVal) === 0) ? "0" : amountOutVal);
