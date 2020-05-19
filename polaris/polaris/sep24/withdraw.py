@@ -37,6 +37,7 @@ from polaris.integrations import (
     registered_withdrawal_integration as rwi,
     registered_scripts_func,
     registered_fee_func,
+    calculate_fee,
 )
 
 logger = Logger(__name__)
@@ -133,6 +134,19 @@ def post_interactive_withdraw(request: Request) -> Response:
                 f"Finished data collection and processing for transaction {transaction.id}"
             )
             invalidate_session(request)
+            # Add memo now that interactive flow is complete
+            #
+            # We use the transaction ID as a memo on the Stellar transaction for the
+            # payment in the withdrawal. This lets us identify that as uniquely
+            # corresponding to this `Transaction` in the database. But a UUID4 is a 32
+            # character hex string, while the Stellar HashMemo requires a 64 character
+            # hex-encoded (32 byte) string. So, we zero-pad the ID to create an
+            # appropriately sized string for the `HashMemo`.
+            transaction_id_hex = transaction.id.hex
+            padded_hex_memo = "0" * (64 - len(transaction_id_hex)) + transaction_id_hex
+            transaction.withdraw_memo = memo_hex_to_base64(padded_hex_memo)
+            # Update status
+            # This signals to the wallet that the transaction can be submitted
             transaction.status = Transaction.STATUS.pending_user_transfer_start
             transaction.save()
             url = reverse("more_info")
@@ -140,7 +154,24 @@ def post_interactive_withdraw(request: Request) -> Response:
             return redirect(f"{url}?{args}")
 
     else:
-        content.update(form=form)
+        scripts = registered_scripts_func(content)
+
+        url_args = {"transaction_id": transaction.id, "asset_code": asset.code}
+        if callback:
+            url_args["callback"] = callback
+        if amount:
+            url_args["amount"] = amount
+
+        post_url = f"{reverse('post_interactive_deposit')}?{urlencode(url_args)}"
+        get_url = f"{reverse('get_interactive_deposit')}?{urlencode(url_args)}"
+        content.update(
+            post_url=post_url,
+            get_url=get_url,
+            scripts=scripts,
+            operation=settings.OPERATION_WITHDRAWAL,
+            asset=asset,
+            use_fee_endpoint=registered_fee_func != calculate_fee,
+        )
         return Response(content, template_name="withdraw/form.html", status=422)
 
 
@@ -234,7 +265,14 @@ def get_interactive_withdraw(request: Request) -> Response:
 
     post_url = f"{reverse('post_interactive_withdraw')}?{urlencode(url_args)}"
     get_url = f"{reverse('get_interactive_withdraw')}?{urlencode(url_args)}"
-    content.update(post_url=post_url, get_url=get_url, scripts=scripts)
+    content.update(
+        post_url=post_url,
+        get_url=get_url,
+        scripts=scripts,
+        operation=settings.OPERATION_WITHDRAWAL,
+        asset=asset,
+        use_fee_endpoint=registered_fee_func != calculate_fee,
+    )
 
     return Response(content, template_name="withdraw/form.html")
 
@@ -259,6 +297,11 @@ def withdraw(account: str, request: Request) -> Response:
         activate_lang_for_request(lang)
     if not asset_code:
         return render_error_response(_("'asset_code' is required"))
+    elif request.POST.get("memo"):
+        # Polaris SEP-24 doesn't support custodial wallets that depend on memos
+        # to disambiguate users using the same stellar account. Support would
+        # require new or adjusted integration points.
+        return render_error_response(_("`memo` parameter is not supported"))
 
     # Verify that the asset code exists in our database, with withdraw enabled.
     asset = Asset.objects.filter(code=asset_code).first()
@@ -275,16 +318,7 @@ def withdraw(account: str, request: Request) -> Response:
         # specified in the request.
         return render_error_response(str(e))
 
-    # We use the transaction ID as a memo on the Stellar transaction for the
-    # payment in the withdrawal. This lets us identify that as uniquely
-    # corresponding to this `Transaction` in the database. But a UUID4 is a 32
-    # character hex string, while the Stellar HashMemo requires a 64 character
-    # hex-encoded (32 byte) string. So, we zero-pad the ID to create an
-    # appropriately sized string for the `HashMemo`.
     transaction_id = create_transaction_id()
-    transaction_id_hex = transaction_id.hex
-    padded_hex_memo = "0" * (64 - len(transaction_id_hex)) + transaction_id_hex
-    withdraw_memo = memo_hex_to_base64(padded_hex_memo)
     Transaction.objects.create(
         id=transaction_id,
         stellar_account=account,
@@ -292,7 +326,6 @@ def withdraw(account: str, request: Request) -> Response:
         kind=Transaction.KIND.withdrawal,
         status=Transaction.STATUS.incomplete,
         withdraw_anchor_account=asset.distribution_account,
-        withdraw_memo=withdraw_memo,
         withdraw_memo_type=Transaction.MEMO_TYPES.hash,
         protocol=Transaction.PROTOCOL.sep24,
     )

@@ -38,6 +38,7 @@ def more_info(request: Request, sep6: bool = False) -> Response:
     resp_data = {
         "tx_json": tx_json,
         "amount_in": serializer.data.get("amount_in"),
+        "amount_out": serializer.data.get("amount_out"),
         "amount_fee": serializer.data.get("amount_fee"),
         "transaction": request_transaction,
         "asset_code": request_transaction.asset.code,

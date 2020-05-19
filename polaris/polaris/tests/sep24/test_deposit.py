@@ -22,7 +22,7 @@ WEBAPP_PATH = "/sep24/transactions/deposit/webapp"
 DEPOSIT_PATH = "/sep24/transactions/deposit/interactive"
 HORIZON_SUCCESS_RESPONSE = {
     "result_xdr": SUCCESS_XDR,
-    "hash": "test_stellar_id",
+    "id": "test_stellar_id",
     "paging_token": "123456789",
 }
 # Test client account and seed

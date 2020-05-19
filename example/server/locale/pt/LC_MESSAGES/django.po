@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: 1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-04-30 16:19+0000\n"
+"POT-Creation-Date: 2020-05-12 23:59+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -183,23 +183,23 @@ msgstr "'dest' deve corresponder ao número da conta de banco"
 msgid "'dest_extra' must match bank routing number for account"
 msgstr "'dest_extra' deve corresponder ao número de roteamento da conta"
 
-#: integrations.py:574
+#: integrations.py:579
 msgid "'bank_account' is the only value supported'"
 msgstr "'bank_account' é o único valor suportado"
 
-#: integrations.py:581
+#: integrations.py:586
 msgid "bank account number"
 msgstr "número da conta de banco"
 
-#: integrations.py:582
+#: integrations.py:587
 msgid "bank routing number"
 msgstr "número de roteamento bancário"
 
-#: settings.py:106
+#: settings.py:104
 msgid "English"
 msgstr "Inglês"
 
-#: settings.py:106
+#: settings.py:104
 msgid "Portuguese"
 msgstr "Português"
 

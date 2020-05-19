@@ -180,6 +180,9 @@ class Asset(TimeStampedModel):
     and only decrypted when in the Asset object is in memory.
     """
 
+    symbol = models.TextField(default="$")
+    """The symbol used in HTML pages when displaying amounts of this asset"""
+
     sep24_enabled = models.BooleanField(default=False)
     """`True` if this asset is transferable via SEP-24"""
 
