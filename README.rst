@@ -25,21 +25,10 @@ integration points, for developers to inject their own business logic.
 The SDF also runs a reference server using Polaris that can be tested using our `demo client`_.
 
 The instructions below outline the common set up needed for any Polaris deployment, but
-each SEP implementation has its own configuration and integration requirements.
+each SEP implementation has its own configuration and integration requirements. These
+requirements are described in the documentation for each SEP.
 
 The complete documentation can be found on readthedocs_.
-
-Installation and Configuration
-==============================
-
-.. _CLI tool: https://github.com/msfeldstein/create-stellar-token
-.. _Static Files: https://docs.djangoproject.com/en/2.2/howto/static-files/
-
-First make sure you have ``cd``'ed into your django project's main directory
-and then run
-::
-
-    pip install django-polaris
 
 Installation and Configuration
 ==============================
@@ -57,6 +46,9 @@ and then run
 
 Settings
 ^^^^^^^^
+
+.. _corsheaders signal: https://github.com/adamchainz/django-cors-headers#signals
+.. _corsheaders documentation: https://github.com/adamchainz/django-cors-headers
 
 Add the following to ``INSTALLED_APPS`` in settings.py.
 ::
@@ -78,16 +70,10 @@ other middleware that can return responses such as ``CommonMiddleware``.
         ...
     ]
 
-Allow all hosts to make requests to your server. In settings.py, add:
-::
-
-    CORS_ORIGIN_ALLOW_ALL = True
-
-Polaris requires HTTPS, so redirect HTTP traffic:
-::
-
-    SECURE_SSL_REDIRECT = True
-    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+Polaris will now accept requests from all origins to its endpoints. It does this
+by adding `corsheaders signal`_ that checks the request URI. However this
+does not change the CORS policy for any other endpoint on the server. You can change
+this functionality using the settings listed in the `corsheaders documentation`_.
 
 Define ``PROJECT_ROOT`` in your project's settings.py. Polaris uses this to
 find your ``.env`` file.
@@ -125,7 +111,7 @@ Database Models
 
 .. _psycopg2: https://pypi.org/project/psycopg2/
 .. _repository: https://github.com/stellar/django-polaris/issues
-.. _Asset: https://django-polaris.readthedocs.io/en/stable/models/index.html#models
+.. _Fernet symmetric encryption: https://cryptography.io/en/latest/fernet/
 
 SEP-1, 6, and 24 require Polaris' database models. Polaris currently only supports
 PostgreSQL and uses psycopg2_ to connect to the database. If you use another
@@ -158,7 +144,12 @@ into your python shell, then run something like this:
         sep6_enabled=True
     )
 
-See the Asset_ documentation for more information on the fields used.
+The ``distribution_seed`` column is encrypted at the database layer using `Fernet symmetric
+encryption`_, and only decrypted when held in memory within an ``Asset`` object. It uses
+your Django project's ``SECRET_KEY`` setting to generate the encryption key, **so make sure
+its value is unguessable and kept a secret**.
+
+See the ``Asset`` documentation for more information on the fields used.
 
 At this point, you should configure Polaris for one or more of the
 SEPs currently supported. Once configured, check out how to run the
@@ -167,34 +158,45 @@ server as described in the next section.
 Running the Web Server
 ======================
 
-Polaris is an HTTPS-only server, so to run it locally you must have a
-self-signed SSL certificate and configure your browser to trust it.
+Production
+^^^^^^^^^^
 
-Run this command to generate a self-signed certificate for localhost:
+.. _gunicorn: https://gunicorn.org
+
+Polaris should only be deployed using HTTPS in production. You should do this
+by using a HTTPS web server or running Polaris behind a HTTPS reverse proxy.
+The steps below outline the settings necessary to ensure your deployment is
+secure.
+
+To redirect HTTP traffic to HTTPS, add the following to settings.py:
 ::
 
-    openssl req -x509 -out localhost.crt -keyout localhost.key \
-      -newkey rsa:2048 -nodes -sha256 \
-      -subj '/CN=localhost' -extensions EXT -config <( \
-       printf "[dn]\nCN=localhost\n[req]\ndistinguished_name = dn\n[EXT]\nsubjectAltName=DNS:localhost\nkeyUsage=digitalSignature\nextendedKeyUsage=serverAuth")
+    SECURE_SSL_REDIRECT = True
 
-Then, instead of using the usual ``runserver`` command, Polaris comes with the
-``runsslserver`` command. Just add the app to your ``INSTALLED_APPS``:
+And if you're running Polaris behind a HTTPS proxy:
 ::
 
-    INSTALLED_APPS = [
-        ...,
-        "polaris",
-        "sslserver"
-    ]
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
-Finally, run this commands:
+This tells Django what header to check and what value it should be in
+order to consider the incoming request secure.
+
+Local Development
+^^^^^^^^^^^^^^^^^
+
+Locally, Polaris can be run using Django's HTTP development server
 ::
 
-    python manage.py runsslserver --certificate <path to localhost.crt> --key <path to localhost.key>
+    python manage.py runserver
 
-At this point, you need to start implementing the integration points Polaris
-provides for the SEP implementations you'd like to use.
+If you're using Polaris' SEP-24 support, you also need to use the following
+environment variable:
+::
+
+    LOCAL_MODE=1
+
+This is necessary to disable SEP-24's interactive flow authentication mechanism,
+which requires HTTPS. **Do not use local mode in production**.
 
 Contributing
 ============
