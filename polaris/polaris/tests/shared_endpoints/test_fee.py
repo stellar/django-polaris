@@ -192,13 +192,3 @@ def test_fee_authenticated_success(client, usd_asset_factory):
 
     assert response.status_code == 200
     assert content == {"fee": 5.0}
-
-
-@pytest.mark.django_db
-def test_fee_no_jwt(client, usd_asset_factory):
-    """`GET /fee` fails if a required JWT is not provided."""
-    usd_asset_factory()
-    response = client.get(
-        f"{endpoint}?asset_code=USD&operation=withdraw&amount=100.0", follow=True
-    )
-    assert response.status_code == 200
