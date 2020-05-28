@@ -93,7 +93,7 @@ def register_integrations(
     elif info_func and not callable(info_func):
         raise TypeError("info_func is not callable")
     elif customer and not issubclass(customer.__class__, CustomerIntegration):
-        raise TypeError("info_func is not callable")
+        raise TypeError("customer must be a subclass of CustomerIntegration")
 
     for obj, attr in [
         (deposit, "registered_deposit_integration"),
