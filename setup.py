@@ -38,7 +38,7 @@ setup(
         "chardet==3.0.4",
         "crc16==0.1.1",
         "cryptography==2.9.2",
-        "django==2.2.12",
+        "django==2.2.13",
         "django-cors-headers==3.3.0",
         "django-environ==0.4.5",
         "django-model-utils==4.0.0",
