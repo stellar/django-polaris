@@ -269,7 +269,7 @@ class Transaction(models.Model):
     MEMO_TYPES = PolarisChoices("text", "id", "hash")
     """Type for the ``deposit_memo``. Can be either `hash`, `id`, or `text`"""
 
-    PROTOCOL = PolarisChoices("sep6", "sep24")
+    PROTOCOL = PolarisChoices("sep6", "sep24", "sep31")
     """Values for `protocol` column"""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4)
@@ -449,6 +449,135 @@ class Transaction(models.Model):
 
     protocol = models.CharField(choices=PROTOCOL, null=True, max_length=5)
     """Either 'sep6' or 'sep24'"""
+
+    objects = models.Manager()
+
+    @property
+    def asset_name(self):
+        return self.asset.code + ":" + self.asset.issuer
+
+    @property
+    def message(self):
+        """
+        Human readable explanation of transaction status
+        """
+        return self.status_to_message[str(self.status)]
+
+    class Meta:
+        ordering = ("-started_at",)
+        app_label = "polaris"
+
+class SEP31Payment(models.Model):
+    """
+    .. _Transactions: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0031.md#transaction
+
+    This defines a Payment Record, as described in the SEP-31 Transaction_ endpoint.
+    """
+
+    status_to_message = {
+        "pending_sender": _("waiting for payment from sender"),
+        "pending_stellar": _("stellar is executing the transaction"),
+        "pending_info_update": _("some information is still needed from the sender"),
+        "pending_receiver": _("payment is being processed by the receiving anchor"),
+        "pending_external": _("payment has been submitted to receivers bank account but has not been confirmed"),
+        "completed": _("complete"),
+        "error": _("error"),
+    }
+
+    STATUS = PolarisChoices(*list(status_to_message.keys()))
+
+    MEMO_TYPES = PolarisChoices("text", "id", "hash")
+    """Type for the ``deposit_memo``. Can be either `hash`, `id`, or `text`"""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
+    """Unique, anchor-generated id for the deposit/withdrawal."""
+
+    paging_token = models.TextField(null=True)
+    """The token to be used as a cursor for querying before or after this transaction"""
+
+    # Stellar account to watch, and asset that is being transacted
+    # NOTE: these fields should not be publicly exposed
+    stellar_account = models.TextField(validators=[MinLengthValidator(1)])
+    """The stellar public key used by the sending anchor."""
+
+    asset = models.ForeignKey("Asset", on_delete=models.CASCADE)
+    """The Django foreign key to the associated :class:`Asset`"""
+
+    status = models.CharField(
+        choices=STATUS, default=STATUS.pending_sender, max_length=30
+    )
+
+    status_eta = models.IntegerField(null=True, blank=True, default=3600)
+    """(optional) Estimated number of seconds until a status change is expected."""
+
+    status_message = models.TextField(null=True, blank=True)
+    """A message stored in association to the current status for debugging"""
+
+    stellar_transaction_id = models.TextField(null=True, blank=True)
+    """
+    transaction_id on Stellar network of the transfer that completed the payment.
+    """
+
+    external_transaction_id = models.TextField(null=True, blank=True)
+    """
+    (optional) ID of transaction on external network that either started 
+    the deposit or completed the withdrawal.
+    """
+
+    amount_in = models.DecimalField(
+        null=True, blank=True, max_digits=30, decimal_places=7
+    )
+    """
+    Amount received by anchor at start of transaction as a string with up 
+    to 7 decimals. Excludes any fees charged before the anchor received the 
+    funds.
+    """
+
+    amount_out = models.DecimalField(
+        null=True, blank=True, max_digits=30, decimal_places=7
+    )
+    """
+    Amount sent by anchor to user at end of transaction as a string with up to
+    7 decimals. Excludes amount converted to XLM to fund account and any 
+    external fees.
+    """
+
+    amount_fee = models.DecimalField(
+        null=True, blank=True, max_digits=30, decimal_places=7
+    )
+    """Amount of fee charged by anchor."""
+
+    started_at = models.DateTimeField(default=utc_now)
+    """Start date and time of transaction."""
+
+    completed_at = models.DateTimeField(null=True)
+    """
+    Completion date and time of transaction. Assigned null for in-progress 
+    transactions.
+    """
+
+    stellar_account_id = models.TextField(validators=[MinLengthValidator(56)])
+    """
+    Receiving anchor's Stellar account to send payment to.
+    """
+
+
+    stellar_memo = models.TextField(null=True, blank=True)
+    """
+    (optional) Value of memo to attach to transaction, for hash this should
+    be base64-encoded.
+    """
+
+    stellar_memo_type = models.CharField(
+        choices=MEMO_TYPES, default=MEMO_TYPES.text, max_length=10
+    )
+    """
+    (optional) Type of memo that anchor should attach to the Stellar payment 
+    transaction, one of text, id or hash.
+    """
+
+    refunded = models.BooleanField(default=False)
+    """True if the transaction was refunded, false otherwise."""
 
     objects = models.Manager()
 

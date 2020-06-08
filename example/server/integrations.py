@@ -590,36 +590,3 @@ def info_integration(asset: Asset, lang: str):
         },
     }
 
-def sep31_info_integration(asset: Asset, lang: str):
-    # Not using `asset` since this reference server only supports SRT
-    languages = [l[0] for l in server_settings.LANGUAGES]
-    if lang and lang not in languages:
-        raise ValueError()
-    return {
-        "fields": {
-            "sender": {
-                "first_name": {"description": _("First Name")},
-                "last_name": {"description": _("Last Name")},
-            },
-            "receiver": {
-                "first_name": {"description": _("First Name")},
-                "last_name": {"description": _("Last Name")},
-                "email_address": {"description": _("Email Address")},
-            },
-            "transaction": {
-                "routing_number":{
-                  "description": _("routing number of the destination bank account")
-               },
-               "account_number":{
-                  "description":_("bank account number of the destination")
-               },
-               "type":{
-                  "description":_("type of deposit to make"),
-                  "choices":[
-                     "SEPA",
-                     "SWIFT"
-                  ]
-               }
-            }
-        },
-    }

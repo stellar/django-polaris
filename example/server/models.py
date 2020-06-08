@@ -54,3 +54,14 @@ class PolarisUserTransaction(models.Model):
 
     def __str__(self):
         return f"{str(self.account)}: {str(self.transaction)}"
+
+class RegisteredSEP31Counterparty(models.Model):
+    """
+    Represents an approved sender in the SEP31 direct send flow.
+    """
+    public_key = models.CharField(max_length=56, validators=[MinLengthValidator(56)])
+    organization_name = models.TextField()
+
+    def __str__(self):
+        return f"{str(self.organization_name)}: {str(self.public_key)}"
+

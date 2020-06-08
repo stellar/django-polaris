@@ -15,6 +15,7 @@ from polaris.integrations.transactions import (
     registered_deposit_integration,
     registered_withdrawal_integration,
 )
+from polaris.integrations.sep31 import registered_sep31_approve_transaction_func
 
 
 def register_integrations(
@@ -26,6 +27,7 @@ def register_integrations(
     info_func: Callable = None,
     customer: CustomerIntegration = None,
     sep31_info_func: Callable = None,
+    sep31_approve_transaction_func: Callable = None,
 ):
     """
     Registers the integration classes and functions with Polaris
@@ -97,6 +99,8 @@ def register_integrations(
         raise TypeError("info_func is not callable")
     elif sep31_info_func and not callable(sep31_info_func):
         raise TypeError("sep31_info_func is not callable")
+    elif sep31_approve_transaction_func and not callable(sep31_approve_transaction_func):
+        raise TypeError("sep31_approve_transaction_func is not callable")
 
     for obj, attr in [
         (deposit, "registered_deposit_integration"),
@@ -107,6 +111,7 @@ def register_integrations(
         (info_func, "registered_info_func"),
         (customer, "registered_customer_integration"),
         (sep31_info_func, "registered_sep31_info_func"),
+        (sep31_approve_transaction_func, "registered_sep31_approve_transaction_func")
     ]:
         if obj:
             setattr(this, attr, obj)
