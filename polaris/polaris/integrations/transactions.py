@@ -441,16 +441,5 @@ class WithdrawalIntegration:
         )
 
 
-class SendIntegration:
-    """
-    The container class for SEP31 integrations, both as the sending and
-    receiving anchor.
-    """
-
-    def info(self, asset: Asset, lang: str) -> Dict:
-        pass
-
-
 registered_deposit_integration = DepositIntegration()
 registered_withdrawal_integration = WithdrawalIntegration()
-registered_send_integration = SendIntegration()

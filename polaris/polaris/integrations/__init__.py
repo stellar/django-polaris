@@ -9,13 +9,12 @@ from polaris.integrations.customers import (
     CustomerIntegration,
     registered_customer_integration,
 )
+from polaris.integrations.sep31 import SendIntegration, registered_send_integration
 from polaris.integrations.transactions import (
     DepositIntegration,
     WithdrawalIntegration,
-    SendIntegration,
     registered_deposit_integration,
     registered_withdrawal_integration,
-    registered_send_integration,
 )
 
 
