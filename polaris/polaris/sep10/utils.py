@@ -23,6 +23,8 @@ def check_auth(
     except ValueError as e:
         if sep == Transaction.PROTOCOL.sep6:
             return Response({"type": "authentication_required"}, status=403)
+        if sep == Transaction.PROTOCOL.sep31:
+            return Response({"type": "authentication_required"}, status=401)
         else:
             return render_error_response(
                 str(e),

@@ -173,6 +173,38 @@ class Asset(TimeStampedModel):
     )
     """Optional maximum amount. No limit if not specified."""
 
+    send_fee_fixed = models.DecimalField(
+        null=True, blank=True, max_digits=30, decimal_places=7
+    )
+    """
+    Optional fixed (base) fee for sending this asset in units of this asset. 
+    This is in addition to any ``send_fee_percent``. If null, ``fee_fixed`` will not
+    be displayed in SEP31 /info response.
+    """
+
+    send_fee_percent = models.DecimalField(
+        null=True,
+        blank=True,
+        max_digits=30,
+        decimal_places=7,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+    )
+    """
+    Optional percentage fee for sending this asset in percentage points. This is in 
+    addition to any ``send_fee_fixed``. If null, ``fee_percent`` will not be displayed
+    in SEP31 /info response.
+    """
+
+    send_min_amount = models.DecimalField(
+        default=0, blank=True, max_digits=30, decimal_places=7
+    )
+    """Optional minimum amount. No limit if not specified."""
+
+    send_max_amount = models.DecimalField(
+        default=decimal.MAX_EMAX, blank=True, max_digits=30, decimal_places=7
+    )
+    """Optional maximum amount. No limit if not specified."""
+
     distribution_seed = EncryptedTextField(null=True)
     """
     The distribution stellar account secret key.
@@ -185,6 +217,9 @@ class Asset(TimeStampedModel):
 
     sep6_enabled = models.BooleanField(default=False)
     """`True` if this asset is transferable via SEP-6"""
+
+    sep31_enabled = models.BooleanField(default=False)
+    """`True` if this asset is transferable via SEP-31"""
 
     symbol = models.TextField(default="$")
     """The symbol used in HTML pages when displaying amounts of this asset"""
@@ -211,14 +246,12 @@ class Transaction(models.Model):
     This defines a Transaction, as described in the SEP-24 Transactions_ endpoint.
     """
 
-    KIND = PolarisChoices("deposit", "withdrawal")
-    """Choices object for ``deposit`` or ``withdrawal``."""
+    KIND = PolarisChoices("deposit", "withdrawal", "send")
+    """Choices object for ``deposit``, ``withdrawal``, or ``send``."""
 
     status_to_message = {
-        "completed": _("complete"),
-        "pending_external": _("waiting on an external entity"),
+        # SEP-6 & SEP-24
         "pending_anchor": _("Processing"),
-        "pending_stellar": _("stellar is executing the transaction"),
         "pending_trust": _("waiting for a trustline to be established"),
         "pending_user": _("waiting on user action"),
         "pending_user_transfer_start": _("waiting on the user to transfer funds"),
@@ -226,7 +259,16 @@ class Transaction(models.Model):
         "no_market": _("no market for the asset"),
         "too_small": _("the transaction amount is too small"),
         "too_large": _("the transaction amount is too big"),
+        # SEP-31
+        # messages are None because they are never displayed to user
+        "pending_sender": None,
+        "pending_receiver": None,
+        "pending_info_update": None,
+        # Shared
+        "completed": _("complete"),
         "error": _("error"),
+        "pending_external": _("waiting on an external entity"),
+        "pending_stellar": _("stellar is executing the transaction"),
     }
 
     STATUS = PolarisChoices(*list(status_to_message.keys()))
@@ -234,7 +276,7 @@ class Transaction(models.Model):
     MEMO_TYPES = PolarisChoices("text", "id", "hash")
     """Type for the ``deposit_memo``. Can be either `hash`, `id`, or `text`"""
 
-    PROTOCOL = PolarisChoices("sep6", "sep24")
+    PROTOCOL = PolarisChoices("sep6", "sep24", "sep31")
     """Values for `protocol` column"""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4)
@@ -259,7 +301,9 @@ class Transaction(models.Model):
         choices=STATUS, default=STATUS.pending_external, max_length=30
     )
     """
-    Choices object for processing status of deposit/withdrawal.
+    Choices field for processing status of deposit, withdrawal, & send.
+    
+    SEP-6 & SEP-24 Statuses:
 
     * **completed**
         
@@ -302,6 +346,30 @@ class Transaction(models.Model):
     * **too_large**
     
         deposit/withdrawal size exceeded max_amount.
+    * **error**
+    
+        catch-all for any error not enumerated above.
+        
+    SEP-31 Statuses:
+    
+    * **pending_sender**
+    
+        awaiting payment to be initiated by sending anchor.
+    * **pending_stellar**
+    
+        transaction has been submitted to Stellar network, but is not yet confirmed.
+    * **pending_info_update**
+    
+        certain pieces of information need to be updated by the sending anchor.
+    * **pending_receiver**
+    
+        payment is being processed by the receiving anchor.
+    * **pending_external**
+    
+        payment has been submitted to external network, but is not yet confirmed.
+    * **completed**
+    
+        deposit/withdrawal fully completed.
     * **error**
     
         catch-all for any error not enumerated above.
@@ -367,17 +435,14 @@ class Transaction(models.Model):
     )  # Using to_address for naming consistency
     """
     Sent to address (perhaps BTC, IBAN, or bank account in the case of a 
-    withdrawal, Stellar address in the case of a deposit).
+    withdrawal or send, Stellar address in the case of a deposit).
     """
 
     external_extra = models.TextField(null=True, blank=True)
     """"""
 
     external_extra_text = models.TextField(null=True, blank=True)
-    """
-    The bank name or store name that the user will be withdrawing 
-    their funds to.
-    """
+    """"""
 
     deposit_memo = models.TextField(null=True, blank=True)
     """
@@ -407,6 +472,12 @@ class Transaction(models.Model):
     withdraw_memo_type = models.CharField(
         choices=MEMO_TYPES, default=MEMO_TYPES.text, max_length=10
     )
+    """Field for the ``MEMO_TYPES`` Choices"""
+
+    send_memo = models.TextField(null=True, blank=True)
+    """The memo to attach to the stellar payment"""
+
+    send_memo_type = models.TextField(null=True, blank=True)
     """Field for the ``MEMO_TYPES`` Choices"""
 
     refunded = models.BooleanField(default=False)

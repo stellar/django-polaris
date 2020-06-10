@@ -12,18 +12,21 @@ from polaris.integrations.customers import (
 from polaris.integrations.transactions import (
     DepositIntegration,
     WithdrawalIntegration,
+    SendIntegration,
     registered_deposit_integration,
     registered_withdrawal_integration,
+    registered_send_integration,
 )
 
 
 def register_integrations(
     deposit: DepositIntegration = None,
     withdrawal: WithdrawalIntegration = None,
+    send: SendIntegration = None,
     toml_func: Callable = None,
     scripts_func: Callable = None,
     fee_func: Callable = None,
-    info_func: Callable = None,
+    sep6_info_func: Callable = None,
     customer: CustomerIntegration = None,
 ):
     """
@@ -66,11 +69,13 @@ def register_integrations(
         used by Polaris
     :param withdrawal: the ``WithdrawalIntegration`` subclass instance to
         be used by Polaris
+    :param send: the ``SendIntegration`` subclass instance to be used by
+        Polaris
     :param toml_func: a function that returns stellar.toml data as a dictionary
     :param scripts_func: a function that returns a list of script tags as
         strings
     :param fee_func: a function that returns the fee that would be charged
-    :param info_func: a function that returns the /info `fields` or `types`
+    :param sep6_info_func: a function that returns the /info `fields` or `types`
         values for an Asset
     :param customer: the ``CustomerIntegration`` subclass instance to be used
         by Polaris
@@ -89,11 +94,13 @@ def register_integrations(
     elif scripts_func and not callable(scripts_func):
         raise TypeError("javascript_func is not callable")
     elif fee_func and not callable(fee_func):
-        raise TypeError("javascript_func is not callable")
-    elif info_func and not callable(info_func):
-        raise TypeError("info_func is not callable")
+        raise TypeError("fee_func is not callable")
+    elif sep6_info_func and not callable(sep6_info_func):
+        raise TypeError("sep6_info_func is not callable")
     elif customer and not issubclass(customer.__class__, CustomerIntegration):
         raise TypeError("customer must be a subclass of CustomerIntegration")
+    elif send and not issubclass(send.__class__, SendIntegration):
+        raise TypeError("send must be a subclass of SendIntegration")
 
     for obj, attr in [
         (deposit, "registered_deposit_integration"),
@@ -101,8 +108,9 @@ def register_integrations(
         (toml_func, "registered_toml_func"),
         (scripts_func, "registered_scripts_func"),
         (fee_func, "registered_fee_func"),
-        (info_func, "registered_info_func"),
+        (sep6_info_func, "registered_info_func"),
         (customer, "registered_customer_integration"),
+        (send, "registered_send_integration"),
     ]:
         if obj:
             setattr(this, attr, obj)
