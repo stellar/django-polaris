@@ -22,5 +22,8 @@ class SendIntegration:
     ):
         pass
 
+    def valid_sending_anchor(self, public_key: str) -> bool:
+        pass
+
 
 registered_send_integration = SendIntegration()
