@@ -19,6 +19,7 @@ from polaris.utils import Logger
 from polaris.integrations import (
     DepositIntegration,
     WithdrawalIntegration,
+    SendIntegration,
     CustomerIntegration,
     calculate_fee,
 )
@@ -521,6 +522,31 @@ class MyCustomerIntegration(CustomerIntegration):
         )
         account = PolarisStellarAccount.objects.create(user=user, **qparams)
         return user, account
+
+
+class MySendIntegration(SendIntegration):
+    def info(self, asset: Asset, lang: Optional[str]):
+        return {
+            "fields": {
+                "sender": {
+                    "first_name": {"description": "The sender's first name"},
+                    "last_name": {"description": "The sender's last name"},
+                },
+                "receiver": {
+                    "first_name": {"description": "The receiver's first name"},
+                    "last_name": "The receiver's last name",
+                    "email_address": {"description": "The receiver's email address"},
+                },
+                "transaction": {
+                    "routing_number": {
+                        "description": "routing number of the destination bank account"
+                    },
+                    "account_number": {
+                        "description": "bank account number of the destination"
+                    },
+                },
+            }
+        }
 
 
 def toml_integration():

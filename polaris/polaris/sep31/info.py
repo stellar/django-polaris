@@ -24,37 +24,35 @@ def info(request: Request) -> Response:
         try:
             fields = registered_send_integration.info(asset, request.GET.get("lang"))
         except ValueError:
-            return render_error_response("unsupported 'lang'")
+            return render_error_response("unsupported 'lang'", content_type="text/html")
         try:
             validate_integration(fields)
         except ValueError as e:
             logger.error(f"info integration error: {str(e)}")
             return render_error_response(
-                _("unable to process the request"), status_code=500
+                _("unable to process the request"),
+                status_code=500,
+                content_type="text/html",
             )
-        info_data["receive"][asset.code] = get_asset_info(
-            asset, fields.get("fields", {})
-        )
+        info_data["receive"][asset.code] = get_asset_info(asset, fields or {})
 
     return Response(info_data)
 
 
-def validate_integration(fields_and_types: Dict):
-    if not isinstance(fields_and_types, dict):
+def validate_integration(fields: Dict):
+    if not isinstance(fields, dict):
         raise ValueError("info integration must return a dictionary")
-    elif not fields_and_types:
-        # the anchor doesn't require additional arguments
-        return
-    fields = fields_and_types.get("fields")
-    if not fields or not isinstance(fields, dict):
-        raise ValueError("'fields' must be a dictionary")
     validate_fields(fields.get("sender"))
     validate_fields(fields.get("receiver"))
     validate_fields(fields.get("transaction"))
 
 
-def validate_fields(fields: Dict):
-    for val in fields.values():
+def validate_fields(field_dict: Dict):
+    if not field_dict:
+        return
+    for key, val in field_dict.items():
+        if not isinstance(val, dict):
+            raise ValueError(f"{key} value must be a dict, got {type(val)}")
         desc = val.get("description")
         optional = val.get("optional")
         choices = val.get("choices")

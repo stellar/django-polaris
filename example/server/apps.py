@@ -10,6 +10,7 @@ class AnchorConfig(AppConfig):
             MyDepositIntegration,
             MyWithdrawalIntegration,
             MyCustomerIntegration,
+            MySendIntegration,
             toml_integration,
             scripts_integration,
             fee_integration,
@@ -22,6 +23,7 @@ class AnchorConfig(AppConfig):
             toml_func=toml_integration,
             scripts_func=scripts_integration,
             fee_func=fee_integration,
-            info_func=info_integration,
+            sep6_info_func=info_integration,
             customer=MyCustomerIntegration(),
+            send=MySendIntegration(),
         )

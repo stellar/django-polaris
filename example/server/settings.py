@@ -40,7 +40,7 @@ INSTALLED_APPS = [
     "polaris",
 ]
 
-ACTIVE_SEPS = ["sep-1", "sep-6", "sep-10", "sep-12", "sep-24"]
+ACTIVE_SEPS = ["sep-1", "sep-6", "sep-10", "sep-12", "sep-24", "sep-31"]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
