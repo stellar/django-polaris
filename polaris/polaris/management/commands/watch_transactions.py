@@ -5,6 +5,7 @@ from decimal import Decimal
 import datetime
 
 from django.core.management.base import BaseCommand
+from django.db.models import Q
 from stellar_sdk.exceptions import NotFoundError
 from stellar_sdk.transaction_envelope import TransactionEnvelope
 from stellar_sdk.xdr import Xdr
@@ -18,6 +19,7 @@ from polaris.models import Transaction
 from polaris.integrations import (
     registered_withdrawal_integration as rwi,
     registered_fee_func as rfi,
+    registered_send_integration as rsi,
 )
 from polaris.utils import Logger
 
@@ -96,24 +98,35 @@ class Command(BaseCommand):
         if not response.get("successful"):
             return
 
-        pending_withdrawal_transactions = Transaction.objects.filter(
+        # Query filters for SEP6 and 24
+        withdraw_filters = Q(
             withdraw_anchor_account=account,
             status=Transaction.STATUS.pending_user_transfer_start,
             kind=Transaction.KIND.withdrawal,
         )
-        for withdrawal_transaction in pending_withdrawal_transactions:
-            payment_op = cls.find_matching_payment_op(response, withdrawal_transaction)
+        # Query filters for SEP31
+        send_filters = Q(
+            send_anchor_account=account,
+            status=Transaction.STATUS.pending_sender,
+            kind=Transaction.KIND.send,
+        )
+        pending_withdrawal_transactions = Transaction.objects.filter(
+            withdraw_filters | send_filters
+        )
+        for transaction in pending_withdrawal_transactions:
+            payment_op = cls.find_matching_payment_op(response, transaction)
             if not payment_op:
                 continue
             try:
-                rwi.process_withdrawal(response, withdrawal_transaction)
+                if transaction.protocol == Transaction.PROTOCOL.sep31:
+                    rsi.process_payment(transaction, horizon_tx_json=response)
+                else:
+                    rwi.process_withdrawal(response, transaction)
             except Exception as e:
-                cls.update_transaction(
-                    response, withdrawal_transaction, error_msg=str(e)
-                )
+                cls.update_transaction(response, transaction, error_msg=str(e))
                 logger.exception("process_withdrawal() integration raised an exception")
             else:
-                cls.update_transaction(response, withdrawal_transaction)
+                cls.update_transaction(response, transaction)
                 logger.info(
                     f"successfully processed withdrawal for response with "
                     f"xdr {response['envelope_xdr']}"

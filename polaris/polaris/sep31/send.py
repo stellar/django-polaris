@@ -59,6 +59,7 @@ def send(account: str, request: Request) -> Response:
         amount_in=Decimal(params.get("amount")),
         send_memo=transaction_memo,
         send_memo_type=Transaction.MEMO_TYPES.hash,
+        send_anchor_account=params["asset"].distribution_account,
     )
 
     # The anchor should validate and process the parameters from the request and return

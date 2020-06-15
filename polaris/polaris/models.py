@@ -482,6 +482,11 @@ class Transaction(models.Model):
     )
     """Field for the ``MEMO_TYPES`` Choices"""
 
+    send_anchor_account = models.TextField(null=True, blank=True)
+    """
+    Stellar account to send payment to
+    """
+
     refunded = models.BooleanField(default=False)
     """True if the transaction was refunded, false otherwise."""
 
