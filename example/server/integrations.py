@@ -534,7 +534,7 @@ class MySendIntegration(SendIntegration):
                 },
                 "receiver": {
                     "first_name": {"description": "The receiver's first name"},
-                    "last_name": "The receiver's last name",
+                    "last_name": {"description": "The receiver's last name"},
                     "email_address": {"description": "The receiver's email address"},
                 },
                 "transaction": {

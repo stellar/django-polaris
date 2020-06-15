@@ -12,11 +12,11 @@ def validate_language(
 ) -> Optional[Response]:
     if not lang:
         return render_error_response(
-            _("Missing language code in request"), content_type=content_type
+            _("missing language code in request"), content_type=content_type
         )
     elif not _is_supported_language(lang):
         return render_error_response(
-            _("Unsupported language: %s" % lang), content_type=content_type
+            _("unsupported language: %s" % lang), content_type=content_type
         )
 
 

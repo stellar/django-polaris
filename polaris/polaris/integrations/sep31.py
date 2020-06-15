@@ -11,7 +11,7 @@ class SendIntegration:
     def info(self, asset: Asset, lang: str) -> Dict:
         pass
 
-    def process_send_request(self, params: Dict) -> Dict:
+    def process_send_request(self, params: Dict, transaction_id: str) -> Dict:
         pass
 
     def process_update_request(self, params: Dict, transaction: Transaction):
