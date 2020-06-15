@@ -57,7 +57,6 @@ def send(account: str, request: Request) -> Response:
         stellar_account=account,
         asset=params["asset"],
         amount_in=Decimal(params.get("amount")),
-        from_address=account,
         send_memo=transaction_memo,
         send_memo_type=Transaction.MEMO_TYPES.hash,
     )

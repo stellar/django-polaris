@@ -477,7 +477,9 @@ class Transaction(models.Model):
     send_memo = models.TextField(null=True, blank=True)
     """The memo to attach to the stellar payment"""
 
-    send_memo_type = models.TextField(null=True, blank=True)
+    send_memo_type = models.CharField(
+        choices=MEMO_TYPES, default=MEMO_TYPES.text, max_length=10
+    )
     """Field for the ``MEMO_TYPES`` Choices"""
 
     refunded = models.BooleanField(default=False)

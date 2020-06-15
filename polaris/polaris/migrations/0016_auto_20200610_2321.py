@@ -3,6 +3,8 @@
 import django.core.validators
 from django.db import migrations, models
 
+from polaris.models import Transaction
+
 
 class Migration(migrations.Migration):
 
@@ -59,7 +61,11 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="transaction",
             name="send_memo_type",
-            field=models.TextField(blank=True, null=True),
+            field=models.CharField(
+                choices=Transaction.MEMO_TYPES,
+                default=Transaction.MEMO_TYPES.text,
+                max_length=10,
+            ),
         ),
         migrations.AlterField(
             model_name="transaction",
