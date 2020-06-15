@@ -1,5 +1,6 @@
-from typing import Dict
+from typing import Dict, Optional
 from decimal import Decimal
+from collections import defaultdict
 
 from django.utils.translation import gettext as _
 from rest_framework.request import Request
@@ -8,13 +9,13 @@ from rest_framework.decorators import api_view, renderer_classes
 from rest_framework.renderers import JSONRenderer, BrowsableAPIRenderer
 
 from polaris.utils import (
-    extract_sep9_fields,
+    SEP_9_FIELDS,
     render_error_response,
     Logger,
     create_transaction_id,
     memo_hex_to_base64,
 )
-from polaris.locale.utils import _is_supported_language
+from polaris.locale.utils import _is_supported_language, activate_lang_for_request
 from polaris.models import Transaction, Asset
 from polaris.sep10.utils import validate_sep10_token
 from polaris.integrations import registered_send_integration
@@ -34,6 +35,13 @@ def send(account: str, request: Request) -> Response:
         params = validate_send_request(request)
     except ValueError as e:
         return render_error_response(str(e))
+
+    # validate fields separately since error responses need different format
+    missing_fields = validate_fields(
+        request.GET.get("fields"), params.get("asset"), params.get("lang")
+    )
+    if missing_fields:
+        return Response({"error": "customer_info_needed", "fields": missing_fields})
 
     transaction_id = create_transaction_id()
     # create memo
@@ -84,17 +92,16 @@ def validate_send_request(request: Request) -> Dict:
     asset = Asset.objects.filter(**asset_args).first()
     amount = request.GET.get("amount")
     lang = request.GET.get("lang")
+    if not _is_supported_language(lang):
+        raise ValueError("unsupported 'lang'")
+    activate_lang_for_request(lang)
     receiver_info = request.GET.get("require_receiver_info")
     if not asset:
-        raise ValueError("invalid 'asset_code' and 'asset_issuer'")
+        raise ValueError(_("invalid 'asset_code' and 'asset_issuer'"))
     elif asset.send_min_amount < Decimal(amount) < asset.send_max_amount:
-        raise ValueError("invalid 'amount'")
-    elif lang and not _is_supported_language(lang):
-        raise ValueError("unsupported 'lang'")
-    elif receiver_info and len(receiver_info) != len(
-        extract_sep9_fields(receiver_info)
-    ):
-        raise ValueError("unrecognized fields in 'require_receiver_info'")
+        raise ValueError(_("invalid 'amount'"))
+    elif receiver_info and not all(f in SEP_9_FIELDS for f in receiver_info):
+        raise ValueError(_("unrecognized fields in 'require_receiver_info'"))
     return {
         "asset": asset,
         "amount": amount,
@@ -102,6 +109,24 @@ def validate_send_request(request: Request) -> Dict:
         "receiver_info": receiver_info,
         "fields": request.GET.get("fields"),
     }
+
+
+def validate_fields(passed_fields: Dict, asset: Asset, lang: Optional[str]) -> Dict:
+    missing_fields = defaultdict(dict)
+    expected_fields = registered_send_integration.info(asset, lang)
+    for category, fields in expected_fields.items():
+        if category not in passed_fields:
+            missing_fields[category] = fields
+            continue
+        for field, info in fields.items():
+            if info.get("optional"):
+                continue
+            try:
+                passed_fields[category][field]
+            except KeyError:
+                missing_fields[category][field] = info
+                continue
+    return missing_fields
 
 
 def process_send_response(response_data: Dict, transaction: Transaction) -> Dict:

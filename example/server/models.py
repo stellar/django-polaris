@@ -50,8 +50,15 @@ class PolarisUserTransaction(models.Model):
     this table serves to join the two entities.
     """
 
-    transaction = models.OneToOneField(Transaction, on_delete=models.CASCADE)
-    account = models.ForeignKey(PolarisStellarAccount, on_delete=models.CASCADE)
+    transaction_id = models.TextField(db_index=True)
+    user = models.ForeignKey(PolarisUser, on_delete=models.CASCADE, null=True)
+    account = models.ForeignKey(
+        PolarisStellarAccount, on_delete=models.CASCADE, null=True
+    )
+
+    @property
+    def transaction(self):
+        return Transaction.objects.filter(id=self.transaction_id).first()
 
     objects = models.Manager()
 

@@ -96,7 +96,7 @@ class SEP24KYC:
                 )
 
         PolarisUserTransaction.objects.get_or_create(
-            account=account, transaction=transaction
+            account=account, transaction_id=transaction.id
         )
 
     @staticmethod
@@ -527,26 +527,49 @@ class MyCustomerIntegration(CustomerIntegration):
 class MySendIntegration(SendIntegration):
     def info(self, asset: Asset, lang: Optional[str]):
         return {
-            "fields": {
-                "sender": {
-                    "first_name": {"description": "The sender's first name"},
-                    "last_name": {"description": "The sender's last name"},
+            "sender": {
+                "first_name": {"description": "The sender's first name"},
+                "last_name": {"description": "The sender's last name"},
+            },
+            "receiver": {
+                "first_name": {"description": "The receiver's first name"},
+                "last_name": {"description": "The receiver's last name"},
+                "email_address": {"description": "The receiver's email address"},
+            },
+            "transaction": {
+                "routing_number": {
+                    "description": "routing number of the destination bank account"
                 },
-                "receiver": {
-                    "first_name": {"description": "The receiver's first name"},
-                    "last_name": {"description": "The receiver's last name"},
-                    "email_address": {"description": "The receiver's email address"},
+                "account_number": {
+                    "description": "bank account number of the destination"
                 },
-                "transaction": {
-                    "routing_number": {
-                        "description": "routing number of the destination bank account"
-                    },
-                    "account_number": {
-                        "description": "bank account number of the destination"
-                    },
-                },
-            }
+            },
         }
+
+    def process_send_request(self, params: Dict, transaction_id: str) -> Optional[Dict]:
+        info_fields = params.get("fields")
+        for category, fields in info_fields.items():
+            for field, val in fields.items():
+                if not isinstance(val, str):
+                    return {"error": f"'{field}'" + _(" is not of type str")}
+        receiver = info_fields["receiver"]
+        transaction = info_fields["transaction"]
+        user = PolarisUser.objects.filter(email=receiver["email_address"]).first()
+        if not user:
+            user = PolarisUser.objects.create(
+                first_name=receiver["first_name"],
+                last_name=receiver["last_name"],
+                email=receiver["email_address"],
+                bank_account_number=transaction["account_number"],
+                bank_number=transaction["routing_number"],
+            )
+        elif not (user.bank_account_number and user.bank_number):
+            user.bank_account_number = transaction["account_number"]
+            user.bank_number = transaction["routing_number"]
+            user.save()
+        # Transaction doesn't yet exist so transaction_id is a text field
+        PolarisUserTransaction.objects.create(user=user, transaction_id=transaction_id)
+        # Don't handle receiver_info yet
 
 
 def toml_integration():
