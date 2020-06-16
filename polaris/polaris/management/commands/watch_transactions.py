@@ -3,6 +3,7 @@ import asyncio
 from typing import Dict, Optional
 from decimal import Decimal
 import datetime
+from requests import RequestException
 
 from django.core.management.base import BaseCommand
 from django.db.models import Q
@@ -18,8 +19,10 @@ from polaris.models import Asset, Transaction
 from polaris.integrations import (
     registered_withdrawal_integration as rwi,
     registered_fee_func as rfi,
+    registered_send_integration as rsi,
 )
 from polaris.utils import Logger
+from polaris.sep31.utils import sep31_callback
 
 logger = Logger(__name__)
 
@@ -175,7 +178,7 @@ class Command(BaseCommand):
             if cls._check_payment_op(
                 operation, transaction.asset, transaction.amount_in
             ):
-                if not transaction.amount_in:
+                if not transaction.amount_in:  # SEP6
                     transaction.amount_in = Decimal(operation.amount)
                     transaction.amount_fee = rfi(
                         {
@@ -229,7 +232,8 @@ class Command(BaseCommand):
             elif transaction.status == Transaction.STATUS.pending_external:
                 # Anchors can mark transactions as pending_external if the transfer
                 # cannot be completed immediately due to external processing.
-                transaction.amount_out = transaction.amount_in - transaction.amount_fee"""
+                transaction.amount_out = transaction.amount_in - transaction.amount_fee
+            else:"""
             transaction.status = Transaction.STATUS.completed
             transaction.completed_at = datetime.datetime.now(datetime.timezone.utc)
             transaction.amount_out = transaction.amount_in - transaction.amount_fee
