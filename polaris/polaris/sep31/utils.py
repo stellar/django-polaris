@@ -37,5 +37,6 @@ def sep31_callback(transaction: Transaction) -> requests.Response:
     Could raise a subclass of requests.RequestException
     """
     return session.post(
-        transaction.send_callback_url, json=SEP31TransactionSerializer(transaction).data
+        transaction.send_callback_url,
+        json={"transaction": SEP31TransactionSerializer(transaction).data},
     )
