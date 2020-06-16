@@ -26,7 +26,7 @@ def info(request: Request) -> Response:
         except ValueError:
             return render_error_response("unsupported 'lang'", content_type="text/html")
         try:
-            validate_integration(fields)
+            validate_info_fields(fields)
         except ValueError as e:
             logger.error(f"info integration error: {str(e)}")
             return render_error_response(
@@ -39,7 +39,7 @@ def info(request: Request) -> Response:
     return Response(info_data)
 
 
-def validate_integration(fields: Dict):
+def validate_info_fields(fields: Dict):
     if not isinstance(fields, dict):
         raise ValueError("info integration must return a dictionary")
     validate_fields(fields.get("sender"))
@@ -74,11 +74,13 @@ def get_asset_info(asset: Asset, fields: Dict) -> Dict:
 
     asset_info = {
         "enabled": True,
-        "min_amount": asset.send_min_amount,
-        "max_amount": asset.send_max_amount,
+        "min_amount": round(asset.send_min_amount, asset.significant_decimals),
+        "max_amount": round(asset.send_max_amount, asset.significant_decimals),
     }
     if asset.send_fee_fixed:
-        asset_info["fee_fixed"] = (asset.send_fee_fixed,)
+        asset_info["fee_fixed"] = round(
+            asset.send_fee_fixed, asset.significant_decimals
+        )
     if asset.send_fee_percent:
         asset_info["fee_percent"] = asset.send_fee_percent
 

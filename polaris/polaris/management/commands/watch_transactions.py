@@ -1,5 +1,6 @@
 """This module defines custom management commands for the app admin."""
 import asyncio
+from requests import RequestException
 from typing import Dict, Optional
 from decimal import Decimal
 import datetime
@@ -14,8 +15,8 @@ from stellar_sdk.server import Server
 from stellar_sdk.client.aiohttp_client import AiohttpClient
 
 from polaris import settings
-from polaris.models import Asset
-from polaris.models import Transaction
+from polaris.models import Asset, Transaction
+from polaris.sep31.utils import sep31_callback
 from polaris.integrations import (
     registered_withdrawal_integration as rwi,
     registered_fee_func as rfi,
@@ -119,6 +120,8 @@ class Command(BaseCommand):
                 continue
             try:
                 if transaction.protocol == Transaction.PROTOCOL.sep31:
+                    transaction.status = Transaction.STATUS.pending_receiver
+                    transaction.save()
                     rsi.process_payment(transaction, horizon_tx_json=response)
                 else:
                     rwi.process_withdrawal(response, transaction)
@@ -153,9 +156,16 @@ class Command(BaseCommand):
         except KeyError:
             return
 
-        # memo from response must match transaction.memo
+        # memo from response must match transaction memo
         memo = response.get("memo")
-        if memo != transaction.withdraw_memo:
+        if (
+            (
+                transaction.protocol != Transaction.PROTOCOL.sep31
+                and memo != transaction.withdraw_memo
+            )
+            or transaction.protocol == Transaction.PROTOCOL.sep31
+            and memo != transaction.send_memo
+        ):
             return
 
         horizon_tx = TransactionEnvelope.from_xdr(
@@ -193,12 +203,13 @@ class Command(BaseCommand):
     ):
         """
         Updates the transaction depending on whether or not the transaction was
-        successfully executed on the Stellar network and `process_withdrawal`
-        completed without raising an exception.
+        successfully executed on the Stellar network and `process_withdrawal` or
+        `process_payment` completed without raising an exception.
 
         If the Horizon response indicates the response was not successful or an
         exception was raised while processing the withdrawal, we mark the status
-        as `error`. If the Stellar transaction succeeded, we mark it as `completed`.
+        as `error`. If the transfer succeeded, we mark the transaction as
+        `completed` unless the anchor updated it to `pending_external`.
 
         :param error_msg: a description of the error that has occurred.
         :param response: a response body returned from Horizon for the transaction
@@ -207,12 +218,30 @@ class Command(BaseCommand):
         if error_msg or not response["successful"]:
             transaction.status = Transaction.STATUS.error
             transaction.status_message = error_msg
-        else:
-            transaction.paging_token = response["paging_token"]
-            transaction.completed_at = datetime.datetime.now(datetime.timezone.utc)
-            transaction.status = Transaction.STATUS.completed
             transaction.status_eta = 0
-            transaction.amount_out = transaction.amount_in - transaction.amount_fee
+        else:
+            if transaction.status == Transaction.STATUS.pending_info_update:
+                try:
+                    sep31_callback(transaction)
+                except RequestException as e:
+                    # We could mark the transaction's status as error, but the sending
+                    # anchor can still provide the updates required, so we keep the status
+                    # as pending_info_update even when callback requests fail.
+                    logger.exception(
+                        f"callback to {transaction.send_callback_url} failed"
+                    )
+                    pass
+            elif transaction.status == Transaction.STATUS.pending_external:
+                # Anchors can mark transactions as pending_external if the transfer
+                # cannot be completed immediately due to external processing.
+                transaction.amount_out = transaction.amount_in - transaction.amount_fee
+            else:  # Transaction.status == Transaction.STATUS.pending_receiver
+                transaction.status = Transaction.STATUS.completed
+                transaction.completed_at = datetime.datetime.now(datetime.timezone.utc)
+                transaction.amount_out = transaction.amount_in - transaction.amount_fee
+
+            transaction.paging_token = response["paging_token"]
+            transaction.status_eta = 0
 
         transaction.stellar_transaction_id = response["id"]
         transaction.save()

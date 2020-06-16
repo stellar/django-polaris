@@ -10,10 +10,25 @@ class SEP31TransactionSerializer(serializers.ModelSerializer):
     amount_out = serializers.DecimalField(max_digits=30, decimal_places=7)
     amount_fee = serializers.DecimalField(max_digits=30, decimal_places=7)
     stellar_account_id = serializers.SerializerMethodField()
+    stellar_memo = serializers.SerializerMethodField()
+    stellar_memo_type = serializers.SerializerMethodField()
+    required_info_message = serializers.SerializerMethodField()
 
     @staticmethod
     def get_stellar_account_id(instance):
-        return instance.asset.distribution_account
+        return instance.send_anchor_account
+
+    @staticmethod
+    def get_stellar_memo(instance):
+        return instance.send_memo or ""
+
+    @staticmethod
+    def get_stellar_memo_type(instance):
+        return instance.send_memo_type or ""
+
+    @staticmethod
+    def get_required_info_message(instance):
+        return instance.external_extra_text or ""
 
     @staticmethod
     def round_decimals(data, instance):
@@ -40,10 +55,6 @@ class SEP31TransactionSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         data = super().to_representation(instance)
         self.round_decimals(data, instance)
-        data["required_info_message"] = data.pop("external_extra_text") or ""
-        data["required_info_updates"] = json.loads(data.pop("external_extra") or "{}")
-        data["stellar_memo"] = data.pop("send_memo") or ""
-        data["stellar_memo_type"] = data.pop("send_memo_type")
         return data
 
     class Meta:
@@ -60,8 +71,4 @@ class SEP31TransactionSerializer(serializers.ModelSerializer):
             "stellar_transaction_id",
             "external_transaction_id",
             "refunded",
-            "external_extra",
-            "external_extra_text",
-            "send_memo",
-            "send_memo_type",
         ]

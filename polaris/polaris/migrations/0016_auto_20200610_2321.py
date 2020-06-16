@@ -72,6 +72,11 @@ class Migration(migrations.Migration):
             name="send_anchor_account",
             field=models.TextField(null=True, blank=True),
         ),
+        migrations.AddField(
+            model_name="transaction",
+            name="send_callback_url",
+            field=models.TextField(null=True, blank=True),
+        ),
         migrations.AlterField(
             model_name="transaction",
             name="kind",

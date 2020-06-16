@@ -1,8 +1,9 @@
 from typing import Dict, Optional
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from collections import defaultdict
 
 from django.utils.translation import gettext as _
+from django.core.validators import URLValidator, ValidationError
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, renderer_classes
@@ -19,7 +20,7 @@ from polaris.locale.utils import _is_supported_language, activate_lang_for_reque
 from polaris.models import Transaction, Asset
 from polaris.sep10.utils import validate_sep10_token
 from polaris.integrations import registered_send_integration
-from polaris.sep31.info import validate_integration
+from polaris.sep31.info import validate_info_fields
 
 logger = Logger(__name__)
 
@@ -38,7 +39,7 @@ def send(account: str, request: Request) -> Response:
 
     # validate fields separately since error responses need different format
     missing_fields = validate_fields(
-        request.GET.get("fields"), params.get("asset"), params.get("lang")
+        request.POST.get("fields"), params.get("asset"), params.get("lang")
     )
     if missing_fields:
         return Response({"error": "customer_info_needed", "fields": missing_fields})
@@ -56,10 +57,11 @@ def send(account: str, request: Request) -> Response:
         status=Transaction.STATUS.pending_sender,
         stellar_account=account,
         asset=params["asset"],
-        amount_in=Decimal(params.get("amount")),
+        amount_in=params["amount"],
         send_memo=transaction_memo,
         send_memo_type=Transaction.MEMO_TYPES.hash,
         send_anchor_account=params["asset"].distribution_account,
+        send_callback_url=params.get("callback"),
     )
 
     # The anchor should validate and process the parameters from the request and return
@@ -86,28 +88,39 @@ def send(account: str, request: Request) -> Response:
 
 
 def validate_send_request(request: Request) -> Dict:
-    asset_args = {"code": request.GET.get("asset_code")}
-    if request.GET.get("asset_issuer"):
-        asset_args["asset_issuer"] = request.GET.get("asset_issuer")
+    asset_args = {"code": request.POST.get("asset_code")}
+    if request.POST.get("asset_issuer"):
+        asset_args["asset_issuer"] = request.POST.get("asset_issuer")
     asset = Asset.objects.filter(**asset_args).first()
-    amount = request.GET.get("amount")
-    lang = request.GET.get("lang")
+    if not (asset and asset.sep31_enabled):
+        raise ValueError(_("invalid 'asset_code' and 'asset_issuer'"))
+    try:
+        amount = round(Decimal(request.POST.get("amount")), asset.significant_decimals)
+    except InvalidOperation:
+        raise ValueError(_("invalid 'amount'"))
+    if asset.send_min_amount > amount or amount > asset.send_max_amount:
+        raise ValueError(_("invalid 'amount'"))
+    lang = request.POST.get("lang")
     if not _is_supported_language(lang):
         raise ValueError("unsupported 'lang'")
     activate_lang_for_request(lang)
-    receiver_info = request.GET.get("require_receiver_info")
-    if not asset:
-        raise ValueError(_("invalid 'asset_code' and 'asset_issuer'"))
-    elif asset.send_min_amount < Decimal(amount) < asset.send_max_amount:
-        raise ValueError(_("invalid 'amount'"))
-    elif receiver_info and not all(f in SEP_9_FIELDS for f in receiver_info):
+    receiver_info = request.POST.get("require_receiver_info")
+    if receiver_info and not all(f in SEP_9_FIELDS for f in receiver_info):
         raise ValueError(_("unrecognized fields in 'require_receiver_info'"))
+    callback = request.POST.get("callback")
+    if callback:
+        try:
+            URLValidator(["https"])(callback)
+        except ValidationError:
+            raise ValidationError(_("invalid 'callback'"))
     return {
         "asset": asset,
         "amount": amount,
         "lang": lang,
         "receiver_info": receiver_info,
-        "fields": request.GET.get("fields"),
+        # fields are validated in validate_fields()
+        "fields": request.POST.get("fields"),
+        "callback": callback,
     }
 
 
@@ -146,13 +159,11 @@ def process_send_response(response_data: Dict, transaction: Transaction) -> Dict
                 f"transaction with ID {transaction.id} must be created by Polaris"
             )
         elif response_data["error"] == "customer_info_needed":
-            validate_integration(response_data.get("fields"))
+            validate_info_fields(response_data.get("fields"))
             if len(response_data) > 2:
                 raise ValueError(
                     "extra fields returned in customer_info_needed response"
                 )
-        elif len(response_data) > 1:
-            raise ValueError("extra fields returned in generic error response")
         elif not isinstance(response_data["error"], str):
             raise ValueError("'error' must be a string")
         new_response_data = response_data
