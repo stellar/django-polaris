@@ -30,7 +30,7 @@ logger = Logger(__name__)
 @validate_sep10_token("sep31")
 def send(account: str, request: Request) -> Response:
     if not registered_send_integration.valid_sending_anchor(account):
-        return render_error_response("invalid sending account.", status_code=401)
+        return render_error_response("invalid sending account", status_code=401)
 
     try:
         params = validate_send_request(request)

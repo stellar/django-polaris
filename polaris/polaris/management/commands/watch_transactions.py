@@ -1,6 +1,5 @@
 """This module defines custom management commands for the app admin."""
 import asyncio
-from requests import RequestException
 from typing import Dict, Optional
 from decimal import Decimal
 import datetime
@@ -16,11 +15,9 @@ from stellar_sdk.client.aiohttp_client import AiohttpClient
 
 from polaris import settings
 from polaris.models import Asset, Transaction
-from polaris.sep31.utils import sep31_callback
 from polaris.integrations import (
     registered_withdrawal_integration as rwi,
     registered_fee_func as rfi,
-    registered_send_integration as rsi,
 )
 from polaris.utils import Logger
 
@@ -122,7 +119,6 @@ class Command(BaseCommand):
                 if transaction.protocol == Transaction.PROTOCOL.sep31:
                     transaction.status = Transaction.STATUS.pending_receiver
                     transaction.save()
-                    rsi.process_payment(transaction, horizon_tx_json=response)
                 else:
                     rwi.process_withdrawal(response, transaction)
             except Exception as e:
@@ -159,11 +155,10 @@ class Command(BaseCommand):
         # memo from response must match transaction memo
         memo = response.get("memo")
         if (
-            (
-                transaction.protocol != Transaction.PROTOCOL.sep31
-                and memo != transaction.withdraw_memo
-            )
-            or transaction.protocol == Transaction.PROTOCOL.sep31
+            transaction.protocol != Transaction.PROTOCOL.sep31
+            and memo != transaction.withdraw_memo
+        ) or (
+            transaction.protocol == Transaction.PROTOCOL.sep31
             and memo != transaction.send_memo
         ):
             return
@@ -220,7 +215,7 @@ class Command(BaseCommand):
             transaction.status_message = error_msg
             transaction.status_eta = 0
         else:
-            if transaction.status == Transaction.STATUS.pending_info_update:
+            """if transaction.status == Transaction.STATUS.pending_info_update:
                 try:
                     sep31_callback(transaction)
                 except RequestException as e:
@@ -234,12 +229,10 @@ class Command(BaseCommand):
             elif transaction.status == Transaction.STATUS.pending_external:
                 # Anchors can mark transactions as pending_external if the transfer
                 # cannot be completed immediately due to external processing.
-                transaction.amount_out = transaction.amount_in - transaction.amount_fee
-            else:  # Transaction.status == Transaction.STATUS.pending_receiver
-                transaction.status = Transaction.STATUS.completed
-                transaction.completed_at = datetime.datetime.now(datetime.timezone.utc)
-                transaction.amount_out = transaction.amount_in - transaction.amount_fee
-
+                transaction.amount_out = transaction.amount_in - transaction.amount_fee"""
+            transaction.status = Transaction.STATUS.completed
+            transaction.completed_at = datetime.datetime.now(datetime.timezone.utc)
+            transaction.amount_out = transaction.amount_in - transaction.amount_fee
             transaction.paging_token = response["paging_token"]
             transaction.status_eta = 0
 

@@ -318,7 +318,7 @@ class WithdrawalIntegration:
         .. _endpoint: https://www.stellar.org/developers/horizon/reference/resources/transaction.html
 
         This method is called when the transacted asset's distribution account receives
-        a payment from a transaction with a memo matching `transaction.memo`.
+        a payment from a transaction with a memo matching `transaction.withdraw_memo`.
 
         If `transaction` was created via SEP-24, it is very important to confirm
         the amount sent in on the network matches the amount specified by
