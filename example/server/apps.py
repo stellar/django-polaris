@@ -11,6 +11,7 @@ class AnchorConfig(AppConfig):
             MyWithdrawalIntegration,
             MyCustomerIntegration,
             MySendIntegration,
+            MyRailsIntegration,
             toml_integration,
             scripts_integration,
             fee_integration,
@@ -26,4 +27,5 @@ class AnchorConfig(AppConfig):
             sep6_info_func=info_integration,
             customer=MyCustomerIntegration(),
             send=MySendIntegration(),
+            rails=MyRailsIntegration(),
         )

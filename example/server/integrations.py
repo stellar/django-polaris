@@ -24,6 +24,7 @@ from polaris.integrations import (
     SendIntegration,
     CustomerIntegration,
     calculate_fee,
+    RailsIntegration,
 )
 from polaris import settings
 
@@ -649,6 +650,17 @@ class MySendIntegration(SendIntegration):
     def valid_sending_anchor(self, public_key: str) -> bool:
         # A real anchor would check if public_key belongs to a partner anchor
         return True
+
+
+class MyRailsIntegration(RailsIntegration):
+    def poll_pending_transfers(self, transactions: QuerySet) -> List[Transaction]:
+        """
+        Auto-complete pending_external transactions
+
+        An anchor would typically collect information on the transactions passed
+        and return only the transactions that have completed the external transfer.
+        """
+        return list(transactions)
 
 
 def toml_integration():
