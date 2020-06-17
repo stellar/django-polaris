@@ -1,4 +1,4 @@
-from typing import Dict, Optional, List
+from typing import Dict
 
 from polaris.models import Asset, Transaction
 
@@ -17,9 +17,7 @@ class SendIntegration:
     def process_update_request(self, params: Dict, transaction: Transaction):
         pass
 
-    def process_payment(
-        self, transaction: Transaction, horizon_tx_json: Optional[Dict] = None
-    ):
+    def process_payment(self, transaction: Transaction):
         pass
 
     def valid_sending_anchor(self, public_key: str) -> bool:

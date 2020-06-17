@@ -112,29 +112,84 @@ class Command(BaseCommand):
             kind=Transaction.KIND.send,
         )
         pending_withdrawal_transactions = Transaction.objects.filter(
-            withdraw_filters | send_filters
+            # query SEP 6, 24, & 31 pending transactions
+            withdraw_filters
+            | send_filters
         )
+
+        matching_transaction, payment_op = None, None
         for transaction in pending_withdrawal_transactions:
             payment_op = cls.find_matching_payment_op(response, transaction)
             if not payment_op:
                 continue
-            try:
-                if transaction.protocol == Transaction.PROTOCOL.sep31:
-                    transaction.status = Transaction.STATUS.pending_receiver
-                    transaction.save()
-                else:
-                    rwi.process_withdrawal(response, transaction)
-            except Exception as e:
-                cls.update_transaction(response, transaction, error_msg=str(e))
-                logger.exception("process_withdrawal() integration raised an exception")
             else:
-                cls.update_transaction(response, transaction)
-                logger.info(
-                    f"successfully processed withdrawal for response with "
-                    f"xdr {response['envelope_xdr']}"
-                )
-            finally:
+                matching_transaction = transaction
                 break
+
+        if not matching_transaction:
+            logger.info(f"No match found for stellar transaction {response['id']}")
+            return
+
+        # The stellar transaction has been matched with an existing record in the DB.
+        # Now the anchor needs to initiate the off-chain transfer of the asset.
+        #
+        # For SEP 6 & 24, Polaris expects the anchor to not have any issues when making
+        # this transfer. If there are, Polaris marks the transaction as 'error' which
+        # requires the anchor to manually fix the transaction and retry the transfer.
+        #
+        # SEP 31 transfers could also have issues, such as needing additional or updates
+        # to the receiving user's information. However, since the SEP31 Polaris support
+        # hasn't been released yet, Polaris will provide a different interface that provides
+        # anchors the ability to attempt transfers, request updates from the sending anchor,
+        # and retry transfers once updates have been received.
+        #
+        # Polaris' SEP 6 and 24 interface will likely be changed to follow this pattern in
+        # a future non-patch release.
+        if matching_transaction.protocol == Transaction.PROTOCOL.sep31:
+            matching_transaction.amount_in = round(
+                Decimal(payment_op.amount),
+                matching_transaction.asset.significant_decimals,
+            )
+            matching_transaction.status = Transaction.STATUS.pending_receiver
+            matching_transaction.save()
+            return
+        elif matching_transaction.protocol == Transaction.PROTOCOL.SEP6:
+            # Transaction amount is not specified in SEP6 until the actual withdrawal
+            # has been made.
+            matching_transaction.amount_in = round(
+                Decimal(payment_op.amount),
+                matching_transaction.asset.significant_decimals,
+            )
+            # In the future rfi (fee integration) will only be called when a request to
+            # /fee is made. Fee calculations for a specific transaction will be done by
+            # the anchor in process_payment(), process_withdrawal(), or
+            # poll_pending_deposits().
+            #
+            # This makes sense because amount's sent (and indirectly, fee's calculated)
+            # may differ from the amount specified in a SEP 24 or 31 initial
+            # deposit/withdraw/send request. This will also allow us to simply the
+            # fee integration parameters (without changing the function signature).
+            matching_transaction.amount_fee = rfi(
+                {
+                    "amount": matching_transaction.amount_in,
+                    "asset_code": matching_transaction.asset.code,
+                    "operation": settings.OPERATION_WITHDRAWAL,
+                }
+            )
+
+        matching_transaction.status = Transaction.STATUS.pending_anchor
+        matching_transaction.save()
+        try:
+            rwi.process_withdrawal(response, matching_transaction)
+        except Exception as e:
+            cls.update_transaction(response, matching_transaction, error_msg=str(e))
+            logger.exception("process_withdrawal() integration raised an exception")
+        else:
+            cls.update_transaction(response, matching_transaction)
+            logger.info(
+                f"successfully processed withdrawal for response with "
+                f"xdr {response['envelope_xdr']}"
+            )
 
     @classmethod
     def find_matching_payment_op(
@@ -175,18 +230,7 @@ class Command(BaseCommand):
 
         matching_payment_op = None
         for operation in horizon_tx.operations:
-            if cls._check_payment_op(
-                operation, transaction.asset, transaction.amount_in
-            ):
-                if not transaction.amount_in:  # SEP6
-                    transaction.amount_in = Decimal(operation.amount)
-                    transaction.amount_fee = rfi(
-                        {
-                            "amount": transaction.amount_in,
-                            "asset_code": transaction.asset.code,
-                            "operation": settings.OPERATION_WITHDRAWAL,
-                        }
-                    )
+            if cls._check_payment_op(operation, transaction.asset):
                 transaction.stellar_transaction_id = stellar_transaction_id
                 transaction.from_address = horizon_tx.source.public_key
                 transaction.save()
@@ -216,37 +260,18 @@ class Command(BaseCommand):
         if error_msg or not response["successful"]:
             transaction.status = Transaction.STATUS.error
             transaction.status_message = error_msg
-            transaction.status_eta = 0
         else:
-            """if transaction.status == Transaction.STATUS.pending_info_update:
-                try:
-                    sep31_callback(transaction)
-                except RequestException as e:
-                    # We could mark the transaction's status as error, but the sending
-                    # anchor can still provide the updates required, so we keep the status
-                    # as pending_info_update even when callback requests fail.
-                    logger.exception(
-                        f"callback to {transaction.send_callback_url} failed"
-                    )
-                    pass
-            elif transaction.status == Transaction.STATUS.pending_external:
-                # Anchors can mark transactions as pending_external if the transfer
-                # cannot be completed immediately due to external processing.
-                transaction.amount_out = transaction.amount_in - transaction.amount_fee
-            else:"""
             transaction.status = Transaction.STATUS.completed
             transaction.completed_at = datetime.datetime.now(datetime.timezone.utc)
             transaction.amount_out = transaction.amount_in - transaction.amount_fee
             transaction.paging_token = response["paging_token"]
-            transaction.status_eta = 0
 
+        transaction.status_eta = 0
         transaction.stellar_transaction_id = response["id"]
         transaction.save()
 
     @staticmethod
-    def _check_payment_op(
-        operation: Operation, want_asset: Asset, want_amount: Optional[Decimal]
-    ) -> bool:
+    def _check_payment_op(operation: Operation, want_asset: Asset) -> bool:
         return (
             operation.type_code() == Xdr.const.PAYMENT
             and str(operation.destination) == want_asset.distribution_account
