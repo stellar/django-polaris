@@ -45,12 +45,6 @@ class Migration(migrations.Migration):
                 to="server.PolarisUser",
             ),
         ),
-        migrations.RunSQL(
-            "UPDATE server_polarisusertransaction AS t "
-            "JOIN server_polarisstellaraccount AS a ON t.account_id = a.id "
-            "JOIN server_polarisuser AS u ON a.user_id = u.id "
-            "SET t.user_id = u.id"
-        ),
         migrations.AlterField(
             model_name="polarisusertransaction",
             name="account",
