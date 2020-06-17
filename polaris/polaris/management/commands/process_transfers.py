@@ -55,7 +55,13 @@ class Command(BaseCommand):
                 logger.exception("An exception was raised by process_payment()")
                 continue
 
-            if transaction.status in [
+            if transaction.status == Transaction.STATUS.pending_receiver:
+                logger.error(
+                    f"Transaction {transaction.id} status must be "
+                    f"updated after call to process_payment()"
+                )
+                continue
+            elif transaction.status in [
                 Transaction.STATUS.pending_external,
                 Transaction.STATUS.completed,
             ]:
