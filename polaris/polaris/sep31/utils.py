@@ -40,3 +40,15 @@ def sep31_callback(transaction: Transaction) -> requests.Response:
         transaction.send_callback_url,
         json={"transaction": SEP31TransactionSerializer(transaction).data},
     )
+
+
+def make_callback(transaction: Transaction):
+    try:
+        sep31_callback(transaction)
+    except requests.RequestException as e:
+        # We could mark the transaction's status as error, but the sending
+        # anchor can still provide the updates required, so we keep the status
+        # as pending_info_update even when callback requests fail.
+        logger.error(
+            f"callback to {transaction.send_callback_url} failed for transaction {transaction.id}"
+        )

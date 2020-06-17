@@ -1,12 +1,11 @@
 import time
 from datetime import datetime, timezone
 
-from requests import RequestException
 from django.core.management import BaseCommand
 
 from polaris.utils import Logger
-from polaris.sep31.utils import sep31_callback
 from polaris.models import Transaction
+from polaris.sep31.utils import make_callback
 from polaris.integrations import registered_send_integration as rsi
 
 
@@ -39,7 +38,8 @@ class Command(BaseCommand):
         else:
             self.process_transfers()
 
-    def process_transfers(self):
+    @staticmethod
+    def process_transfers():
         # For the time being this function is only for SEP 31 transactions
         # Eventually we'll process transfers for SEP 6 and SEP 24 transactions
         # here as well.
@@ -76,19 +76,7 @@ class Command(BaseCommand):
                 transaction.save()
 
             if transaction.send_callback_url:
-                self.make_callback(transaction)
+                make_callback(transaction)
 
         if num_completed:
             logger.info(f"{num_completed} transfers have been completed")
-
-    @staticmethod
-    def make_callback(transaction: Transaction):
-        try:
-            sep31_callback(transaction)
-        except RequestException as e:
-            # We could mark the transaction's status as error, but the sending
-            # anchor can still provide the updates required, so we keep the status
-            # as pending_info_update even when callback requests fail.
-            logger.error(
-                f"callback to {transaction.send_callback_url} failed for transaction {transaction.id}"
-            )

@@ -5,6 +5,7 @@ from django.core.management import BaseCommand
 
 from polaris.utils import Logger
 from polaris.models import Transaction
+from polaris.sep31.utils import make_callback
 from polaris.integrations import registered_rails_integration as rri
 
 
@@ -43,15 +44,18 @@ class Command(BaseCommand):
             protocol=Transaction.PROTOCOL.sep31,
             status=Transaction.STATUS.pending_external,
         )
+        complete_transactions = None
         try:
             complete_transactions = rri.poll_pending_transfers(transactions)
         except Exception:
             logger.exception("An exception was raised by poll_pending_transfers()")
-        else:
-            if complete_transactions:
-                ids = [t.id for t in complete_transactions]
-                num_completed = Transaction.objects.filter(id__in=ids).update(
-                    status=Transaction.STATUS.completed,
-                    completed_at=datetime.now(timezone.utc),
-                )
-                logger.info(f"{num_completed} pending transfers have been completed")
+
+        if complete_transactions:
+            ids = [t.id for t in complete_transactions]
+            num_completed = Transaction.objects.filter(id__in=ids).update(
+                status=Transaction.STATUS.completed,
+                completed_at=datetime.now(timezone.utc),
+            )
+            logger.info(f"{num_completed} pending transfers have been completed")
+            for transaction in complete_transactions:
+                make_callback(transaction)
