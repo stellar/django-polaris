@@ -25,8 +25,7 @@ def update(account: str, request: Request) -> Response:
     tid = str(request.PUT.get("id"))
     transaction = Transaction.objects.filter(id=tid).first()
     if not transaction:
-        # TODO: make PR on SEP31 for adding 404 status code to /update
-        return render_error_response(_("transaction not found"))
+        return render_error_response(_("transaction not found"), status_code=404)
     elif transaction.status != Transaction.STATUS.pending_info_update:
         return render_error_response(_("update not required"))
     try:
