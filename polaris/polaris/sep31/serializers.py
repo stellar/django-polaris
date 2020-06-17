@@ -13,6 +13,7 @@ class SEP31TransactionSerializer(serializers.ModelSerializer):
     stellar_memo = serializers.SerializerMethodField()
     stellar_memo_type = serializers.SerializerMethodField()
     required_info_message = serializers.SerializerMethodField()
+    required_info_update = serializers.SerializerMethodField()
 
     @staticmethod
     def get_stellar_account_id(instance):
@@ -28,7 +29,14 @@ class SEP31TransactionSerializer(serializers.ModelSerializer):
 
     @staticmethod
     def get_required_info_message(instance):
-        return instance.external_extra_text or ""
+        return instance.required_info_message or ""
+
+    @staticmethod
+    def get_required_info_update(instance):
+        if instance.required_info_update:
+            return json.loads(instance.required_info_update)
+        else:
+            return {}
 
     @staticmethod
     def round_decimals(data, instance):

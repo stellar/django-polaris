@@ -13,8 +13,6 @@ class TransactionSerializer(serializers.ModelSerializer):
     amount_in = serializers.DecimalField(max_digits=30, decimal_places=7)
     amount_out = serializers.DecimalField(max_digits=30, decimal_places=7)
     amount_fee = serializers.DecimalField(max_digits=30, decimal_places=7)
-    external_extra = serializers.CharField()
-    external_extra_text = serializers.CharField()
     more_info_url = serializers.SerializerMethodField()
     message = serializers.CharField()
 
@@ -78,9 +76,6 @@ class TransactionSerializer(serializers.ModelSerializer):
         else:  # withdrawal
             del data["deposit_memo"]
             del data["deposit_memo_type"]
-        if not self.context.get("sep6"):
-            del data["external_extra"]
-            del data["external_extra_text"]
         return data
 
     class Meta:
@@ -99,8 +94,6 @@ class TransactionSerializer(serializers.ModelSerializer):
             "external_transaction_id",
             "from_address",
             "to_address",
-            "external_extra",
-            "external_extra_text",
             "deposit_memo",
             "deposit_memo_type",
             "withdraw_anchor_account",

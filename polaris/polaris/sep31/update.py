@@ -40,18 +40,18 @@ def update(account: str, request: Request) -> Response:
         logger.exception(str(e))
         return render_error_response(_("unable to process request"), status_code=500)
     transaction.status = Transaction.STATUS.pending_receiver
-    transaction.external_extra = None
-    transaction.external_extra_text = None
+    transaction.required_info_update = None
+    transaction.required_info_message = None
     transaction.save()
     return Response(status=200)
 
 
 def validate_update_fields(fields: Dict, transaction: Transaction):
     try:
-        required_info_updates = json.loads(transaction.external_extra)
+        required_info_updates = json.loads(transaction.required_info_update)
     except (ValueError, TypeError):
         raise RuntimeError(
-            "expected json-encoded string from transaction.external_extra"
+            "expected json-encoded string from transaction.required_info_update"
         )
     for category, expected_fields in required_info_updates.items():
         if category not in fields:

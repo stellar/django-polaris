@@ -124,4 +124,14 @@ class Migration(migrations.Migration):
                 max_length=30,
             ),
         ),
+        migrations.RenameField(
+            model_name="transaction",
+            old_name="external_extra_text",
+            new_name="required_info_message",
+        ),
+        migrations.RenameField(
+            model_name="transaction",
+            old_name="external_extra",
+            new_name="required_info_update",
+        ),
     ]

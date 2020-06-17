@@ -438,11 +438,18 @@ class Transaction(models.Model):
     withdrawal or send, Stellar address in the case of a deposit).
     """
 
-    external_extra = models.TextField(null=True, blank=True)
-    """"""
+    required_info_update = models.TextField(null=True, blank=True)
+    """
+    (SEP31) (optional) A set of fields that require an update from the sender, 
+    in the same format as described in /info. Fields should be broken out by 
+    sender, receiver, and transaction as specified in /info.
+    """
 
-    external_extra_text = models.TextField(null=True, blank=True)
-    """"""
+    required_info_message = models.TextField(null=True, blank=True)
+    """
+    (SEP31) (optional) A human readable message indicating any errors that 
+    require updated information from the sender
+    """
 
     deposit_memo = models.TextField(null=True, blank=True)
     """
