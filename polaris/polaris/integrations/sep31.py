@@ -8,7 +8,7 @@ class SendIntegration:
     The container class for SEP31 integrations
     """
 
-    def info(self, asset: Asset, lang: str) -> Dict:
+    def info(self, asset: Asset, lang: str = None) -> Dict:
         pass
 
     def process_send_request(self, params: Dict, transaction_id: str) -> Dict:

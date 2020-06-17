@@ -73,8 +73,17 @@ class Command(BaseCommand):
                 if transaction.status == Transaction.STATUS.completed:
                     num_completed += 1
                     transaction.completed_at = datetime.now(timezone.utc)
-                transaction.save()
+            elif transaction.status not in [
+                Transaction.STATUS.error,
+                Transaction.STATUS.pending_info_update,
+            ]:
+                logger.error(
+                    f"Transaction {transaction.id} was moved to invalid status"
+                    f" {transaction.status}"
+                )
+                continue
 
+            transaction.save()
             if transaction.send_callback_url:
                 make_callback(transaction)
 

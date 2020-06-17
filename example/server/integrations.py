@@ -1,10 +1,12 @@
 from typing import Union
 
+import json
 from smtplib import SMTPException
 from decimal import Decimal
 from typing import List, Dict, Optional
 from urllib.parse import urlencode
 from base64 import b64encode
+from collections import defaultdict
 
 from django.db.models import QuerySet
 from django.utils.translation import gettext as _
@@ -525,7 +527,7 @@ class MyCustomerIntegration(CustomerIntegration):
 
 
 class MySendIntegration(SendIntegration):
-    def info(self, asset: Asset, lang: Optional[str]):
+    def info(self, asset: Asset, lang: Optional[str] = None):
         return {
             "sender": {
                 "first_name": {"description": "The sender's first name"},
@@ -570,6 +572,83 @@ class MySendIntegration(SendIntegration):
         # Transaction doesn't yet exist so transaction_id is a text field
         PolarisUserTransaction.objects.create(user=user, transaction_id=transaction_id)
         # Don't handle receiver_info yet
+
+    def process_payment(self, transaction: Transaction):
+        user = (
+            PolarisUserTransaction.objects.filter(transaction_id=transaction.id)
+            .first()
+            .user
+        )
+        client = rails.BankAPIClient("fake anchor bank account number")
+        transaction.amount_fee = 0  # Or calculate your fee
+        response = client.send_funds(
+            to_account=user.bank_account_number,
+            amount=transaction.amount_in - transaction.amount_fee,
+        )
+        if response.success:
+            transaction.status = Transaction.STATUS.pending_external
+        else:
+            # Parse a mock bank API response to demonstrate how an anchor would
+            # report back to the sending anchor which fields needed updating.
+            error_fields = response.error.fields
+            info_fields = self.info(transaction.asset)
+            required_info_update = defaultdict(dict)
+            for field in error_fields:
+                if "name" in field:
+                    required_info_update["receiver"][field] = info_fields["receiver"][
+                        field
+                    ]
+                elif "account" in field:
+                    required_info_update["transaction"][field] = info_fields[
+                        "receiver"
+                    ][field]
+            transaction.external_extra = json.dumps(required_info_update)
+            transaction.external_extra_text = response.error.message
+            transaction.status = Transaction.STATUS.pending_info_update
+
+        # We don't need to save transaction, but we could. Polaris will save
+        # changes as long as transaction.status is one of the expected values
+
+    def process_update_request(self, params: Dict, transaction: Transaction):
+        info_fields = params.get("fields", {})
+        receiver_fields = info_fields.get("receiver", {})
+        transaction_fields = info_fields.get("transaction", {})
+        possible_fields = [
+            "first_name",
+            "last_name",
+            "routing_number",
+            "account_number",
+        ]
+        try:
+            update_fields = list(receiver_fields.keys()) + list(
+                transaction_fields.keys()
+            )
+        except TypeError:
+            raise ValueError("receiver and transaction values must be JSON objects")
+        if not update_fields:
+            raise ValueError(_("No fields provided"))
+        elif any(f not in possible_fields for f in update_fields):
+            raise ValueError(_("Unexpected fields provided"))
+        elif not all(isinstance(update_fields[f], str) for f in update_fields):
+            raise ValueError(_("Field values must be strings"))
+        user = (
+            PolarisUserTransaction.objects.filter(transaction_id=transaction.id)
+            .first()
+            .user
+        )
+        if "first_name" in update_fields:
+            user.first_name = receiver_fields["first_name"]
+        elif "last_name" in update_fields:
+            user.last_name = receiver_fields["last_name"]
+        elif "routing_number" in update_fields:
+            user.bank_number = transaction_fields["routing_number"]
+        elif "account_number" in update_fields:
+            user.bank_account_number = transaction_fields["account_number"]
+        user.save()
+
+    def valid_sending_anchor(self, public_key: str) -> bool:
+        # A real anchor would check if public_key belongs to a partner anchor
+        return True
 
 
 def toml_integration():
