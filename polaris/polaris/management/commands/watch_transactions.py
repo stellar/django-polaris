@@ -153,7 +153,7 @@ class Command(BaseCommand):
             matching_transaction.status = Transaction.STATUS.pending_receiver
             matching_transaction.save()
             return
-        elif matching_transaction.protocol == Transaction.PROTOCOL.SEP6:
+        elif matching_transaction.protocol == Transaction.PROTOCOL.sep6:
             # Transaction amount is not specified in SEP6 until the actual withdrawal
             # has been made.
             matching_transaction.amount_in = round(
