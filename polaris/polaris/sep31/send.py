@@ -39,7 +39,7 @@ def send(account: str, request: Request) -> Response:
 
     # validate fields separately since error responses need different format
     missing_fields = validate_fields(
-        request.POST.get("fields"), params.get("asset"), params.get("lang")
+        request.data.get("fields"), params.get("asset"), params.get("lang")
     )
     if missing_fields:
         return Response({"error": "customer_info_needed", "fields": missing_fields})
@@ -88,26 +88,27 @@ def send(account: str, request: Request) -> Response:
 
 
 def validate_send_request(request: Request) -> Dict:
-    asset_args = {"code": request.POST.get("asset_code")}
-    if request.POST.get("asset_issuer"):
-        asset_args["asset_issuer"] = request.POST.get("asset_issuer")
+    asset_args = {"code": request.data.get("asset_code")}
+    if request.data.get("asset_issuer"):
+        asset_args["asset_issuer"] = request.data.get("asset_issuer")
     asset = Asset.objects.filter(**asset_args).first()
     if not (asset and asset.sep31_enabled):
         raise ValueError(_("invalid 'asset_code' and 'asset_issuer'"))
     try:
-        amount = round(Decimal(request.POST.get("amount")), asset.significant_decimals)
+        amount = round(Decimal(request.data.get("amount")), asset.significant_decimals)
     except InvalidOperation:
         raise ValueError(_("invalid 'amount'"))
     if asset.send_min_amount > amount or amount > asset.send_max_amount:
         raise ValueError(_("invalid 'amount'"))
-    lang = request.POST.get("lang")
-    if not _is_supported_language(lang):
-        raise ValueError("unsupported 'lang'")
-    activate_lang_for_request(lang)
-    receiver_info = request.POST.get("require_receiver_info")
+    lang = request.data.get("lang")
+    if lang:
+        if not _is_supported_language(lang):
+            raise ValueError("unsupported 'lang'")
+        activate_lang_for_request(lang)
+    receiver_info = request.data.get("require_receiver_info")
     if receiver_info and not all(f in SEP_9_FIELDS for f in receiver_info):
         raise ValueError(_("unrecognized fields in 'require_receiver_info'"))
-    callback = request.POST.get("callback")
+    callback = request.data.get("callback")
     if callback:
         try:
             URLValidator(["https"])(callback)
@@ -119,7 +120,7 @@ def validate_send_request(request: Request) -> Dict:
         "lang": lang,
         "receiver_info": receiver_info,
         # fields are validated in validate_fields()
-        "fields": request.POST.get("fields"),
+        "fields": request.data.get("fields"),
         "callback": callback,
     }
 
@@ -143,7 +144,7 @@ def validate_fields(passed_fields: Dict, asset: Asset, lang: Optional[str]) -> D
 
 
 def process_send_response(response_data: Dict, transaction: Transaction) -> Dict:
-    if "error" not in response_data:
+    if not response_data or "error" not in response_data:
         new_response_data = {
             "id": transaction.id,
             "stellar_account_id": transaction.asset.distribution_account,
