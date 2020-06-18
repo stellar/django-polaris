@@ -102,8 +102,6 @@ class TransactionForm(forms.Form):
 
         super().__init__(*args, **kwargs)
 
-        self.fields["amount"].widget.attrs.update({"test-value": test_value})
-
         self.transaction = transaction
         self.asset = transaction.asset
         self.decimal_places = self.asset.significant_decimals
@@ -129,6 +127,7 @@ class TransactionForm(forms.Form):
                     "class": "input",
                     "inputmode": "decimal",
                     "symbol": self.asset.symbol,
+                    "test-value": test_value,
                 }
             ),
             min_value=self.min_amount,
