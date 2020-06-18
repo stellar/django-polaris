@@ -148,7 +148,7 @@ class Command(BaseCommand):
         horizon_tx = TransactionEnvelope.from_xdr(
             envelope_xdr, network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
         ).transaction
-        if horizon_tx.source.account_id != transaction.stellar_account:
+        if horizon_tx.source.public_key != transaction.stellar_account:
             # transaction wasn't created by sender of payment
             return
 
@@ -167,7 +167,7 @@ class Command(BaseCommand):
                         }
                     )
                 transaction.stellar_transaction_id = stellar_transaction_id
-                transaction.from_address = horizon_tx.source.account_id
+                transaction.from_address = horizon_tx.source.public_key
                 transaction.save()
                 matching_payment_op = operation
                 break
@@ -210,7 +210,7 @@ class Command(BaseCommand):
     ) -> bool:
         return (
             operation.type_code() == Xdr.const.PAYMENT
-            and str(operation.destination.account_id) == want_asset.distribution_account
+            and str(operation.destination) == want_asset.distribution_account
             and str(operation.asset.code) == want_asset.code
             and str(operation.asset.issuer) == want_asset.issuer
         )

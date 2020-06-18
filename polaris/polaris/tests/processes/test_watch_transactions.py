@@ -24,14 +24,12 @@ mock_envelope = Mock(
             Mock(
                 asset=Mock(issuer=USD_ISSUER_ACCOUNT, code="USD",),
                 amount=50,
-                destination=Mock(
-                    account_id=Keypair.from_secret(USD_DISTRIBUTION_SEED).public_key
-                ),
+                destination=Keypair.from_secret(USD_DISTRIBUTION_SEED).public_key,
                 type_code=Mock(return_value=1),
             )
         ],
-        source=Mock(
-            account_id="GCUZ6YLL5RQBTYLTTQLPCM73C5XAIUGK2TIMWQH7HPSGWVS2KJ2F3CHS"
+        source=Keypair.from_public_key(
+            "GCUZ6YLL5RQBTYLTTQLPCM73C5XAIUGK2TIMWQH7HPSGWVS2KJ2F3CHS"
         ),
     )
 )
@@ -44,7 +42,7 @@ def test_process_response_success(
     mock_withdrawal, mock_xdr, client, acc1_usd_withdrawal_transaction_factory
 ):
     del mock_withdrawal, mock_xdr
-    mock_source_account = mock_envelope.transaction.source.account_id
+    mock_source_account = mock_envelope.transaction.source.public_key
     transaction = acc1_usd_withdrawal_transaction_factory(mock_source_account)
     json = deepcopy(TRANSACTION_JSON)
     json["successful"] = True
@@ -68,7 +66,7 @@ def test_process_response_unsuccessful(
     mock_xdr, client, acc1_usd_withdrawal_transaction_factory
 ):
     del mock_xdr
-    mock_source_account = mock_envelope.transaction.source.account_id
+    mock_source_account = mock_envelope.transaction.source.public_key
     transaction = acc1_usd_withdrawal_transaction_factory(mock_source_account)
     json = deepcopy(TRANSACTION_JSON)
     json["successful"] = False
@@ -89,7 +87,7 @@ def test_process_response_bad_integration(
     mock_withdrawal, mock_xdr, client, acc1_usd_withdrawal_transaction_factory
 ):
     del mock_withdrawal, mock_xdr
-    mock_source_account = mock_envelope.transaction.source.account_id
+    mock_source_account = mock_envelope.transaction.source.public_key
     transaction = acc1_usd_withdrawal_transaction_factory(mock_source_account)
     json = deepcopy(TRANSACTION_JSON)
     json["successful"] = True
@@ -111,7 +109,7 @@ def test_match_with_no_amount(
 ):
     del mock_withdrawal, mock_xdr
 
-    mock_source_account = mock_envelope.transaction.source.account_id
+    mock_source_account = mock_envelope.transaction.source.public_key
     transaction = acc1_usd_withdrawal_transaction_factory(mock_source_account)
     transaction.amount_in = None
     transaction.save()
