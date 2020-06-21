@@ -55,7 +55,7 @@ setup(
         "six==1.15.0",
         "sqlparse==0.3.1",
         "stellar-base-sseclient==0.0.21",
-        "stellar-sdk==2.6.0",
+        "stellar-sdk==2.6.1",
         "toml==0.10.1",
         "urllib3==1.25.9",
         "whitenoise==5.1.0",
