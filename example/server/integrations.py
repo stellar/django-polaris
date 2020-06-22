@@ -586,7 +586,7 @@ class MySendIntegration(SendIntegration):
             to_account=user.bank_account_number,
             amount=transaction.amount_in - transaction.amount_fee,
         )
-        if response.success:
+        if response["success"]:
             transaction.status = Transaction.STATUS.pending_external
         else:
             # Parse a mock bank API response to demonstrate how an anchor would
@@ -603,8 +603,8 @@ class MySendIntegration(SendIntegration):
                     required_info_update["transaction"][field] = info_fields[
                         "receiver"
                     ][field]
-            transaction.external_extra = json.dumps(required_info_update)
-            transaction.external_extra_text = response.error.message
+            transaction.required_info_update = json.dumps(required_info_update)
+            transaction.required_info_message = response.error.message
             transaction.status = Transaction.STATUS.pending_info_update
 
         # We don't need to save transaction, but we could. Polaris will save

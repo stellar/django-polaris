@@ -58,4 +58,5 @@ class Command(BaseCommand):
             )
             logger.info(f"{num_completed} pending transfers have been completed")
             for transaction in complete_transactions:
-                make_callback(transaction)
+                if transaction.send_callback_url:
+                    make_callback(transaction)

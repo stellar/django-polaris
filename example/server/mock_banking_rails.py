@@ -52,4 +52,4 @@ class BankAPIClient:
         A fake function to symbolize sending money from an anchor's bank
         account to the user's bank account.
         """
-        pass
+        return {"success": True}
