@@ -17,9 +17,6 @@ class SendIntegration:
     def process_update_request(self, params: Dict, transaction: Transaction):
         pass
 
-    def process_payment(self, transaction: Transaction):
-        pass
-
     def valid_sending_anchor(self, public_key: str) -> bool:
         pass
 

@@ -3,7 +3,6 @@ import asyncio
 from typing import Dict, Optional
 from decimal import Decimal
 import datetime
-from requests import RequestException
 
 from django.core.management.base import BaseCommand
 from django.db.models import Q
@@ -19,10 +18,8 @@ from polaris.models import Asset, Transaction
 from polaris.integrations import (
     registered_withdrawal_integration as rwi,
     registered_fee_func as rfi,
-    registered_send_integration as rsi,
 )
 from polaris.utils import Logger
-from polaris.sep31.utils import sep31_callback
 
 logger = Logger(__name__)
 

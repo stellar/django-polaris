@@ -574,42 +574,6 @@ class MySendIntegration(SendIntegration):
         PolarisUserTransaction.objects.create(user=user, transaction_id=transaction_id)
         # Don't handle receiver_info yet
 
-    def process_payment(self, transaction: Transaction):
-        user = (
-            PolarisUserTransaction.objects.filter(transaction_id=transaction.id)
-            .first()
-            .user
-        )
-        client = rails.BankAPIClient("fake anchor bank account number")
-        transaction.amount_fee = 0  # Or calculate your fee
-        response = client.send_funds(
-            to_account=user.bank_account_number,
-            amount=transaction.amount_in - transaction.amount_fee,
-        )
-        if response["success"]:
-            transaction.status = Transaction.STATUS.pending_external
-        else:
-            # Parse a mock bank API response to demonstrate how an anchor would
-            # report back to the sending anchor which fields needed updating.
-            error_fields = response.error.fields
-            info_fields = self.info(transaction.asset)
-            required_info_update = defaultdict(dict)
-            for field in error_fields:
-                if "name" in field:
-                    required_info_update["receiver"][field] = info_fields["receiver"][
-                        field
-                    ]
-                elif "account" in field:
-                    required_info_update["transaction"][field] = info_fields[
-                        "receiver"
-                    ][field]
-            transaction.required_info_update = json.dumps(required_info_update)
-            transaction.required_info_message = response.error.message
-            transaction.status = Transaction.STATUS.pending_info_update
-
-        # We don't need to save transaction, but we could. Polaris will save
-        # changes as long as transaction.status is one of the expected values
-
     def process_update_request(self, params: Dict, transaction: Transaction):
         info_fields = params.get("fields", {})
         receiver_fields = info_fields.get("receiver", {})
@@ -653,7 +617,7 @@ class MySendIntegration(SendIntegration):
 
 
 class MyRailsIntegration(RailsIntegration):
-    def poll_pending_transfers(self, transactions: QuerySet) -> List[Transaction]:
+    def poll_outgoing_transactions(self, transactions: QuerySet) -> List[Transaction]:
         """
         Auto-complete pending_external transactions
 
@@ -661,6 +625,43 @@ class MyRailsIntegration(RailsIntegration):
         and return only the transactions that have completed the external transfer.
         """
         return list(transactions)
+
+    def execute_outgoing_transaction(self, transaction: Transaction):
+        user = (
+            PolarisUserTransaction.objects.filter(transaction_id=transaction.id)
+            .first()
+            .user
+        )
+
+        client = rails.BankAPIClient("fake anchor bank account number")
+        transaction.amount_fee = 0  # Or calculate your fee
+        response = client.send_funds(
+            to_account=user.bank_account_number,
+            amount=transaction.amount_in - transaction.amount_fee,
+        )
+
+        if response["success"]:
+            transaction.status = Transaction.STATUS.pending_external
+        else:
+            # Parse a mock bank API response to demonstrate how an anchor would
+            # report back to the sending anchor which fields needed updating.
+            error_fields = response.error.fields
+            info_fields = MySendIntegration().info(transaction.asset)
+            required_info_update = defaultdict(dict)
+            for field in error_fields:
+                if "name" in field:
+                    required_info_update["receiver"][field] = info_fields["receiver"][
+                        field
+                    ]
+                elif "account" in field:
+                    required_info_update["transaction"][field] = info_fields[
+                        "receiver"
+                    ][field]
+            transaction.required_info_update = json.dumps(required_info_update)
+            transaction.required_info_message = response.error.message
+            transaction.status = Transaction.STATUS.pending_info_update
+
+        transaction.save()
 
 
 def toml_integration():

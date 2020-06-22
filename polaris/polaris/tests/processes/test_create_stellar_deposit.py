@@ -13,8 +13,7 @@ from polaris.tests.conftest import (
     ETH_DISTRIBUTION_SEED,
 )
 from polaris.tests.sep24.test_deposit import HORIZON_SUCCESS_RESPONSE
-from polaris.management.commands.create_stellar_deposit import TRUSTLINE_FAILURE_XDR
-from polaris.utils import create_stellar_deposit
+from polaris.utils import TRUSTLINE_FAILURE_XDR, create_stellar_deposit
 from polaris.models import Transaction
 
 

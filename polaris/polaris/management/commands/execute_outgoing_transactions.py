@@ -6,7 +6,7 @@ from django.core.management import BaseCommand
 from polaris.utils import Logger
 from polaris.models import Transaction
 from polaris.sep31.utils import make_callback
-from polaris.integrations import registered_send_integration as rsi
+from polaris.integrations import registered_rails_integration as rri
 
 
 logger = Logger(__name__)
@@ -33,13 +33,13 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         if options.get("loop"):
             while True:
-                self.process_transfers()
+                self.execute_outgoing_transaction()
                 time.sleep(options.get("interval"))
         else:
-            self.process_transfers()
+            self.execute_outgoing_transaction()
 
     @staticmethod
-    def process_transfers():
+    def execute_outgoing_transaction():
         # For the time being this function is only for SEP 31 transactions
         # Eventually we'll process transfers for SEP 6 and SEP 24 transactions
         # here as well.
@@ -50,7 +50,7 @@ class Command(BaseCommand):
         num_completed = 0
         for transaction in transactions:
             try:
-                rsi.process_payment(transaction)
+                rri.execute_outgoing_transaction(transaction)
             except Exception:
                 logger.exception("An exception was raised by process_payment()")
                 continue
@@ -58,7 +58,7 @@ class Command(BaseCommand):
             if transaction.status == Transaction.STATUS.pending_receiver:
                 logger.error(
                     f"Transaction {transaction.id} status must be "
-                    f"updated after call to process_payment()"
+                    f"updated after call to execute_outgoing_transaction()"
                 )
                 continue
             elif transaction.status in [

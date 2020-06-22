@@ -33,20 +33,20 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         if options.get("loop"):
             while True:
-                self.poll_pending_transfers()
+                self.poll_outgoing_transactions()
                 time.sleep(options.get("interval"))
         else:
-            self.poll_pending_transfers()
+            self.poll_outgoing_transactions()
 
     @staticmethod
-    def poll_pending_transfers():
+    def poll_outgoing_transactions():
         transactions = Transaction.objects.filter(
             protocol=Transaction.PROTOCOL.sep31,
             status=Transaction.STATUS.pending_external,
         )
         complete_transactions = None
         try:
-            complete_transactions = rri.poll_pending_transfers(transactions)
+            complete_transactions = rri.poll_outgoing_transactions(transactions)
         except Exception:
             logger.exception("An exception was raised by poll_pending_transfers()")
 

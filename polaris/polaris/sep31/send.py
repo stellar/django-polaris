@@ -29,6 +29,7 @@ logger = Logger(__name__)
 @renderer_classes([JSONRenderer, BrowsableAPIRenderer])
 @validate_sep10_token("sep31")
 def send(account: str, request: Request) -> Response:
+    print(request.data)
     if not registered_send_integration.valid_sending_anchor(account):
         return render_error_response("invalid sending account", status_code=401)
 
@@ -39,7 +40,7 @@ def send(account: str, request: Request) -> Response:
 
     # validate fields separately since error responses need different format
     missing_fields = validate_fields(
-        request.data.get("fields"), params.get("asset"), params.get("lang")
+        params.get("fields"), params.get("asset"), params.get("lang")
     )
     if missing_fields:
         return Response({"error": "customer_info_needed", "fields": missing_fields})
@@ -90,7 +91,7 @@ def send(account: str, request: Request) -> Response:
 def validate_send_request(request: Request) -> Dict:
     asset_args = {"code": request.data.get("asset_code")}
     if request.data.get("asset_issuer"):
-        asset_args["asset_issuer"] = request.data.get("asset_issuer")
+        asset_args["issuer"] = request.data.get("asset_issuer")
     asset = Asset.objects.filter(**asset_args).first()
     if not (asset and asset.sep31_enabled):
         raise ValueError(_("invalid 'asset_code' and 'asset_issuer'"))
@@ -126,6 +127,7 @@ def validate_send_request(request: Request) -> Dict:
 
 
 def validate_fields(passed_fields: Dict, asset: Asset, lang: Optional[str]) -> Dict:
+    print(passed_fields)
     missing_fields = defaultdict(dict)
     expected_fields = registered_send_integration.info(asset, lang)
     for category, fields in expected_fields.items():

@@ -62,7 +62,7 @@ def test_transaction_id_filter_and_format(
     assert isinstance(withdrawal_transaction["id"], str)
     assert withdrawal_transaction["kind"] == "withdrawal"
     assert withdrawal_transaction["status"] == "completed"
-    assert withdrawal_transaction["status_eta"] == 3600
+    assert not withdrawal_transaction["status_eta"]
     assert withdrawal_transaction["amount_in"] == "500.00"
     assert withdrawal_transaction["amount_out"] == "495.00"
     assert withdrawal_transaction["amount_fee"] == "3.00"

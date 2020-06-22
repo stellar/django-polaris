@@ -27,7 +27,7 @@ def register_integrations(
     toml_func: Callable = None,
     scripts_func: Callable = None,
     fee_func: Callable = None,
-    sep6_info_func: Callable = None,
+    info_func: Callable = None,
     customer: CustomerIntegration = None,
 ):
     """
@@ -78,7 +78,7 @@ def register_integrations(
     :param scripts_func: a function that returns a list of script tags as
         strings
     :param fee_func: a function that returns the fee that would be charged
-    :param sep6_info_func: a function that returns the /info `fields` or `types`
+    :param info_func: a function that returns the /info `fields` or `types`
         values for an Asset
     :param customer: the ``CustomerIntegration`` subclass instance to be used
         by Polaris
@@ -98,7 +98,7 @@ def register_integrations(
         raise TypeError("javascript_func is not callable")
     elif fee_func and not callable(fee_func):
         raise TypeError("fee_func is not callable")
-    elif sep6_info_func and not callable(sep6_info_func):
+    elif info_func and not callable(info_func):
         raise TypeError("sep6_info_func is not callable")
     elif customer and not issubclass(customer.__class__, CustomerIntegration):
         raise TypeError("customer must be a subclass of CustomerIntegration")
@@ -113,7 +113,7 @@ def register_integrations(
         (toml_func, "registered_toml_func"),
         (scripts_func, "registered_scripts_func"),
         (fee_func, "registered_fee_func"),
-        (sep6_info_func, "registered_info_func"),
+        (info_func, "registered_info_func"),
         (customer, "registered_customer_integration"),
         (send, "registered_send_integration"),
         (rails, "registered_rails_integration"),

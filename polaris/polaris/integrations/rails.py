@@ -11,7 +11,10 @@ class RailsIntegration:
     poll_pending_transfers() but others will be added.
     """
 
-    def poll_pending_transfers(self, transactions: QuerySet) -> List[Transaction]:
+    def poll_outgoing_transactions(self, transactions: QuerySet) -> List[Transaction]:
+        pass
+
+    def execute_outgoing_transaction(self, transaction: Transaction):
         pass
 
     # TODO: move DepositIntegration.poll_pending_deposits here
@@ -35,10 +38,9 @@ class RailsIntegration:
     # allow the anchor to connect to their off-chain rails once for all pending
     # transfers than twice for payments and withdrawals.
     #
-    # WithdrawalIntegration.process_withdrawal() as well as
-    # SendIntegration.process_payment() may also be moved (and maybe combined) here
-    # in the future, since they are rails-related functions and are for very similar
-    # purposes.
+    # WithdrawalIntegration.process_withdrawal() may also be moved (and maybe
+    # combined) here in the future, since they are rails-related functions and are
+    # for very similar purposes.
     #
     # For now, I want to avoid breaking changes and introduce SEP31 support without
     # changing the interface for other SEPs.
