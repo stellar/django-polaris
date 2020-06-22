@@ -375,7 +375,7 @@ class Transaction(models.Model):
         catch-all for any error not enumerated above.
     """
 
-    status_eta = models.IntegerField(null=True, blank=True, default=3600)
+    status_eta = models.IntegerField(null=True, blank=True)
     """(optional) Estimated number of seconds until a status change is expected."""
 
     status_message = models.TextField(null=True, blank=True)

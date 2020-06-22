@@ -134,4 +134,9 @@ class Migration(migrations.Migration):
             old_name="external_extra",
             new_name="required_info_update",
         ),
+        migrations.AlterField(
+            model_name="transaction",
+            name="status_eta",
+            field=models.IntegerField(blank=True, null=True),
+        ),
     ]

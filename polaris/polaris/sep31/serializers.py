@@ -79,4 +79,10 @@ class SEP31TransactionSerializer(serializers.ModelSerializer):
             "stellar_transaction_id",
             "external_transaction_id",
             "refunded",
+            # fields with getter methods
+            "stellar_account_id",
+            "stellar_memo",
+            "stellar_memo_type",
+            "required_info_update",
+            "required_info_message",
         ]

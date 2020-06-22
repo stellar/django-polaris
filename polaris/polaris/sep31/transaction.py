@@ -12,7 +12,7 @@ from polaris.integrations import registered_send_integration
 from polaris.sep31.serializers import SEP31TransactionSerializer
 
 
-@api_view(["POST"])
+@api_view(["GET"])
 @renderer_classes([JSONRenderer])
 @validate_sep10_token("sep31")
 def transaction(account: str, request: Request) -> Response:
