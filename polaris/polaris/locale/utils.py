@@ -25,6 +25,6 @@ def activate_lang_for_request(lang: str):
 
 
 def _is_supported_language(lang: str) -> bool:
-    from django.conf.global_settings import LANGUAGES
+    from django.conf import settings
 
-    return any(lang == supported_lang[0] for supported_lang in LANGUAGES)
+    return any(lang == supported_lang[0] for supported_lang in settings.LANGUAGES)

@@ -35,6 +35,7 @@ def fixture_usd_asset_factory():
             code="USD",
             issuer=USD_ISSUER_ACCOUNT,
             distribution_seed=USD_DISTRIBUTION_SEED,
+            significant_decimals=2,
             # Deposit Info
             deposit_enabled=True,
             deposit_fee_fixed=5,

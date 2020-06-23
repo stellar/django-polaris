@@ -29,7 +29,6 @@ logger = Logger(__name__)
 @renderer_classes([JSONRenderer, BrowsableAPIRenderer])
 @validate_sep10_token("sep31")
 def send(account: str, request: Request) -> Response:
-    print(request.data)
     if not registered_send_integration.valid_sending_anchor(account):
         return render_error_response("invalid sending account", status_code=401)
 
@@ -43,7 +42,9 @@ def send(account: str, request: Request) -> Response:
         params.get("fields"), params.get("asset"), params.get("lang")
     )
     if missing_fields:
-        return Response({"error": "customer_info_needed", "fields": missing_fields})
+        return Response(
+            {"error": "customer_info_needed", "fields": missing_fields}, status=400
+        )
 
     transaction_id = create_transaction_id()
     # create memo
@@ -97,7 +98,7 @@ def validate_send_request(request: Request) -> Dict:
         raise ValueError(_("invalid 'asset_code' and 'asset_issuer'"))
     try:
         amount = round(Decimal(request.data.get("amount")), asset.significant_decimals)
-    except InvalidOperation:
+    except (InvalidOperation, TypeError):
         raise ValueError(_("invalid 'amount'"))
     if asset.send_min_amount > amount or amount > asset.send_max_amount:
         raise ValueError(_("invalid 'amount'"))
@@ -114,7 +115,9 @@ def validate_send_request(request: Request) -> Dict:
         try:
             URLValidator(["https"])(callback)
         except ValidationError:
-            raise ValidationError(_("invalid 'callback'"))
+            raise ValueError(_("invalid 'callback'"))
+    if not isinstance(request.data.get("fields"), dict):
+        raise ValueError(_("'fields' must serialize to a JSON object"))
     return {
         "asset": asset,
         "amount": amount,
@@ -127,7 +130,6 @@ def validate_send_request(request: Request) -> Dict:
 
 
 def validate_fields(passed_fields: Dict, asset: Asset, lang: Optional[str]) -> Dict:
-    print(passed_fields)
     missing_fields = defaultdict(dict)
     expected_fields = registered_send_integration.info(asset, lang)
     for category, fields in expected_fields.items():
@@ -139,10 +141,29 @@ def validate_fields(passed_fields: Dict, asset: Asset, lang: Optional[str]) -> D
                 continue
             try:
                 passed_fields[category][field]
-            except KeyError:
+            except (KeyError, TypeError):
                 missing_fields[category][field] = info
                 continue
-    return missing_fields
+    return dict(missing_fields)
+
+
+def validate_fields_needed(response_fields: Dict, asset: Asset):
+    expected_fields = registered_send_integration.info(asset)
+    if any(f not in list(expected_fields.keys()) for f in response_fields):
+        raise ValueError("unrecognized category of fields in response")
+    for category, fields in expected_fields.items():
+        if category not in response_fields:
+            continue
+        if not isinstance(response_fields[category], dict):
+            raise ValueError("Each category value must be a dict")
+        for field, value in response_fields[category].items():
+            if field not in fields:
+                raise ValueError(f"unrecognized field in {category} response category")
+            elif not (
+                isinstance(response_fields[category][field], dict)
+                and response_fields[category][field].get("description")
+            ):
+                raise ValueError(f"field value must be a dict with a description")
 
 
 def process_send_response(response_data: Dict, transaction: Transaction) -> Dict:
@@ -158,11 +179,11 @@ def process_send_response(response_data: Dict, transaction: Transaction) -> Dict
 
     else:
         if Transaction.objects.filter(id=transaction.id).exists():
-            raise ValueError(
-                f"transaction with ID {transaction.id} must be created by Polaris"
-            )
+            raise ValueError(f"transactions should not be created on bad requests")
         elif response_data["error"] == "customer_info_needed":
-            validate_info_fields(response_data.get("fields"))
+            if not isinstance(response_data.get("fields"), dict):
+                raise ValueError(_("'fields' must serialize to a JSON object"))
+            validate_fields_needed(response_data.get("fields"), transaction.asset)
             if len(response_data) > 2:
                 raise ValueError(
                     "extra fields returned in customer_info_needed response"
