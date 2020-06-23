@@ -42,6 +42,8 @@ def info(request: Request) -> Response:
 def validate_info_fields(fields: Dict):
     if not isinstance(fields, dict):
         raise ValueError("info integration must return a dictionary")
+    elif any(f not in ["sender", "receiver", "transaction"] for f in fields):
+        raise ValueError("unrecognized category of fields")
     validate_fields(fields.get("sender"))
     validate_fields(fields.get("receiver"))
     validate_fields(fields.get("transaction"))
@@ -50,6 +52,8 @@ def validate_info_fields(fields: Dict):
 def validate_fields(field_dict: Dict):
     if not field_dict:
         return
+    elif not isinstance(field_dict, dict):
+        raise ValueError("bad type in info response")
     for key, val in field_dict.items():
         if not isinstance(val, dict):
             raise ValueError(f"{key} value must be a dict, got {type(val)}")
