@@ -44,19 +44,28 @@ class Command(BaseCommand):
             protocol=Transaction.PROTOCOL.sep31,
             status=Transaction.STATUS.pending_external,
         )
-        complete_transactions = None
         try:
             complete_transactions = rri.poll_outgoing_transactions(transactions)
         except Exception:
             logger.exception("An exception was raised by poll_pending_transfers()")
+            print("in exception")
+            return
 
-        if complete_transactions:
-            ids = [t.id for t in complete_transactions]
-            num_completed = Transaction.objects.filter(id__in=ids).update(
-                status=Transaction.STATUS.completed,
-                completed_at=datetime.now(timezone.utc),
+        if not (
+            isinstance(complete_transactions, list)
+            and all(isinstance(t, Transaction) for t in complete_transactions)
+        ):
+            logger.exception(
+                "invalid return type, expected a list of Transaction objects"
             )
-            logger.info(f"{num_completed} pending transfers have been completed")
-            for transaction in complete_transactions:
-                if transaction.send_callback_url:
-                    make_callback(transaction)
+            return
+
+        ids = [t.id for t in complete_transactions]
+        num_completed = Transaction.objects.filter(id__in=ids).update(
+            status=Transaction.STATUS.completed,
+            completed_at=datetime.now(timezone.utc),
+        )
+        logger.info(f"{num_completed} pending transfers have been completed")
+        for transaction in complete_transactions:
+            if transaction.send_callback_url:
+                make_callback(transaction)

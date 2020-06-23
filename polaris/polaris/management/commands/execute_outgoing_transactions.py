@@ -33,13 +33,13 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         if options.get("loop"):
             while True:
-                self.execute_outgoing_transaction()
+                self.execute_outgoing_transactions()
                 time.sleep(options.get("interval"))
         else:
-            self.execute_outgoing_transaction()
+            self.execute_outgoing_transactions()
 
     @staticmethod
-    def execute_outgoing_transaction():
+    def execute_outgoing_transactions():
         # For the time being this function is only for SEP 31 transactions
         # Eventually we'll process transfers for SEP 6 and SEP 24 transactions
         # here as well.
