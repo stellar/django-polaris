@@ -2,6 +2,7 @@ import json
 from typing import Dict
 
 from django.utils.translation import gettext as _
+from django.core.exceptions import ValidationError
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, renderer_classes
@@ -22,16 +23,21 @@ logger = Logger(__name__)
 def update(account: str, request: Request) -> Response:
     if not registered_send_integration.valid_sending_anchor(account):
         return render_error_response(_("invalid sending account"), status_code=401)
-    tid = str(request.PUT.get("id"))
-    transaction = Transaction.objects.filter(id=tid).first()
+    tid = request.data.get("id")
+    if tid is None:
+        return render_error_response("missing 'id'")
+    try:
+        transaction = Transaction.objects.filter(id=tid).first()
+    except ValidationError:
+        return render_error_response("transaction not found", status_code=404)
     if not transaction:
         return render_error_response(_("transaction not found"), status_code=404)
     elif transaction.status != Transaction.STATUS.pending_info_update:
         return render_error_response(_("update not required"))
     try:
-        validate_update_fields(request.PUT.get("fields"), transaction)
+        validate_update_fields(request.data.get("fields"), transaction)
         registered_send_integration.process_update_request(
-            params={"id": tid, "fields": request.PUT.get("fields")},
+            params={"id": tid, "fields": request.data.get("fields")},
             transaction=transaction,
         )
     except ValueError as e:
