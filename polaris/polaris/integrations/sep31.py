@@ -10,9 +10,11 @@ class SendIntegration:
 
     def info(self, asset: Asset, lang: str = None) -> Dict:
         """
-        Return a dictionary containing the value you want assigned to the ``"fields"``
-        key for the given `asset` in the /info response. Descriptions should be in the
-        `lang` passed if supported.
+        .. _info response: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0031.md#response
+
+        Return a dictionary you want assigned to the ``"fields"`` key for the given
+        `asset` in the `info response`_. Descriptions should be in the `lang` passed
+        if supported.
         ::
 
             return {
@@ -134,7 +136,7 @@ class SendIntegration:
         `execute_outgoing_transactions` process will attempt to send the payment
         to the receiving user. See the
         ``RailsIntegration.execute_outgoing_transaction`` function for more
-        information on lifecycle of a transaction.
+        information on the lifecycle of a transaction.
 
         :param params: the parameters sent in the `/update` request
         :param transaction: the ``Transaction`` object that should be updated
@@ -143,8 +145,8 @@ class SendIntegration:
 
     def valid_sending_anchor(self, public_key: str) -> bool:
         """
-        Return True if `public_key` is a known anchor's stellar account address,
-        and False otherwise. This function ensures that only registered sending
+        Return ``True`` if `public_key` is a known anchor's stellar account address,
+        and ``False`` otherwise. This function ensures that only registered sending
         anchors can make `/send` requests.
 
         :param public_key: the public key of the sending anchor's stellar account
