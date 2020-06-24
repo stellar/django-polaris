@@ -27,8 +27,9 @@ class RailsIntegration:
 
     def execute_outgoing_transaction(self, transaction: Transaction):
         """
-        Send the amount of the off-chain asset specified by `transaction` to
-        the user associated with `transaction`.
+        Send the amount of the off-chain asset specified by `transaction` minus fees
+        to the user associated with `transaction`. Don't forget to populate the
+        ``Transaction.amount_fee`` attribute if non-zero.
 
         If the user receives the funds before returning from this function,
         update ``Transaction.status`` to ``Transaction.STATUS.completed``.
