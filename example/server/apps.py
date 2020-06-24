@@ -24,7 +24,7 @@ class AnchorConfig(AppConfig):
             toml_func=toml_integration,
             scripts_func=scripts_integration,
             fee_func=fee_integration,
-            sep6_info_func=info_integration,
+            info_func=info_integration,
             customer=MyCustomerIntegration(),
             send=MySendIntegration(),
             rails=MyRailsIntegration(),
