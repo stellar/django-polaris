@@ -7,14 +7,59 @@ from polaris.models import Transaction
 class RailsIntegration:
     """
     A container class for functions that access off-chain rails, such banking
-    accounts or other crypto networks. Currently only contains
-    poll_pending_transfers() but others will be added.
+    accounts or other crypto networks.
     """
 
     def poll_outgoing_transactions(self, transactions: QuerySet) -> List[Transaction]:
+        """
+        Check the transactions that are still in a ``pending_external`` status and
+        return the ones that are completed, meaning the user has received the funds.
+
+        Polaris will update the transactions returned to ``Transaction.STATUS.completed``.
+
+        `transactions` is passed as a Django ``QuerySet`` in case there are many pending
+        transactions. You may want to query batches of ``Transaction`` objects to avoid
+        consuming large amounts of memory.
+
+        :param transactions: a ``QuerySet`` of ``Transaction`` objects
+        """
         pass
 
     def execute_outgoing_transaction(self, transaction: Transaction):
+        """
+        Send the amount of the off-chain asset specified by `transaction` to
+        the user associated with `transaction`.
+
+        If the user receives the funds before returning from this function,
+        update ``Transaction.status`` to ``Transaction.STATUS.completed``.
+        If the transfer was simply initiated and is pending external systems,
+        update the status to ``Transaction.STATUS.pending_external``.
+
+        If more information is required from the sending anchor or user to complete
+        the transaction, update the status to ``Transaction.STATUS.pending_info_update``
+        and save necessary fields to the ``Transaction.required_info_update`` field
+        in the same format returned from ``SendIntegration.info()``. You can also
+        optionally save a human readable message to ``Transaction.required_info_message``.
+        Both fields will included in the `/transaction` response requested by the
+        sending anchor.
+
+        If the transaction is waiting for an update, the sending anchor will eventually
+        make a request to the `/update` endpoint with the information specified in
+        ``Transaction.required_info_update``. Once updated, this function will be
+        called again with the updated transaction.
+
+        If an exception is raised, the transaction will be left in
+        its current status and may be used again as a parameter to this function.
+        To ensure the exception isn't repeatedly re-raised, change the problematic
+        transaction's status to ``Transaction.STATUS.error``.
+
+        Currently, only SEP31 payment transactions are passed to this function,
+        but SEP24 and SEP6 withdrawal transactions will be passed in future
+        releases instead of using ``WithdrawalIntegration.process_withdrawal()``.
+
+        :param transaction: the ``Transaction`` object associated with the payment
+            this function should make
+        """
         pass
 
     # TODO: move DepositIntegration.poll_pending_deposits here

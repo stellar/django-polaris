@@ -3,7 +3,6 @@ from decimal import Decimal, InvalidOperation
 from collections import defaultdict
 
 from django.utils.translation import gettext as _
-from django.core.validators import URLValidator, ValidationError
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, renderer_classes
@@ -20,7 +19,6 @@ from polaris.locale.utils import _is_supported_language, activate_lang_for_reque
 from polaris.models import Transaction, Asset
 from polaris.sep10.utils import validate_sep10_token
 from polaris.integrations import registered_send_integration
-from polaris.sep31.info import validate_info_fields
 
 logger = Logger(__name__)
 
