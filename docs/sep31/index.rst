@@ -2,6 +2,17 @@
 SEP-31
 ======
 
+.. _SEP-31: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0031.md
+
+SEP-31_ is a bilateral payment standard for one anchor's user to make payments
+to another anchor's user. Where SEP-6 and SEP-24 allow users to deposit and
+withdraw their funds on and off the Stellar network, users of SEP-31 anchors
+may not even know they are using Stellar. A user can simply send fiat or crypto
+to the sending anchor and have them send the same amount (minus fees) to another
+anchor who can deposit the off-chain funds into the receiving user's account.
+
+An anchor can use the integrations outlined below to implement a fully functional
+SEP-31 anchor.
 
 Configuration
 =============
@@ -13,6 +24,11 @@ Add the SEP to ``ACTIVE_SEPS`` in in your settings file.
 
 Integrations
 ============
+
+Where SEP-6 and SEP-24 use ``DepositIntegration`` and ``WithdrawalIntegration``,
+SEP-31 uses ``SendIntegration`` and ``RailsIntegration``. Note that in future
+releases, some SEP-6 and SEP-24 functions related to payment rails may be moved
+from ``DepositIntegration`` or ``WithdrawalIntegration`` to ``RailsIntegration``.
 
 SEP-31 Endpoints
 ^^^^^^^^^^^^^^^^
