@@ -494,12 +494,6 @@ class Transaction(models.Model):
     Stellar account to send payment to
     """
 
-    send_callback_url = models.TextField(null=True, blank=True)
-    """
-    The URL provided by the sending anchor to receive updates on the 
-    transaction.
-    """
-
     refunded = models.BooleanField(default=False)
     """True if the transaction was refunded, false otherwise."""
 

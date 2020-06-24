@@ -21,22 +21,22 @@ class SEP31TransactionSerializer(serializers.ModelSerializer):
 
     @staticmethod
     def get_stellar_memo(instance):
-        return instance.send_memo or ""
+        return instance.send_memo
 
     @staticmethod
     def get_stellar_memo_type(instance):
-        return instance.send_memo_type or ""
+        return instance.send_memo_type
 
     @staticmethod
     def get_required_info_message(instance):
-        return instance.required_info_message or ""
+        return instance.required_info_message
 
     @staticmethod
     def get_required_info_update(instance):
         if instance.required_info_update:
             return json.loads(instance.required_info_update)
         else:
-            return {}
+            return None
 
     @staticmethod
     def round_decimals(data, instance):

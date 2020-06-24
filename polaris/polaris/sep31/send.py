@@ -63,7 +63,6 @@ def send(account: str, request: Request) -> Response:
         send_memo=transaction_memo,
         send_memo_type=Transaction.MEMO_TYPES.hash,
         send_anchor_account=params["asset"].distribution_account,
-        send_callback_url=params.get("callback"),
     )
 
     # The anchor should validate and process the parameters from the request and return
@@ -110,12 +109,6 @@ def validate_send_request(request: Request) -> Dict:
     receiver_info = request.data.get("require_receiver_info")
     if receiver_info and not all(f in SEP_9_FIELDS for f in receiver_info):
         raise ValueError(_("unrecognized fields in 'require_receiver_info'"))
-    callback = request.data.get("callback")
-    if callback:
-        try:
-            URLValidator(["https"])(callback)
-        except ValidationError:
-            raise ValueError(_("invalid 'callback'"))
     if not isinstance(request.data.get("fields"), dict):
         raise ValueError(_("'fields' must serialize to a JSON object"))
     return {
@@ -125,7 +118,6 @@ def validate_send_request(request: Request) -> Dict:
         "receiver_info": receiver_info,
         # fields are validated in validate_fields()
         "fields": request.data.get("fields"),
-        "callback": callback,
     }
 
 

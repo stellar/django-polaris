@@ -1,9 +1,9 @@
 from django.utils.translation import gettext as _
+from django.core.exceptions import ValidationError
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, renderer_classes
 from rest_framework.renderers import JSONRenderer
-from rest_framework import status
 
 from polaris.sep10.utils import validate_sep10_token
 from polaris.models import Transaction
@@ -20,11 +20,12 @@ def transaction(account: str, request: Request) -> Response:
         return render_error_response(_("invalid sending account."), status_code=401)
     elif not request.GET.get("id"):
         return render_error_response(_("missing 'id' parameter"))
-    t = Transaction.objects.filter(
-        id=request.GET.get("id"), stellar_account=account,
-    ).first()
+    try:
+        t = Transaction.objects.filter(
+            id=request.GET.get("id"), stellar_account=account,
+        ).first()
+    except ValidationError:  # bad id parameter
+        return render_error_response(_("transaction not found"), status_code=404)
     if not t:
-        return render_error_response(
-            _("transaction not found"), status_code=status.HTTP_404_NOT_FOUND
-        )
+        return render_error_response(_("transaction not found"), status_code=404)
     return Response({"transaction": SEP31TransactionSerializer(t).data})

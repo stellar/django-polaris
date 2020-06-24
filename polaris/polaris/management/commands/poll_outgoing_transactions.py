@@ -5,7 +5,6 @@ from django.core.management import BaseCommand
 
 from polaris.utils import Logger
 from polaris.models import Transaction
-from polaris.sep31.utils import make_callback
 from polaris.integrations import registered_rails_integration as rri
 
 
@@ -66,6 +65,3 @@ class Command(BaseCommand):
             completed_at=datetime.now(timezone.utc),
         )
         logger.info(f"{num_completed} pending transfers have been completed")
-        for transaction in complete_transactions:
-            if transaction.send_callback_url:
-                make_callback(transaction)
