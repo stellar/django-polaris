@@ -64,4 +64,5 @@ class Command(BaseCommand):
             status=Transaction.STATUS.completed,
             completed_at=datetime.now(timezone.utc),
         )
-        logger.info(f"{num_completed} pending transfers have been completed")
+        if num_completed:
+            logger.info(f"{num_completed} pending transfers have been completed")
