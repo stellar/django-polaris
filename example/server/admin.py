@@ -16,7 +16,7 @@ class PolarisStellarAccountAdmin(admin.ModelAdmin):
 
 
 class PolarisUserTransactionAdmin(admin.ModelAdmin):
-    list_display = "transaction_id", "account"
+    list_display = "transaction_id", "account", "user"
 
 
 admin.site.register(PolarisUser, PolarisUserAdmin)
