@@ -14,40 +14,36 @@ Running the Anchor
 To run this anchor server using your own stellar accounts, follow the instructions below.
 
 First, clone the Polaris repository:
+::
 
-```
-git clone git@github.com:stellar/django-polaris.git
-cd django-polaris
-```
-
+    $ git clone git@github.com:stellar/django-polaris.git
+    $ cd django-polaris
 
 Then, add a ``.env`` file containing the necessary environment variables. You'll need to create
 an account on Stellar's testnet and add it to your environment variables.
+::
 
-```
-DJANGO_SECRET_KEY="supersecretdjangokey"
-DJANGO_DEBUG=True
+    DJANGO_SECRET_KEY="supersecretdjangokey"
+    DJANGO_DEBUG=True
 
-SIGNING_SEED=<your signing account seed>
+    SIGNING_SEED=<your signing account seed>
 
-STELLAR_NETWORK_PASSPHRASE="Test SDF Network ; September 2015"
+    STELLAR_NETWORK_PASSPHRASE="Test SDF Network ; September 2015"
 
-HORIZON_URI="https://horizon-testnet.stellar.org/"
-SERVER_JWT_KEY="your jwt local secret"
-DJANGO_ALLOWED_HOSTS=localhost,0.0.0.0,127.0.0.1
-HOST_URL="http://localhost:8000"
-LOCAL_MODE=True
-```
+    HORIZON_URI="https://horizon-testnet.stellar.org/"
+    SERVER_JWT_KEY="your jwt local secret"
+    DJANGO_ALLOWED_HOSTS=localhost,0.0.0.0,127.0.0.1
+    HOST_URL="http://localhost:8000"
+    LOCAL_MODE=True
 
 Next, you'll need to create an asset on the Stellar test network and setup a distribution account.
 See `this tool`_ for creating assets on testnet.
 
 Now you're ready to add your asset to Polaris. Run the following commands:
+::
 
-```
-$ docker-compose build
-$ docker-compose up server
-```
+    $ docker-compose build
+    $ docker-compose up server
 
 Go to http://localhost:8000/admin and login with the default credentials (root, password).
 
@@ -59,9 +55,8 @@ by selecting the `Deposit Enabled`, `Withdrawal Enabled`, and either both or one
 Click `Save`.
 
 Finally, kill the current ``docker-compose`` process and run a new one:
+::
 
-```
-docker-compose up
-```
+    docker-compose up
 
 You now have a working anchor server on testnet for a custom asset.
