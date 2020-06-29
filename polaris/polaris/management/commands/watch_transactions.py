@@ -68,7 +68,6 @@ class Command(BaseCommand):
                 raise RuntimeError(
                     "Stellar distribution account does not exist in horizon"
                 )
-
             last_completed_transaction = (
                 Transaction.objects.filter(
                     withdraw_anchor_account=account,

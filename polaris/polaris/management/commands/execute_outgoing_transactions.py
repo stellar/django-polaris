@@ -51,7 +51,9 @@ class Command(BaseCommand):
             try:
                 rri.execute_outgoing_transaction(transaction)
             except Exception:
-                logger.exception("An exception was raised by process_payment()")
+                logger.exception(
+                    "An exception was raised by execute_outgoing_transaction()"
+                )
                 continue
 
             if transaction.status == Transaction.STATUS.pending_receiver:
