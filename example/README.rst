@@ -57,6 +57,6 @@ Click `Save`.
 Finally, kill the current ``docker-compose`` process and run a new one:
 ::
 
-    docker-compose up
+    $ docker-compose up
 
 You now have a working anchor server on testnet for a custom asset.
