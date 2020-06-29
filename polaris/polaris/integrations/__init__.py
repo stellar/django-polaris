@@ -99,7 +99,7 @@ def register_integrations(
     elif fee_func and not callable(fee_func):
         raise TypeError("fee_func is not callable")
     elif info_func and not callable(info_func):
-        raise TypeError("sep6_info_func is not callable")
+        raise TypeError("info_func is not callable")
     elif customer and not issubclass(customer.__class__, CustomerIntegration):
         raise TypeError("customer must be a subclass of CustomerIntegration")
     elif send and not issubclass(send.__class__, SendIntegration):
