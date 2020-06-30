@@ -198,17 +198,58 @@ which requires HTTPS. **Do not use local mode in production**.
 
 Contributing
 ============
-To set up the development environment, fork the repository, then:
+
+.. _this tool: https://github.com/stellar/create-stellar-token
+
+To set up the development environment or run the SDF's reference server, run follow the
+instructions below.
 ::
 
+    git clone git@github.com:stellar/django-polaris.git
     cd django-polaris
-    docker-compose build
-    docker-compose up
 
-You should now have a minimal anchor server running on port 8000.
+Then, add a ``.env`` file in the ``example`` directory. You'll need to create
+a signing account on Stellar's testnet and add it to your environment variables.
+::
+
+    DJANGO_SECRET_KEY="supersecretdjangokey"
+    DJANGO_DEBUG=True
+
+    SIGNING_SEED=<your signing account seed>
+
+    STELLAR_NETWORK_PASSPHRASE="Test SDF Network ; September 2015"
+
+    HORIZON_URI="https://horizon-testnet.stellar.org/"
+    SERVER_JWT_KEY="your jwt local secret"
+    DJANGO_ALLOWED_HOSTS=localhost,0.0.0.0,127.0.0.1
+    HOST_URL="http://localhost:8000"
+    LOCAL_MODE=True
+
+Next, you'll need to create an asset on the Stellar test network and setup a distribution account.
+See `this tool`_ for creating assets on testnet.
+
+Now you're ready to add your asset to Polaris. Run the following commands:
+::
+
+    $ docker-compose build
+    $ docker-compose up server
+
+Go to http://localhost:8000/admin and login with the default credentials (root, password).
+
+Go to the Assets menu, and click "Add Asset"
+
+Enter the code, issuer, and distribution seed for the asset. Make sure that the asset is enabled for SEP-24 and SEP-6
+by selecting the `Deposit Enabled`, `Withdrawal Enabled`, and either both or one of `Sep24 Enabled` and `Sep6 Enabled`.
+
+Click `Save`.
+
+Finally, kill the current ``docker-compose`` process and run a new one:
+::
+
+    $ docker-compose up
+
+You should now have a anchor server running SEP 6 & 24 on port 8000.
 When you make changes locally, the docker containers will restart with the updated code.
-Your browser may complain about the service using a self-signed certificate for HTTPS.
-You can resolve this by marking the certificate used by the service as trusted.
 
 Testing
 ^^^^^^^
