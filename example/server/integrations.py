@@ -572,18 +572,14 @@ class MySendIntegration(SendIntegration):
             user.save()
         # Transaction doesn't yet exist so transaction_id is a text field
         PolarisUserTransaction.objects.create(user=user, transaction_id=transaction_id)
-        # Don't handle receiver_info yet
 
     def process_update_request(self, params: Dict, transaction: Transaction):
         info_fields = params.get("fields", {})
         receiver_fields = info_fields.get("receiver", {})
         transaction_fields = info_fields.get("transaction", {})
-        possible_fields = [
-            "first_name",
-            "last_name",
-            "routing_number",
-            "account_number",
-        ]
+        possible_fields = set()
+        for obj in self.info(transaction.asset).values():
+            possible_fields.union(obj.keys())
         try:
             update_fields = list(receiver_fields.keys()) + list(
                 transaction_fields.keys()
