@@ -6,6 +6,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, renderer_classes
 from rest_framework.renderers import JSONRenderer
+from rest_framework.parsers import MultiPartParser, JSONParser, FormParser
 
 from polaris.utils import extract_sep9_fields, render_error_response, Logger
 from polaris.sep10.utils import validate_sep10_token
@@ -17,6 +18,7 @@ logger = Logger(__name__)
 
 class CustomerAPIView(APIView):
     renderer_classes = [JSONRenderer]
+    # parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     @staticmethod
     @validate_sep10_token("sep6")
@@ -60,7 +62,6 @@ class CustomerAPIView(APIView):
                 "The account specified does not match authorization token",
                 status_code=403,
             )
-
         try:
             customer_id = rci.put(
                 {
