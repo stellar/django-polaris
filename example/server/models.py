@@ -29,16 +29,19 @@ class PolarisUser(models.Model):
 
 class PolarisStellarAccount(models.Model):
     user = models.ForeignKey(PolarisUser, on_delete=models.CASCADE)
-    account = models.CharField(
-        max_length=56, unique=True, validators=[MinLengthValidator(56)]
-    )
+    memo = models.TextField(null=True, blank=True)
+    memo_type = models.TextField(null=True, blank=True)
+    account = models.CharField(max_length=56, validators=[MinLengthValidator(56)])
     confirmed = models.BooleanField(default=False)
     confirmation_token = models.CharField(max_length=36, default=get_new_token)
 
     objects = models.Manager()
 
+    class Meta:
+        unique_together = ["memo", "account"]
+
     def __str__(self):
-        return f"{str(self.user)}: {str(self.account)}"
+        return f"{str(self.user)}: {str(self.account)} - {str(self.memo)}"
 
 
 class PolarisUserTransaction(models.Model):

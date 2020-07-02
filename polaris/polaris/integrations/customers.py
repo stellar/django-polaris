@@ -24,6 +24,7 @@ class CustomerIntegration:
 
         :param params: request parameters as described in SEP-12
         """
+        pass
 
     def put(self, params: Dict) -> Union[str, int]:
         """

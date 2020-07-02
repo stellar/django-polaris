@@ -1,3 +1,5 @@
+from typing import Union
+
 from smtplib import SMTPException
 from decimal import Decimal
 from typing import List, Dict, Optional
@@ -389,9 +391,74 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
 
 class MyCustomerIntegration(CustomerIntegration):
     def get(self, params: Dict) -> Dict:
-        return {"status": "REJECTED"}
+        if not (params.get("id") or params.get("account")):
+            raise ValueError(_("unable to identify a user without 'id' or 'account'"))
+        elif (params.get("memo") and not params.get("memo_type")) or (
+            params.get("memo_type") and not params.get("memo")
+        ):
+            raise ValueError(_("must specify neither or both 'memo' and 'memo_type'"))
+        query_params = {}
+        for attr in ["id", "memo", "memo_type", "account"]:
+            if attr in params:
+                query_params[attr] = params.get(attr)
+        account = PolarisStellarAccount.objects.filter(**query_params).first()
+        if not account:
+            response = {
+                "status": "NEEDS_INFO",
+                "fields": {
+                    "first_name": {"description": "first name of the customer"},
+                    "last_name": {"description": "last name of the customer"},
+                    "email_address": {"description": "email address of the customer"},
+                },
+            }
+            if "id" in query_params:
+                # client believes the customer already exists but it doesn't,
+                # at least not with the same ID, memo, account values.
+                raise ValueError(
+                    _("customer not found using: %s") % list(query_params.keys())
+                )
+            elif params.get("type") in ["sep6-deposit", "sep31-sender"]:
+                return response
+            elif params.get("type") in [None, "sep6-withdraw", "sep31-receiver"]:
+                response["fields"].update(
+                    {
+                        "bank_account_number": {
+                            "description": "bank account number of the customer"
+                        },
+                        "bank_number": {
+                            "description": "routing number of the customer"
+                        },
+                    }
+                )
+                return response
+            else:
+                raise ValueError(
+                    _("invalid 'type'. see /info response for valid values.")
+                )
+        else:
+            user = account.user
+            if (user.bank_number and user.bank_account_number) or (
+                params.get("type") in ["sep6-deposit", "sep31-sender"]
+            ):
+                return {"status": "ACCEPTED"}
+            elif params.get("type") in [None, "sep6-withdraw", "sep31-receiver"]:
+                return {
+                    "status": "NEEDS_INFO",
+                    "fields": {
+                        "bank_account_number": {
+                            "description": "bank account number of the customer"
+                        },
+                        "bank_number": {
+                            "description": "routing number of the customer"
+                        },
+                    },
+                }
+            else:
+                raise ValueError(
+                    _("invalid 'type'. see /info response for valid values.")
+                )
 
-    def put(self, params: Dict):
+    def put(self, params: Dict) -> Union[str, int]:
         required_fields = [
             "account",
             "first_name",
@@ -445,6 +512,8 @@ class MyCustomerIntegration(CustomerIntegration):
             )
             if created:
                 send_confirmation_email(user, account)
+
+        return user.id
 
     def delete(self, account: str):
         account = PolarisStellarAccount.objects.filter(account=account).first()
