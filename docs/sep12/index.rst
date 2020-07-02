@@ -21,6 +21,8 @@ Polaris is not opinionated about how anchors store customer information. Instead
 simply passes the necessary information to the integration functions outlined below for
 you to use.
 
+.. autofunction:: polaris.integrations.CustomerIntegration.get
+
 .. autofunction:: polaris.integrations.CustomerIntegration.put
 
 .. autofunction:: polaris.integrations.CustomerIntegration.delete

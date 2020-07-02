@@ -11,7 +11,9 @@ from polaris.models import Transaction
 from polaris.utils import render_error_response
 
 
-def check_auth(request, func, sep, content_type: str = "application/json"):
+def check_auth(
+    request, func, sep, *args, content_type: str = "application/json", **kwargs
+):
     """
     Check SEP 10 authentication in a request.
     Else call the original view function.
@@ -27,7 +29,7 @@ def check_auth(request, func, sep, content_type: str = "application/json"):
                 content_type=content_type,
                 status_code=status.HTTP_403_FORBIDDEN,
             )
-    return func(account, request)
+    return func(account, request, *args, **kwargs)
 
 
 def validate_sep10_token(sep: str = "sep24", content_type: str = "application/json"):
@@ -35,7 +37,9 @@ def validate_sep10_token(sep: str = "sep24", content_type: str = "application/js
 
     def decorator(view):
         def wrapper(request, *args, **kwargs):
-            return check_auth(request, view, sep, content_type=content_type)
+            return check_auth(
+                request, view, sep, *args, content_type=content_type, **kwargs
+            )
 
         return wrapper
 

@@ -388,6 +388,9 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
 
 
 class MyCustomerIntegration(CustomerIntegration):
+    def get(self, params: Dict) -> Dict:
+        return {"status": "REJECTED"}
+
     def put(self, params: Dict):
         required_fields = [
             "account",
