@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Union
 
 
 class CustomerIntegration:
@@ -14,9 +14,25 @@ class CustomerIntegration:
         """
         pass
 
-    def put(self, params: Dict):
+    def get(self, params: Dict) -> Dict:
         """
-        .. _SEP-12: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0012.md
+        .. _`SEP-12 GET /customer`: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0012.md#customer-get
+
+        Return a dictionary matching the response schema outlined in `SEP-12 GET /customer`_
+        based on the `params` passed. The key-value pairs in `params` match the arguments
+        sent in the request.
+
+        Raise a ``ValueError`` if the parameters are invalid or the transaction specified
+        is not found. An error response will be sent using the message passed to the
+        exception.
+
+        :param params: request parameters as described in SEP-12
+        """
+        pass
+
+    def put(self, params: Dict) -> Union[str, int]:
+        """
+        .. _SEP-12: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0012.md#customer-put
 
         Update or create a record of the customer information passed. This information can
         then later be queried for when a client requests a deposit or withdraw on behalf of
@@ -26,13 +42,15 @@ class CustomerIntegration:
         for Polaris to return a 400 Bad Request response to the client. The message contained
         in the exception will be passed as the error message in the response.
 
+        Return a customer ID that clients can use in future requests, such as a `GET /customer`
+        request or a SEP-31 `POST /send` request.
+
         :param params: request parameters as described in SEP-12_
         """
         pass
 
     def delete(self, account: str):
         """
-
         Delete the record of the customer specified by `account`. If such a record does not
         exist, raise a ``ValueError`` for Polaris to return a 404 Not Found response.
 
