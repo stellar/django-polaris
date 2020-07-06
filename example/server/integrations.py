@@ -390,6 +390,39 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
 
 
 class MyCustomerIntegration(CustomerIntegration):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.accepted = {"status": "ACCEPTED"}
+        self.needs_basic_info = {
+            "status": "NEEDS_INFO",
+            "fields": {
+                "first_name": {"description": "first name of the customer"},
+                "last_name": {"description": "last name of the customer"},
+                "email_address": {"description": "email address of the customer"},
+            },
+        }
+        self.needs_bank_info = {
+            "status": "NEEDS_INFO",
+            "fields": {
+                "bank_account_number": {
+                    "description": "bank account number of the customer"
+                },
+                "bank_number": {"description": "routing number of the customer"},
+            },
+        }
+        self.needs_all_info = {
+            "status": "NEEDS_INFO",
+            "fields": {
+                "first_name": {"description": "first name of the customer"},
+                "last_name": {"description": "last name of the customer"},
+                "email_address": {"description": "email address of the customer"},
+                "bank_account_number": {
+                    "description": "bank account number of the customer"
+                },
+                "bank_number": {"description": "routing number of the customer"},
+            },
+        }
+
     def get(self, params: Dict) -> Dict:
         query_params = {}
         for attr in ["id", "memo", "memo_type", "account"]:
@@ -403,28 +436,10 @@ class MyCustomerIntegration(CustomerIntegration):
                 _("customer not found using: %s") % list(query_params.keys())
             )
         elif not account:
-            response = {
-                "status": "NEEDS_INFO",
-                "fields": {
-                    "first_name": {"description": "first name of the customer"},
-                    "last_name": {"description": "last name of the customer"},
-                    "email_address": {"description": "email address of the customer"},
-                },
-            }
             if params.get("type") in ["sep6-deposit", "sep31-sender"]:
-                return response
+                return self.needs_basic_info
             elif params.get("type") in [None, "sep6-withdraw", "sep31-receiver"]:
-                response["fields"].update(
-                    {
-                        "bank_account_number": {
-                            "description": "bank account number of the customer"
-                        },
-                        "bank_number": {
-                            "description": "routing number of the customer"
-                        },
-                    }
-                )
-                return response
+                return self.needs_all_info
             else:
                 raise ValueError(
                     _("invalid 'type'. see /info response for valid values.")
@@ -434,19 +449,9 @@ class MyCustomerIntegration(CustomerIntegration):
             if (user.bank_number and user.bank_account_number) or (
                 params.get("type") in ["sep6-deposit", "sep31-sender"]
             ):
-                return {"status": "ACCEPTED"}
+                return self.accepted
             elif params.get("type") in [None, "sep6-withdraw", "sep31-receiver"]:
-                return {
-                    "status": "NEEDS_INFO",
-                    "fields": {
-                        "bank_account_number": {
-                            "description": "bank account number of the customer"
-                        },
-                        "bank_number": {
-                            "description": "routing number of the customer"
-                        },
-                    },
-                }
+                return self.needs_bank_info
             else:
                 raise ValueError(
                     _("invalid 'type'. see /info response for valid values.")
