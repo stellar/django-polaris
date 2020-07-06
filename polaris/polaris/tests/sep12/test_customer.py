@@ -359,5 +359,4 @@ def test_no_description_needs_info(client):
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 def test_bad_auth_delete(client):
     response = client.delete("/".join([endpoint, Keypair.random().public_key]))
-    raise ValueError()
     assert response.status_code == 404
