@@ -392,6 +392,14 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
 class MyCustomerIntegration(CustomerIntegration):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.required_fields = [
+            "account",
+            "first_name",
+            "last_name",
+            "email_address",
+            "bank_account_number",
+            "bank_number",
+        ]
         self.accepted = {"status": "ACCEPTED"}
         self.needs_basic_info = {
             "status": "NEEDS_INFO",
@@ -458,61 +466,44 @@ class MyCustomerIntegration(CustomerIntegration):
                 )
 
     def put(self, params: Dict) -> Union[str, int]:
-        required_fields = [
-            "account",
-            "first_name",
-            "last_name",
-            "email_address",
-            "bank_account_number",
-            "bank_number",
-        ]
-        if not all(val in params for val in required_fields):
-            raise ValueError(f"required fields: {', '.join(required_fields)}")
-
         # query params for fetching/creating the PolarisStellarAccount
         qparams = {"account": params["account"]}
         if "memo" in params:
             qparams["memo"] = params["memo"]
             qparams["memo_type"] = params["memo_type"]
-        user = PolarisUser.objects.filter(email=params["email_address"]).first()
-        if not user:
-            # the client could be trying to update to a new email, so try to
-            # find the user based on the account
-            account = PolarisStellarAccount.objects.filter(**qparams).first()
-            if not account:
-                user = PolarisUser.objects.create(
-                    first_name=params["first_name"],
-                    last_name=params["last_name"],
-                    email=params["email_address"],
-                    bank_number=params["bank_number"],
-                    bank_account_number=params["bank_account_number"],
-                )
-                qparams["user"] = user
-                account = PolarisStellarAccount.objects.create(**qparams)
-
+        user = None
+        account = PolarisStellarAccount.objects.filter(**qparams).first()
+        if not account:
+            if "email_address" in params:
+                # find existing user by previously-specified email
+                user = PolarisUser.objects.filter(email=params["email_address"]).first()
+                if user:
+                    account = PolarisStellarAccount.objects.create(
+                        user=user,
+                        account=params["account"],
+                        memo=params["memo"],
+                        memo_type=params["memo_type"],
+                    )
+                    send_confirmation_email(user, account)
+                else:
+                    user, account = self.create_new_user(params, qparams)
+                    send_confirmation_email(user, account)
             else:
-                user = account.user
-                user.email = params["email_address"]
-                user.first_name = params["first_name"]
-                user.last_name = params["last_name"]
-                user.bank_number = params["bank_number"]
-                user.bank_account_number = params["bank_account_number"]
-                user.save()
+                raise ValueError(
+                    "SEP-9 fields were not passed for new customer. "
+                    "'first_name', 'last_name', and 'email_address' are required."
+                )
+        if not user:
+            user = account.user
 
-            # users can skip this confirmation step
-            send_confirmation_email(user, account)
-
-        else:
-            qparams["user"] = user
-            # This user may have been created via SEP-24 deposit, which doesn't
-            # collect bank_number and bank_account_number
-            if not (user.bank_number and user.bank_account_number):
-                user.bank_number = params["bank_number"]
-                user.bank_account_number = params["bank_account_number"]
-                user.save()
-            account, created = PolarisStellarAccount.objects.get_or_create(**params)
-            if created:
-                send_confirmation_email(user, account)
+        user.email = params.get("email_address") or user.email
+        user.first_name = params.get("first_name") or user.first_name
+        user.last_name = params.get("last_name") or user.last_name
+        user.bank_number = params.get("bank_number") or user.bank_number
+        user.bank_account_number = (
+            params.get("bank_account_number") or user.bank_account_number
+        )
+        user.save()
 
         return user.id
 
@@ -521,6 +512,23 @@ class MyCustomerIntegration(CustomerIntegration):
         if not account:
             raise ValueError()
         account.user.delete()
+
+    @staticmethod
+    def create_new_user(params, qparams):
+        if not all(f in params for f in ["first_name", "last_name", "email_address"]):
+            raise ValueError(
+                "SEP-9 fields were not passed for new customer. "
+                "'first_name', 'last_name', and 'email_address' are required."
+            )
+        user = PolarisUser.objects.create(
+            first_name=params["first_name"],
+            last_name=params["last_name"],
+            email=params["email_address"],
+            bank_number=params.get("bank_number"),
+            bank_account_number=params.get("bank_account_number"),
+        )
+        account = PolarisStellarAccount.objects.create(user=user, **qparams)
+        return user, account
 
 
 def toml_integration():
