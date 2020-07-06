@@ -370,7 +370,8 @@ SEP_9_FIELDS = {
 def extract_sep9_fields(args):
     sep9_args = {}
     for field in SEP_9_FIELDS:
-        sep9_args[field] = args.get(field)
+        if field in args:
+            sep9_args[field] = args.get(field)
     return sep9_args
 
 

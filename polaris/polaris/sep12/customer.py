@@ -6,9 +6,8 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, renderer_classes
 from rest_framework.renderers import JSONRenderer
-from rest_framework.parsers import MultiPartParser, JSONParser, FormParser
 
-from polaris.utils import extract_sep9_fields, render_error_response, Logger
+from polaris.utils import extract_sep9_fields, render_error_response, Logger, memo_str
 from polaris.sep10.utils import validate_sep10_token
 from polaris.integrations import registered_customer_integration as rci
 
@@ -18,20 +17,32 @@ logger = Logger(__name__)
 
 class CustomerAPIView(APIView):
     renderer_classes = [JSONRenderer]
-    # parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     @staticmethod
     @validate_sep10_token("sep6")
     def get(account: str, request: Request) -> Response:
-        if account != request.GET.get("account"):
+        if request.GET.get("account") and account != request.GET.get("account"):
             return render_error_response(
-                "The account specified does not match authorization token",
+                _("The account specified does not match authorization token"),
                 status_code=403,
             )
+        elif not (request.GET.get("id") or request.GET.get("account")):
+            return render_error_response(
+                _("unable to identify a user without 'id' or 'account'")
+            )
+        elif request.GET.get("memo_type") and not request.GET.get("memo"):
+            return render_error_response(_("missing 'memo' for 'memo_type'"))
+
+        try:
+            # validate memo and memo_type
+            memo_str(request.GET.get("memo"), request.GET.get("memo_type"))
+        except ValueError:
+            return render_error_response(_("invalid 'memo' for 'memo_type'"))
 
         try:
             response_data = rci.get(
                 {
+                    "id": request.GET.get("id"),
                     "account": request.GET.get("account"),
                     "memo": request.GET.get("memo"),
                     "memo_type": request.GET.get("memo_type"),
@@ -59,9 +70,18 @@ class CustomerAPIView(APIView):
     def put(account: str, request: Request) -> Response:
         if account != request.data.get("account"):
             return render_error_response(
-                "The account specified does not match authorization token",
+                _("The account specified does not match authorization token"),
                 status_code=403,
             )
+        elif request.data.get("memo_type") and not request.data.get("memo"):
+            return render_error_response(_("missing 'memo' for 'memo_type'"))
+
+        try:
+            # validate memo and memo_type
+            memo_str(request.data.get("memo"), request.data.get("memo_type"))
+        except ValueError:
+            return render_error_response(_("invalid 'memo' for 'memo_type'"))
+
         try:
             customer_id = rci.put(
                 {

@@ -22,6 +22,10 @@ class CustomerIntegration:
         based on the `params` passed. The key-value pairs in `params` match the arguments
         sent in the request.
 
+        Raise a ``ValueError`` if the parameters are invalid or the transaction specified
+        is not found. An error response will be sent using the message passed to the
+        exception.
+
         :param params: request parameters as described in SEP-12
         """
         pass

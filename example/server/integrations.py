@@ -391,18 +391,18 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
 
 class MyCustomerIntegration(CustomerIntegration):
     def get(self, params: Dict) -> Dict:
-        if not (params.get("id") or params.get("account")):
-            raise ValueError(_("unable to identify a user without 'id' or 'account'"))
-        elif (params.get("memo") and not params.get("memo_type")) or (
-            params.get("memo_type") and not params.get("memo")
-        ):
-            raise ValueError(_("must specify neither or both 'memo' and 'memo_type'"))
         query_params = {}
         for attr in ["id", "memo", "memo_type", "account"]:
             if attr in params:
                 query_params[attr] = params.get(attr)
         account = PolarisStellarAccount.objects.filter(**query_params).first()
-        if not account:
+        if "id" in query_params and not account:
+            # client believes the customer already exists but it doesn't,
+            # at least not with the same ID, memo, account values.
+            raise ValueError(
+                _("customer not found using: %s") % list(query_params.keys())
+            )
+        elif not account:
             response = {
                 "status": "NEEDS_INFO",
                 "fields": {
@@ -411,13 +411,7 @@ class MyCustomerIntegration(CustomerIntegration):
                     "email_address": {"description": "email address of the customer"},
                 },
             }
-            if "id" in query_params:
-                # client believes the customer already exists but it doesn't,
-                # at least not with the same ID, memo, account values.
-                raise ValueError(
-                    _("customer not found using: %s") % list(query_params.keys())
-                )
-            elif params.get("type") in ["sep6-deposit", "sep31-sender"]:
+            if params.get("type") in ["sep6-deposit", "sep31-sender"]:
                 return response
             elif params.get("type") in [None, "sep6-withdraw", "sep31-receiver"]:
                 response["fields"].update(
@@ -470,13 +464,16 @@ class MyCustomerIntegration(CustomerIntegration):
         if not all(val in params for val in required_fields):
             raise ValueError(f"required fields: {', '.join(required_fields)}")
 
+        # query params for fetching/creating the PolarisStellarAccount
+        qparams = {"account": params["account"]}
+        if "memo" in params:
+            qparams["memo"] = params["memo"]
+            qparams["memo_type"] = params["memo_type"]
         user = PolarisUser.objects.filter(email=params["email_address"]).first()
         if not user:
             # the client could be trying to update to a new email, so try to
             # find the user based on the account
-            account = PolarisStellarAccount.objects.filter(
-                account=params["account"]
-            ).first()
+            account = PolarisStellarAccount.objects.filter(**qparams).first()
             if not account:
                 user = PolarisUser.objects.create(
                     first_name=params["first_name"],
@@ -485,9 +482,8 @@ class MyCustomerIntegration(CustomerIntegration):
                     bank_number=params["bank_number"],
                     bank_account_number=params["bank_account_number"],
                 )
-                account = PolarisStellarAccount.objects.create(
-                    account=params["account"], user=user
-                )
+                qparams["user"] = user
+                account = PolarisStellarAccount.objects.create(**qparams)
 
             else:
                 user = account.user
@@ -498,18 +494,18 @@ class MyCustomerIntegration(CustomerIntegration):
                 user.bank_account_number = params["bank_account_number"]
                 user.save()
 
+            # users can skip this confirmation step
             send_confirmation_email(user, account)
 
         else:
+            qparams["user"] = user
             # This user may have been created via SEP-24 deposit, which doesn't
             # collect bank_number and bank_account_number
             if not (user.bank_number and user.bank_account_number):
                 user.bank_number = params["bank_number"]
                 user.bank_account_number = params["bank_account_number"]
                 user.save()
-            account, created = PolarisStellarAccount.objects.get_or_create(
-                user=user, account=params["account"]
-            )
+            account, created = PolarisStellarAccount.objects.get_or_create(**params)
             if created:
                 send_confirmation_email(user, account)
 
