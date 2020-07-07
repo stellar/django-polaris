@@ -41,7 +41,7 @@ def send(account: str, request: Request) -> Response:
     )
     if missing_fields:
         return Response(
-            {"error": "customer_info_needed", "fields": missing_fields}, status=400
+            {"error": "transaction_info_needed", "fields": missing_fields}, status=400
         )
 
     transaction_id = create_transaction_id()
@@ -70,11 +70,11 @@ def send(account: str, request: Request) -> Response:
     #
     # If the anchor returns a success response, the anchor also must link the transaction
     # passed to the user specified by params["receiver"] using their own data model.
-    response_data = registered_send_integration.process_send_request(
+    error_data = registered_send_integration.process_send_request(
         params, transaction.id
     )
     try:
-        response_data = process_send_response(response_data, transaction)
+        response_data = process_send_response(error_data, transaction)
     except ValueError as e:
         logger.error(str(e))
         return render_error_response(
@@ -104,82 +104,94 @@ def validate_send_request(request: Request) -> Dict:
         if not _is_supported_language(lang):
             raise ValueError("unsupported 'lang'")
         activate_lang_for_request(lang)
-    receiver_info = request.data.get("require_receiver_info")
-    if receiver_info and not all(f in SEP_9_FIELDS for f in receiver_info):
-        raise ValueError(_("unrecognized fields in 'require_receiver_info'"))
     if not isinstance(request.data.get("fields"), dict):
         raise ValueError(_("'fields' must serialize to a JSON object"))
+    elif len(request.data["fields"]) not in [0, 1]:
+        raise ValueError("'fields' should only have one key, 'transaction'")
+    elif request.data["fields"] and not isinstance(
+        request.data["fields"].get("transaction"), dict
+    ):
+        raise ValueError(_("'transaction' value in 'fields' must be a dict"))
+    if not (
+        type(request.data.get("sender_id")) in [str, int]
+        and type(request.data.get("receiver_id")) in [str, int]
+    ):
+        raise ValueError(
+            _("'sender_id' and 'receiver_id' values must be strings or integers")
+        )
     return {
         "asset": asset,
         "amount": amount,
         "lang": lang,
-        "receiver_info": receiver_info,
         # fields are validated in validate_fields()
+        "sender_id": request.data.get("sender_id"),
+        "receiver_id": request.data.get("receiver_id"),
         "fields": request.data.get("fields"),
     }
 
 
 def validate_fields(passed_fields: Dict, asset: Asset, lang: Optional[str]) -> Dict:
     missing_fields = defaultdict(dict)
-    expected_fields = registered_send_integration.info(asset, lang)
-    for category, fields in expected_fields.items():
-        if category not in passed_fields:
-            missing_fields[category] = fields
+    expected_fields = registered_send_integration.info(asset, lang).get("fields", {})
+    if "transaction" not in expected_fields:
+        return {}
+    elif "transaction" not in passed_fields:
+        missing_fields["transaction"] = expected_fields["transaction"]
+        return missing_fields
+    for field, info in expected_fields["transaction"].items():
+        if info.get("optional"):
             continue
-        for field, info in fields.items():
-            if info.get("optional"):
-                continue
-            try:
-                passed_fields[category][field]
-            except (KeyError, TypeError):
-                missing_fields[category][field] = info
-                continue
+        elif field not in passed_fields["transaction"]:
+            missing_fields["transaction"][field] = info
     return dict(missing_fields)
 
 
-def validate_fields_needed(response_fields: Dict, asset: Asset):
-    expected_fields = registered_send_integration.info(asset)
-    if any(f not in list(expected_fields.keys()) for f in response_fields):
-        raise ValueError("unrecognized category of fields in response")
-    for category, fields in expected_fields.items():
-        if category not in response_fields:
-            continue
-        if not isinstance(response_fields[category], dict):
-            raise ValueError("Each category value must be a dict")
-        for field, value in response_fields[category].items():
-            if field not in fields:
-                raise ValueError(f"unrecognized field in {category} response category")
-            elif not (
-                isinstance(response_fields[category][field], dict)
-                and response_fields[category][field].get("description")
-            ):
-                raise ValueError(f"field value must be a dict with a description")
-
-
-def process_send_response(response_data: Dict, transaction: Transaction) -> Dict:
-    if not response_data or "error" not in response_data:
-        new_response_data = {
+def process_send_response(error_data: Dict, transaction: Transaction) -> Dict:
+    if not error_data:
+        response_data = {
             "id": transaction.id,
             "stellar_account_id": transaction.asset.distribution_account,
             "stellar_memo": transaction.send_memo,
             "stellar_memo_type": transaction.send_memo_type,
         }
-        if response_data:
-            new_response_data["receiver_info"] = response_data
-
     else:
         if Transaction.objects.filter(id=transaction.id).exists():
             raise ValueError(f"transactions should not be created on bad requests")
-        elif response_data["error"] == "customer_info_needed":
-            if not isinstance(response_data.get("fields"), dict):
-                raise ValueError(_("'fields' must serialize to a JSON object"))
-            validate_fields_needed(response_data.get("fields"), transaction.asset)
-            if len(response_data) > 2:
+        elif error_data["error"] == "transaction_info_needed":
+            if not isinstance(error_data.get("fields"), dict):
+                raise ValueError("'fields' must serialize to a JSON object")
+            validate_fields_needed(error_data.get("fields"), transaction.asset)
+            if len(error_data) > 2:
                 raise ValueError(
                     "extra fields returned in customer_info_needed response"
                 )
-        elif not isinstance(response_data["error"], str):
+        elif error_data["error"] == "customer_info_needed":
+            if ("type" in error_data and len(error_data) > 2) or (
+                "type" not in error_data and len(error_data) > 1
+            ):
+                raise ValueError(
+                    "extra fields returned in transaction_info_needed response"
+                )
+            elif type(error_data.get("type")) not in [None, str]:
+                raise ValueError("invalid value for 'type' key")
+        elif not isinstance(error_data["error"], str):
             raise ValueError("'error' must be a string")
-        new_response_data = response_data
+        response_data = error_data
 
-    return new_response_data
+    return response_data
+
+
+def validate_fields_needed(response_fields: Dict, asset: Asset):
+    expected_fields = registered_send_integration.info(asset).get("fields", {})
+    if "transaction" not in response_fields:
+        raise ValueError("unrecognized category of fields in response")
+    if not isinstance(response_fields["transaction"], dict):
+        raise ValueError("'transaction' value must be a dict")
+    for field, value in response_fields["transaction"].items():
+        if field not in expected_fields["transaction"]:
+            raise ValueError(f"unrecognized field in 'transaction' object")
+        elif not (
+            isinstance(response_fields["transaction"][field], dict)
+            and response_fields["transaction"][field].get("description")
+        ):
+            raise ValueError(f"field value must be a dict with a description")

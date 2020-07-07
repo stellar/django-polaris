@@ -22,11 +22,13 @@ def info(request: Request) -> Response:
     }
     for asset in Asset.objects.filter(sep31_enabled=True):
         try:
-            fields = registered_send_integration.info(asset, request.GET.get("lang"))
+            fields_and_types = registered_send_integration.info(
+                asset, request.GET.get("lang")
+            )
         except ValueError:
             return render_error_response("unsupported 'lang'", content_type="text/html")
         try:
-            validate_info_fields(fields)
+            validate_info_response(fields_and_types)
         except ValueError as e:
             logger.error(f"info integration error: {str(e)}")
             return render_error_response(
@@ -34,19 +36,29 @@ def info(request: Request) -> Response:
                 status_code=500,
                 content_type="text/html",
             )
-        info_data["receive"][asset.code] = get_asset_info(asset, fields or {})
+        info_data["receive"][asset.code] = get_asset_info(asset, fields_and_types or {})
 
     return Response(info_data)
 
 
-def validate_info_fields(fields: Dict):
-    if not isinstance(fields, dict):
+def validate_info_response(fields_and_types: Dict):
+    if not isinstance(fields_and_types, dict):
         raise ValueError("info integration must return a dictionary")
-    elif any(f not in ["sender", "receiver", "transaction"] for f in fields):
+    elif not all(
+        f in ["fields", "sender_sep12_type", "receiver_sep12_type"]
+        for f in fields_and_types.keys()
+    ):
+        raise ValueError("unrecognized key in info integration response")
+    elif not isinstance(fields_and_types["fields"], dict):
+        raise ValueError("unrecognized type for fields value")
+    elif not (
+        isinstance(fields_and_types["sender_sep12_type"], str)
+        and isinstance(fields_and_types["receiver_sep12_type"], str)
+    ):
+        raise ValueError("unrecognized type for sep12_type value")
+    elif "transaction" not in fields_and_types["fields"]:
         raise ValueError("unrecognized category of fields")
-    validate_fields(fields.get("sender"))
-    validate_fields(fields.get("receiver"))
-    validate_fields(fields.get("transaction"))
+    validate_fields(fields_and_types["fields"].get("transaction"))
 
 
 def validate_fields(field_dict: Dict):
@@ -72,7 +84,7 @@ def validate_fields(field_dict: Dict):
             raise ValueError("'choices' must be a list")
 
 
-def get_asset_info(asset: Asset, fields: Dict) -> Dict:
+def get_asset_info(asset: Asset, fields_and_types: Dict) -> Dict:
     if not asset.sep31_enabled:
         return {"enabled": False}
 
@@ -80,6 +92,8 @@ def get_asset_info(asset: Asset, fields: Dict) -> Dict:
         "enabled": True,
         "min_amount": round(asset.send_min_amount, asset.significant_decimals),
         "max_amount": round(asset.send_max_amount, asset.significant_decimals),
+        "sender_sep12_type": fields_and_types["sender_sep12_type"],
+        "receiver_sep12_type": fields_and_types["receiver_sep12_type"],
     }
     if asset.send_fee_fixed:
         asset_info["fee_fixed"] = round(
@@ -88,5 +102,5 @@ def get_asset_info(asset: Asset, fields: Dict) -> Dict:
     if asset.send_fee_percent:
         asset_info["fee_percent"] = asset.send_fee_percent
 
-    asset_info["fields"] = fields
+    asset_info["fields"] = fields_and_types["fields"]
     return asset_info

@@ -440,9 +440,9 @@ class MyCustomerIntegration(CustomerIntegration):
                 _("customer not found using: %s") % list(query_params.keys())
             )
         elif not account:
-            if params.get("type") in ["sep6-deposit", "sep31-sender"]:
+            if params.get("type") in ["sep6-deposit", "sep31-sender", "sep31-receiver"]:
                 return self.needs_basic_info
-            elif params.get("type") in [None, "sep6-withdraw", "sep31-receiver"]:
+            elif params.get("type") in [None, "sep6-withdraw"]:
                 return self.needs_all_info
             else:
                 raise ValueError(
@@ -451,10 +451,10 @@ class MyCustomerIntegration(CustomerIntegration):
         else:
             user = account.user
             if (user.bank_number and user.bank_account_number) or (
-                params.get("type") in ["sep6-deposit", "sep31-sender"]
+                params.get("type") in ["sep6-deposit", "sep31-sender", "sep31-receiver"]
             ):
                 return self.accepted
-            elif params.get("type") in [None, "sep6-withdraw", "sep31-receiver"]:
+            elif params.get("type") in [None, "sep6-withdraw"]:
                 return self.needs_bank_info
             else:
                 raise ValueError(
@@ -530,78 +530,62 @@ class MyCustomerIntegration(CustomerIntegration):
 class MySendIntegration(SendIntegration):
     def info(self, asset: Asset, lang: Optional[str] = None):
         return {
-            "sender": {
-                "first_name": {"description": "The sender's first name"},
-                "last_name": {"description": "The sender's last name"},
-            },
-            "receiver": {
-                "first_name": {"description": "The receiver's first name"},
-                "last_name": {"description": "The receiver's last name"},
-                "email_address": {"description": "The receiver's email address"},
-            },
-            "transaction": {
-                "routing_number": {
-                    "description": "routing number of the destination bank account"
-                },
-                "account_number": {
-                    "description": "bank account number of the destination"
+            "sender_sep12_type": "sep31-sender",
+            "receiver_sep12_type": "sep31-receiver",
+            "fields": {
+                "transaction": {
+                    "routing_number": {
+                        "description": "routing number of the destination bank account"
+                    },
+                    "account_number": {
+                        "description": "bank account number of the destination"
+                    },
                 },
             },
         }
 
     def process_send_request(self, params: Dict, transaction_id: str) -> Optional[Dict]:
-        info_fields = params.get("fields")
-        for category, fields in info_fields.items():
-            for field, val in fields.items():
-                if not isinstance(val, str):
-                    return {"error": f"'{field}'" + _(" is not of type str")}
-        receiver = info_fields["receiver"]
-        transaction = info_fields["transaction"]
-        user = PolarisUser.objects.filter(email=receiver["email_address"]).first()
-        if not user:
-            user = PolarisUser.objects.create(
-                first_name=receiver["first_name"],
-                last_name=receiver["last_name"],
-                email=receiver["email_address"],
-                bank_account_number=transaction["account_number"],
-                bank_number=transaction["routing_number"],
-            )
-        elif not (user.bank_account_number and user.bank_number):
-            user.bank_account_number = transaction["account_number"]
-            user.bank_number = transaction["routing_number"]
-            user.save()
+        sender_id = params.get("sender_id")  # not actually used
+        receiver_id = params.get("receiver_id")
+        transaction_fields = params.get("fields", {}).get("transaction")
+        for field, val in transaction_fields.items():
+            if not isinstance(val, str):
+                return {"error": f"'{field}'" + _(" is not of type str")}
+
+        receiving_user = PolarisUser.objects.filter(id=receiver_id).first()
+        if not receiving_user:
+            return {"error": "customer_info_needed", "type": "sep31-receiver"}
+
+        elif not (receiving_user.bank_account_number and receiving_user.bank_number):
+            receiving_user.bank_account_number = transaction_fields["account_number"]
+            receiving_user.bank_number = transaction_fields["routing_number"]
+            receiving_user.save()
         # Transaction doesn't yet exist so transaction_id is a text field
-        PolarisUserTransaction.objects.create(user=user, transaction_id=transaction_id)
+        PolarisUserTransaction.objects.create(
+            user=receiving_user, transaction_id=transaction_id
+        )
 
     def process_update_request(self, params: Dict, transaction: Transaction):
         info_fields = params.get("fields", {})
-        receiver_fields = info_fields.get("receiver", {})
         transaction_fields = info_fields.get("transaction", {})
+        if not isinstance(transaction_fields, dict):
+            raise ValueError(_("'transaction' value must be an object"))
         possible_fields = set()
-        for obj in self.info(transaction.asset).values():
+        for obj in self.info(transaction.asset)["fields"].values():
             possible_fields.union(obj.keys())
-        try:
-            update_fields = list(receiver_fields.keys()) + list(
-                transaction_fields.keys()
-            )
-        except TypeError:
-            raise ValueError("receiver and transaction values must be JSON objects")
+        update_fields = list(transaction_fields.keys())
         if not update_fields:
             raise ValueError(_("No fields provided"))
         elif any(f not in possible_fields for f in update_fields):
-            raise ValueError(_("Unexpected fields provided"))
+            raise ValueError(_("unexpected fields provided"))
         elif not all(isinstance(update_fields[f], str) for f in update_fields):
-            raise ValueError(_("Field values must be strings"))
+            raise ValueError(_("field values must be strings"))
         user = (
             PolarisUserTransaction.objects.filter(transaction_id=transaction.id)
             .first()
             .user
         )
-        if "first_name" in update_fields:
-            user.first_name = receiver_fields["first_name"]
-        elif "last_name" in update_fields:
-            user.last_name = receiver_fields["last_name"]
-        elif "routing_number" in update_fields:
+        if "routing_number" in update_fields:
             user.bank_number = transaction_fields["routing_number"]
         elif "account_number" in update_fields:
             user.bank_account_number = transaction_fields["account_number"]

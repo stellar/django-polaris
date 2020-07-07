@@ -62,21 +62,40 @@ class SendIntegration:
     def process_send_request(self, params: Dict, transaction_id: str) -> Optional[Dict]:
         """
         .. _customer-info-needed: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0031.md#customer-info-needed-400-bad-request
+        .. _transaction-info-needed: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0031.md#transaction-info-needed-400-bad-request
+        .. _SEP-12 GET /customer: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0012.md#customer-get
 
         Use the `params` passed in the request to do any processing of the user
         and requested transaction necessary to facilitate the payment to the
         receiving user.
 
         Polaris validates that the request includes all the required fields returned
-        by ``SendIntegration.info()`` but cannot validate the field values.
+        by ``SendIntegration.info()`` but cannot validate the values. Return ``None``
+        if the params passed are valid, otherwise return one of the error dictionaries
+        outlined below.
 
-        If some optional fields from ``info()`` are missing but needed for this
-        transaction, return a dictionary matching the schema described in the
-        customer-info-needed_ response.
+        If the `sender_id` or `receiver_id` values are invalid or the information
+        collected for these users is not sufficient to process this request, return
+        a dictionary matching the customer-info-needed_ response schema.
         ::
 
             return {
                 "error": "customer_info_needed",
+                "type": "sep31-large-amount-sender"
+            }
+
+        For example, the above response could be used if the anchor requires additional
+        information on the sender when the `amount` is large. The `type` key specifies
+        the appropriate type value the client should use for the sender's
+        `SEP-12 GET /customer`_ request, and is optional.
+
+        If some optional fields from ``info()`` are missing but needed for this
+        transaction, return a dictionary matching the schema described in the
+        transaction-info-needed_ response.
+        ::
+
+            return {
+                "error": "transaction_info_needed",
                 "fields": {
                     "transaction": {
                         "sender_bank_account": {
@@ -95,17 +114,7 @@ class SendIntegration:
         ::
 
             return {
-                "error": "invalid 'email_address' format"
-            }
-
-        Finally, if the request parameters are valid, return ``None`` or a
-        dictionary containing the key-value pairs of the fields listed in the
-        ``"require_receiver_info"`` list if present in the sent request.
-        ::
-
-            # For a "require_receiver_info" list of ["email_address"]
-            return {
-                "email_address": "receiver@email.com"
+                "error": "invalid 'sender_bank_account' format"
             }
 
         Note that the ``Transaction`` object specified by `transaction_id` does not

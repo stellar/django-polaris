@@ -15,7 +15,7 @@ class Migration(migrations.Migration):
     """
 
     dependencies = [
-        ("server", "0004_auto_20200427_2302"),
+        ("server", "0005_auto_20200702_1908"),
     ]
 
     operations = [
