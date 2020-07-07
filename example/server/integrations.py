@@ -400,37 +400,63 @@ class MyCustomerIntegration(CustomerIntegration):
         self.needs_basic_info = {
             "status": "NEEDS_INFO",
             "fields": {
-                "first_name": {"description": "first name of the customer"},
-                "last_name": {"description": "last name of the customer"},
-                "email_address": {"description": "email address of the customer"},
+                "first_name": {
+                    "description": "first name of the customer",
+                    "type": "string",
+                },
+                "last_name": {
+                    "description": "last name of the customer",
+                    "type": "string",
+                },
+                "email_address": {
+                    "description": "email address of the customer",
+                    "type": "string",
+                },
             },
         }
         self.needs_bank_info = {
             "status": "NEEDS_INFO",
             "fields": {
                 "bank_account_number": {
-                    "description": "bank account number of the customer"
+                    "description": "bank account number of the customer",
+                    "type": "string",
                 },
-                "bank_number": {"description": "routing number of the customer"},
+                "bank_number": {
+                    "description": "routing number of the customer",
+                    "type": "string",
+                },
             },
         }
         self.needs_all_info = {
             "status": "NEEDS_INFO",
             "fields": {
-                "first_name": {"description": "first name of the customer"},
-                "last_name": {"description": "last name of the customer"},
-                "email_address": {"description": "email address of the customer"},
-                "bank_account_number": {
-                    "description": "bank account number of the customer"
+                "first_name": {
+                    "description": "first name of the customer",
+                    "type": "string",
                 },
-                "bank_number": {"description": "routing number of the customer"},
+                "last_name": {
+                    "description": "last name of the customer",
+                    "type": "string",
+                },
+                "email_address": {
+                    "description": "email address of the customer",
+                    "type": "string",
+                },
+                "bank_account_number": {
+                    "description": "bank account number of the customer",
+                    "type": "string",
+                },
+                "bank_number": {
+                    "description": "routing number of the customer",
+                    "type": "string",
+                },
             },
         }
 
     def get(self, params: Dict) -> Dict:
         query_params = {}
         for attr in ["id", "memo", "memo_type", "account"]:
-            if attr in params:
+            if params.get(attr):
                 query_params[attr] = params.get(attr)
         account = PolarisStellarAccount.objects.filter(**query_params).first()
         if "id" in query_params and not account:
@@ -491,6 +517,11 @@ class MyCustomerIntegration(CustomerIntegration):
                 )
         if not user:
             user = account.user
+            if (
+                user.email != params.get("email_address")
+                and PolarisUser.objects.filter(email=params["email_address"]).exists()
+            ):
+                raise ValueError("email_address is taken")
 
         user.email = params.get("email_address") or user.email
         user.first_name = params.get("first_name") or user.first_name
@@ -499,7 +530,6 @@ class MyCustomerIntegration(CustomerIntegration):
         user.bank_account_number = (
             params.get("bank_account_number") or user.bank_account_number
         )
-        user.save()
 
         return str(user.id)
 
