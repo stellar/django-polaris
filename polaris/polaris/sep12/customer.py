@@ -94,6 +94,12 @@ class CustomerAPIView(APIView):
         except ValueError as e:
             return render_error_response(str(e), status_code=400)
 
+        if not isinstance(customer_id, str):
+            logger.error(
+                "Invalid customer ID returned from put() integration. Must be str."
+            )
+            return render_error_response(_("unable to process request"))
+
         return Response({"id": customer_id}, status=202)
 
 

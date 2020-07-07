@@ -30,7 +30,7 @@ class CustomerIntegration:
         """
         pass
 
-    def put(self, params: Dict) -> Union[str, int]:
+    def put(self, params: Dict) -> str:
         """
         .. _SEP-12: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0012.md#customer-put
 

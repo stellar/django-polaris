@@ -465,7 +465,7 @@ class MyCustomerIntegration(CustomerIntegration):
                     _("invalid 'type'. see /info response for valid values.")
                 )
 
-    def put(self, params: Dict) -> Union[str, int]:
+    def put(self, params: Dict) -> str:
         # query params for fetching/creating the PolarisStellarAccount
         qparams = {"account": params["account"]}
         if "memo" in params:
@@ -505,7 +505,7 @@ class MyCustomerIntegration(CustomerIntegration):
         )
         user.save()
 
-        return user.id
+        return str(user.id)
 
     def delete(self, account: str):
         account = PolarisStellarAccount.objects.filter(account=account).first()
