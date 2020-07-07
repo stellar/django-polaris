@@ -60,7 +60,7 @@ def test_successful_call(client, acc1_usd_deposit_transaction_factory):
 def test_no_auth(client):
     # No need for id arg
     response = client.get(endpoint)
-    assert response.status_code == 401
+    assert response.status_code == 403
 
 
 mock_valid_sending_anchor = Mock(valid_sending_anchor=Mock(return_value=False))
@@ -72,7 +72,7 @@ mock_valid_sending_anchor = Mock(valid_sending_anchor=Mock(return_value=False))
 )
 def test_invalid_anchor(client):
     response = client.get(endpoint)
-    assert response.status_code == 401
+    assert response.status_code == 403
     mock_valid_sending_anchor.valid_sending_anchor.assert_called()
 
 

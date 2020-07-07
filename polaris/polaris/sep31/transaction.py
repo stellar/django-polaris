@@ -17,7 +17,7 @@ from polaris.sep31.serializers import SEP31TransactionSerializer
 @validate_sep10_token("sep31")
 def transaction(account: str, request: Request) -> Response:
     if not registered_send_integration.valid_sending_anchor(account):
-        return render_error_response(_("invalid sending account."), status_code=401)
+        return render_error_response(_("invalid sending account."), status_code=403)
     elif not request.GET.get("id"):
         return render_error_response(_("missing 'id' parameter"))
     try:

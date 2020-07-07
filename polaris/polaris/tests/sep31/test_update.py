@@ -60,7 +60,7 @@ def test_missing_id(client, acc1_usd_deposit_transaction_factory):
 
 def test_no_auth(client):
     response = client.put(endpoint, {})
-    assert response.status_code == 401
+    assert response.status_code == 403
 
 
 @pytest.mark.django_db

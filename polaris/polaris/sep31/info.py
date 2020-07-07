@@ -49,15 +49,18 @@ def validate_info_response(fields_and_types: Dict):
         for f in fields_and_types.keys()
     ):
         raise ValueError("unrecognized key in info integration response")
+    elif "fields" not in fields_and_types:
+        raise ValueError("missing fields object in info response")
     elif not isinstance(fields_and_types["fields"], dict):
         raise ValueError("unrecognized type for fields value")
-    elif not (
-        isinstance(fields_and_types["sender_sep12_type"], str)
-        and isinstance(fields_and_types["receiver_sep12_type"], str)
+    elif (
+        "sender_sep12_type" in fields_and_types
+        and not isinstance(fields_and_types["sender_sep12_type"], str)
+    ) or (
+        "receiver_sep12_type" in fields_and_types
+        and not isinstance(fields_and_types["receiver_sep12_type"], str)
     ):
-        raise ValueError("unrecognized type for sep12_type value")
-    elif "transaction" not in fields_and_types["fields"]:
-        raise ValueError("unrecognized category of fields")
+        raise ValueError("invalid sep12_type value")
     validate_fields(fields_and_types["fields"].get("transaction"))
 
 

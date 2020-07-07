@@ -28,7 +28,7 @@ logger = Logger(__name__)
 @validate_sep10_token("sep31")
 def send(account: str, request: Request) -> Response:
     if not registered_send_integration.valid_sending_anchor(account):
-        return render_error_response("invalid sending account", status_code=401)
+        return render_error_response("invalid sending account", status_code=403)
 
     try:
         params = validate_send_request(request)
@@ -113,12 +113,10 @@ def validate_send_request(request: Request) -> Dict:
     ):
         raise ValueError(_("'transaction' value in 'fields' must be a dict"))
     if not (
-        type(request.data.get("sender_id")) in [str, int]
-        and type(request.data.get("receiver_id")) in [str, int]
+        type(request.data.get("sender_id")) in [str, type(None)]
+        and type(request.data.get("receiver_id")) in [str, type(None)]
     ):
-        raise ValueError(
-            _("'sender_id' and 'receiver_id' values must be strings or integers")
-        )
+        raise ValueError(_("'sender_id' and 'receiver_id' values must be strings"))
     return {
         "asset": asset,
         "amount": amount,

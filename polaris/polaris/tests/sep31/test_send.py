@@ -15,15 +15,9 @@ send_endpoint = "/sep31/send"
 success_send_integration = Mock(
     info=Mock(
         return_value={
-            "receiver": {
-                "first_name": {"description": "first name"},
-                "last_name": {"description": "last name"},
+            "fields": {
+                "transaction": {"bank_account": {"description": "bank account"}}
             },
-            "sender": {
-                "first_name": {"description": "first name"},
-                "last_name": {"description": "last name"},
-            },
-            "transaction": {"bank_account": {"description": "bank account"}},
         }
     ),
     process_send_request=Mock(return_value=None),
@@ -41,11 +35,9 @@ def test_successful_send(client, usd_asset_factory):
             "asset_code": asset.code,
             "asset_issuer": asset.issuer,
             "amount": 100,
-            "fields": {
-                "receiver": {"first_name": "first", "last_name": "last"},
-                "sender": {"first_name": "first", "last_name": "last"},
-                "transaction": {"bank_account": "fake account"},
-            },
+            "sender_id": "123",
+            "receiver_id": "456",
+            "fields": {"transaction": {"bank_account": "fake account"},},
         },
         content_type="application/json",
     )
@@ -62,7 +54,7 @@ def test_successful_send(client, usd_asset_factory):
 @pytest.mark.django_db
 def test_auth_check(client):
     response = client.post(send_endpoint, {})
-    assert response.status_code == 401
+    assert response.status_code == 403
     assert "error" in response.json()
 
 
@@ -77,17 +69,16 @@ def test_missing_category(client, usd_asset_factory):
             "asset_code": asset.code,
             "asset_issuer": asset.issuer,
             "amount": 100,
-            "fields": {
-                "receiver": {"first_name": "first", "last_name": "last"},
-                "transaction": {"bank_account": "fake account"},
-            },
+            "fields": {},
         },
         content_type="application/json",
     )
     body = response.json()
     assert response.status_code == 400
-    assert body["error"] == "customer_info_needed"
-    assert body["fields"] == {"sender": success_send_integration.info()["sender"]}
+    assert body["error"] == "transaction_info_needed"
+    assert body["fields"] == {
+        "transaction": success_send_integration.info()["fields"]["transaction"]
+    }
 
 
 @pytest.mark.django_db
@@ -101,19 +92,19 @@ def test_missing_field(client, usd_asset_factory):
             "asset_code": asset.code,
             "asset_issuer": asset.issuer,
             "amount": 100,
-            "fields": {
-                "receiver": {"first_name": "first", "last_name": "last"},
-                "sender": {"first_name": "first"},
-                "transaction": {"bank_account": "fake account"},
-            },
+            "fields": {"transaction": {}},
         },
         content_type="application/json",
     )
     body = response.json()
     assert response.status_code == 400
-    assert body["error"] == "customer_info_needed"
+    assert body["error"] == "transaction_info_needed"
     assert body["fields"] == {
-        "sender": {"last_name": success_send_integration.info()["sender"]["last_name"]}
+        "transaction": {
+            "bank_account": success_send_integration.info()["fields"]["transaction"][
+                "bank_account"
+            ]
+        }
     }
 
 
@@ -132,13 +123,7 @@ def test_extra_field(client, usd_asset_factory):
             "asset_issuer": asset.issuer,
             "amount": 100,
             "fields": {
-                "receiver": {
-                    "first_name": "first",
-                    "last_name": "last",
-                    "extra": "value",
-                },
-                "sender": {"first_name": "first", "last_name": "last"},
-                "transaction": {"bank_account": "fake account"},
+                "transaction": {"bank_account": "fake account", "extra": "field"},
             },
         },
         content_type="application/json",
@@ -150,9 +135,6 @@ def test_extra_field(client, usd_asset_factory):
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 @patch("polaris.sep31.send.registered_send_integration", success_send_integration)
 def test_extra_category(client, usd_asset_factory):
-    """
-    Don't return 400 on extra category passed
-    """
     asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31])
     response = client.post(
         send_endpoint,
@@ -161,15 +143,13 @@ def test_extra_category(client, usd_asset_factory):
             "asset_issuer": asset.issuer,
             "amount": 100,
             "fields": {
-                "receiver": {"first_name": "first", "last_name": "last"},
-                "sender": {"first_name": "first", "last_name": "last"},
                 "extra": {"category": "value"},
                 "transaction": {"bank_account": "fake account"},
             },
         },
         content_type="application/json",
     )
-    assert response.status_code == 200
+    assert response.status_code == 400
 
 
 @pytest.mark.django_db
@@ -182,11 +162,7 @@ def test_missing_amount(client, usd_asset_factory):
         {
             "asset_code": asset.code,
             "asset_issuer": asset.issuer,
-            "fields": {
-                "receiver": {"first_name": "first", "last_name": "last"},
-                "sender": {"first_name": "first", "last_name": "last"},
-                "transaction": {"bank_account": "fake account"},
-            },
+            "fields": {"transaction": {"bank_account": "fake account"},},
         },
         content_type="application/json",
     )
@@ -206,11 +182,7 @@ def test_missing_asset_code(client, usd_asset_factory):
         {
             "asset_issuer": asset.issuer,
             "amount": 100,
-            "fields": {
-                "receiver": {"first_name": "first", "last_name": "last"},
-                "sender": {"first_name": "first", "last_name": "last"},
-                "transaction": {"bank_account": "fake account"},
-            },
+            "fields": {"transaction": {"bank_account": "fake account"},},
         },
         content_type="application/json",
     )
@@ -231,11 +203,7 @@ def test_bad_asset_issuer(client, usd_asset_factory):
             "asset_code": asset.code,
             "asset_issuer": Keypair.random().public_key,
             "amount": 100,
-            "fields": {
-                "receiver": {"first_name": "first", "last_name": "last"},
-                "sender": {"first_name": "first", "last_name": "last"},
-                "transaction": {"bank_account": "fake account"},
-            },
+            "fields": {"transaction": {"bank_account": "fake account"},},
         },
         content_type="application/json",
     )
@@ -256,11 +224,7 @@ def test_bad_asset_code(client, usd_asset_factory):
             "asset_code": "FAKE",
             "asset_issuer": asset.issuer,
             "amount": 100,
-            "fields": {
-                "receiver": {"first_name": "first", "last_name": "last"},
-                "sender": {"first_name": "first", "last_name": "last"},
-                "transaction": {"bank_account": "fake account"},
-            },
+            "fields": {"transaction": {"bank_account": "fake account"},},
         },
         content_type="application/json",
     )
@@ -281,11 +245,7 @@ def test_large_amount(client, usd_asset_factory):
             "asset_code": asset.code,
             "asset_issuer": asset.issuer,
             "amount": 10000,
-            "fields": {
-                "receiver": {"first_name": "first", "last_name": "last"},
-                "sender": {"first_name": "first", "last_name": "last"},
-                "transaction": {"bank_account": "fake account"},
-            },
+            "fields": {"transaction": {"bank_account": "fake account"},},
         },
         content_type="application/json",
     )
@@ -306,11 +266,7 @@ def test_small_amount(client, usd_asset_factory):
             "asset_code": asset.code,
             "asset_issuer": asset.issuer,
             "amount": 0.001,
-            "fields": {
-                "receiver": {"first_name": "first", "last_name": "last"},
-                "sender": {"first_name": "first", "last_name": "last"},
-                "transaction": {"bank_account": "fake account"},
-            },
+            "fields": {"transaction": {"bank_account": "fake account"},},
         },
         content_type="application/json",
     )
@@ -318,60 +274,6 @@ def test_small_amount(client, usd_asset_factory):
     assert response.status_code == 400
     assert "error" in body
     assert "amount" in body["error"]
-
-
-@pytest.mark.django_db
-@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-@patch("polaris.sep31.send.registered_send_integration", success_send_integration)
-def test_bad_receiver_info(client, usd_asset_factory):
-    asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31])
-    response = client.post(
-        send_endpoint,
-        {
-            "asset_code": asset.code,
-            "asset_issuer": asset.issuer,
-            "amount": 100,
-            "fields": {
-                "receiver": {"first_name": "first", "last_name": "last"},
-                "sender": {"first_name": "first", "last_name": "last"},
-                "transaction": {"bank_account": "fake account"},
-            },
-            "require_receiver_info": ["not sep9 field"],
-        },
-        content_type="application/json",
-    )
-    body = response.json()
-    assert response.status_code == 400
-    assert "error" in body
-    assert "require_receiver_info" in body["error"]
-
-
-@pytest.mark.django_db
-@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-@patch("polaris.sep31.send.registered_send_integration", success_send_integration)
-def test_receiver_info(client, usd_asset_factory):
-    """
-    Ensure sending require_receiver_info param doesn't cause 400 response
-
-    Returning receiver_info attribute in response is up to the anchor
-    """
-    asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31])
-    response = client.post(
-        send_endpoint,
-        {
-            "asset_code": asset.code,
-            "asset_issuer": asset.issuer,
-            "amount": 100,
-            "fields": {
-                "receiver": {"first_name": "first", "last_name": "last"},
-                "sender": {"first_name": "first", "last_name": "last"},
-                "transaction": {"bank_account": "fake account"},
-            },
-            "require_receiver_info": ["bank_account_number"],
-        },
-        content_type="application/json",
-    )
-    assert response.status_code == 200
 
 
 @pytest.mark.django_db
@@ -385,11 +287,7 @@ def test_transaction_created(client, usd_asset_factory):
             "asset_code": asset.code,
             "asset_issuer": asset.issuer,
             "amount": 100,
-            "fields": {
-                "receiver": {"first_name": "first", "last_name": "last"},
-                "sender": {"first_name": "first", "last_name": "last"},
-                "transaction": {"bank_account": "fake account"},
-            },
+            "fields": {"transaction": {"bank_account": "fake account"},},
         },
         content_type="application/json",
     )
