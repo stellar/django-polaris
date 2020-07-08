@@ -21,12 +21,11 @@ django-sass-processor
 django-cors-headers
 django-environ
 django-model-utils
-django-sslserver
 django<3.0
 djangorestframework
 libsass
 psycopg2-binary
 pyjwt
-stellar-sdk~=2.4.0
+stellar-sdk~=2.6.0
 toml
 whitenoise
