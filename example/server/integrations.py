@@ -123,6 +123,11 @@ class SEP24KYC:
                     )
                 ),
             }
+        elif settings.LOCAL_MODE:
+            # When in local mode, request session's are not authenticated,
+            # which means account confirmation cannot be skipped. So we'll
+            # return None instead of returning the confirm email page.
+            return
         elif server_settings.EMAIL_HOST_USER and not account.confirmed:
             return {
                 "title": CONFIRM_EMAIL_PAGE_TITLE,
@@ -150,7 +155,7 @@ class MyDepositIntegration(DepositIntegration):
         mock_bank_account_id = "XXXXXXXXXXXXX"
         client = rails.BankAPIClient(mock_bank_account_id)
         for deposit in pending_deposits:
-            bank_deposit = client.get_deposit(memo=deposit.external_extra)
+            bank_deposit = client.get_deposit(deposit=deposit)
             if bank_deposit and bank_deposit.status == "complete":
                 if not deposit.amount_in:
                     deposit.amount_in = Decimal(103)
@@ -166,17 +171,6 @@ class MyDepositIntegration(DepositIntegration):
 
         return ready_deposits
 
-    def after_deposit(self, transaction: Transaction):
-        """
-        Deposit was successful, do any post-processing necessary.
-
-        In this implementation, we remove the memo from the transaction to
-        avoid potential collisions with still-pending deposits.
-        """
-        logger.info(f"Successfully processed transaction {transaction.id}")
-        transaction.external_extra = None
-        transaction.save()
-
     def instructions_for_pending_deposit(self, transaction: Transaction):
         """
         This function provides a message to the user containing instructions for
@@ -190,8 +184,6 @@ class MyDepositIntegration(DepositIntegration):
         """
         # Generate a unique alphanumeric memo string to identify bank deposit
         memo = b64encode(str(hash(transaction)).encode()).decode()[:10].upper()
-        transaction.external_extra = memo
-        transaction.save()
         return (
             _(
                 "Include this code as the memo when making the deposit: "
@@ -200,7 +192,7 @@ class MyDepositIntegration(DepositIntegration):
                 "automatically confirmed for demonstration purposes. Please "
                 "wait.)"
             )
-            % transaction.external_extra
+            % memo
         )
 
     def content_for_transaction(
@@ -611,6 +603,7 @@ def scripts_integration(page_content: Optional[Dict]):
                     button.innerHTML = "Skip Confirmation";
                     button.setAttribute("test-action", "submit");
                     button.addEventListener("click", function () {
+                        this.disabled = true;
                         let url = window.location.protocol + "//" + window.location.host + "/skip_confirm_email";
                         fetch(url).then(res => res.json()).then((json) => {
                             if (json["status"] === "not found") {

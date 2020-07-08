@@ -136,9 +136,11 @@
       // Disable form submit buttons after first click
       let submitButton = document.querySelector('.submit');
       let anchorForm = document.querySelector('form');
-      anchorForm.addEventListener('submit', (e) => {
-        submitButton.disabled = true;
-      });
+      if (anchorForm) {
+        anchorForm.addEventListener('submit', (e) => {
+          submitButton.disabled = true;
+        });
+      }
 
       // Show fee and amount user will receive when amount field
       // changes, if present.
@@ -146,6 +148,8 @@
       let feeTag = document.querySelector('.fee');
       let amountOutTag = document.querySelector('.amount-out');
       if (amountInput) {
+        let feeTable = document.querySelector('.fee-table');
+        feeTable.removeAttribute('hidden');
         amountInput.addEventListener("input", (e) => {
           if (isNaN(e.target.value)) return;
           let fee_fixed;

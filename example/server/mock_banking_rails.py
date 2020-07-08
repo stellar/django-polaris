@@ -27,14 +27,16 @@ class BankAPIClient:
     def __init__(self, account_id):
         self.account = BankAccount(account_id)
 
-    def get_deposit(self, memo):
+    def get_deposit(self, deposit):
         """
         A fake banking rails function for retrieving a RailsTransaction object.
 
         When a deposit is initiated by making a POST /deposit/interactive call,
         we (the anchor) display instructions with a fake `memo` string that the
         user would (in theory) use when making the deposit to the anchor's
-        account. This `memo` is saved to Transaction.external_extra.
+        account. However when passed the `deposit` Transaction object, we simply
+        return a fake BankTransaction object for the purposes of providing an
+        example.
 
         Then, when polling the bank for new deposits into the anchor's account,
         we identify a Transaction database object using the memo originally
@@ -43,15 +45,7 @@ class BankAPIClient:
         This is intended to be an example for how a real anchor would poll the
         anchors bank and identify a deposit from a particular user.
         """
-        transaction = Transaction.objects.filter(
-            external_extra=memo,
-            kind=Transaction.KIND.deposit,
-            status=Transaction.STATUS.pending_user_transfer_start,
-        ).first()
-        if transaction:
-            return BankTransaction(self.account, transaction.amount_in, memo)
-        else:
-            return None
+        return BankTransaction(self.account, deposit.amount_in, deposit.deposit_memo)
 
     def send_funds(self, to_account: str, amount: Decimal):
         """

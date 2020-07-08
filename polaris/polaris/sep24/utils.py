@@ -80,6 +80,7 @@ def authenticate_session_helper(r: Request):
     if settings.LOCAL_MODE:
         return
 
+    logger.error("in interactive authentication helper")
     token = r.GET.get("token")
     if not token:
         # If there is no token, check if this session has already been authenticated,
@@ -102,6 +103,7 @@ def authenticate_session_helper(r: Request):
         jwt_dict = jwt.decode(token, settings.SERVER_JWT_KEY, algorithms=["HS256"])
     except InvalidTokenError as e:
         raise ValueError(str(e))
+    logger.error(f"authenticating {jwt_dict['sub']}")
 
     now = time.time()
     if jwt_dict["iss"] != r.build_absolute_uri("interactive"):
@@ -118,6 +120,7 @@ def authenticate_session_helper(r: Request):
     # JWT is valid, authenticate session
     r.session["authenticated"] = True
     r.session["account"] = jwt_dict["sub"]
+    logger.error(f"Authenticated for account {r.session['account']}")
     try:
         r.session["transactions"].append(jwt_dict["jti"])
     except KeyError:
