@@ -63,13 +63,6 @@ def send(account: str, request: Request) -> Response:
         send_anchor_account=params["asset"].distribution_account,
     )
 
-    # The anchor should validate and process the parameters from the request and return
-    # the data to be included in the response.
-    #
-    # If the anchor returns an error response, the transaction will not be created.
-    #
-    # If the anchor returns a success response, the anchor also must link the transaction
-    # passed to the user specified by params["receiver"] using their own data model.
     error_data = registered_send_integration.process_send_request(
         params, transaction.id
     )

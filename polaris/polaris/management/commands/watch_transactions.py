@@ -133,7 +133,7 @@ class Command(BaseCommand):
         # this transfer. If there are, Polaris marks the transaction as 'error' which
         # requires the anchor to manually fix the transaction and retry the transfer.
         #
-        # SEP 31 transfers could also have issues, such as needing additional or updates
+        # SEP 31 transfers could also have issues, such as needing additional updates
         # to the receiving user's information. However, since the SEP31 Polaris support
         # hasn't been released yet, Polaris will provide a different interface that provides
         # anchors the ability to attempt transfers, request updates from the sending anchor,
