@@ -12,45 +12,34 @@ class SendIntegration:
         """
         .. _info response: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0031.md#response
 
-        Return a dictionary you want assigned to the ``"fields"`` key for the given
-        `asset` in the `info response`_. Descriptions should be in the `lang` passed
-        if supported.
+        Return a dictionary containing the `"fields"` object as described in the
+        `info response`_ for the given `asset`. If your anchor requires KYC
+        information about the sender or receiver, return the `"receiver_sep12_type"`
+        or `"sender_sep12_type"` key-value pairs as well. Polaris will provide the
+        rest of the fields documented in the info response.
+
+        Descriptions should be in the `lang` passed if supported.
         ::
 
             return {
-                "sender": {
-                    "first_name": {
-                        "description": "The first name of the sending user"
-                    },
-                    "last_name": {
-                        "description": "The last name of the sending user"
+                "receiver_sep12_type": "sep31-receiver",
+                "sender_sep12_type": "sep31-sender",
+                "fields": {
+                    "transaction":{
+                       "routing_number":{
+                          "description": "routing number of the destination bank account"
+                       },
+                       "account_number":{
+                          "description": "bank account number of the destination"
+                       },
+                       "type":{
+                          "description": "type of deposit to make",
+                          "choices":[
+                             "SEPA",
+                             "SWIFT"
+                          ]
+                       }
                     }
-                },
-                "receiver": {
-                    "first_name": {
-                        "description": "The first name of the receiving user"
-                    },
-                    "last_name": {
-                        "description": "The last name of the receiving user"
-                    },
-                    "email_address": {
-                        "description": "The email address of the receiving user"
-                    }
-                },
-                "transaction":{
-                   "routing_number":{
-                      "description": "routing number of the destination bank account"
-                   },
-                   "account_number":{
-                      "description": "bank account number of the destination"
-                   },
-                   "type":{
-                      "description": "type of deposit to make",
-                      "choices":[
-                         "SEPA",
-                         "SWIFT"
-                      ]
-                   }
                 }
             }
 
