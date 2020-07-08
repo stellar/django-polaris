@@ -66,15 +66,15 @@ workflows:
           filters:
             branches:
               only: master
-      - publish_build:
-          requires:
-            - test
-          filters:
-            branches:
-              only: master
+      #- publish_build:
+      #    requires:
+      #      - test
+      #    filters:
+      #      branches:
+      #        only: master
       - heroku/deploy-via-git:
           requires:
-            - publish_build
+            - test # publish_build
           filters:
             branches:
               only: master
