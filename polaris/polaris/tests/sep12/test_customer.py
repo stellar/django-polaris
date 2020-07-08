@@ -7,7 +7,7 @@ from stellar_sdk.keypair import Keypair
 endpoint = "/kyc/customer"
 
 mock_success_integration = Mock(
-    get=Mock(return_value={"status": "ACCEPTED"}), put=Mock(return_value=123),
+    get=Mock(return_value={"status": "ACCEPTED"}), put=Mock(return_value="123"),
 )
 
 
@@ -24,7 +24,7 @@ def test_put_success(client):
         content_type="application/json",
     )
     assert response.status_code == 202
-    assert response.json() == {"id": 123}
+    assert response.json() == {"id": "123"}
 
 
 @patch("polaris.sep12.customer.rci", mock_success_integration)
@@ -42,7 +42,7 @@ def test_put_memo(client):
         content_type="application/json",
     )
     assert response.status_code == 202
-    assert response.json() == {"id": 123}
+    assert response.json() == {"id": "123"}
 
 
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
@@ -140,7 +140,7 @@ def test_put_missing_memo_type(client):
     assert "error" in response.json()
 
 
-mock_put = Mock(return_value=123)
+mock_put = Mock(return_value="123")
 
 
 @patch("polaris.sep12.customer.rci.put", mock_put)
@@ -167,7 +167,7 @@ def test_sep9_params(client):
     )
     mock_put.reset_mock()
     assert response.status_code == 202
-    assert response.json() == {"id": 123}
+    assert response.json() == {"id": "123"}
 
 
 mock_get_accepted = Mock(return_value={"status": "ACCEPTED"})
@@ -253,7 +253,7 @@ def test_get_missing_memo(client):
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 def test_get_missing_memo_type(client):
     response = client.get(
-        endpoint + "?" + urlencode({"account": "test source address", "memo": 123,})
+        endpoint + "?" + urlencode({"account": "test source address", "memo": "123"})
     )
     assert response.status_code == 400
     assert "error" in response.json()
