@@ -11,7 +11,7 @@ import pytest
 from stellar_sdk import Keypair, TransactionEnvelope
 
 from polaris import settings
-from polaris.management.commands.create_stellar_deposit import SUCCESS_XDR
+from polaris.utils import SUCCESS_XDR
 from polaris.tests.helpers import (
     mock_check_auth_success,
     interactive_jwt_payload,

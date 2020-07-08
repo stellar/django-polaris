@@ -24,7 +24,7 @@ def test_deposit_success(
     mock_check, mock_integration, client, acc1_usd_deposit_transaction_factory
 ):
     del mock_check, mock_integration
-    deposit = acc1_usd_deposit_transaction_factory(sep6=True)
+    deposit = acc1_usd_deposit_transaction_factory(protocol=Transaction.PROTOCOL.sep6)
     asset = deposit.asset
     response = client.get(
         DEPOSIT_PATH, {"asset_code": asset.code, "account": deposit.stellar_account},
@@ -47,7 +47,7 @@ def test_deposit_bad_memo_type(
     mock_check, client, acc1_usd_deposit_transaction_factory
 ):
     del mock_check
-    deposit = acc1_usd_deposit_transaction_factory(sep6=True)
+    deposit = acc1_usd_deposit_transaction_factory(protocol=Transaction.PROTOCOL.sep6)
     asset = deposit.asset
     response = client.get(
         DEPOSIT_PATH,
@@ -66,7 +66,7 @@ def test_deposit_bad_memo_type(
 @patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
 def test_deposit_bad_memo(mock_check, client, acc1_usd_deposit_transaction_factory):
     del mock_check
-    deposit = acc1_usd_deposit_transaction_factory(sep6=True)
+    deposit = acc1_usd_deposit_transaction_factory(protocol=Transaction.PROTOCOL.sep6)
     asset = deposit.asset
     response = client.get(
         DEPOSIT_PATH,
@@ -89,7 +89,7 @@ def test_deposit_bad_type(
     mock_check, mock_integration, client, acc1_usd_deposit_transaction_factory
 ):
     del mock_check, mock_integration
-    deposit = acc1_usd_deposit_transaction_factory(sep6=True)
+    deposit = acc1_usd_deposit_transaction_factory(protocol=Transaction.PROTOCOL.sep6)
     response = client.get(
         DEPOSIT_PATH,
         {
@@ -115,7 +115,7 @@ def test_deposit_missing_integration_response(
     mock_check, mock_integration, client, acc1_usd_deposit_transaction_factory
 ):
     del mock_check, mock_integration
-    deposit = acc1_usd_deposit_transaction_factory(sep6=True)
+    deposit = acc1_usd_deposit_transaction_factory(protocol=Transaction.PROTOCOL.sep6)
     response = client.get(
         DEPOSIT_PATH,
         {"asset_code": deposit.asset.code, "account": deposit.stellar_account,},
@@ -137,7 +137,7 @@ def test_deposit_bad_extra_info_integration(
     mock_check, mock_integration, client, acc1_usd_deposit_transaction_factory
 ):
     del mock_check, mock_integration
-    deposit = acc1_usd_deposit_transaction_factory(sep6=True)
+    deposit = acc1_usd_deposit_transaction_factory(protocol=Transaction.PROTOCOL.sep6)
     response = client.get(
         DEPOSIT_PATH,
         {"asset_code": deposit.asset.code, "account": deposit.stellar_account,},
@@ -154,7 +154,7 @@ def test_deposit_transaction_created(
     mock_check, mock_integration, client, acc1_usd_deposit_transaction_factory
 ):
     del mock_check, mock_integration
-    deposit = acc1_usd_deposit_transaction_factory(sep6=True)
+    deposit = acc1_usd_deposit_transaction_factory(protocol=Transaction.PROTOCOL.sep6)
     client.get(
         DEPOSIT_PATH,
         {
@@ -191,7 +191,7 @@ def test_deposit_non_interactive_customer_info_needed(
     mock_check, mock_integration, client, acc1_usd_deposit_transaction_factory
 ):
     del mock_check, mock_integration
-    deposit = acc1_usd_deposit_transaction_factory(sep6=True)
+    deposit = acc1_usd_deposit_transaction_factory(protocol=Transaction.PROTOCOL.sep6)
     response = client.get(
         DEPOSIT_PATH,
         {"asset_code": deposit.asset.code, "account": deposit.stellar_account,},
@@ -216,7 +216,7 @@ def test_deposit_bad_integration_bad_type(
     mock_check, mock_integration, client, acc1_usd_deposit_transaction_factory
 ):
     del mock_check, mock_integration
-    deposit = acc1_usd_deposit_transaction_factory(sep6=True)
+    deposit = acc1_usd_deposit_transaction_factory(protocol=Transaction.PROTOCOL.sep6)
     response = client.get(
         DEPOSIT_PATH,
         {"asset_code": deposit.asset.code, "account": deposit.stellar_account,},
@@ -240,7 +240,7 @@ def test_deposit_missing_fields_integration(
     mock_check, mock_integration, client, acc1_usd_deposit_transaction_factory
 ):
     del mock_check, mock_integration
-    deposit = acc1_usd_deposit_transaction_factory(sep6=True)
+    deposit = acc1_usd_deposit_transaction_factory(protocol=Transaction.PROTOCOL.sep6)
     response = client.get(
         DEPOSIT_PATH,
         {"asset_code": deposit.asset.code, "account": deposit.stellar_account,},
@@ -265,7 +265,7 @@ def test_deposit_bad_fields_integration(
     mock_check, mock_integration, client, acc1_usd_deposit_transaction_factory
 ):
     del mock_check, mock_integration
-    deposit = acc1_usd_deposit_transaction_factory(sep6=True)
+    deposit = acc1_usd_deposit_transaction_factory(protocol=Transaction.PROTOCOL.sep6)
     response = client.get(
         DEPOSIT_PATH,
         {"asset_code": deposit.asset.code, "account": deposit.stellar_account,},
@@ -289,7 +289,7 @@ def test_deposit_good_integration_customer_info(
     mock_check, mock_integration, client, acc1_usd_deposit_transaction_factory
 ):
     del mock_check, mock_integration
-    deposit = acc1_usd_deposit_transaction_factory(sep6=True)
+    deposit = acc1_usd_deposit_transaction_factory(protocol=Transaction.PROTOCOL.sep6)
     response = client.get(
         DEPOSIT_PATH,
         {"asset_code": deposit.asset.code, "account": deposit.stellar_account,},
@@ -315,7 +315,7 @@ def test_deposit_bad_integration_bad_status(
     mock_check, mock_integration, client, acc1_usd_deposit_transaction_factory
 ):
     del mock_check, mock_integration
-    deposit = acc1_usd_deposit_transaction_factory(sep6=True)
+    deposit = acc1_usd_deposit_transaction_factory(protocol=Transaction.PROTOCOL.sep6)
     response = client.get(
         DEPOSIT_PATH,
         {"asset_code": deposit.asset.code, "account": deposit.stellar_account,},

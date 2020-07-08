@@ -38,6 +38,8 @@ def generate_toml(request):
         toml_dict["WEB_AUTH_ENDPOINT"] = os.path.join(settings.HOST_URL, "auth")
     if "sep-12" in django_settings.ACTIVE_SEPS:
         toml_dict["KYC_SERVER"] = os.path.join(settings.HOST_URL, "kyc")
+    if "sep-31" in django_settings.ACTIVE_SEPS:
+        toml_dict["DIRECT_PAYMENT_SERVER"] = os.path.join(settings.HOST_URL, "sep31")
 
     toml_dict.update(registered_toml_func())
 

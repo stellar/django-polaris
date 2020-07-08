@@ -50,3 +50,23 @@ services:
     depends_on:
       - server
     command: watchmedo auto-restart --recursive --pattern="*.py" --directory="." python manage.py poll_pending_deposits -- --loop
+  poll_outgoing_transactions:
+    container_name: poll_outgoing_transactions
+    build: .
+    volumes:
+      - ./polaris/polaris:/code/polaris/polaris
+      - ./example/server:/code/server
+      - ./example/data:/code/data
+    depends_on:
+      - server
+    command: watchmedo auto-restart --recursive --pattern="*.py" --directory="." python manage.py poll_outgoing_transactions -- --loop
+  execute_outgoing_transactions:
+    container_name: execute_outgoing_transactions
+    build: .
+    volumes:
+      - ./polaris/polaris:/code/polaris/polaris
+      - ./example/server:/code/server
+      - ./example/data:/code/data
+    depends_on:
+      - server
+    command: watchmedo auto-restart --recursive --pattern="*.py" --directory="." python manage.py execute_outgoing_transactions -- --loop

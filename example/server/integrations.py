@@ -1,10 +1,12 @@
 from typing import Union
 
+import json
 from smtplib import SMTPException
 from decimal import Decimal
 from typing import List, Dict, Optional
 from urllib.parse import urlencode
 from base64 import b64encode
+from collections import defaultdict
 
 from django.db.models import QuerySet
 from django.utils.translation import gettext as _
@@ -19,8 +21,10 @@ from polaris.utils import Logger
 from polaris.integrations import (
     DepositIntegration,
     WithdrawalIntegration,
+    SendIntegration,
     CustomerIntegration,
     calculate_fee,
+    RailsIntegration,
 )
 from polaris import settings
 
@@ -95,7 +99,7 @@ class SEP24KYC:
                 )
 
         PolarisUserTransaction.objects.get_or_create(
-            account=account, transaction=transaction
+            account=account, transaction_id=transaction.id
         )
 
     @staticmethod
@@ -396,37 +400,63 @@ class MyCustomerIntegration(CustomerIntegration):
         self.needs_basic_info = {
             "status": "NEEDS_INFO",
             "fields": {
-                "first_name": {"description": "first name of the customer"},
-                "last_name": {"description": "last name of the customer"},
-                "email_address": {"description": "email address of the customer"},
+                "first_name": {
+                    "description": "first name of the customer",
+                    "type": "string",
+                },
+                "last_name": {
+                    "description": "last name of the customer",
+                    "type": "string",
+                },
+                "email_address": {
+                    "description": "email address of the customer",
+                    "type": "string",
+                },
             },
         }
         self.needs_bank_info = {
             "status": "NEEDS_INFO",
             "fields": {
                 "bank_account_number": {
-                    "description": "bank account number of the customer"
+                    "description": "bank account number of the customer",
+                    "type": "string",
                 },
-                "bank_number": {"description": "routing number of the customer"},
+                "bank_number": {
+                    "description": "routing number of the customer",
+                    "type": "string",
+                },
             },
         }
         self.needs_all_info = {
             "status": "NEEDS_INFO",
             "fields": {
-                "first_name": {"description": "first name of the customer"},
-                "last_name": {"description": "last name of the customer"},
-                "email_address": {"description": "email address of the customer"},
-                "bank_account_number": {
-                    "description": "bank account number of the customer"
+                "first_name": {
+                    "description": "first name of the customer",
+                    "type": "string",
                 },
-                "bank_number": {"description": "routing number of the customer"},
+                "last_name": {
+                    "description": "last name of the customer",
+                    "type": "string",
+                },
+                "email_address": {
+                    "description": "email address of the customer",
+                    "type": "string",
+                },
+                "bank_account_number": {
+                    "description": "bank account number of the customer",
+                    "type": "string",
+                },
+                "bank_number": {
+                    "description": "routing number of the customer",
+                    "type": "string",
+                },
             },
         }
 
     def get(self, params: Dict) -> Dict:
         query_params = {}
         for attr in ["id", "memo", "memo_type", "account"]:
-            if attr in params:
+            if params.get(attr):
                 query_params[attr] = params.get(attr)
         account = PolarisStellarAccount.objects.filter(**query_params).first()
         if "id" in query_params and not account:
@@ -436,9 +466,9 @@ class MyCustomerIntegration(CustomerIntegration):
                 _("customer not found using: %s") % list(query_params.keys())
             )
         elif not account:
-            if params.get("type") in ["sep6-deposit", "sep31-sender"]:
+            if params.get("type") in ["sep6-deposit", "sep31-sender", "sep31-receiver"]:
                 return self.needs_basic_info
-            elif params.get("type") in [None, "sep6-withdraw", "sep31-receiver"]:
+            elif params.get("type") in [None, "sep6-withdraw"]:
                 return self.needs_all_info
             else:
                 raise ValueError(
@@ -447,10 +477,10 @@ class MyCustomerIntegration(CustomerIntegration):
         else:
             user = account.user
             if (user.bank_number and user.bank_account_number) or (
-                params.get("type") in ["sep6-deposit", "sep31-sender"]
+                params.get("type") in ["sep6-deposit", "sep31-sender", "sep31-receiver"]
             ):
                 return self.accepted
-            elif params.get("type") in [None, "sep6-withdraw", "sep31-receiver"]:
+            elif params.get("type") in [None, "sep6-withdraw"]:
                 return self.needs_bank_info
             else:
                 raise ValueError(
@@ -487,6 +517,11 @@ class MyCustomerIntegration(CustomerIntegration):
                 )
         if not user:
             user = account.user
+            if (
+                user.email != params.get("email_address")
+                and PolarisUser.objects.filter(email=params["email_address"]).exists()
+            ):
+                raise ValueError("email_address is taken")
 
         user.email = params.get("email_address") or user.email
         user.first_name = params.get("first_name") or user.first_name
@@ -495,7 +530,6 @@ class MyCustomerIntegration(CustomerIntegration):
         user.bank_account_number = (
             params.get("bank_account_number") or user.bank_account_number
         )
-        user.save()
 
         return str(user.id)
 
@@ -521,6 +555,123 @@ class MyCustomerIntegration(CustomerIntegration):
         )
         account = PolarisStellarAccount.objects.create(user=user, **qparams)
         return user, account
+
+
+class MySendIntegration(SendIntegration):
+    def info(self, asset: Asset, lang: Optional[str] = None):
+        return {
+            "sender_sep12_type": "sep31-sender",
+            "receiver_sep12_type": "sep31-receiver",
+            "fields": {
+                "transaction": {
+                    "routing_number": {
+                        "description": "routing number of the destination bank account"
+                    },
+                    "account_number": {
+                        "description": "bank account number of the destination"
+                    },
+                },
+            },
+        }
+
+    def process_send_request(self, params: Dict, transaction_id: str) -> Optional[Dict]:
+        sender_id = params.get("sender_id")  # not actually used
+        receiver_id = params.get("receiver_id")
+        transaction_fields = params.get("fields", {}).get("transaction")
+        for field, val in transaction_fields.items():
+            if not isinstance(val, str):
+                return {"error": f"'{field}'" + _(" is not of type str")}
+
+        receiving_user = PolarisUser.objects.filter(id=receiver_id).first()
+        if not receiving_user:
+            return {"error": "customer_info_needed", "type": "sep31-receiver"}
+
+        elif not (receiving_user.bank_account_number and receiving_user.bank_number):
+            receiving_user.bank_account_number = transaction_fields["account_number"]
+            receiving_user.bank_number = transaction_fields["routing_number"]
+            receiving_user.save()
+        # Transaction doesn't yet exist so transaction_id is a text field
+        PolarisUserTransaction.objects.create(
+            user=receiving_user, transaction_id=transaction_id
+        )
+
+    def process_update_request(self, params: Dict, transaction: Transaction):
+        info_fields = params.get("fields", {})
+        transaction_fields = info_fields.get("transaction", {})
+        if not isinstance(transaction_fields, dict):
+            raise ValueError(_("'transaction' value must be an object"))
+        possible_fields = set()
+        for obj in self.info(transaction.asset)["fields"].values():
+            possible_fields.union(obj.keys())
+        update_fields = list(transaction_fields.keys())
+        if not update_fields:
+            raise ValueError(_("No fields provided"))
+        elif any(f not in possible_fields for f in update_fields):
+            raise ValueError(_("unexpected fields provided"))
+        elif not all(isinstance(update_fields[f], str) for f in update_fields):
+            raise ValueError(_("field values must be strings"))
+        user = (
+            PolarisUserTransaction.objects.filter(transaction_id=transaction.id)
+            .first()
+            .user
+        )
+        if "routing_number" in update_fields:
+            user.bank_number = transaction_fields["routing_number"]
+        elif "account_number" in update_fields:
+            user.bank_account_number = transaction_fields["account_number"]
+        user.save()
+
+    def valid_sending_anchor(self, public_key: str) -> bool:
+        # A real anchor would check if public_key belongs to a partner anchor
+        return True
+
+
+class MyRailsIntegration(RailsIntegration):
+    def poll_outgoing_transactions(self, transactions: QuerySet) -> List[Transaction]:
+        """
+        Auto-complete pending_external transactions
+
+        An anchor would typically collect information on the transactions passed
+        and return only the transactions that have completed the external transfer.
+        """
+        return list(transactions)
+
+    def execute_outgoing_transaction(self, transaction: Transaction):
+        user = (
+            PolarisUserTransaction.objects.filter(transaction_id=transaction.id)
+            .first()
+            .user
+        )
+
+        client = rails.BankAPIClient("fake anchor bank account number")
+        transaction.amount_fee = 0  # Or calculate your fee
+        response = client.send_funds(
+            to_account=user.bank_account_number,
+            amount=transaction.amount_in - transaction.amount_fee,
+        )
+
+        if response["success"]:
+            transaction.status = Transaction.STATUS.pending_external
+        else:
+            # Parse a mock bank API response to demonstrate how an anchor would
+            # report back to the sending anchor which fields needed updating.
+            error_fields = response.error.fields
+            info_fields = MySendIntegration().info(transaction.asset)
+            required_info_update = defaultdict(dict)
+            for field in error_fields:
+                if "name" in field:
+                    required_info_update["receiver"][field] = info_fields["receiver"][
+                        field
+                    ]
+                elif "account" in field:
+                    required_info_update["transaction"][field] = info_fields[
+                        "receiver"
+                    ][field]
+            transaction.required_info_update = json.dumps(required_info_update)
+            transaction.required_info_message = response.error.message
+            transaction.status = Transaction.STATUS.pending_info_update
+
+        transaction.save()
 
 
 def toml_integration():

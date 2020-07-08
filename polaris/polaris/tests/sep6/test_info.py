@@ -2,6 +2,8 @@ import pytest
 import json
 from unittest.mock import patch
 
+from polaris.models import Transaction
+
 
 INFO_PATH = "/sep6/info"
 
@@ -51,7 +53,7 @@ def good_info_integration(asset, lang):
 @pytest.mark.django_db
 @patch("polaris.sep6.info.registered_info_func", good_info_integration)
 def test_good_info_response(client, usd_asset_factory):
-    usd_asset_factory(sep6=True)
+    usd_asset_factory(protocols=[Transaction.PROTOCOL.sep6])
     response = client.get(INFO_PATH)
     content = json.loads(response.content)
     assert response.status_code == 200
@@ -168,7 +170,7 @@ def test_bad_nested_fields_extra_key(client, usd_asset_factory):
 
 
 def server_error(client, usd_asset_factory):
-    usd_asset_factory(sep6=True)
+    usd_asset_factory(protocols=[Transaction.PROTOCOL.sep6])
     response = client.get(INFO_PATH)
     content = json.loads(response.content)
     assert response.status_code == 500
@@ -182,7 +184,7 @@ def unsupported_lang(asset, lang):
 @pytest.mark.django_db
 @patch("polaris.sep6.info.registered_info_func", unsupported_lang)
 def test_unsupported_lang(client, usd_asset_factory):
-    usd_asset_factory(sep6=True)
+    usd_asset_factory(protocols=[Transaction.PROTOCOL.sep6])
     response = client.get(INFO_PATH + "?lang=es")
     content = json.loads(response.content)
     assert response.status_code == 400

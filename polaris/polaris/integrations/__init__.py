@@ -9,6 +9,8 @@ from polaris.integrations.customers import (
     CustomerIntegration,
     registered_customer_integration,
 )
+from polaris.integrations.rails import RailsIntegration, registered_rails_integration
+from polaris.integrations.sep31 import SendIntegration, registered_send_integration
 from polaris.integrations.transactions import (
     DepositIntegration,
     WithdrawalIntegration,
@@ -20,6 +22,8 @@ from polaris.integrations.transactions import (
 def register_integrations(
     deposit: DepositIntegration = None,
     withdrawal: WithdrawalIntegration = None,
+    send: SendIntegration = None,
+    rails: RailsIntegration = None,
     toml_func: Callable = None,
     scripts_func: Callable = None,
     fee_func: Callable = None,
@@ -66,6 +70,10 @@ def register_integrations(
         used by Polaris
     :param withdrawal: the ``WithdrawalIntegration`` subclass instance to
         be used by Polaris
+    :param send: the ``SendIntegration`` subclass instance to be used by
+        Polaris
+    :param rails: the ``RailsIntegration`` subclass instance to be used by
+        Polaris
     :param toml_func: a function that returns stellar.toml data as a dictionary
     :param scripts_func: a function that returns a list of script tags as
         strings
@@ -89,11 +97,15 @@ def register_integrations(
     elif scripts_func and not callable(scripts_func):
         raise TypeError("javascript_func is not callable")
     elif fee_func and not callable(fee_func):
-        raise TypeError("javascript_func is not callable")
+        raise TypeError("fee_func is not callable")
     elif info_func and not callable(info_func):
         raise TypeError("info_func is not callable")
     elif customer and not issubclass(customer.__class__, CustomerIntegration):
         raise TypeError("customer must be a subclass of CustomerIntegration")
+    elif send and not issubclass(send.__class__, SendIntegration):
+        raise TypeError("send must be a subclass of SendIntegration")
+    elif rails and not issubclass(rails.__class__, RailsIntegration):
+        raise TypeError("rails must be a subclass of RailsIntegration")
 
     for obj, attr in [
         (deposit, "registered_deposit_integration"),
@@ -103,6 +115,8 @@ def register_integrations(
         (fee_func, "registered_fee_func"),
         (info_func, "registered_info_func"),
         (customer, "registered_customer_integration"),
+        (send, "registered_send_integration"),
+        (rails, "registered_rails_integration"),
     ]:
         if obj:
             setattr(this, attr, obj)

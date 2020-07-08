@@ -10,6 +10,8 @@ class AnchorConfig(AppConfig):
             MyDepositIntegration,
             MyWithdrawalIntegration,
             MyCustomerIntegration,
+            MySendIntegration,
+            MyRailsIntegration,
             toml_integration,
             scripts_integration,
             fee_integration,
@@ -24,4 +26,6 @@ class AnchorConfig(AppConfig):
             fee_func=fee_integration,
             info_func=info_integration,
             customer=MyCustomerIntegration(),
+            send=MySendIntegration(),
+            rails=MyRailsIntegration(),
         )

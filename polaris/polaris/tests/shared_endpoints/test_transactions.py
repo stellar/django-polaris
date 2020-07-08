@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 import pytest
 from polaris.tests.helpers import mock_check_auth_success, sep10
+from polaris.models import Transaction, Asset
 
 
 # Test client account and seed
@@ -141,7 +142,7 @@ def test_transactions_content(
     assert withdrawal_transaction["id"] == str(withdrawal.id)
     assert withdrawal_transaction["kind"] == withdrawal.kind
     assert withdrawal_transaction["status"] == withdrawal.status
-    assert withdrawal_transaction["status_eta"] == 3600
+    assert not withdrawal_transaction["status_eta"]
     assert withdrawal_transaction["amount_in"] == str(
         round(withdrawal.amount_in, withdrawal_asset.significant_decimals)
     )

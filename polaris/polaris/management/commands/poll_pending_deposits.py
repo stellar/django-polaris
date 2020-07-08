@@ -82,7 +82,7 @@ class Command(BaseCommand):
             # every time its called, but we're going to assume it was a special
             # case and allow the process to continue running by returning instead
             # of re-raising the error. The anchor should see the log messages and
-            # fix the issue if it is reoccuring.
+            # fix the issue if it is reoccurring.
             logger.exception("poll_pending_deposits() threw an unexpected exception")
             return
         for transaction in ready_transactions:

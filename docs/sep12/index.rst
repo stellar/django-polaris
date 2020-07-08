@@ -4,7 +4,7 @@ SEP-12
 
 .. _SEP-12: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0012.md
 
-SEP-12_ defines a standard way for stellar wallets to upload KYC (or other) information to anchors.
+`SEP-12`_ defines a standard way for stellar wallets to upload KYC (or other) information to anchors.
 
 Configuration
 -------------

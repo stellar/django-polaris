@@ -29,7 +29,9 @@ class GoodWithdrawalIntegration(WithdrawalIntegration):
 @patch("polaris.sep6.withdraw.rwi", GoodWithdrawalIntegration())
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 def test_good_withdrawal_integration(client, acc1_usd_withdrawal_transaction_factory):
-    withdraw = acc1_usd_withdrawal_transaction_factory(sep6=True)
+    withdraw = acc1_usd_withdrawal_transaction_factory(
+        protocol=Transaction.PROTOCOL.sep6
+    )
     response = client.get(
         WITHDRAW_PATH,
         {
@@ -61,7 +63,9 @@ def test_good_withdrawal_integration(client, acc1_usd_withdrawal_transaction_fac
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 def test_withdraw_bad_memo_type(client, acc1_usd_withdrawal_transaction_factory):
-    withdraw = acc1_usd_withdrawal_transaction_factory(sep6=True)
+    withdraw = acc1_usd_withdrawal_transaction_factory(
+        protocol=Transaction.PROTOCOL.sep6
+    )
     asset = withdraw.asset
     response = client.get(
         WITHDRAW_PATH,
@@ -80,7 +84,9 @@ def test_withdraw_bad_memo_type(client, acc1_usd_withdrawal_transaction_factory)
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 def test_withdraw_bad_memo(client, acc1_usd_withdrawal_transaction_factory):
-    withdraw = acc1_usd_withdrawal_transaction_factory(sep6=True)
+    withdraw = acc1_usd_withdrawal_transaction_factory(
+        protocol=Transaction.PROTOCOL.sep6
+    )
     asset = withdraw.asset
     response = client.get(
         WITHDRAW_PATH,
@@ -101,7 +107,9 @@ def test_withdraw_bad_memo(client, acc1_usd_withdrawal_transaction_factory):
 @patch("polaris.sep6.withdraw.rwi", GoodWithdrawalIntegration())
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 def test_withdraw_bad_type(client, acc1_usd_withdrawal_transaction_factory):
-    withdraw = acc1_usd_withdrawal_transaction_factory(sep6=True)
+    withdraw = acc1_usd_withdrawal_transaction_factory(
+        protocol=Transaction.PROTOCOL.sep6
+    )
     response = client.get(
         WITHDRAW_PATH,
         {
@@ -129,7 +137,9 @@ class MissingHowDepositIntegration(WithdrawalIntegration):
 def test_withdraw_empty_integration_response(
     client, acc1_usd_withdrawal_transaction_factory
 ):
-    withdraw = acc1_usd_withdrawal_transaction_factory(sep6=True)
+    withdraw = acc1_usd_withdrawal_transaction_factory(
+        protocol=Transaction.PROTOCOL.sep6
+    )
     response = client.get(
         WITHDRAW_PATH,
         {"asset_code": withdraw.asset.code, "type": "good type", "dest": "test"},
@@ -167,7 +177,9 @@ class BadExtraInfoWithdrawalIntegration(WithdrawalIntegration):
 def test_withdraw_bad_extra_info_integration(
     client, acc1_usd_withdrawal_transaction_factory
 ):
-    withdraw = acc1_usd_withdrawal_transaction_factory(sep6=True)
+    withdraw = acc1_usd_withdrawal_transaction_factory(
+        protocol=Transaction.PROTOCOL.sep6
+    )
     response = client.get(
         WITHDRAW_PATH,
         {"asset_code": withdraw.asset.code, "type": "good type", "dest": "test"},
@@ -180,7 +192,7 @@ def test_withdraw_bad_extra_info_integration(
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 def test_withdraw_missing_asset(client, acc1_usd_withdrawal_transaction_factory):
-    acc1_usd_withdrawal_transaction_factory(sep6=True)
+    acc1_usd_withdrawal_transaction_factory(protocol=Transaction.PROTOCOL.sep6)
     response = client.get(WITHDRAW_PATH, {"type": "good type", "dest": "test"})
     content = json.loads(response.content)
     assert response.status_code == 400
@@ -201,7 +213,9 @@ def test_withdraw_invalid_asset(client):
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 def test_withdraw_missing_type(client, acc1_usd_withdrawal_transaction_factory):
-    withdraw = acc1_usd_withdrawal_transaction_factory(sep6=True)
+    withdraw = acc1_usd_withdrawal_transaction_factory(
+        protocol=Transaction.PROTOCOL.sep6
+    )
     response = client.get(
         WITHDRAW_PATH, {"asset_code": withdraw.asset.code, "dest": "test"}
     )
@@ -213,7 +227,9 @@ def test_withdraw_missing_type(client, acc1_usd_withdrawal_transaction_factory):
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 def test_withdraw_missing_dest(client, acc1_usd_withdrawal_transaction_factory):
-    withdraw = acc1_usd_withdrawal_transaction_factory(sep6=True)
+    withdraw = acc1_usd_withdrawal_transaction_factory(
+        protocol=Transaction.PROTOCOL.sep6
+    )
     response = client.get(
         WITHDRAW_PATH, {"asset_code": withdraw.asset.code, "type": "good type"}
     )
@@ -228,7 +244,9 @@ def test_withdraw_missing_dest(client, acc1_usd_withdrawal_transaction_factory):
 def test_withdrawal_transaction_created(
     client, acc1_usd_withdrawal_transaction_factory
 ):
-    withdraw = acc1_usd_withdrawal_transaction_factory(sep6=True)
+    withdraw = acc1_usd_withdrawal_transaction_factory(
+        protocol=Transaction.PROTOCOL.sep6
+    )
     distribution_address = Keypair.from_secret(USD_DISTRIBUTION_SEED).public_key
     client.get(
         WITHDRAW_PATH,
@@ -273,7 +291,9 @@ class GoodInfoNeededWithdrawalIntegration(WithdrawalIntegration):
 def test_withdraw_non_interactive_customer_info_needed(
     client, acc1_usd_withdrawal_transaction_factory
 ):
-    withdraw = acc1_usd_withdrawal_transaction_factory(sep6=True)
+    withdraw = acc1_usd_withdrawal_transaction_factory(
+        protocol=Transaction.PROTOCOL.sep6
+    )
     response = client.get(
         WITHDRAW_PATH,
         {"asset_code": withdraw.asset.code, "type": "good type", "dest": "test"},

@@ -111,6 +111,7 @@ def test_match_with_no_amount(
 
     mock_source_account = mock_envelope.transaction.source.public_key
     transaction = acc1_usd_withdrawal_transaction_factory(mock_source_account)
+    transaction.protocol = Transaction.PROTOCOL.sep6
     transaction.amount_in = None
     transaction.save()
     json = deepcopy(TRANSACTION_JSON)

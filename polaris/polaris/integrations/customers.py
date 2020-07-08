@@ -32,8 +32,6 @@ class CustomerIntegration:
 
     def put(self, params: Dict) -> str:
         """
-        .. _SEP-12: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0012.md#customer-put
-
         Update or create a record of the customer information passed. This information can
         then later be queried for when a client requests a deposit or withdraw on behalf of
         the customer.

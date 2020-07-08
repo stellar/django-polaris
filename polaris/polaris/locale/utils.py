@@ -12,11 +12,11 @@ def validate_language(
 ) -> Optional[Response]:
     if not lang:
         return render_error_response(
-            _("Missing language code in request"), content_type=content_type
+            _("missing language code in request"), content_type=content_type
         )
     elif not _is_supported_language(lang):
         return render_error_response(
-            _("Unsupported language: %s" % lang), content_type=content_type
+            _("unsupported language: %s" % lang), content_type=content_type
         )
 
 
@@ -25,6 +25,6 @@ def activate_lang_for_request(lang: str):
 
 
 def _is_supported_language(lang: str) -> bool:
-    from django.conf.global_settings import LANGUAGES
+    from django.conf import settings
 
-    return any(lang == supported_lang[0] for supported_lang in LANGUAGES)
+    return any(lang == supported_lang[0] for supported_lang in settings.LANGUAGES)

@@ -138,6 +138,10 @@ Polaris doesn't have the information it needs to interface with an
 anchor's partner financial entities. That is why Polaris provides a set of
 integration functions for anchors to implement.
 
+Note that in future releases, some of these functions related to payment rails
+may be moved from ``DepositIntegration`` or ``WithdrawalIntegration`` to
+``RailsIntegration``.
+
 .. autofunction:: polaris.integrations.DepositIntegration.poll_pending_deposits
 
 .. autofunction:: polaris.integrations.DepositIntegration.after_deposit
