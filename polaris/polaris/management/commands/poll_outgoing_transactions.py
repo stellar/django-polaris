@@ -47,7 +47,6 @@ class Command(BaseCommand):
             complete_transactions = rri.poll_outgoing_transactions(transactions)
         except Exception:
             logger.exception("An exception was raised by poll_pending_transfers()")
-            print("in exception")
             return
 
         if not (

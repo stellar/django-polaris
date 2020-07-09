@@ -18,6 +18,14 @@ run:
     image: reference-server
     command:
       - python manage.py poll_pending_deposits --loop
+  execute_outgoing_transactions:
+    image: reference-server
+    command:
+      - python manage.py execute_outgoing_transactions --loop
+  poll_outgoing_transactions:
+    image: reference-server
+    command:
+      - python manage.py poll_outgoing_transactions --loop
   web:
     image: reference-server
     command:
