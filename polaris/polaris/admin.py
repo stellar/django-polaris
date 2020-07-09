@@ -15,6 +15,7 @@ class AssetAdmin(admin.ModelAdmin):
     This defines the admin view of an Asset.
     """
 
+    exclude = ("distribution_seed",)
     list_display = "code", "issuer", "deposit_enabled", "withdrawal_enabled"
 
 
