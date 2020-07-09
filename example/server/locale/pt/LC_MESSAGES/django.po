@@ -75,7 +75,7 @@ msgstr "Múltiplas Escolhas"
 
 #: forms.py:61
 msgid "Datetime"
-msgstr "Data hora"
+msgstr "Data e hora"
 
 #: forms.py:62
 msgid "Date"
@@ -186,31 +186,31 @@ msgstr "'dest_extra' deve corresponder ao número de roteamento da conta"
 #: integrations.py:466
 #, python-format
 msgid "customer not found using: %s"
-msgstr ""
+msgstr "cliente não encontrado usando: %s"
 
 #: integrations.py:475 integrations.py:487
 msgid "invalid 'type'. see /info response for valid values."
-msgstr ""
+msgstr "tipo inválido. Acesse /info para os valores válidos."
 
 #: integrations.py:583
 msgid " is not of type str"
-msgstr ""
+msgstr "não é do tipo str"
 
 #: integrations.py:602
 msgid "'transaction' value must be an object"
-msgstr ""
+msgstr "o valor de 'transaction' precisa ser um objeto"
 
 #: integrations.py:608
 msgid "No fields provided"
-msgstr ""
+msgstr "Nenhum campo informado"
 
 #: integrations.py:610
 msgid "unexpected fields provided"
-msgstr ""
+msgstr "campo inesperado informado"
 
 #: integrations.py:612
 msgid "field values must be strings"
-msgstr ""
+msgstr "o valor dos campos precisa ser 'string'"
 
 #: integrations.py:804
 msgid "'bank_account' is the only value supported'"
