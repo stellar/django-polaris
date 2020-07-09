@@ -7,7 +7,10 @@ from rest_framework.renderers import TemplateHTMLRenderer, JSONRenderer
 
 from .forms import AllFieldsForm
 from .models import PolarisStellarAccount
-from polaris.utils import render_error_response
+from polaris.utils import render_error_response, Logger
+
+
+logger = Logger(__name__)
 
 
 @api_view(["GET"])
@@ -50,10 +53,16 @@ def confirm_email(request: Request) -> Response:
 @renderer_classes([JSONRenderer])
 def skip_confirm_email(request: Request) -> Response:
     account = request.session.get("account")
-    try:
-        account = PolarisStellarAccount.objects.get(account=account)
-    except PolarisStellarAccount.DoesNotExist:
-        return Response({"status": "not found"}, content_type="application/json")
-    account.confirmed = True
-    account.save()
-    return Response({"status": "success"}, content_type="application/json")
+    num_updated = PolarisStellarAccount.objects.filter(account=account).update(
+        confirmed=True
+    )
+    if num_updated == 0:
+        return Response(
+            {"status": "not found"}, status=404, content_type="application/json"
+        )
+    else:
+        if num_updated > 1:
+            logger.warning(
+                f"Approved multiple PolarisStellarAccounts for address: {account}"
+            )
+        return Response({"status": "success"}, content_type="application/json")
