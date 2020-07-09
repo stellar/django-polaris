@@ -66,4 +66,7 @@ def validate_update_fields(fields: Dict, transaction: Transaction):
             raise ValueError(_("invalid type for %s, must be an object") % category)
         for field in expected_fields:
             if field not in fields[category]:
-                raise ValueError(_("missing %s in %s") % (field, category))
+                raise ValueError(
+                    _("missing %(field)s in %(category)s")
+                    % {"field": field, "category": category}
+                )
