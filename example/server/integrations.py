@@ -476,12 +476,15 @@ class MyCustomerIntegration(CustomerIntegration):
                 )
         else:
             user = account.user
+            response_data = {"id": user.id}
             if (user.bank_number and user.bank_account_number) or (
                 params.get("type") in ["sep6-deposit", "sep31-sender", "sep31-receiver"]
             ):
-                return self.accepted
+                response_data.update(self.accepted)
+                return response_data
             elif params.get("type") in [None, "sep6-withdraw"]:
-                return self.needs_bank_info
+                response_data.update(self.needs_bank_info)
+                return response_data
             else:
                 raise ValueError(
                     _("invalid 'type'. see /info response for valid values.")
