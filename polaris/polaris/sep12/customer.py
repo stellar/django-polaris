@@ -118,8 +118,14 @@ def delete(account_from_auth: str, request: Request, account: str) -> Response:
 
 
 def validate_response_data(data: Dict):
+    attrs = ["fields", "id", "message", "status"]
     if not data:
         raise ValueError("empty response from SEP-12 get() integration")
+    elif any(f not in attrs for f in data):
+        raise ValueError(
+            f"unexpected attribute included in GET /customer response. "
+            f"Accepted attributes: {attrs}"
+        )
     accepted_statuses = ["ACCEPTED", "PROCESSING", "NEEDS_INFO", "REJECTED"]
     if not data.get("status") or data.get("status") not in accepted_statuses:
         raise ValueError("invalid status in SEP-12 GET /customer response")

@@ -170,7 +170,7 @@ def test_sep9_params(client):
     assert response.json() == {"id": "123"}
 
 
-mock_get_accepted = Mock(return_value={"status": "ACCEPTED"})
+mock_get_accepted = Mock(return_value={"status": "ACCEPTED", "id": "123"})
 
 
 @patch("polaris.sep12.customer.rci.get", mock_get_accepted)
@@ -180,6 +180,7 @@ def test_get_accepted(client):
         endpoint + "?" + urlencode({"account": "test source address"})
     )
     assert response.status_code == 200
+    assert response.json() == {"status": "ACCEPTED", "id": "123"}
 
 
 @patch("polaris.sep12.customer.rci.get", Mock())
@@ -263,6 +264,7 @@ def test_get_missing_memo_type(client):
     "polaris.sep12.customer.rci.get",
     Mock(
         return_value={
+            "id": "123",
             "status": "NEEDS_INFO",
             "fields": {
                 "email_address": {
@@ -279,6 +281,16 @@ def test_valid_needs_info_response(client):
         endpoint + "?" + urlencode({"account": "test source address"})
     )
     assert response.status_code == 200
+    assert response.json() == {
+        "id": "123",
+        "status": "NEEDS_INFO",
+        "fields": {
+            "email_address": {
+                "description": "Email address of the user",
+                "type": "string",
+            }
+        },
+    }
 
 
 @patch(
