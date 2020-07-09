@@ -67,5 +67,5 @@ def validate_update_fields(fields: Dict, transaction: Transaction):
         for field in expected_fields:
             if field not in fields[category]:
                 raise ValueError(
-                    _("missing %{field}s in %(category)s") % (field, category)
+                    _("missing %(field)s in %(category)s") % (field, category)
                 )
