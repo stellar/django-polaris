@@ -90,8 +90,10 @@ class SEP24KYC:
                 send_confirmation_email(user, account)
         else:
             try:
+                # Look for an account that uses this address but doesn't have a
+                # memo, which means its a SEP-24 or SEP-6 Polaris account.
                 account = PolarisStellarAccount.objects.get(
-                    account=transaction.stellar_account
+                    account=transaction.stellar_account, memo=None
                 )
             except PolarisStellarAccount.DoesNotExist:
                 raise RuntimeError(
