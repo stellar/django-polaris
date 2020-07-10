@@ -111,7 +111,7 @@ class SEP24KYC:
         otherwise returns None.
         """
         account = PolarisStellarAccount.objects.filter(
-            account=transaction.stellar_account
+            account=transaction.stellar_account, memo=None
         ).first()
         if not account:  # Unknown stellar account, get KYC info
             if post_data:
@@ -233,8 +233,12 @@ class MyDepositIntegration(DepositIntegration):
             )
 
     def process_sep6_request(self, params: Dict) -> Dict:
+        qparams = {"account": params["account"]}
+        if "memo" in params:
+            qparams["memo"] = params["memo"]
+            qparams["memo_type"] = params.get("memo_type")
         account = (
-            PolarisStellarAccount.objects.filter(account=params["account"])
+            PolarisStellarAccount.objects.filter(**qparams)
             .select_related("user")
             .first()
         )
@@ -327,8 +331,12 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
             )
 
     def process_sep6_request(self, params: Dict) -> Dict:
+        qparams = {"account": params["account"]}
+        if "memo" in params:
+            qparams["memo"] = params["memo"]
+            qparams["memo_type"] = params.get("memo_type")
         account = (
-            PolarisStellarAccount.objects.filter(account=params["account"])
+            PolarisStellarAccount.objects.filter(**qparams)
             .select_related("user")
             .first()
         )
@@ -539,7 +547,8 @@ class MyCustomerIntegration(CustomerIntegration):
         return str(user.id)
 
     def delete(self, account: str):
-        account = PolarisStellarAccount.objects.filter(account=account).first()
+        # There could be multiple PolarisStellarAccount for the same address
+        account = PolarisStellarAccount.objects.filter(account=account)
         if not account:
             raise ValueError()
         account.user.delete()
