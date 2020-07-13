@@ -1,7 +1,6 @@
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 from decimal import Decimal
 
-from django.db.models import QuerySet
 from django import forms
 from django.http import QueryDict
 from rest_framework.request import Request
@@ -17,49 +16,6 @@ class DepositIntegration:
     Subclasses must be registered with Polaris by passing it to
     :func:`polaris.integrations.register_integrations`.
     """
-
-    def poll_pending_deposits(self, pending_deposits: QuerySet) -> List[Transaction]:
-        """
-        This function should poll the appropriate financial entity for the
-        state of all `pending_deposits` and return the ones that have
-        externally completed.
-
-        Make sure to save the transaction's ``from_address`` field with the
-        account number/address the funds originated from, as well as the
-        ``amount_in`` and ``amount_fee`` fields if the transaction was
-        initiated via SEP-6.
-
-        For every transaction that is returned, Polaris will submit it to the
-        Stellar network. If a transaction was completed on the network, the
-        overridable ``after_deposit`` function will be called, however
-        implementing this function is optional.
-
-        If the Stellar network is unable to execute a transaction returned
-        from this function, it's status will be marked as ``error``
-        and its ``status_message`` attribute will be assigned a description of
-        the problem that occurred. If the Stellar network is successful,
-        the transaction will be marked as ``completed``.
-
-        `pending_deposits` is a QuerySet of the form
-        ::
-
-            Transactions.object.filter(
-                kind=Transaction.KIND.deposit,
-                status=Transaction.STATUS.pending_user_transfer_start
-            )
-
-        If you have many pending deposits, you may way want to batch
-        the retrieval of these objects to improve query performance and
-        memory usage.
-
-        :param pending_deposits: a django Queryset for pending Transactions
-        :return: a list of Transaction database objects which correspond to
-            successful user deposits to the anchor's account.
-        """
-        raise NotImplementedError(
-            "`poll_pending_deposits()` must be implemented in order to execute "
-            "deposits on the network"
-        )
 
     def after_deposit(self, transaction: Transaction):
         """
@@ -136,7 +92,7 @@ class DepositIntegration:
 
         When that happens, Polaris will update the Transaction status to
         ``pending_user_transfer_start``. Once the user makes the deposit
-        to the anchor's bank account, ``DepositIntegration.poll_pending_deposits``
+        to the anchor's bank account, ``RailsIntegration.poll_pending_deposits``
         should detect the event, and Polaris will submit the transaction to the
         stellar network, ultimately marking the transaction as ``complete`` upon
         success.
@@ -312,42 +268,6 @@ class WithdrawalIntegration:
     Subclasses must be registered with Polaris by passing it to
     ``polaris.integrations.register_integrations``.
     """
-
-    def process_withdrawal(self, response: Dict, transaction: Transaction):
-        """
-        .. _endpoint: https://www.stellar.org/developers/horizon/reference/resources/transaction.html
-
-        This method is called when the transacted asset's distribution account receives
-        a payment from a transaction with a memo matching `transaction.withdraw_memo`.
-
-        If `transaction` was created via SEP-24, it is very important to confirm
-        the amount sent in on the network matches the amount specified by
-        `transaction.amount_in`. This does not apply to SEP-6 transactions since
-        withdrawal amounts are not specified in the initial request.
-
-        If the amounts match, or in the SEP-6 case, the amount sent is within the
-        asset's minimum and maximum limits, make the corresponding deposit to the
-        user's non-stellar account.
-
-        If the amount doesn't match, you must decide whether or not to complete the
-        withdraw or refund the sender. If the amount sent was greater than originally
-        expected, you could also deposit the amount specified by `amount_in` and
-        refund the remaining amount back to the sender.
-
-        If you chose to refund the payment in its entirety, raise an exception with
-        an appropriate message and update `transaction.refunded` to ``True``.
-
-        If an error is raised from this function, the transaction's status
-        will be changed to ``error`` and its ``status_message`` will be
-        assigned to the message raised with the exception.
-
-        :param response: a response body returned from Horizon for the transactions
-            for account endpoint_
-        :param transaction: a ``Transaction`` instance to process
-        """
-        raise NotImplementedError(
-            "`process_withdrawal` must be implemented to process withdrawals"
-        )
 
     def content_for_transaction(
         self,

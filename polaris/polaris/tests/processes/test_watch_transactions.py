@@ -36,12 +36,11 @@ mock_envelope = Mock(
 
 
 @pytest.mark.django_db
-@patch(f"{test_module}.rwi.process_withdrawal")
 @patch(f"{test_module}.TransactionEnvelope.from_xdr", return_value=mock_envelope)
 def test_process_response_success(
-    mock_withdrawal, mock_xdr, client, acc1_usd_withdrawal_transaction_factory
+    mock_xdr, client, acc1_usd_withdrawal_transaction_factory
 ):
-    del mock_withdrawal, mock_xdr
+    del mock_xdr
     mock_source_account = mock_envelope.transaction.source.public_key
     transaction = acc1_usd_withdrawal_transaction_factory(mock_source_account)
     json = deepcopy(TRANSACTION_JSON)
@@ -52,12 +51,11 @@ def test_process_response_success(
     Command.process_response(json, None)
 
     transaction.refresh_from_db()
-    assert transaction.status == Transaction.STATUS.completed
     assert transaction.from_address
     assert transaction.stellar_transaction_id
-    assert transaction.completed_at
     assert transaction.status_eta == 0
-    assert transaction.amount_out
+    assert transaction.paging_token
+    assert transaction.status == Transaction.STATUS.pending_anchor
 
 
 @pytest.mark.django_db
@@ -81,33 +79,11 @@ def test_process_response_unsuccessful(
 
 
 @pytest.mark.django_db
-@patch(f"{test_module}.rwi.process_withdrawal", side_effect=ValueError("test"))
-@patch(f"{test_module}.TransactionEnvelope.from_xdr", return_value=mock_envelope)
-def test_process_response_bad_integration(
-    mock_withdrawal, mock_xdr, client, acc1_usd_withdrawal_transaction_factory
-):
-    del mock_withdrawal, mock_xdr
-    mock_source_account = mock_envelope.transaction.source.public_key
-    transaction = acc1_usd_withdrawal_transaction_factory(mock_source_account)
-    json = deepcopy(TRANSACTION_JSON)
-    json["successful"] = True
-    json["id"] = transaction.id
-    json["memo"] = transaction.withdraw_memo
-
-    Command.process_response(json, None)
-
-    transaction.refresh_from_db()
-    assert transaction.status == Transaction.STATUS.error
-    assert transaction.status_message == "test"
-
-
-@pytest.mark.django_db
-@patch(f"{test_module}.rwi.process_withdrawal")
 @patch(f"{test_module}.TransactionEnvelope.from_xdr", return_value=mock_envelope)
 def test_match_with_no_amount(
-    mock_withdrawal, mock_xdr, client, acc1_usd_withdrawal_transaction_factory
+    mock_xdr, client, acc1_usd_withdrawal_transaction_factory
 ):
-    del mock_withdrawal, mock_xdr
+    del mock_xdr
 
     mock_source_account = mock_envelope.transaction.source.public_key
     transaction = acc1_usd_withdrawal_transaction_factory(mock_source_account)
@@ -122,5 +98,5 @@ def test_match_with_no_amount(
     Command.process_response(json, None)
 
     transaction.refresh_from_db()
-    assert transaction.status == Transaction.STATUS.completed
+    assert transaction.status == Transaction.STATUS.pending_anchor
     assert transaction.amount_in == 50

@@ -21,9 +21,6 @@ class GoodWithdrawalIntegration(WithdrawalIntegration):
             raise ValueError()
         return {"extra_info": {"test": "test"}}
 
-    def process_withdrawal(self, response: Dict, transaction: Transaction):
-        pass
-
 
 @pytest.mark.django_db
 @patch("polaris.sep6.withdraw.rwi", GoodWithdrawalIntegration())
@@ -127,9 +124,6 @@ class MissingHowDepositIntegration(WithdrawalIntegration):
     def process_sep6_request(self, params: Dict) -> Dict:
         return {}
 
-    def process_withdrawal(self, response: Dict, transaction: Transaction):
-        pass
-
 
 @pytest.mark.django_db
 @patch("polaris.sep6.withdraw.rwi", MissingHowDepositIntegration())
@@ -166,9 +160,6 @@ def test_withdraw_empty_integration_response(
 class BadExtraInfoWithdrawalIntegration(WithdrawalIntegration):
     def process_sep6_request(self, params: Dict) -> Dict:
         return {"extra_info": "not a dict"}
-
-    def process_withdrawal(self, response: Dict, transaction: Transaction):
-        pass
 
 
 @pytest.mark.django_db
@@ -280,9 +271,6 @@ class GoodInfoNeededWithdrawalIntegration(WithdrawalIntegration):
             "type": "non_interactive_customer_info_needed",
             "fields": ["first_name", "last_name"],
         }
-
-    def process_withdrawal(self, response: Dict, transaction: Transaction):
-        pass
 
 
 @pytest.mark.django_db
