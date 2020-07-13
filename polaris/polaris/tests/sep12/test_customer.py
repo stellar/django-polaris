@@ -372,3 +372,43 @@ def test_no_description_needs_info(client):
 def test_bad_auth_delete(client):
     response = client.delete("/".join([endpoint, Keypair.random().public_key]))
     assert response.status_code == 404
+
+
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_bad_memo_delete(client):
+    response = client.delete(
+        "/".join([endpoint, "test source address"]),
+        data={"memo": "not a valid hash memo", "memo_type": "hash"},
+        content_type="application/json",
+    )
+    assert response.status_code == 400
+    assert "memo" in response.json()["error"]
+
+
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch("polaris.sep12.customer.rci.delete")
+def test_delete_memo_customer(mock_delete, client):
+    response = client.delete(
+        "/".join([endpoint, "test source address"]),
+        data={"memo": "a valid text memo", "memo_type": "text"},
+        content_type="application/json",
+    )
+    assert response.status_code == 200
+    mock_delete.assert_called_with("test source address", "a valid text memo", "text")
+
+
+mock_bad_delete = Mock(side_effect=ValueError)
+
+
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch("polaris.sep12.customer.rci.delete", mock_bad_delete)
+def test_delete_memo_not_found(client):
+    response = client.delete(
+        "/".join([endpoint, "test source address"]),
+        data={"memo": "a valid text memo", "memo_type": "text"},
+        content_type="application/json",
+    )
+    assert response.status_code == 404
+    mock_bad_delete.assert_called_with(
+        "test source address", "a valid text memo", "text"
+    )
