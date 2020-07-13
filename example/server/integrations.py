@@ -497,7 +497,7 @@ class MyCustomerIntegration(CustomerIntegration):
     def put(self, params: Dict) -> str:
         # query params for fetching/creating the PolarisStellarAccount
         qparams = {"account": params["account"]}
-        if "memo" in params:
+        if params.get("memo"):
             qparams["memo"] = params["memo"]
             qparams["memo_type"] = params["memo_type"]
         user = None
