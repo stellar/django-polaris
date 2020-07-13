@@ -496,6 +496,7 @@ class MyCustomerIntegration(CustomerIntegration):
 
     def put(self, params: Dict) -> str:
         # query params for fetching/creating the PolarisStellarAccount
+        print(params)
         qparams = {"account": params["account"]}
         if params.get("memo"):
             qparams["memo"] = params["memo"]
@@ -537,6 +538,7 @@ class MyCustomerIntegration(CustomerIntegration):
         user.bank_account_number = (
             params.get("bank_account_number") or user.bank_account_number
         )
+        user.save()
 
         return str(user.id)
 
