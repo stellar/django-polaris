@@ -233,10 +233,7 @@ class MyDepositIntegration(DepositIntegration):
             )
 
     def process_sep6_request(self, params: Dict) -> Dict:
-        qparams = {"account": params["account"]}
-        if "memo" in params:
-            qparams["memo"] = params["memo"]
-            qparams["memo_type"] = params.get("memo_type")
+        qparams = {"account": params["account"], "memo": None}
         account = (
             PolarisStellarAccount.objects.filter(**qparams)
             .select_related("user")
@@ -331,10 +328,7 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
             )
 
     def process_sep6_request(self, params: Dict) -> Dict:
-        qparams = {"account": params["account"]}
-        if "memo" in params:
-            qparams["memo"] = params["memo"]
-            qparams["memo_type"] = params.get("memo_type")
+        qparams = {"account": params["account"], "memo": None}
         account = (
             PolarisStellarAccount.objects.filter(**qparams)
             .select_related("user")
