@@ -27,7 +27,7 @@ class Command(BaseCommand):
                 "The number of seconds to wait before "
                 "restarting command. Defaults to 30."
             ),
-            default=30,
+            default=10,
         )
 
     def handle(self, *args, **options):

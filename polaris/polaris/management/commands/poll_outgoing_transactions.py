@@ -1,6 +1,7 @@
 import time
 from datetime import datetime, timezone
 
+from django.db.models import Q
 from django.core.management import BaseCommand
 
 from polaris.utils import Logger
@@ -40,7 +41,7 @@ class Command(BaseCommand):
     @staticmethod
     def poll_outgoing_transactions():
         transactions = Transaction.objects.filter(
-            protocol=Transaction.PROTOCOL.sep31,
+            kind__in=[Transaction.KIND.withdrawal, Transaction.KIND.send],
             status=Transaction.STATUS.pending_external,
         )
         try:
