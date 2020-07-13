@@ -110,7 +110,11 @@ def delete(account_from_auth: str, request: Request, account: str) -> Response:
     if account_from_auth != account:
         return render_error_response("account not found", status_code=404)
     try:
-        rci.delete(account)
+        memo = memo_str(request.data.get("memo"), request.data.get("memo_type"))
+    except ValueError as e:
+        return render_error_response("invalid 'memo' for 'memo_type'")
+    try:
+        rci.delete(account, memo, request.data.get("memo_type"))
     except ValueError:
         return render_error_response("account not found", status_code=404)
     else:

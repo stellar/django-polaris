@@ -543,9 +543,13 @@ class MyCustomerIntegration(CustomerIntegration):
 
         return str(user.id)
 
-    def delete(self, account: str):
-        # There could be multiple PolarisStellarAccount for the same address
-        account = PolarisStellarAccount.objects.filter(account=account)
+    def delete(self, account: str, memo: Optional[str], memo_type: Optional[str]):
+        # Use `account` & `memo` when identifying a user
+        # If `memo` is non-None, include the expected `memo_type` as well
+        qparams = {"account": account, memo: memo}
+        if memo:
+            qparams["memo_type"] = memo_type
+        account = PolarisStellarAccount.objects.filter(**qparams).first()
         if not account:
             raise ValueError()
         account.user.delete()
