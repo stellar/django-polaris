@@ -500,6 +500,8 @@ class MyCustomerIntegration(CustomerIntegration):
         if params.get("memo"):
             qparams["memo"] = params["memo"]
             qparams["memo_type"] = params["memo_type"]
+        else:
+            qparams["memo"] = None
         user = None
         account = PolarisStellarAccount.objects.filter(**qparams).first()
         if not account:
