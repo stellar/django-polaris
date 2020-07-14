@@ -37,9 +37,14 @@ def calculate_fee(fee_params: Dict) -> Decimal:
     if fee_params["operation"] == settings.OPERATION_WITHDRAWAL:
         fee_percent = asset.withdrawal_fee_percent
         fee_fixed = asset.withdrawal_fee_fixed
-    else:
+    elif fee_params["operation"] == settings.OPERATION_DEPOSIT:
         fee_percent = asset.deposit_fee_percent
         fee_fixed = asset.deposit_fee_fixed
+    elif fee_params["operation"] == "send":
+        fee_percent = asset.send_fee_percent
+        fee_fixed = asset.send_fee_fixed
+    else:
+        raise ValueError("invalid 'operation'")
 
     return round(
         fee_fixed + (fee_percent / Decimal("100") * amount), asset.significant_decimals,

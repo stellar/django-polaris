@@ -1,11 +1,15 @@
 import time
+from decimal import Decimal
 
 from django.core.management import BaseCommand, CommandError
 
+from polaris import settings
 from polaris.utils import create_stellar_deposit
 from polaris.integrations import (
     registered_deposit_integration as rdi,
     registered_rails_integration as rri,
+    registered_fee_func,
+    calculate_fee,
 )
 from polaris.models import Transaction
 from polaris.utils import Logger
@@ -30,6 +34,17 @@ def execute_deposit(transaction: Transaction) -> bool:
             f"Unexpected transaction status: {transaction.status}, expecting "
             f"{transaction.STATUS.pending_user_transfer_start}"
         )
+    elif transaction.amount_fee is None:
+        if registered_fee_func == calculate_fee:
+            transaction.amount_fee = calculate_fee(
+                {
+                    "amount": transaction.amount_in,
+                    "operation": settings.OPERATION_DEPOSIT,
+                    "asset_code": transaction.asset.code,
+                }
+            )
+        else:
+            transaction.amount_fee = Decimal(0)
     transaction.status = Transaction.STATUS.pending_anchor
     transaction.status_eta = 5  # Ledger close time.
     transaction.save()
