@@ -1,9 +1,12 @@
 import time
+from decimal import Decimal
 from datetime import datetime, timezone
 
 from django.db.models import Q
 from django.core.management import BaseCommand
 
+from polaris import settings
+from polaris.integrations import registered_fee_func, calculate_fee
 from polaris.utils import Logger
 from polaris.models import Transaction
 from polaris.integrations import registered_rails_integration as rri
@@ -69,11 +72,22 @@ class Command(BaseCommand):
                 Transaction.STATUS.pending_external,
                 Transaction.STATUS.completed,
             ]:
+                if transaction.amount_fee is None:
+                    if registered_fee_func == calculate_fee:
+                        transaction.amount_fee = calculate_fee(
+                            {
+                                "amount": transaction.amount_in,
+                                "operation": Transaction.KIND.send,
+                                "asset_code": transaction.asset.code,
+                            }
+                        )
+                    else:
+                        transaction.amount_fee = Decimal(0)
+                transaction.amount_out = transaction.amount_in - transaction.amount_fee
                 # Anchors can mark transactions as pending_external if the transfer
                 # cannot be completed immediately due to external processing.
                 # poll_pending_transfers will check on these transfers and mark them
                 # as complete when the funds have been received by the user.
-                transaction.amount_out = transaction.amount_in - transaction.amount_fee
                 if transaction.status == Transaction.STATUS.completed:
                     num_completed += 1
                     transaction.completed_at = datetime.now(timezone.utc)
