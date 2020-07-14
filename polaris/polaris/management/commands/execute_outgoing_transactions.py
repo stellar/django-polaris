@@ -1,6 +1,7 @@
 import time
 from datetime import datetime, timezone
 
+from django.db.models import Q
 from django.core.management import BaseCommand
 
 from polaris.utils import Logger
@@ -26,7 +27,7 @@ class Command(BaseCommand):
                 "The number of seconds to wait before "
                 "restarting command. Defaults to 30."
             ),
-            default=30,
+            default=10,
         )
 
     def handle(self, *args, **options):
@@ -39,13 +40,15 @@ class Command(BaseCommand):
 
     @staticmethod
     def execute_outgoing_transactions():
-        # For the time being this function is only for SEP 31 transactions
-        # Eventually we'll process transfers for SEP 6 and SEP 24 transactions
-        # here as well.
-        transactions = Transaction.objects.filter(
+        sep31_qparams = Q(
             protocol=Transaction.PROTOCOL.sep31,
             status=Transaction.STATUS.pending_receiver,
         )
+        sep6_24_qparams = Q(
+            protocol__in=[Transaction.PROTOCOL.sep24, Transaction.PROTOCOL.sep6],
+            status=Transaction.STATUS.pending_anchor,
+        )
+        transactions = Transaction.objects.filter(sep6_24_qparams | sep31_qparams)
         num_completed = 0
         for transaction in transactions:
             try:

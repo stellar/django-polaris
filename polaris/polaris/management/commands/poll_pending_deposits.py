@@ -3,7 +3,10 @@ import time
 from django.core.management import BaseCommand, CommandError
 
 from polaris.utils import create_stellar_deposit
-from polaris.integrations import registered_deposit_integration as rdi
+from polaris.integrations import (
+    registered_deposit_integration as rdi,
+    registered_rails_integration as rri,
+)
 from polaris.models import Transaction
 from polaris.utils import Logger
 
@@ -67,16 +70,17 @@ class Command(BaseCommand):
 
     @classmethod
     def execute_deposits(cls):
+        """
+        Right now, execute_deposits assumes all pending deposits are SEP-6 or 24
+        transactions. This may change in the future if Polaris adds support for
+        another SEP that checks for incoming deposits.
+        """
         pending_deposits = Transaction.objects.filter(
             kind=Transaction.KIND.deposit,
             status=Transaction.STATUS.pending_user_transfer_start,
         )
         try:
-            ready_transactions = rdi.poll_pending_deposits(pending_deposits)
-        except NotImplementedError as e:  # pragma: no cover
-            # Let the process crash because the anchor needs to implement the
-            # integration function.
-            raise CommandError(e)
+            ready_transactions = rri.poll_pending_deposits(pending_deposits)
         except Exception:  # pragma: no cover
             # We don't know if poll_pending_deposits() will raise an exception
             # every time its called, but we're going to assume it was a special
@@ -85,6 +89,11 @@ class Command(BaseCommand):
             # fix the issue if it is reoccurring.
             logger.exception("poll_pending_deposits() threw an unexpected exception")
             return
+        if ready_transactions is None:
+            raise CommandError(
+                "poll_pending_deposits() returned None. "
+                "Ensure is returns a list of transaction objects."
+            )
         for transaction in ready_transactions:
             try:
                 success = execute_deposit(transaction)

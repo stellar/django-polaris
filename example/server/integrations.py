@@ -1,5 +1,3 @@
-from typing import Union
-
 import json
 from smtplib import SMTPException
 from decimal import Decimal
@@ -101,7 +99,7 @@ class SEP24KYC:
                 )
 
         PolarisUserTransaction.objects.get_or_create(
-            account=account, transaction_id=transaction.id
+            user=account.user, account=account, transaction_id=transaction.id
         )
 
     @staticmethod
@@ -148,35 +146,6 @@ class SEP24KYC:
 
 
 class MyDepositIntegration(DepositIntegration):
-    def poll_pending_deposits(self, pending_deposits: QuerySet) -> List[Transaction]:
-        """
-        Anchors should implement their banking rails here, as described
-        in the :class:`.DepositIntegration` docstrings.
-
-        This implementation interfaces with a fake banking rails client
-        for demonstration purposes.
-        """
-        # interface with mock banking rails
-        ready_deposits = []
-        mock_bank_account_id = "XXXXXXXXXXXXX"
-        client = rails.BankAPIClient(mock_bank_account_id)
-        for deposit in pending_deposits:
-            bank_deposit = client.get_deposit(deposit=deposit)
-            if bank_deposit and bank_deposit.status == "complete":
-                if not deposit.amount_in:
-                    deposit.amount_in = Decimal(103)
-                    deposit.amount_fee = calculate_fee(
-                        {
-                            "amount": 103,
-                            "operation": settings.OPERATION_DEPOSIT,
-                            "asset_code": deposit.asset.code,
-                        }
-                    )
-                    deposit.save()
-                ready_deposits.append(deposit)
-
-        return ready_deposits
-
     def instructions_for_pending_deposit(self, transaction: Transaction):
         """
         This function provides a message to the user containing instructions for
@@ -279,16 +248,6 @@ class MyDepositIntegration(DepositIntegration):
 
 
 class MyWithdrawalIntegration(WithdrawalIntegration):
-    def process_withdrawal(self, response: Dict, transaction: Transaction):
-        logger.info(f"Processing transaction {transaction.id}")
-
-        mock_bank_account_id = "XXXXXXXXXXXXX"
-        client = rails.BankAPIClient(mock_bank_account_id)
-        client.send_funds(
-            to_account=transaction.to_address,
-            amount=transaction.amount_in - transaction.amount_fee,
-        )
-
     def content_for_transaction(
         self, transaction: Transaction, post_data=None, amount=None
     ) -> Optional[Dict]:
@@ -590,7 +549,7 @@ class MySendIntegration(SendIntegration):
         }
 
     def process_send_request(self, params: Dict, transaction_id: str) -> Optional[Dict]:
-        sender_id = params.get("sender_id")  # not actually used
+        _ = params.get("sender_id")  # not actually used
         receiver_id = params.get("receiver_id")
         transaction_fields = params.get("fields", {}).get("transaction")
         for field, val in transaction_fields.items():
@@ -642,6 +601,35 @@ class MySendIntegration(SendIntegration):
 
 
 class MyRailsIntegration(RailsIntegration):
+    def poll_pending_deposits(self, pending_deposits: QuerySet) -> List[Transaction]:
+        """
+        Anchors should implement their banking rails here, as described
+        in the :class:`.RailsIntegration` docstrings.
+
+        This implementation interfaces with a fake banking rails client
+        for demonstration purposes.
+        """
+        # interface with mock banking rails
+        ready_deposits = []
+        mock_bank_account_id = "XXXXXXXXXXXXX"
+        client = rails.BankAPIClient(mock_bank_account_id)
+        for deposit in pending_deposits:
+            bank_deposit = client.get_deposit(deposit=deposit)
+            if bank_deposit and bank_deposit.status == "complete":
+                if not deposit.amount_in:
+                    deposit.amount_in = Decimal(103)
+                    deposit.amount_fee = calculate_fee(
+                        {
+                            "amount": 103,
+                            "operation": settings.OPERATION_DEPOSIT,
+                            "asset_code": deposit.asset.code,
+                        }
+                    )
+                    deposit.save()
+                ready_deposits.append(deposit)
+
+        return ready_deposits
+
     def poll_outgoing_transactions(self, transactions: QuerySet) -> List[Transaction]:
         """
         Auto-complete pending_external transactions
@@ -652,11 +640,30 @@ class MyRailsIntegration(RailsIntegration):
         return list(transactions)
 
     def execute_outgoing_transaction(self, transaction: Transaction):
-        user = (
-            PolarisUserTransaction.objects.filter(transaction_id=transaction.id)
-            .first()
-            .user
-        )
+        def error():
+            transaction.status = Transaction.STATUS.error
+            transaction.status_message = (
+                f"Unable to find user info for transaction {transaction.id}"
+            )
+            transaction.save()
+
+        user_transaction = PolarisUserTransaction.objects.filter(
+            transaction_id=transaction.id
+        ).first()
+        if not user_transaction:  # something is wrong with our user tracking code
+            error()
+            return
+
+        # SEP31 users don't have stellar accounts, so check the user column on the transaction.
+        # Since that is a new column, it may be None. If so, use the account's user column
+        if user_transaction.user:
+            user = user_transaction.user
+        else:
+            user = getattr(user_transaction.account, "user", None)
+
+        if not user:  # something is wrong with our user tracking code
+            error()
+            return
 
         client = rails.BankAPIClient("fake anchor bank account number")
         transaction.amount_fee = 0  # Or calculate your fee

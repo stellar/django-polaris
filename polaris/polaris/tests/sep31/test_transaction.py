@@ -35,7 +35,7 @@ def test_successful_call(client, acc1_usd_deposit_transaction_factory):
         == {
             "transaction": {
                 "id": str(transaction.id),
-                "status": "pending_user_transfer_start",
+                "status": "pending_sender",
                 "status_eta": 3600,
                 "amount_in": "18.34",
                 "amount_out": "18.24",

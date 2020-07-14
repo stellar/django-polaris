@@ -40,7 +40,7 @@ class Command(BaseCommand):
     @staticmethod
     def poll_outgoing_transactions():
         transactions = Transaction.objects.filter(
-            protocol=Transaction.PROTOCOL.sep31,
+            kind__in=[Transaction.KIND.withdrawal, Transaction.KIND.send],
             status=Transaction.STATUS.pending_external,
         )
         try:

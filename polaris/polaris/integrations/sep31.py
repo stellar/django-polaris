@@ -145,7 +145,7 @@ class SendIntegration:
         """
         Return ``True`` if `public_key` is a known anchor's stellar account address,
         and ``False`` otherwise. This function ensures that only registered sending
-        anchors can make `/send` requests.
+        anchors can make requests to protected endpoints.
 
         :param public_key: the public key of the sending anchor's stellar account
         """
