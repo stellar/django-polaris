@@ -112,13 +112,7 @@ def post_interactive_deposit(request: Request) -> Response:
 
     if form.is_valid():
         if issubclass(form.__class__, TransactionForm):
-            fee_params = {
-                "operation": settings.OPERATION_DEPOSIT,
-                "asset_code": asset.code,
-                **form.cleaned_data,
-            }
             transaction.amount_in = form.cleaned_data["amount"]
-            transaction.amount_fee = registered_fee_func(fee_params)
             transaction.save()
 
         rdi.after_form_validation(form, transaction)
