@@ -114,12 +114,18 @@ def acc1_usd_deposit_transaction_factory(usd_asset_factory):
         stellar_account: str = STELLAR_ACCOUNT_1,
         protocol: str = Transaction.PROTOCOL.sep24,
     ):
+        if protocol in [Transaction.PROTOCOL.sep24, Transaction.PROTOCOL.sep6]:
+            status = Transaction.STATUS.pending_user_transfer_start
+            kind = Transaction.KIND.deposit
+        else:
+            status = Transaction.STATUS.pending_sender
+            kind = Transaction.KIND.send
         usd_asset = usd_asset_factory(protocols=[protocol])
         return Transaction.objects.create(
             stellar_account=stellar_account,
             asset=usd_asset,
-            kind=Transaction.KIND.deposit,
-            status=Transaction.STATUS.pending_user_transfer_start,
+            kind=kind,
+            status=status,
             status_eta=3600,
             external_transaction_id=(
                 "2dd16cb409513026fbe7defc0c6f826c2d2c65c3da993f747d09bf7dafd31093"

@@ -1,7 +1,6 @@
 import time
 from datetime import datetime, timezone
 
-from django.db.models import Q
 from django.core.management import BaseCommand
 
 from polaris.utils import Logger
