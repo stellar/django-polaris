@@ -126,27 +126,24 @@ share many of the same integrations. We'll go over these integrations first, the
 the integrations specific to each SEP.
 
 Polaris provides a set of base classes that should be subclassed for processing
-transactions, ``DepositIntegration`` and ``WithdrawalIntegration``. These subclasses,
-along with several other integration functions, should be registered with Polaris once
-implemented. See the :doc:`Registering Integrations</register_integrations/index>`
-section for more information.
+transactions, ``DepositIntegration``, ``WithdrawalIntegration``, and
+``RailsIntegration``.
+
+These subclasses, along with several other integration functions, should be
+registered with Polaris once implemented. See the
+:doc:`Registering Integrations</register_integrations/index>` section for more
+information.
 
 Banking Rails
 ^^^^^^^^^^^^^
 
-Polaris doesn't have the information it needs to interface with an
-anchor's partner financial entities. That is why Polaris provides a set of
-integration functions for anchors to implement.
+One of the pieces of SEP-6 and SEP-24 Polaris cannot implement itself is the API
+connection to an anchor's partner financial entity. That is why Polaris provides a
+set of integration functions for anchors to implement themselves.
 
-Note that in future releases, some of these functions related to payment rails
-may be moved from ``DepositIntegration`` or ``WithdrawalIntegration`` to
-``RailsIntegration``.
+.. autofunction:: polaris.integrations.RailsIntegration.poll_pending_deposits
 
-.. autofunction:: polaris.integrations.DepositIntegration.poll_pending_deposits
-
-.. autofunction:: polaris.integrations.DepositIntegration.after_deposit
-
-.. autofunction:: polaris.integrations.WithdrawalIntegration.process_withdrawal
+.. autofunction:: polaris.integrations.RailsIntegration.execute_outgoing_transaction
 
 Fee Integration
 ^^^^^^^^^^^^^^^
@@ -158,8 +155,16 @@ Deposit Instructions
 
 .. autofunction:: polaris.integrations.DepositIntegration.instructions_for_pending_deposit
 
+Deposit Post-Processing
+^^^^^^^^^^^^^^^^^^^^^^^
+
+.. autofunction:: polaris.integrations.DepositIntegration.after_deposit
+
 SEP-6 Integrations
 ------------------
+
+The previous integrations are available for both SEP-6 and SEP-24 transactions, but
+the functions described below are only for SEP-6.
 
 .. autofunction:: polaris.integrations.DepositIntegration.process_sep6_request
 
@@ -222,6 +227,7 @@ parameter can also be included in the URL.
 .. autofunction:: polaris.integrations.DepositIntegration.interactive_url
 
 .. autofunction:: polaris.integrations.WithdrawalIntegration.interactive_url
+
 
 Javascript Integration
 ^^^^^^^^^^^^^^^^^^^^^^

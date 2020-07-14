@@ -31,11 +31,11 @@ class RailsIntegration:
         to the user associated with `transaction`. This function is used for SEP-6 &
         SEP-24 withdraws as well as SEP-31 payments.
 
-        At the time of calling this function, ``transaction.amount_in`` has been
-        assigned the value of the amount sent in the Stellar transaction, and `this
-        amount may differ from the value specified in the original request for the
-        transaction`. Validate the amount and recalculate ``transaction.amount_fee``
-        if its valid.
+        When this function is called, ``transaction.amount_in`` is the amount sent
+        to the anchor, `not the amount specified in a SEP-24 or SEP-31 API call`.
+        This matters because the amount actually sent to the anchor may differ from
+        the amount specified in an API call. If the amount differs from the original
+        amount but is still valid, do not forget to recalculate ``amount_fee``.
 
         If the amount is invalid in some way, the anchor must choose how to handle it.
         If you choose to refund the payment in its entirety, change ``transaction.status``
@@ -47,10 +47,11 @@ class RailsIntegration:
         assigned one of the expected statuses for this function, mentioned below, and
         the ``amount_in`` field should be reassigned the value the anchor is accepted.
 
-        If the user receives the funds before returning from this function,
-        update ``Transaction.status`` to ``Transaction.STATUS.completed``.
-        If the transfer was simply initiated and is pending external systems,
-        update the status to ``Transaction.STATUS.pending_external``.
+        If the funds transferred to the user become available in the user's off-chain
+        account immediately, update ``Transaction.status`` to
+        ``Transaction.STATUS.completed``. If the transfer was simply initiated and is
+        pending external systems, update the status to
+        ``Transaction.STATUS.pending_external``.
 
         If an exception is raised, the transaction will be left in
         its current status and may be used again as a parameter to this function.
@@ -79,22 +80,23 @@ class RailsIntegration:
     def poll_pending_deposits(self, pending_deposits: QuerySet) -> List[Transaction]:
         """
         This function should poll the appropriate financial entity for the
-        state of all `pending_deposits` transactions and return the ones that have
+        state of all `pending_deposits` and return the ones that have
         externally completed, meaning the off-chain funds are available in the
         anchor's account.
 
         Per SEP-24, make sure to save the transaction's ``from_address`` field with
         the account the funds originated from.
 
-        Also, ensure the amount deposited to the anchor's account matches each
-        transaction's ``amount_in`` field. If ``amount_in`` does not match or is
-        ``None``, which will be the case for SEP-6 and SEP-31 transactions,
-        assign the amount deposited to ``amount_in`` and update ``amount_fee``
-        to appropriately.
+        Also ensure the amount deposited to the anchor's account matches each
+        transaction's ``amount_in`` field. Client applications may send an amount
+        that differs from the amount originally specified in a SEP-24 API call,
+        or in the case of SEP-6 transactions, ``amount_in`` will be ``None``.
+        If ``amount_in`` differs from the amount deposited, assign the amount
+        deposited to ``amount_in`` and update ``amount_fee`` to appropriately.
 
         For every transaction that is returned, Polaris will submit it to the
         Stellar network. If a transaction is completed on the network, the
-        overridable ``after_deposit`` function will be called, however
+        ``after_deposit`` integration function will be called, however
         implementing this function is optional.
 
         If the Stellar network is unable to execute a transaction returned

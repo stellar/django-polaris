@@ -93,13 +93,13 @@ Poll Outgoing Transactions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 And finally, once a payment to the user has been initiated by the anchor, this CLI tool
-periodically calls ``RailsIntegration.poll_outgoing_transactions`` so the anchor can
+periodically calls ``RailsIntegration.poll_outgoing_transactions()`` so the anchor can
 return the transactions that have have completed, meaning the user has received the funds.
 
 If your banking or payment rails do not provide the necessary information to check if the
 user has received funds, do not run this process and simply mark each transaction
 as ``Transaction.STATUS.completed`` after initiating the payment in
-``RailsIntegration.execute_outgoing_transaction``.
+``RailsIntegration.execute_outgoing_transaction()``.
 
 Run the process like so:
 ::
