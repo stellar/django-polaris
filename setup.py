@@ -6,7 +6,7 @@ with open("README.rst") as f:
 
 setup(
     name="django-polaris",
-    version="0.11.2",
+    version="0.12.0",
     description="An extendable Django server for Stellar Ecosystem Proposals",
     long_description=long_description,
     long_description_content_type="text/x-rst",
@@ -24,7 +24,7 @@ setup(
         "Programming Language :: Python",
         "Programming Language :: Python :: 3.7",
     ],
-    keywords=["stellar", "sdf", "anchor", "server", "polaris", "sep-24", "sep24"],
+    keywords=["stellar", "sdf", "anchor", "server", "polaris", "sep-24", "sep24", "sep-31", "sep31"],
     include_package_data=True,
     package_dir={"": "polaris"},
     packages=find_packages("polaris"),

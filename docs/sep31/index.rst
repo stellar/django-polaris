@@ -45,6 +45,7 @@ Payment Rails
 ^^^^^^^^^^^^^
 
 .. autofunction:: polaris.integrations.RailsIntegration.execute_outgoing_transaction
+   :noindex:
 
 .. autofunction:: polaris.integrations.RailsIntegration.poll_outgoing_transactions
 

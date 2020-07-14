@@ -13,7 +13,7 @@ What is Polaris?
 
 Polaris is an extendable `django app`_ for Stellar Ecosystem Proposal (SEP) implementations
 maintained by the `Stellar Development Foundation`_ (SDF). Using Polaris, you can run a web
-server supporting any combination of SEP-1, 6, 10, 12, and 24.
+server supporting any combination of SEP-1, 6, 10, 12, 24, and 31.
 
 While Polaris handles the majority of the business logic described in each SEP, there are
 pieces of functionality that can only be implemented by the developer using Polaris.
