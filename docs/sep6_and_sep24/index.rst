@@ -39,17 +39,23 @@ Polaris comes with a UI for displaying forms and transaction information. While 
 use HTML forms, this is required in order to display transaction details available from the
 `/more_info` endpoint.
 
-Make sure ``django.contrib.staticfiles`` is listed in ``INSTALLED_APPS``. Additionally,
-to serve static files in production, use the middleware provided by ``whitenoise``, which
-comes with your installation of Polaris. It should be near the top of the list for the
-best performance, but still under CorsMiddleware.
+Make sure ``django.contrib.staticfiles`` is listed in ``INSTALLED_APPS``.
 ::
 
     INSTALLED_APPS = [
+        ...,
+        "django.contrib.staticfiles",
+    ]
+
+Additionally, to serve static files in production, use the middleware provided by
+``whitenoise``, which comes with your installation of Polaris. It should be near the
+top of the list for the best performance, but still under CorsMiddleware.
+::
+
+    MIDDLEWARE = [
         "corsheaders.middleware.CorsMiddleware",
         "whitenoise.middleware.WhiteNoiseMiddleware",
         ...,
-        "django.contrib.staticfiles",
     ]
 
 Add the following to your settings.py as well:
