@@ -5,12 +5,11 @@ SEP-10
 Configuration
 -------------
 
-Add the following variables to your settings file:
+Add the following variables to your .env file:
 ::
 
-    SIGNING_SEED = "<stellar secret key of signing keypair>"
-    SERVER_JWT_KEY = "supersecretjwtstring"
-    ACTIVE_SEPS = ["sep-1", "sep-10", ...]
+    SIGNING_SEED="<stellar secret key of signing keypair>"
+    SERVER_JWT_KEY="<secret string for JWT encoding>"
 
 ``SIGNING_SEED`` is the secret key of the keypair used to sign challenge
 transactions.
@@ -19,7 +18,11 @@ transactions.
 
 **Do not check either of these strings into version control.**
 
-Finally, add the SEP to ``ACTIVE_SEPS``.
+Add SEP-10 to your list of active SEPs in settings.py:
+::
+
+    ACTIVE_SEPS = ["sep-1", "sep-10", ...]
+
 
 Integrations
 ------------
