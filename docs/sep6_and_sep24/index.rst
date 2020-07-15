@@ -243,7 +243,7 @@ Javascript Integration
 Running the Service
 ===================
 
-In addition to the web server, SEP-6 and SEP-24 require three additional processes
+In addition to the web server, SEP-6 and SEP-24 require five additional processes
 to be run in order to work.
 
 Polling Pending Deposits
@@ -282,6 +282,40 @@ Run the process like so:
 ::
 
     python manage.py watch_transactions
+
+Executing Outgoing Transactions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The ``execute_outgoing_transactions`` CLI tool polls the database for transactions
+in the ``pending_receiver`` status and passes them to the
+``RailsIntegration.execute_outgoing_transaction()`` function for the anchor to
+initiate the payment to the receiving user. See the integration function's
+documentation for more information about this step.
+
+You can run the service like so:
+::
+
+    python manage.py execute_outgoing_transactions --loop --interval 10
+
+This process will continue indefinitely, calling the associated integration
+function, sleeping for 10 seconds, and then calling it again.
+
+Poll Outgoing Transactions
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+And finally, once a payment to the user has been initiated by the anchor, this CLI tool
+periodically calls ``RailsIntegration.poll_outgoing_transactions()`` so the anchor can
+return the transactions that have have completed, meaning the user has received the funds.
+
+If your banking or payment rails do not provide the necessary information to check if the
+user has received funds, do not run this process and simply mark each transaction
+as ``Transaction.STATUS.completed`` after initiating the payment in
+``RailsIntegration.execute_outgoing_transaction()``.
+
+Run the process like so:
+::
+
+    python manage.py poll_outgoing_transactions --loop --interval 60
 
 Checking Trustlines
 -------------------
