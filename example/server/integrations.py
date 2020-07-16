@@ -618,14 +618,15 @@ class MyRailsIntegration(RailsIntegration):
             if bank_deposit and bank_deposit.status == "complete":
                 if not deposit.amount_in:
                     deposit.amount_in = Decimal(103)
-                    deposit.amount_fee = calculate_fee(
-                        {
-                            "amount": 103,
-                            "operation": settings.OPERATION_DEPOSIT,
-                            "asset_code": deposit.asset.code,
-                        }
-                    )
-                    deposit.save()
+
+                deposit.amount_fee = calculate_fee(
+                    {
+                        "amount": deposit.amount_in,
+                        "operation": settings.OPERATION_DEPOSIT,
+                        "asset_code": deposit.asset.code,
+                    }
+                )
+                deposit.save()
                 ready_deposits.append(deposit)
 
         return ready_deposits
@@ -666,7 +667,13 @@ class MyRailsIntegration(RailsIntegration):
             return
 
         client = rails.BankAPIClient("fake anchor bank account number")
-        transaction.amount_fee = 0  # Or calculate your fee
+        transaction.amount_fee = calculate_fee(
+            {
+                "amount": transaction.amount_in,
+                "operation": settings.OPERATION_DEPOSIT,
+                "asset_code": transaction.asset.code,
+            }
+        )
         response = client.send_funds(
             to_account=user.bank_account_number,
             amount=transaction.amount_in - transaction.amount_fee,
