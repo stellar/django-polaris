@@ -10,11 +10,11 @@ from stellar_sdk.keypair import Keypair
 
 
 env = environ.Env()
-env_file = os.path.join(settings.BASE_DIR, ".env")
+env_file = os.path.join(getattr(settings, "BASE_DIR", ""), ".env")
 if os.path.exists(env_file):
     env.read_env(env_file)
-elif os.path.exists(settings.ENV_PATH):
-    env.read_env(env_file)
+elif hasattr(settings, "ENV_PATH") and os.path.exists(settings.ENV_PATH):
+    env.read_env(settings.ENV_PATH)
 
 SIGNING_SEED, SIGNING_KEY = None, None
 if "sep-10" in settings.ACTIVE_SEPS:
