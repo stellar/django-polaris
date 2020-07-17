@@ -24,10 +24,10 @@ def register_integrations(
     withdrawal: WithdrawalIntegration = None,
     send: SendIntegration = None,
     rails: RailsIntegration = None,
-    toml_func: Callable = None,
-    scripts_func: Callable = None,
-    fee_func: Callable = None,
-    info_func: Callable = None,
+    toml: Callable = None,
+    scripts: Callable = None,
+    fee: Callable = None,
+    sep6_info: Callable = None,
     customer: CustomerIntegration = None,
 ):
     """
@@ -58,10 +58,10 @@ def register_integrations(
                     deposit=MyDepositIntegration(),
                     withdrawal=MyWithdrawalIntegration(),
                     customer=MyCustomerIntegration(),
-                    toml_func=toml_integration,
-                    scripts_func=scripts_integration,
-                    info_func=info_integration,
-                    fee_func=fee_integration
+                    toml=toml_integration,
+                    scripts=scripts_integration,
+                    sep6_info=info_integration,
+                    fee=fee_integration
                 )
 
     Simply pass the integration classes or functions you use.
@@ -74,11 +74,11 @@ def register_integrations(
         Polaris
     :param rails: the ``RailsIntegration`` subclass instance to be used by
         Polaris
-    :param toml_func: a function that returns stellar.toml data as a dictionary
-    :param scripts_func: a function that returns a list of script tags as
+    :param toml: a function that returns stellar.toml data as a dictionary
+    :param scripts: a function that returns a list of script tags as
         strings
-    :param fee_func: a function that returns the fee that would be charged
-    :param info_func: a function that returns the /info `fields` or `types`
+    :param fee: a function that returns the fee that would be charged
+    :param sep6_info: a function that returns the /info `fields` or `types`
         values for an Asset
     :param customer: the ``CustomerIntegration`` subclass instance to be used
         by Polaris
@@ -92,14 +92,14 @@ def register_integrations(
         raise TypeError("deposit must be a subclass of DepositIntegration")
     elif withdrawal and not issubclass(withdrawal.__class__, WithdrawalIntegration):
         raise TypeError("withdrawal must be a subclass of WithdrawalIntegration")
-    elif toml_func and not callable(toml_func):
-        raise TypeError("toml_func is not callable")
-    elif scripts_func and not callable(scripts_func):
-        raise TypeError("javascript_func is not callable")
-    elif fee_func and not callable(fee_func):
-        raise TypeError("fee_func is not callable")
-    elif info_func and not callable(info_func):
-        raise TypeError("info_func is not callable")
+    elif toml and not callable(toml):
+        raise TypeError("toml parameter is not callable")
+    elif scripts and not callable(scripts):
+        raise TypeError("scripts parameter is not callable")
+    elif fee and not callable(fee):
+        raise TypeError("fee parameter is not callable")
+    elif sep6_info and not callable(sep6_info):
+        raise TypeError("info parameter is not callable")
     elif customer and not issubclass(customer.__class__, CustomerIntegration):
         raise TypeError("customer must be a subclass of CustomerIntegration")
     elif send and not issubclass(send.__class__, SendIntegration):
@@ -110,10 +110,10 @@ def register_integrations(
     for obj, attr in [
         (deposit, "registered_deposit_integration"),
         (withdrawal, "registered_withdrawal_integration"),
-        (toml_func, "registered_toml_func"),
-        (scripts_func, "registered_scripts_func"),
-        (fee_func, "registered_fee_func"),
-        (info_func, "registered_info_func"),
+        (toml, "registered_toml_func"),
+        (scripts, "registered_scripts_func"),
+        (fee, "registered_fee_func"),
+        (sep6_info, "registered_info_func"),
         (customer, "registered_customer_integration"),
         (send, "registered_send_integration"),
         (rails, "registered_rails_integration"),
