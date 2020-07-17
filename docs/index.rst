@@ -73,17 +73,18 @@ by adding `corsheaders signal`_ that checks the request URI. However this
 does not change the CORS policy for any other endpoint on the server. You can change
 this functionality using the settings listed in the `corsheaders documentation`_.
 
-Define ``PROJECT_ROOT`` in your project's settings.py. Polaris uses this to
-find your ``.env`` file.
+Ensure ``BASE_DIR`` is defined in your project's settings.py. Django adds this setting
+automatically. Polaris uses this to find your ``.env`` file. If this setting isn't present,
+Polaris will try to use the ``ENV_PATH`` setting. It should be the path to the ``.env`` file.
 ::
 
-    PROJECT_ROOT = "<path to directory containing .env file>"
+    BASE_DIR = "<path to your django project's top-level directory>"
 
 Environment Variables
 ^^^^^^^^^^^^^^^^^^^^^
 
 Polaris uses environment variables that should be defined in the
-environment or included in ``PROJECT_ROOT/.env``.
+environment or included in ``BASE_DIR/.env`` or ``ENV_PATH``.
 ::
 
     STELLAR_NETWORK_PASSPHRASE="Test SDF Network ; September 2015"

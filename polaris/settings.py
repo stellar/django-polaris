@@ -7,11 +7,10 @@ import environ
 from django.utils.translation import gettext_lazy as _
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = BASE_DIR
 
 # Load environment variables from .env
 env = environ.Env()
-env_file = os.path.join(PROJECT_ROOT, ".env")
+env_file = os.path.join(BASE_DIR, ".env")
 if os.path.exists(env_file):
     environ.Env.read_env(env_file)
 
@@ -81,7 +80,7 @@ FORM_RENDERER = "django.forms.renderers.TemplatesSetting"
 # https://docs.djangoproject.com/en/2.2/ref/settings/#databases
 DATABASES = {
     "default": env.db(
-        "DATABASE_URL", default="sqlite:////" + os.path.join(PROJECT_ROOT, "db.sqlite3")
+        "DATABASE_URL", default="sqlite:////" + os.path.join(BASE_DIR, "db.sqlite3")
     )
 }
 

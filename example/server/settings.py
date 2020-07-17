@@ -7,11 +7,10 @@ from django.utils.translation import gettext_lazy as _
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-PROJECT_ROOT = BASE_DIR
 
 # Load environment variables from .env
 env = environ.Env()
-env_file = os.path.join(PROJECT_ROOT, ".env")
+env_file = os.path.join(BASE_DIR, ".env")
 if os.path.exists(env_file):
     environ.Env.read_env(env_file)
 
@@ -88,7 +87,7 @@ WSGI_APPLICATION = "server.wsgi.application"
 DATABASES = {
     "default": env.db(
         "DATABASE_URL",
-        default="sqlite:///" + os.path.join(PROJECT_ROOT, "data/db.sqlite3"),
+        default="sqlite:///" + os.path.join(BASE_DIR, "data/db.sqlite3"),
     )
 }
 
