@@ -37,6 +37,7 @@ from polaris.integrations import (
     registered_withdrawal_integration as rwi,
     registered_scripts_func,
     registered_fee_func,
+    registered_toml_func,
     calculate_fee,
 )
 
@@ -156,6 +157,7 @@ def post_interactive_withdraw(request: Request) -> Response:
         if amount:
             url_args["amount"] = amount
 
+        toml_data = registered_toml_func()
         post_url = f"{reverse('post_interactive_deposit')}?{urlencode(url_args)}"
         get_url = f"{reverse('get_interactive_deposit')}?{urlencode(url_args)}"
         content.update(
@@ -165,6 +167,7 @@ def post_interactive_withdraw(request: Request) -> Response:
             operation=settings.OPERATION_WITHDRAWAL,
             asset=asset,
             use_fee_endpoint=registered_fee_func != calculate_fee,
+            org_logo_url=toml_data.get("DOCUMENTATION", {}).get("ORG_LOGO"),
         )
         return Response(content, template_name="withdraw/form.html", status=422)
 

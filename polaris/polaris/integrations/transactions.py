@@ -59,7 +59,8 @@ class DepositIntegration:
                     "form": form,
                     "title": "Deposit Transaction Form",
                     "guidance": "Please enter the amount you would like to deposit.",
-                    "icon_label": "Stellar Development Foundation"
+                    "icon_label": "Stellar Development Foundation",
+                    "icon_path": "images/org_logo.png"
                 }
 
         If `post_data` is passed, it must be used to initialize the form returned so
@@ -67,9 +68,12 @@ class DepositIntegration:
         to pre-populate a ``TransactionForm`` amount field to improve the user
         experience.
 
-        Aside from the pieces of content returned from this function, the icon image
-        displayed at the top of each web page can be replaced by adding a file
-        in your app's static files directory with the path ``polaris/company-icon.svg``
+        `icon_path` should be the relative file path to the image you would like to use
+        as the company icon in the UI. The file path should be relative to the value of
+        your ``STATIC_ROOT`` setting. If `icon_path` is not present, Polaris will use
+        the image specified by your TOML integration function's ``ORG_LOGO`` key.
+        Finally, if neither are present, Polaris will default to its default image.
+        All images will be rendered in a 100 x 150px sized box.
 
         After a form is submitted and validated, Polaris will call
         ``DepositIntegration.after_form_validation`` with the populated
