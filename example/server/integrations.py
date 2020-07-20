@@ -126,6 +126,7 @@ class SEP24KYC:
                         "Please enter the information requested."
                     )
                 ),
+                "icon_path": "images/lobstr.png",
             }
         elif settings.LOCAL_MODE:
             # When in local mode, request session's are not authenticated,
@@ -140,6 +141,7 @@ class SEP24KYC:
                     "continue on this page."
                 ),
                 "icon_label": _("Stellar Development Foundation"),
+                "icon_path": "images/lobstr.png",
             }
         else:
             return None
@@ -188,6 +190,7 @@ class MyDepositIntegration(DepositIntegration):
             "title": _("Polaris Transaction Information"),
             "guidance": _("Please enter the amount you would like to transfer."),
             "icon_label": _("Stellar Development Foundation"),
+            "icon_path": "images/lobstr.png",
         }
 
     def after_form_validation(self, form: forms.Form, transaction: Transaction):
@@ -273,6 +276,7 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
                     "you would like to receive your funds."
                 )
             ),
+            "icon_path": "images/lobstr.png",
         }
 
     def after_form_validation(self, form: forms.Form, transaction: Transaction):

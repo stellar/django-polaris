@@ -27,7 +27,13 @@
     {% block "header" %}
     <nav class="navbar" role="navigation" aria-label="main navigation">
       <div class="navbar-brand">
-        <img width="60" height="60" src="{% static 'polaris/company-icon.svg' %}" alt="" />
+        {% if icon_path %}
+        <img class="logo" src="{% static icon_path %}" alt="" />
+        {% elif org_logo_url %}
+        <img class="logo" src="{{ org_logo_url }}" alt="" />
+        {% else %}
+        <img class="logo" src="{% static 'polaris/company-icon.svg' %}" alt="" />
+        {% endif %}
         {% if icon_label %}
         <a class="title" href="#">
             {{ icon_label|safe }}

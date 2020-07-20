@@ -28,6 +28,12 @@ body {
   margin: auto;
 }
 
+img.logo {
+  width: 150px;
+  height: 100px;
+  object-fit: contain;
+}
+
 .main-content {
   overflow-x: hidden;
 }
