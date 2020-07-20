@@ -90,13 +90,6 @@ DATABASES = {
 STATIC_ROOT = os.path.join(BASE_DIR, "polaris/collectstatic")
 STATIC_URL = "/polaris/static/"
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
-STATICFILES_FINDERS = [
-    "django.contrib.staticfiles.finders.FileSystemFinder",
-    "django.contrib.staticfiles.finders.AppDirectoriesFinder",
-    "sass_processor.finders.CssFinder",
-]
-SASS_PROCESSOR_ROOT = STATIC_ROOT
-SASS_PROCESSOR_AUTO_INCLUDE = True
 
 
 # Django Rest Framework Settings:
