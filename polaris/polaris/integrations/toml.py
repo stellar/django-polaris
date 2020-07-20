@@ -11,7 +11,7 @@ def get_stellar_toml():
     ``register_integrations()`` as described in
     :doc:`Registering Integrations</register_integrations/index>`.
 
-    The function you pass to the `toml_func` parameter should return a
+    The function you pass to the `toml` parameter should return a
     dictionary containing any of the following top level keys:
     ``DOCUMENTATION`` - ``CURRENCIES`` - ``PRINCIPALS`` - ``VALIDATORS``
 
