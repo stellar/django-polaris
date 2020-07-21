@@ -60,15 +60,15 @@ def post_interactive_deposit(request: Request) -> Response:
     flow. The following steps are taken during this process:
 
         1. URL arguments are parsed and validated.
-        2. content_for_transaction() is called to retrieve the form used to
+        2. form_for_transaction() is called to retrieve the form used to
            submit this request. This function is implemented by the anchor.
         3. The form is used to validate the data submitted, and if the form
            is a TransactionForm, the fee for the transaction is calculated.
         4. after_form_validation() is called to allow the anchor to process
            the data submitted. This function should change the application
-           state such that the next call to content_for_transaction() returns
+           state such that the next call to form_for_transaction() returns
            the next form in the flow.
-        5. content_for_transaction() is called again to retrieve the next
+        5. form_for_transaction() is called again to retrieve the next
            form to be served to the user. If a form is returned, the
            function redirects to GET /transaction/deposit/webapp. Otherwise,
            The user's session is invalidated, the transaction status is
@@ -89,7 +89,7 @@ def post_interactive_deposit(request: Request) -> Response:
     )
     if not form:
         logger.error(
-            "Initial content_for_transaction() call returned None in "
+            "Initial form_for_transaction() call returned None in "
             f"POST request for transaction: {transaction.id}"
         )
         if transaction.status != transaction.STATUS.incomplete:
@@ -145,7 +145,7 @@ def post_interactive_deposit(request: Request) -> Response:
             return redirect(f"{url}?{args}")
 
     else:
-        scripts = registered_scripts_func(content)
+        scripts = registered_scripts_func({"form": form, **content})
 
         url_args = {"transaction_id": transaction.id, "asset_code": asset.code}
         if callback:
@@ -211,7 +211,7 @@ def get_interactive_deposit(request: Request) -> Response:
            returned, this function redirects to the URL. However, the session
            cookie should still be included in the response so future calls to
            GET /transactions/deposit/interactive/complete are authenticated.
-        3. content_for_transaction() is called to retrieve the next form to
+        3. form_for_transaction() is called to retrieve the next form to
            render to the user.
         4. get and post URLs are constructed with the appropriate arguments
            and passed to the response to be rendered to the user.
@@ -251,7 +251,7 @@ def get_interactive_deposit(request: Request) -> Response:
     elif content is None:
         content = {}
 
-    scripts = registered_scripts_func(content)
+    scripts = registered_scripts_func({"form": form, **content})
 
     url_args = {"transaction_id": transaction.id, "asset_code": asset.code}
     if callback:

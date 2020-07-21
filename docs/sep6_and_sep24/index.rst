@@ -76,16 +76,16 @@ The last step is to collect the static files Polaris provides into your app:
 Replacing Polaris UI Assets
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Its also possible to replace the static assets from Polaris. This allows anchors
-to customize the UI's appearance. One asset you will surely want to replace is the Stellar
-icon displayed at the top of each page.
+.. _here: https://github.com/stellar/django-polaris/tree/master/polaris/polaris/static/polaris
 
-To replace this with your own icon, put a file within your static directory under the
-path `polaris/company-icon.svg`. The django app containing this file must be listed
-in ``INSTALLED_APPS`` `above` ``"polaris"`` in order for django to use it.
+Its also possible to replace the static assets from Polaris. This allows anchors
+to customize the UI's appearance. For example, you can replace Polaris' `base.css`
+file to give the interactive flow pages a different look. You can do this by adding
+your own `polaris/base.css` file to your app's static directory.
 
 In general, replacement asset files (.html, .css, etc.) must have the same path and
-name of the file its replacing.
+name of the file its replacing. See the structure of Polaris' static assets
+directory here_.
 
 See the documentation on `serving static files`_ in Django for more information.
 
@@ -199,11 +199,15 @@ more information.
 
 The functions below facilitate the process of collecting the information needed.
 
-.. autofunction:: polaris.integrations.DepositIntegration.content_for_transaction
+.. autofunction:: polaris.integrations.DepositIntegration.form_for_transaction
+
+.. autofunction:: polaris.integrations.DepositIntegration.content_for_template
 
 .. autofunction:: polaris.integrations.DepositIntegration.after_form_validation
 
-.. autofunction:: polaris.integrations.WithdrawalIntegration.content_for_transaction
+.. autofunction:: polaris.integrations.WithdrawalIntegration.form_for_transaction
+
+.. autofunction:: polaris.integrations.DepositIntegration.content_for_template
 
 .. autofunction:: polaris.integrations.WithdrawalIntegration.after_form_validation
 

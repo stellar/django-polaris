@@ -80,7 +80,7 @@ class TransactionForm(forms.Form):
     apply additional validation.
 
     A subclass of this form should be returned by
-    ``content_for_transaction()`` once for each interactive flow.
+    ``form_for_transaction()`` once for each interactive flow.
 
     After form validation, the key-value pairs in `self.cleaned_data` will be
     passed to the registered fee function to calculate `amount_fee` for the

@@ -44,7 +44,6 @@ def more_info(request: Request, sep6: bool = False) -> Response:
         "amount_fee": serializer.data.get("amount_fee"),
         "transaction": request_transaction,
         "asset_code": request_transaction.asset.code,
-        "scripts": registered_scripts_func(None),
     }
     if request_transaction.kind == Transaction.KIND.deposit:
         content = rdi.content_for_template(
@@ -59,6 +58,7 @@ def more_info(request: Request, sep6: bool = False) -> Response:
             Template.MORE_INFO, transaction=request_transaction
         )
 
+    resp_data["scripts"] = registered_scripts_func(content)
     if content:
         resp_data.update(content)
 

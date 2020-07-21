@@ -271,7 +271,7 @@ def test_interactive_auth_new_transaction(client, acc1_usd_deposit_transaction_f
     were not authenticated for the specified transaction.
     """
     deposit = acc1_usd_deposit_transaction_factory()
-    # So that content_for_transaction() returns TransactionForm
+    # So that form_for_transaction() returns TransactionForm
     deposit.amount_in = None
     deposit.save()
 

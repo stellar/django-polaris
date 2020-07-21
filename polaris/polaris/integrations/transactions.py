@@ -166,8 +166,8 @@ class DepositIntegration:
         """
         Use this function to process the data collected with `form` and to update
         the state of the interactive flow so that the next call to
-        ``DepositIntegration.content_for_transaction`` returns a dictionary
-        containing the next form to render to the user, or returns None.
+        ``DepositIntegration.form_for_transaction`` returns the next form to render
+        to the user, or returns None.
 
         Keep in mind that if a ``TransactionForm`` is submitted, Polaris will
         update the `amount_in` and `amount_fee` with the information collected.
@@ -178,7 +178,7 @@ class DepositIntegration:
         particular values at different points in the flow.
 
         If you need to store some data to determine which form to return next when
-        ``DepositIntegration.content_for_transaction`` is called, store this
+        ``DepositIntegration.form_for_transaction`` is called, store this
         data in a model not used by Polaris.
 
         :param form: the completed ``forms.Form`` submitted by the user
@@ -219,7 +219,7 @@ class DepositIntegration:
     def save_sep9_fields(self, stellar_account: str, fields: Dict, language_code: str):
         """
         Save the `fields` passed for `stellar_account` to pre-populate the forms returned
-        from ``content_for_transaction()``. Note that this function is called before
+        from ``form_for_transaction()``. Note that this function is called before
         the transaction is created.
 
         For example, you could save the user's contact information with the model used
@@ -236,16 +236,13 @@ class DepositIntegration:
         saved in this method relevant to that form.
         ::
 
-            # In your content_for_transaction() implementation
+            # In your form_for_transaction() implementation
             user = user_for_account(transaction.stellar_account)
             form_args = {
                 'phone_number': format_number(user.phone_number),
                 'email': user.email_address
             }
-            return {
-                'form': KYCForm(initial=form_args),
-                'title': "KYC Collection"
-            }
+            return KYCForm(initial=form_args),
 
         If you'd like to validate the values passed in `fields`, you can perform any necessary
         checks and raise a ``ValueError`` in this function. Polaris will return the message of

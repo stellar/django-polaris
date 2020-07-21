@@ -18,10 +18,9 @@ def scripts(page_content: Optional[Dict]) -> List[str]:
             {{ script|safe }}
         {% endfor %}
 
-    `page_content` will be the return value from ``content_for_transaction()``
-    for requests during the interactive flow and ``None`` for requests to the
-    `/more_info` endpoint. Anchors can
-    use `page_content` to determine which scripts need to be rendered.
+    `page_content` will be the return value from ``content_for_template()``.
+    `page_content` will also contain a ``"form"`` key-value pair if a form
+    will be rendered in the UI.
 
     This gives anchors a great deal of freedom on the client side. The
     `example reference server`_ uses this functionality to inject Google
