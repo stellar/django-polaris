@@ -38,8 +38,8 @@ class DepositIntegration:
         amount: Optional[Decimal] = None,
     ) -> Optional[forms.Form]:
         """
-        This function should the next form to render for the user given the state of
-        the interactive flow.
+        This function should return the next form to render for the user given the
+        state of the interactive flow.
 
         For example, this function could return an instance of a ``TransactionForm``
         subclass. Once the form is submitted, Polaris will detect the form used
@@ -112,7 +112,7 @@ class DepositIntegration:
         Return a dictionary containing page content to be used in the template passed for the
         given `form` and `transaction`.
 
-        Polaris will pass one of the following ``polaris.templates.Template` values:
+        Polaris will pass one of the following ``polaris.templates.Template`` values:
 
         * Template.DEPOSIT
 
