@@ -7,6 +7,7 @@ from rest_framework.request import Request
 
 from polaris.models import Transaction, Asset
 from polaris.integrations.forms import TransactionForm
+from polaris.templates import Template
 
 
 class DepositIntegration:
@@ -40,7 +41,7 @@ class DepositIntegration:
         This function should the next form to render for the user given the state of
         the interactive flow.
 
-        For example, this function should return an instance of a ``TransactionForm``
+        For example, this function could return an instance of a ``TransactionForm``
         subclass. Once the form is submitted, Polaris will detect the form used
         is a ``TransactionForm`` subclass and update ``transaction.amount_in``
         with the amount specified in form.
@@ -103,7 +104,7 @@ class DepositIntegration:
 
     def content_for_template(
         self,
-        template_path: str,
+        template: Template,
         form: Optional[forms.Form] = None,
         transaction: Optional[Transaction] = None,
     ) -> Optional[Dict]:
@@ -111,23 +112,24 @@ class DepositIntegration:
         Return a dictionary containing page content to be used in the template passed for the
         given `form` and `transaction`.
 
-        Polaris will pass three different template names to this function:
+        Polaris will pass one of the following ``polaris.templates.Template` values:
 
-        * `deposit/form.html`
+        * Template.DEPOSIT
 
             The template used for deposit flows
-        * `withdraw/form.html`
-
-            The template used for withdraw flows
-        * `transaction/more_info.html`
+        * Template.MORE_INFO
 
             The template used to show transaction details
 
-        The `form` parameter will always be ``None`` when `template_name` is
-        `transaction/more_info.html` since that page does not display form content. If
-        `form` is ``None`` and `template_name` is **not** `transaction/more_info.html`,
+        The `form` parameter will always be ``None`` when `template` is
+        ``Template.MORE_INFO`` since that page does not display form content.
+
+        If `form` is ``None`` and `template_name` is **not** ``Template.MORE_INFO``,
         returning ``None`` will signal to Polaris that the anchor is done collecting
-        information for the transaction.
+        information for the transaction. Returning content will signal to Polaris that
+        the user needs to take some action before receiving the next form, such as
+        confirming their email. In this case, make sure to return an appropriate
+        `guidance` message.
 
         Using this function, anchors can change the page title, replace the company icon shown
         on each page and its label, and give guidance to the user.
@@ -153,7 +155,7 @@ class DepositIntegration:
         Finally, if neither are present, Polaris will default to its default image.
         All images will be rendered in a 100 x 150px sized box.
 
-        :param template_path: a file path relative to the app's `templates` directory
+        :param template: a ``polaris.templates.Template`` enum value
             for the template to be rendered in the response
         :param form: the form to be rendered in the template
         :param transaction: the transaction being processed
@@ -341,10 +343,26 @@ class WithdrawalIntegration:
 
     def content_for_template(
         self,
-        template_name: str,
-        form: Optional[forms.Form],
-        transaction: Optional[Transaction],
+        template: Template,
+        form: Optional[forms.Form] = None,
+        transaction: Optional[Transaction] = None,
     ):
+        """
+        Same as ``DepositIntegration.content_for_template``, except the ``Template``
+        values passed will be one of:
+
+        * Template.WITHDRAW
+
+            The template used for withdraw flows
+        * Template.MORE_INFO
+
+            The template used to show transaction details
+
+        :param template: a ``polaris.templates.Template`` enum value
+            for the template to be rendered in the response
+        :param form: the form to be rendered in the template
+        :param transaction: the transaction being processed
+        """
         pass
 
     def after_form_validation(self, form: TransactionForm, transaction: Transaction):

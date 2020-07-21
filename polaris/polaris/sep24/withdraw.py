@@ -15,6 +15,7 @@ from rest_framework.request import Request
 from rest_framework.renderers import TemplateHTMLRenderer, JSONRenderer
 
 from polaris import settings
+from polaris.templates import Template
 from polaris.utils import (
     render_error_response,
     Logger,
@@ -79,8 +80,11 @@ def post_interactive_withdraw(request: Request) -> Response:
     callback = args_or_error["callback"]
     amount = args_or_error["amount"]
 
-    content = rwi.content_for_transaction(transaction, post_data=request.POST)
-    if not (content and content.get("form")):
+    form = rwi.form_for_transaction(transaction, post_data=request.POST)
+    content = rwi.content_for_template(
+        Template.WITHDRAW, form=form, transaction=transaction
+    )
+    if not form:
         logger.error(
             "Initial content_for_transaction() call returned None "
             f"for {transaction.id}"
@@ -99,9 +103,9 @@ def post_interactive_withdraw(request: Request) -> Response:
             content_type="text/html",
         )
 
-    form = content.get("form")
     if not form.is_bound:
         # The anchor must initialize the form with the request.POST data
+        logger.error("form returned was not initialized with POST data, returning 500")
         return render_error_response(
             _("Unable to validate form submission."),
             status_code=500,
@@ -114,8 +118,10 @@ def post_interactive_withdraw(request: Request) -> Response:
             transaction.save()
 
         rwi.after_form_validation(form, transaction)
-
-        if rwi.content_for_transaction(transaction):
+        next_form = rwi.form_for_transaction(transaction)
+        if next_form or rwi.content_for_template(
+            Template.WITHDRAW, form=next_form, transaction=transaction
+        ):
             args = {"transaction_id": transaction.id, "asset_code": asset.code}
             if amount:
                 args["amount"] = amount
@@ -235,8 +241,11 @@ def get_interactive_withdraw(request: Request) -> Response:
     if url:  # The anchor uses a standalone interactive flow
         return redirect(url)
 
-    content = rwi.content_for_transaction(transaction, amount=amount)
-    if not content:
+    form = rwi.form_for_transaction(transaction, amount=amount)
+    content = rwi.content_for_template(
+        Template.WITHDRAW, form=form, transaction=transaction
+    )
+    if not (form or content):
         logger.error("The anchor did not provide content, unable to serve page.")
         if transaction.status != transaction.STATUS.incomplete:
             return render_error_response(
@@ -251,6 +260,8 @@ def get_interactive_withdraw(request: Request) -> Response:
             status_code=500,
             content_type="text/html",
         )
+    elif content is None:
+        content = {}
 
     scripts = registered_scripts_func(content)
 
@@ -263,6 +274,7 @@ def get_interactive_withdraw(request: Request) -> Response:
     post_url = f"{reverse('post_interactive_withdraw')}?{urlencode(url_args)}"
     get_url = f"{reverse('get_interactive_withdraw')}?{urlencode(url_args)}"
     content.update(
+        form=form,
         post_url=post_url,
         get_url=get_url,
         scripts=scripts,

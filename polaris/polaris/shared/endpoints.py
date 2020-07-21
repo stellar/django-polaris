@@ -8,6 +8,7 @@ from django.core.exceptions import ValidationError
 from django.utils.translation import gettext as _
 
 from polaris import settings as polaris_settings
+from polaris.templates import Template
 from polaris.utils import render_error_response
 from polaris.models import Transaction, Asset
 from polaris.integrations import registered_fee_func
@@ -15,6 +16,7 @@ from polaris.sep24.utils import verify_valid_asset_operation
 from polaris.shared.serializers import TransactionSerializer
 from polaris.integrations import (
     registered_deposit_integration as rdi,
+    registered_withdrawal_integration as rwi,
     registered_scripts_func,
 )
 
@@ -44,18 +46,26 @@ def more_info(request: Request, sep6: bool = False) -> Response:
         "asset_code": request_transaction.asset.code,
         "scripts": registered_scripts_func(None),
     }
+    if request_transaction.kind == Transaction.KIND.deposit:
+        content = rdi.content_for_template(
+            Template.MORE_INFO, transaction=request_transaction
+        )
+        if request_transaction.status == Transaction.STATUS.pending_user_transfer_start:
+            resp_data["instructions"] = rdi.instructions_for_pending_deposit(
+                request_transaction
+            )
+    else:
+        content = rwi.content_for_template(
+            Template.MORE_INFO, transaction=request_transaction
+        )
+
+    if content:
+        resp_data.update(content)
 
     callback = request.GET.get("callback")
     if callback:
         resp_data["callback"] = callback
 
-    if (
-        request_transaction.kind == Transaction.KIND.deposit
-        and request_transaction.status == Transaction.STATUS.pending_user_transfer_start
-    ):
-        resp_data["instructions"] = rdi.instructions_for_pending_deposit(
-            request_transaction
-        )
     return Response(resp_data, template_name="transaction/more_info.html")
 
 

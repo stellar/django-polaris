@@ -18,6 +18,7 @@ from stellar_sdk.keypair import Keypair
 from stellar_sdk.exceptions import Ed25519PublicKeyInvalidError
 
 from polaris import settings
+from polaris.templates import Template
 from polaris.utils import (
     render_error_response,
     Logger,
@@ -82,8 +83,11 @@ def post_interactive_deposit(request: Request) -> Response:
     callback = args_or_error["callback"]
     amount = args_or_error["amount"]
 
-    content = rdi.content_for_transaction(transaction, post_data=request.POST)
-    if not (content and content.get("form")):
+    form = rdi.form_for_transaction(transaction, post_data=request.POST)
+    content = rdi.content_for_template(
+        Template.DEPOSIT, form=form, transaction=transaction
+    )
+    if not form:
         logger.error(
             "Initial content_for_transaction() call returned None in "
             f"POST request for transaction: {transaction.id}"
@@ -102,9 +106,9 @@ def post_interactive_deposit(request: Request) -> Response:
             content_type="text/html",
         )
 
-    form = content.get("form")
     if not form.is_bound:
         # The anchor must initialize the form with the request.POST data
+        logger.error("form returned was not initialized with POST data, returning 500")
         return render_error_response(
             _("Unable to validate form submission."),
             status_code=500,
@@ -117,7 +121,10 @@ def post_interactive_deposit(request: Request) -> Response:
             transaction.save()
 
         rdi.after_form_validation(form, transaction)
-        if rdi.content_for_transaction(transaction):
+        next_form = rdi.form_for_transaction(transaction)
+        if next_form or rdi.content_for_template(
+            Template.DEPOSIT, form=next_form, transaction=transaction
+        ):
             args = {"transaction_id": transaction.id, "asset_code": asset.code}
             if amount:
                 args["amount"] = amount
@@ -160,7 +167,7 @@ def post_interactive_deposit(request: Request) -> Response:
 
 
 @api_view(["GET"])
-@renderer_classes([TemplateHTMLRenderer])
+@renderer_classes([])
 @check_authentication()
 def complete_interactive_deposit(request: Request) -> Response:
     """
@@ -222,8 +229,11 @@ def get_interactive_deposit(request: Request) -> Response:
     if url:  # The anchor uses a standalone interactive flow
         return redirect(url)
 
-    content = rdi.content_for_transaction(transaction, amount=amount)
-    if not content:
+    form = rdi.form_for_transaction(transaction, amount=amount)
+    content = rdi.content_for_template(
+        Template.DEPOSIT, form=form, transaction=transaction
+    )
+    if not (form or content):
         logger.error("The anchor did not provide content, unable to serve page.")
         if transaction.status != transaction.STATUS.incomplete:
             return render_error_response(
@@ -238,6 +248,8 @@ def get_interactive_deposit(request: Request) -> Response:
             status_code=500,
             content_type="text/html",
         )
+    elif content is None:
+        content = {}
 
     scripts = registered_scripts_func(content)
 
@@ -251,6 +263,7 @@ def get_interactive_deposit(request: Request) -> Response:
     post_url = f"{reverse('post_interactive_deposit')}?{urlencode(url_args)}"
     get_url = f"{reverse('get_interactive_deposit')}?{urlencode(url_args)}"
     content.update(
+        form=form,
         post_url=post_url,
         get_url=get_url,
         scripts=scripts,
