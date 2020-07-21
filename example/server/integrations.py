@@ -1,7 +1,7 @@
 import json
 from smtplib import SMTPException
 from decimal import Decimal
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Tuple
 from urllib.parse import urlencode
 from base64 import b64encode
 from collections import defaultdict
@@ -16,6 +16,7 @@ from django.template.loader import render_to_string
 
 from polaris.models import Transaction, Asset
 from polaris.utils import Logger
+from polaris.templates import Template
 from polaris.integrations import (
     DepositIntegration,
     WithdrawalIntegration,
@@ -103,7 +104,9 @@ class SEP24KYC:
         )
 
     @staticmethod
-    def check_kyc(transaction: Transaction, post_data=None) -> Optional[Dict]:
+    def check_kyc(
+        transaction: Transaction, post_data=None
+    ) -> Tuple[Optional[forms.Form], Optional[Dict]]:
         """
         Returns a KYCForm if there is no record of this stellar account,
         otherwise returns None.
@@ -116,33 +119,38 @@ class SEP24KYC:
                 form = KYCForm(post_data)
             else:
                 form = KYCForm()
-            return {
-                "form": form,
-                "icon_label": _("Stellar Development Foundation"),
-                "title": _("Polaris KYC Information"),
-                "guidance": (
-                    _(
-                        "We're legally required to know our customers. "
-                        "Please enter the information requested."
-                    )
-                ),
-            }
+            return (
+                form,
+                {
+                    "icon_label": _("Stellar Development Foundation"),
+                    "title": _("Polaris KYC Information"),
+                    "guidance": (
+                        _(
+                            "We're legally required to know our customers. "
+                            "Please enter the information requested."
+                        )
+                    ),
+                },
+            )
         elif settings.LOCAL_MODE:
             # When in local mode, request session's are not authenticated,
             # which means account confirmation cannot be skipped. So we'll
             # return None instead of returning the confirm email page.
-            return
+            return None, None
         elif server_settings.EMAIL_HOST_USER and not account.confirmed:
-            return {
-                "title": CONFIRM_EMAIL_PAGE_TITLE,
-                "guidance": _(
-                    "We sent you a confirmation email. Once confirmed, "
-                    "continue on this page."
-                ),
-                "icon_label": _("Stellar Development Foundation"),
-            }
+            return (
+                None,
+                {
+                    "title": CONFIRM_EMAIL_PAGE_TITLE,
+                    "guidance": _(
+                        "We sent you a confirmation email. Once confirmed, "
+                        "continue on this page."
+                    ),
+                    "icon_label": _("Stellar Development Foundation"),
+                },
+            )
         else:
-            return None
+            return None, None
 
 
 class MyDepositIntegration(DepositIntegration):
@@ -170,25 +178,39 @@ class MyDepositIntegration(DepositIntegration):
             % memo
         )
 
-    def content_for_transaction(
+    def form_for_transaction(
         self, transaction: Transaction, post_data=None, amount=None
+    ) -> Optional[forms.Form]:
+        kyc_form, na = SEP24KYC.check_kyc(transaction, post_data=post_data)
+        if kyc_form:
+            return kyc_form
+        else:
+            return super().form_for_transaction(
+                transaction, post_data=post_data, amount=amount
+            )
+
+    def content_for_template(
+        self,
+        template: Template,
+        form: Optional[forms.Form] = None,
+        transaction: Optional[Transaction] = None,
     ) -> Optional[Dict]:
-        kyc_content = SEP24KYC.check_kyc(transaction, post_data=post_data)
+        na, kyc_content = SEP24KYC.check_kyc(transaction)
         if kyc_content:
             return kyc_content
-
-        form_content = super().content_for_transaction(
-            transaction, post_data=post_data, amount=amount
-        )
-        if not form_content:
-            return None
-
-        return {
-            "form": form_content.get("form"),
-            "title": _("Polaris Transaction Information"),
-            "guidance": _("Please enter the amount you would like to transfer."),
-            "icon_label": _("Stellar Development Foundation"),
-        }
+        elif template == Template.DEPOSIT:
+            if not form:
+                return None
+            return {
+                "title": _("Polaris Transaction Information"),
+                "guidance": _("Please enter the amount you would like to transfer."),
+                "icon_label": _("Stellar Development Foundation"),
+            }
+        elif template == Template.MORE_INFO:
+            return {
+                "title": _("Polaris Transaction Information"),
+                "icon_label": _("Stellar Development Foundation"),
+            }
 
     def after_form_validation(self, form: forms.Form, transaction: Transaction):
         try:
@@ -248,32 +270,46 @@ class MyDepositIntegration(DepositIntegration):
 
 
 class MyWithdrawalIntegration(WithdrawalIntegration):
-    def content_for_transaction(
+    def form_for_transaction(
         self, transaction: Transaction, post_data=None, amount=None
-    ) -> Optional[Dict]:
-        kyc_content = SEP24KYC.check_kyc(transaction, post_data)
-        if kyc_content:
-            return kyc_content
-
-        if transaction.amount_in:
+    ) -> Optional[forms.Form]:
+        kyc_form, na = SEP24KYC.check_kyc(transaction, post_data)
+        if kyc_form:
+            return kyc_form
+        elif transaction.amount_in:
             return None
-
-        if post_data:
-            form = WithdrawForm(transaction, post_data)
+        elif post_data:
+            return WithdrawForm(transaction, post_data)
         else:
-            form = WithdrawForm(transaction, initial=amount)
+            return WithdrawForm(transaction, initial=amount)
 
-        return {
-            "form": form,
-            "title": _("Polaris Transaction Information"),
-            "icon_label": _("Stellar Development Foundation"),
-            "guidance": (
-                _(
-                    "Please enter the banking details for the account "
-                    "you would like to receive your funds."
-                )
-            ),
-        }
+    def content_for_template(
+        self,
+        template: Template,
+        form: Optional[forms.Form] = None,
+        transaction: Optional[Transaction] = None,
+    ) -> Optional[Dict]:
+        na, content = SEP24KYC.check_kyc(transaction)
+        if content:
+            return content
+        elif template == Template.WITHDRAW:
+            if not form:
+                return None
+            return {
+                "title": _("Polaris Transaction Information"),
+                "icon_label": _("Stellar Development Foundation"),
+                "guidance": (
+                    _(
+                        "Please enter the banking details for the account "
+                        "you would like to receive your funds."
+                    )
+                ),
+            }
+        else:  # template == Template.MORE_INFO
+            return {
+                "title": _("Polaris Transaction Information"),
+                "icon_label": _("Stellar Development Foundation"),
+            }
 
     def after_form_validation(self, form: forms.Form, transaction: Transaction):
         try:

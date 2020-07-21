@@ -7,6 +7,7 @@ from rest_framework.request import Request
 
 from polaris.models import Transaction, Asset
 from polaris.integrations.forms import TransactionForm
+from polaris.templates import Template
 
 
 class DepositIntegration:
@@ -30,50 +31,34 @@ class DepositIntegration:
         """
         pass
 
-    def content_for_transaction(
+    def form_for_transaction(
         self,
         transaction: Transaction,
         post_data: Optional[QueryDict] = None,
         amount: Optional[Decimal] = None,
-    ) -> Optional[Dict]:
+    ) -> Optional[forms.Form]:
         """
-        This function should return a dictionary containing the next form class
-        to render for the user given the state of the interactive flow.
+        This function should return the next form to render for the user given the
+        state of the interactive flow.
 
-        For example, this function should return an instance of a ``TransactionForm``
+        For example, this function could return an instance of a ``TransactionForm``
         subclass. Once the form is submitted, Polaris will detect the form used
         is a ``TransactionForm`` subclass and update ``transaction.amount_in``
         with the amount specified in form.
-
-        The form will be rendered inside a django template that has several
-        pieces of content that can be replaced by returning a dictionary
-        containing the key-value pairs as shown below.
-        ::
-
-            def content_for_transaction(self, transaction, post_data = None, amount = None):
-                if post_data:
-                    form = TransactionForm(transaction, post_data)
-                else:
-                    form = TransactionForm(transaction, initial={"amount": amount})
-                return {
-                    "form": form,
-                    "title": "Deposit Transaction Form",
-                    "guidance": "Please enter the amount you would like to deposit.",
-                    "icon_label": "Stellar Development Foundation",
-                    "icon_path": "images/org_logo.png"
-                }
 
         If `post_data` is passed, it must be used to initialize the form returned so
         Polaris can validate the data submitted. If `amount` is passed, it can be used
         to pre-populate a ``TransactionForm`` amount field to improve the user
         experience.
+        ::
 
-        `icon_path` should be the relative file path to the image you would like to use
-        as the company icon in the UI. The file path should be relative to the value of
-        your ``STATIC_ROOT`` setting. If `icon_path` is not present, Polaris will use
-        the image specified by your TOML integration function's ``ORG_LOGO`` key.
-        Finally, if neither are present, Polaris will default to its default image.
-        All images will be rendered in a 100 x 150px sized box.
+            def form_for_transaction(self, transaction, post_data = None, amount = None):
+                if not transaction.amount_in:
+                    return
+                elif post_data:
+                    return TransactionForm(transaction, post_data)
+                else:
+                    return TransactionForm(transaction, initial={"amount": amount})
 
         After a form is submitted and validated, Polaris will call
         ``DepositIntegration.after_form_validation`` with the populated
@@ -83,23 +68,21 @@ class DepositIntegration:
 
         Finally, Polaris will call this function again to check if there is
         another form that needs to be rendered to the user. If you are
-        collecting KYC data, return a ``forms.Form`` with the fields you
+        collecting KYC data, you can return a ``forms.Form`` with the fields you
         need.
-
-        You can also return a dictionary without a ``form`` key. You should do
-        this if you are waiting on the user to take some action, like confirming
-        their email. Once confirmed, the next call to this function should return
-        the next form.
 
         This loop of submitting a form, validating & processing it, and checking
         for the next form will continue until this function returns ``None``.
 
-        When that happens, Polaris will update the Transaction status to
-        ``pending_user_transfer_start``. Once the user makes the deposit
-        to the anchor's bank account, ``RailsIntegration.poll_pending_deposits``
-        should detect the event, and Polaris will submit the transaction to the
-        stellar network, ultimately marking the transaction as ``complete`` upon
-        success.
+        When that happens, Polaris will check if ``content_for_template()`` also
+        returns ``None``. If that is the case, Polaris assumes the anchor is finished
+        collecting information and will update the Transaction status to
+        ``pending_user_transfer_start``.
+
+        If ``content_for_template()`` returns a dictionary, Polaris will serve a page
+        `without` a form. Anchors should do this when the user needs to take some action
+        in order to continue, such as confirming their email address. Once the user is
+        confirmed, ``form_for_transaction()`` should return the next form.
 
         :param transaction: the ``Transaction`` database object
         :param post_data: A `django request.POST`_ object
@@ -115,18 +98,76 @@ class DepositIntegration:
             return
 
         if post_data:
-            form = TransactionForm(transaction, post_data)
+            return TransactionForm(transaction, post_data)
         else:
-            form = TransactionForm(transaction, initial={"amount": amount})
+            return TransactionForm(transaction, initial={"amount": amount})
 
-        return {"form": form}
+    def content_for_template(
+        self,
+        template: Template,
+        form: Optional[forms.Form] = None,
+        transaction: Optional[Transaction] = None,
+    ) -> Optional[Dict]:
+        """
+        Return a dictionary containing page content to be used in the template passed for the
+        given `form` and `transaction`.
+
+        Polaris will pass one of the following ``polaris.templates.Template`` values:
+
+        * Template.DEPOSIT
+
+            The template used for deposit flows
+        * Template.MORE_INFO
+
+            The template used to show transaction details
+
+        The `form` parameter will always be ``None`` when `template` is
+        ``Template.MORE_INFO`` since that page does not display form content.
+
+        If `form` is ``None`` and `template_name` is **not** ``Template.MORE_INFO``,
+        returning ``None`` will signal to Polaris that the anchor is done collecting
+        information for the transaction. Returning content will signal to Polaris that
+        the user needs to take some action before receiving the next form, such as
+        confirming their email. In this case, make sure to return an appropriate
+        `guidance` message.
+
+        Using this function, anchors can change the page title, replace the company icon shown
+        on each page and its label, and give guidance to the user.
+        ::
+
+            def content_for_template(template_name, form=None, transaction=None):
+                ...
+                return {
+                    "title": "Deposit Transaction Form",
+                    "guidance": "Please enter the amount you would like to deposit.",
+                    "icon_label": "Stellar Development Foundation",
+                    "icon_path": "images/company-icon.png"
+                }
+
+        `title` is the browser tab's title, and `guidance` is shown as plain text on the
+        page. `icon_label` is the label for the icon specified by `icon_path`.
+
+        `icon_path` should be the relative file path to the image you would like to use
+        as the company icon in the UI. The file path should be relative to the value of
+        your ``STATIC_ROOT`` setting. If `icon_path` is not present, Polaris will use
+        the image specified by your TOML integration function's ``ORG_LOGO`` key.
+
+        Finally, if neither are present, Polaris will default to its default image.
+        All images will be rendered in a 100 x 150px sized box.
+
+        :param template: a ``polaris.templates.Template`` enum value
+            for the template to be rendered in the response
+        :param form: the form to be rendered in the template
+        :param transaction: the transaction being processed
+        """
+        pass
 
     def after_form_validation(self, form: forms.Form, transaction: Transaction):
         """
         Use this function to process the data collected with `form` and to update
         the state of the interactive flow so that the next call to
-        ``DepositIntegration.content_for_transaction`` returns a dictionary
-        containing the next form to render to the user, or returns None.
+        ``DepositIntegration.form_for_transaction`` returns the next form to render
+        to the user, or returns None.
 
         Keep in mind that if a ``TransactionForm`` is submitted, Polaris will
         update the `amount_in` and `amount_fee` with the information collected.
@@ -137,7 +178,7 @@ class DepositIntegration:
         particular values at different points in the flow.
 
         If you need to store some data to determine which form to return next when
-        ``DepositIntegration.content_for_transaction`` is called, store this
+        ``DepositIntegration.form_for_transaction`` is called, store this
         data in a model not used by Polaris.
 
         :param form: the completed ``forms.Form`` submitted by the user
@@ -178,7 +219,7 @@ class DepositIntegration:
     def save_sep9_fields(self, stellar_account: str, fields: Dict, language_code: str):
         """
         Save the `fields` passed for `stellar_account` to pre-populate the forms returned
-        from ``content_for_transaction()``. Note that this function is called before
+        from ``form_for_transaction()``. Note that this function is called before
         the transaction is created.
 
         For example, you could save the user's contact information with the model used
@@ -195,16 +236,13 @@ class DepositIntegration:
         saved in this method relevant to that form.
         ::
 
-            # In your content_for_transaction() implementation
+            # In your form_for_transaction() implementation
             user = user_for_account(transaction.stellar_account)
             form_args = {
                 'phone_number': format_number(user.phone_number),
                 'email': user.email_address
             }
-            return {
-                'form': KYCForm(initial=form_args),
-                'title': "KYC Collection"
-            }
+            return KYCForm(initial=form_args),
 
         If you'd like to validate the values passed in `fields`, you can perform any necessary
         checks and raise a ``ValueError`` in this function. Polaris will return the message of
@@ -273,37 +311,56 @@ class WithdrawalIntegration:
     ``polaris.integrations.register_integrations``.
     """
 
-    def content_for_transaction(
+    def form_for_transaction(
         self,
         transaction: Transaction,
         post_data: Optional[QueryDict] = None,
         amount: Optional[Decimal] = None,
-    ) -> Optional[Dict]:
+    ) -> Optional[forms.Form]:
         """
         .. _django request.POST: https://docs.djangoproject.com/en/3.0/ref/request-response/#django.http.HttpRequest.POST
         .. _SEP-9: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0009.md
 
-        Same as ``DepositIntegration.content_for_transaction``
+        Same as ``DepositIntegration.form_for_transaction``
 
         :param transaction: the ``Transaction`` database object
         :param post_data: A `django request.POST`_ object
         :param amount: a ``Decimal`` object the wallet may pass in the GET request.
             Use it to pre-populate your TransactionForm along with any SEP-9_
             parameters.
-        :return: a dictionary containing various pieces of information to use
-            when rendering the next page.
         """
         if transaction.amount_in:
             # we've collected transaction info
             # and don't implement KYC by default
             return
-
-        if post_data:
-            form = TransactionForm(transaction, post_data)
+        elif post_data:
+            return TransactionForm(transaction, post_data)
         else:
-            form = TransactionForm(transaction, initial={"amount": amount})
+            return TransactionForm(transaction, initial={"amount": amount})
 
-        return {"form": form}
+    def content_for_template(
+        self,
+        template: Template,
+        form: Optional[forms.Form] = None,
+        transaction: Optional[Transaction] = None,
+    ):
+        """
+        Same as ``DepositIntegration.content_for_template``, except the ``Template``
+        values passed will be one of:
+
+        * Template.WITHDRAW
+
+            The template used for withdraw flows
+        * Template.MORE_INFO
+
+            The template used to show transaction details
+
+        :param template: a ``polaris.templates.Template`` enum value
+            for the template to be rendered in the response
+        :param form: the form to be rendered in the template
+        :param transaction: the transaction being processed
+        """
+        pass
 
     def after_form_validation(self, form: TransactionForm, transaction: Transaction):
         """

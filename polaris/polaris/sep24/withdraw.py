@@ -15,6 +15,7 @@ from rest_framework.request import Request
 from rest_framework.renderers import TemplateHTMLRenderer, JSONRenderer
 
 from polaris import settings
+from polaris.templates import Template
 from polaris.utils import (
     render_error_response,
     Logger,
@@ -56,15 +57,15 @@ def post_interactive_withdraw(request: Request) -> Response:
     flow. The following steps are taken during this process:
 
         1. URL arguments are parsed and validated.
-        2. content_for_transaction() is called to retrieve the form used to
+        2. form_for_transaction() is called to retrieve the form used to
            submit this request. This function is implemented by the anchor.
         3. The form is used to validate the data submitted, and if the form
            is a TransactionForm, the fee for the transaction is calculated.
         4. after_form_validation() is called to allow the anchor to process
            the data submitted. This function should change the application
-           state such that the next call to content_for_transaction() returns
+           state such that the next call to form_for_transaction() returns
            the next form in the flow.
-        5. content_for_transaction() is called again to retrieve the next
+        5. form_for_transaction() is called again to retrieve the next
            form to be served to the user. If a form is returned, the
            function redirects to GET /transaction/deposit/webapp. Otherwise,
            The user's session is invalidated, the transaction status is
@@ -79,11 +80,13 @@ def post_interactive_withdraw(request: Request) -> Response:
     callback = args_or_error["callback"]
     amount = args_or_error["amount"]
 
-    content = rwi.content_for_transaction(transaction, post_data=request.POST)
-    if not (content and content.get("form")):
+    form = rwi.form_for_transaction(transaction, post_data=request.POST)
+    content = rwi.content_for_template(
+        Template.WITHDRAW, form=form, transaction=transaction
+    )
+    if not form:
         logger.error(
-            "Initial content_for_transaction() call returned None "
-            f"for {transaction.id}"
+            "Initial form_for_transaction() call returned None " f"for {transaction.id}"
         )
         if transaction.status != transaction.STATUS.incomplete:
             return render_error_response(
@@ -99,9 +102,9 @@ def post_interactive_withdraw(request: Request) -> Response:
             content_type="text/html",
         )
 
-    form = content.get("form")
     if not form.is_bound:
         # The anchor must initialize the form with the request.POST data
+        logger.error("form returned was not initialized with POST data, returning 500")
         return render_error_response(
             _("Unable to validate form submission."),
             status_code=500,
@@ -114,8 +117,10 @@ def post_interactive_withdraw(request: Request) -> Response:
             transaction.save()
 
         rwi.after_form_validation(form, transaction)
-
-        if rwi.content_for_transaction(transaction):
+        next_form = rwi.form_for_transaction(transaction)
+        if next_form or rwi.content_for_template(
+            Template.WITHDRAW, form=next_form, transaction=transaction
+        ):
             args = {"transaction_id": transaction.id, "asset_code": asset.code}
             if amount:
                 args["amount"] = amount
@@ -149,7 +154,7 @@ def post_interactive_withdraw(request: Request) -> Response:
             return redirect(f"{url}?{args}")
 
     else:
-        scripts = registered_scripts_func(content)
+        scripts = registered_scripts_func({"form": form, **content})
 
         url_args = {"transaction_id": transaction.id, "asset_code": asset.code}
         if callback:
@@ -217,7 +222,7 @@ def get_interactive_withdraw(request: Request) -> Response:
            returned, this function redirects to the URL. However, the session
            cookie should still be included in the response so future calls to
            GET /transactions/withdraw/interactive/complete are authenticated.
-        3. content_for_transaction() is called to retrieve the next form to
+        3. form_for_transaction() is called to retrieve the next form to
            render to the user.
         4. get and post URLs are constructed with the appropriate arguments
            and passed to the response to be rendered to the user.
@@ -235,8 +240,11 @@ def get_interactive_withdraw(request: Request) -> Response:
     if url:  # The anchor uses a standalone interactive flow
         return redirect(url)
 
-    content = rwi.content_for_transaction(transaction, amount=amount)
-    if not content:
+    form = rwi.form_for_transaction(transaction, amount=amount)
+    content = rwi.content_for_template(
+        Template.WITHDRAW, form=form, transaction=transaction
+    )
+    if not (form or content):
         logger.error("The anchor did not provide content, unable to serve page.")
         if transaction.status != transaction.STATUS.incomplete:
             return render_error_response(
@@ -251,8 +259,10 @@ def get_interactive_withdraw(request: Request) -> Response:
             status_code=500,
             content_type="text/html",
         )
+    elif content is None:
+        content = {}
 
-    scripts = registered_scripts_func(content)
+    scripts = registered_scripts_func({"form": form, **content})
 
     url_args = {"transaction_id": transaction.id, "asset_code": asset.code}
     if callback:
@@ -263,6 +273,7 @@ def get_interactive_withdraw(request: Request) -> Response:
     post_url = f"{reverse('post_interactive_withdraw')}?{urlencode(url_args)}"
     get_url = f"{reverse('get_interactive_withdraw')}?{urlencode(url_args)}"
     content.update(
+        form=form,
         post_url=post_url,
         get_url=get_url,
         scripts=scripts,
