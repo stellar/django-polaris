@@ -451,13 +451,13 @@ class Transaction(models.Model):
     require updated information from the sender
     """
 
-    deposit_memo = models.TextField(null=True, blank=True)
+    memo = models.TextField(null=True, blank=True)
     """
     (optional) Value of memo to attach to transaction, for hash this should
     be base64-encoded.
     """
 
-    deposit_memo_type = models.CharField(
+    memo_type = models.CharField(
         choices=MEMO_TYPES, default=MEMO_TYPES.text, max_length=10
     )
     """
@@ -472,22 +472,6 @@ class Transaction(models.Model):
     withdrawal. The anchor can use account to look up the user's KYC 
     information.
     """
-
-    withdraw_memo = models.TextField(null=True, blank=True)
-    """(if specified) use this memo in the payment transaction to the anchor."""
-
-    withdraw_memo_type = models.CharField(
-        choices=MEMO_TYPES, default=MEMO_TYPES.text, max_length=10
-    )
-    """Field for the ``MEMO_TYPES`` Choices"""
-
-    send_memo = models.TextField(null=True, blank=True)
-    """The memo to attach to the stellar payment"""
-
-    send_memo_type = models.CharField(
-        choices=MEMO_TYPES, default=MEMO_TYPES.text, max_length=10
-    )
-    """Field for the ``MEMO_TYPES`` Choices"""
 
     send_anchor_account = models.TextField(null=True, blank=True)
     """
