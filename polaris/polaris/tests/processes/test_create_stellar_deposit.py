@@ -13,7 +13,7 @@ from polaris.tests.conftest import (
     ETH_DISTRIBUTION_SEED,
 )
 from polaris.tests.sep24.test_deposit import HORIZON_SUCCESS_RESPONSE
-from polaris.utils import TRUSTLINE_FAILURE_XDR, create_stellar_deposit
+from polaris.utils import create_stellar_deposit
 from polaris.models import Transaction
 
 
@@ -91,7 +91,13 @@ def test_deposit_stellar_success(acc1_usd_deposit_transaction_factory):
 
 
 no_trust_exp = BaseHorizonError(
-    Mock(json=Mock(return_value={"extras": {"result_xdr": TRUSTLINE_FAILURE_XDR}}))
+    Mock(
+        json=Mock(
+            return_value={
+                "extras": {"result_xdr": "AAAAAAAAAGT/////AAAAAQAAAAAAAAAB////+gAAAAA="}
+            }
+        )
+    )
 )
 
 
