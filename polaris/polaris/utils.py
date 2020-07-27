@@ -11,15 +11,12 @@ from rest_framework import status
 from rest_framework.response import Response
 from stellar_sdk.transaction_builder import TransactionBuilder
 from stellar_sdk.exceptions import BaseHorizonError
+from stellar_sdk.xdr import StellarXDR_const as const
 from stellar_sdk.xdr.StellarXDR_type import TransactionResult
 from stellar_sdk import Memo, TextMemo, IdMemo, HashMemo
 
 from polaris import settings
 from polaris.models import Transaction
-
-
-TRUSTLINE_FAILURE_XDR = "AAAAAAAAAGT/////AAAAAQAAAAAAAAAB////+gAAAAA="
-SUCCESS_XDR = "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA="
 
 
 class Logger:
@@ -248,7 +245,9 @@ def create_stellar_deposit(transaction_id: str) -> bool:
         response = server.submit_transaction(transaction_envelope)
     # Functional errors at this stage are Horizon errors.
     except BaseHorizonError as exception:
-        if TRUSTLINE_FAILURE_XDR not in exception.result_xdr:  # pragma: no cover
+        tx_result = TransactionResult.from_xdr(exception.result_xdr)
+        op_result = tx_result.result.results[0]
+        if op_result.tr.paymentResult.code != const.PAYMENT_NO_TRUST:
             msg = (
                 "Unable to submit payment to horizon, "
                 f"non-trustline failure: {exception.message}"
@@ -265,11 +264,11 @@ def create_stellar_deposit(transaction_id: str) -> bool:
         transaction.save()
         return False
 
-    if response["result_xdr"] != SUCCESS_XDR:  # pragma: no cover
+    if not response.get("successful"):
         transaction_result = TransactionResult.from_xdr(response["result_xdr"])
         msg = (
             "Stellar transaction failed when submitted to horizon: "
-            f"{transaction_result.result}"
+            f"{transaction_result.result.results}"
         )
         logger.error(msg)
         transaction.status_message = msg

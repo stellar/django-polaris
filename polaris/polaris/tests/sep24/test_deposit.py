@@ -11,7 +11,6 @@ import pytest
 from stellar_sdk import Keypair, TransactionEnvelope
 
 from polaris import settings
-from polaris.utils import SUCCESS_XDR
 from polaris.tests.helpers import (
     mock_check_auth_success,
     interactive_jwt_payload,
@@ -21,7 +20,7 @@ from polaris.tests.helpers import (
 WEBAPP_PATH = "/sep24/transactions/deposit/webapp"
 DEPOSIT_PATH = "/sep24/transactions/deposit/interactive"
 HORIZON_SUCCESS_RESPONSE = {
-    "result_xdr": SUCCESS_XDR,
+    "successful": True,
     "id": "test_stellar_id",
     "paging_token": "123456789",
 }
