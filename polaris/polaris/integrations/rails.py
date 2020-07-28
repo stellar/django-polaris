@@ -34,8 +34,8 @@ class RailsIntegration:
         When this function is called, ``transaction.amount_in`` is the amount sent
         to the anchor, `not the amount specified in a SEP-24 or SEP-31 API call`.
         This matters because the amount actually sent to the anchor may differ from
-        the amount specified in an API call. If the amount differs from the original
-        amount but is still valid, do not forget to recalculate ``amount_fee``.
+        the amount specified in an API call. That is why you should always validate
+        ``transaction.amount_in`` and calculate ``transaction.amount_fee`` here.
 
         If the amount is invalid in some way, the anchor must choose how to handle it.
         If you choose to refund the payment in its entirety, change ``transaction.status``
