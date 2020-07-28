@@ -97,8 +97,6 @@ class TransactionSerializer(serializers.ModelSerializer):
             "external_transaction_id",
             "from_address",
             "to_address",
-            "memo",
-            "memo_type",
             "receiving_anchor_account",
             "memo",
             "memo_type",
