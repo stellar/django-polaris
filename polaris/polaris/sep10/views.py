@@ -10,10 +10,11 @@ import binascii
 import time
 import jwt
 
-from django.http import JsonResponse
+from django.utils.translation import gettext as _
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.request import Request
+from rest_framework.response import Response
 from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 from stellar_sdk.sep.stellar_web_authentication import (
     build_challenge_transaction,
@@ -25,7 +26,7 @@ from stellar_sdk.sep.exceptions import InvalidSep10ChallengeError
 from stellar_sdk.exceptions import NotFoundError
 
 from polaris import settings
-from polaris.utils import Logger
+from polaris.utils import Logger, render_error_response
 
 MIME_URLENCODE, MIME_JSON = "application/x-www-form-urlencoded", "application/json"
 ANCHOR_NAME = "SEP 24 Reference"
@@ -45,20 +46,20 @@ class SEP10Auth(APIView):
     ###############
     # GET functions
     ###############
-    def get(self, request, *args, **kwargs) -> JsonResponse:
+    def get(self, request, *args, **kwargs) -> Response:
         account = request.GET.get("account")
         if not account:
-            return JsonResponse(
+            return Response(
                 {"error": "no 'account' provided"}, status=status.HTTP_400_BAD_REQUEST
             )
 
         try:
             transaction = self._challenge_transaction(account)
         except ValueError as e:
-            return JsonResponse({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         logger.info(f"Returning SEP-10 challenge for account {account}")
-        return JsonResponse(
+        return Response(
             {
                 "transaction": transaction,
                 "network_passphrase": settings.STELLAR_NETWORK_PASSPHRASE,
@@ -83,14 +84,16 @@ class SEP10Auth(APIView):
     ################
     # POST functions
     ################
-    def post(self, request: Request, *args, **kwargs) -> JsonResponse:
+    def post(self, request: Request, *args, **kwargs) -> Response:
+        envelope_xdr = request.data.get("transaction")
+        if not envelope_xdr:
+            return render_error_response(_("'transaction' is required"))
         try:
-            envelope_xdr = request.data.get("transaction")
             self._validate_challenge_xdr(envelope_xdr)
         except ValueError as e:
-            return JsonResponse({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         else:
-            return JsonResponse({"token": self._generate_jwt(request, envelope_xdr)})
+            return Response({"token": self._generate_jwt(request, envelope_xdr)})
 
     @staticmethod
     def _validate_challenge_xdr(envelope_xdr: str):
