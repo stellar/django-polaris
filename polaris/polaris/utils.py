@@ -174,7 +174,7 @@ def create_stellar_deposit(transaction_id: str) -> bool:
         transaction.asset.significant_decimals,
     )
     asset = transaction.asset
-    memo = make_memo(transaction.deposit_memo, transaction.deposit_memo_type)
+    memo = make_memo(transaction.memo, transaction.memo_type)
 
     # If the given Stellar account does not exist, create
     # the account with at least enough XLM for the minimum

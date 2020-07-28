@@ -46,7 +46,7 @@ def test_process_response_success(
     json = deepcopy(TRANSACTION_JSON)
     json["successful"] = True
     json["id"] = transaction.id
-    json["memo"] = transaction.withdraw_memo
+    json["memo"] = transaction.memo
 
     Command.process_response(json, None)
 
@@ -69,7 +69,7 @@ def test_process_response_unsuccessful(
     json = deepcopy(TRANSACTION_JSON)
     json["successful"] = False
     json["id"] = transaction.id
-    json["memo"] = transaction.withdraw_memo
+    json["memo"] = transaction.memo
 
     Command.process_response(json, None)
 
@@ -93,7 +93,7 @@ def test_match_with_no_amount(
     json = deepcopy(TRANSACTION_JSON)
     json["successful"] = True
     json["id"] = transaction.id
-    json["memo"] = transaction.withdraw_memo
+    json["memo"] = transaction.memo
 
     Command.process_response(json, None)
 

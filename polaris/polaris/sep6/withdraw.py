@@ -57,19 +57,19 @@ def withdraw(account: str, request: Request) -> Response:
         transaction_id = create_transaction_id()
         transaction_id_hex = transaction_id.hex
         padded_hex_memo = "0" * (64 - len(transaction_id_hex)) + transaction_id_hex
-        withdraw_memo = memo_hex_to_base64(padded_hex_memo)
+        memo = memo_hex_to_base64(padded_hex_memo)
         Transaction.objects.create(
             id=transaction_id,
             stellar_account=account,
             asset=args["asset"],
             kind=Transaction.KIND.withdrawal,
             status=Transaction.STATUS.pending_user_transfer_start,
-            withdraw_anchor_account=args["asset"].distribution_account,
-            withdraw_memo=withdraw_memo,
-            withdraw_memo_type=Transaction.MEMO_TYPES.hash,
+            receiving_anchor_account=args["asset"].distribution_account,
+            memo=memo,
+            memo_type=Transaction.MEMO_TYPES.hash,
             protocol=Transaction.PROTOCOL.sep6,
         )
-        response["memo"] = withdraw_memo
+        response["memo"] = memo
         response["memo_type"] = Transaction.MEMO_TYPES.hash
         logger.info(f"Created withdraw transaction {transaction_id}")
 

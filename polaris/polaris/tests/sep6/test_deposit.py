@@ -164,9 +164,9 @@ def test_deposit_transaction_created(
             "memo": 123,
         },
     )
-    t = Transaction.objects.filter(deposit_memo="123").first()
+    t = Transaction.objects.filter(memo="123").first()
     assert t
-    assert t.deposit_memo_type == Transaction.MEMO_TYPES.id
+    assert t.memo_type == Transaction.MEMO_TYPES.id
     assert t.stellar_account == "test source address"
     assert not t.amount_in
     assert t.to_address == "test source address"

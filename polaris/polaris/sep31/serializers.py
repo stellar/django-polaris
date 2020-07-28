@@ -17,15 +17,15 @@ class SEP31TransactionSerializer(serializers.ModelSerializer):
 
     @staticmethod
     def get_stellar_account_id(instance):
-        return instance.send_anchor_account
+        return instance.receiving_anchor_account
 
     @staticmethod
     def get_stellar_memo(instance):
-        return instance.send_memo
+        return instance.memo
 
     @staticmethod
     def get_stellar_memo_type(instance):
-        return instance.send_memo_type
+        return instance.memo_type
 
     @staticmethod
     def get_required_info_message(instance):

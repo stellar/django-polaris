@@ -144,7 +144,7 @@ def post_interactive_withdraw(request: Request) -> Response:
             # appropriately sized string for the `HashMemo`.
             transaction_id_hex = transaction.id.hex
             padded_hex_memo = "0" * (64 - len(transaction_id_hex)) + transaction_id_hex
-            transaction.withdraw_memo = memo_hex_to_base64(padded_hex_memo)
+            transaction.memo = memo_hex_to_base64(padded_hex_memo)
             # Update status
             # This signals to the wallet that the transaction can be submitted
             transaction.status = Transaction.STATUS.pending_user_transfer_start
@@ -333,8 +333,8 @@ def withdraw(account: str, request: Request) -> Response:
         asset=asset,
         kind=Transaction.KIND.withdrawal,
         status=Transaction.STATUS.incomplete,
-        withdraw_anchor_account=asset.distribution_account,
-        withdraw_memo_type=Transaction.MEMO_TYPES.hash,
+        receiving_anchor_account=asset.distribution_account,
+        memo_type=Transaction.MEMO_TYPES.hash,
         protocol=Transaction.PROTOCOL.sep24,
     )
     logger.info(f"Created withdrawal transaction {transaction_id}")

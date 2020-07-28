@@ -274,7 +274,7 @@ class Transaction(models.Model):
     STATUS = PolarisChoices(*list(status_to_message.keys()))
 
     MEMO_TYPES = PolarisChoices("text", "id", "hash")
-    """Type for the ``deposit_memo``. Can be either `hash`, `id`, or `text`"""
+    """Type for the ``memo``. Can be either `hash`, `id`, or `text`"""
 
     PROTOCOL = PolarisChoices("sep6", "sep24", "sep31")
     """Values for `protocol` column"""
