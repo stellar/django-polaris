@@ -465,17 +465,9 @@ class Transaction(models.Model):
     transaction, one of text, id or hash.
     """
 
-    withdraw_anchor_account = models.TextField(null=True, blank=True)
+    receiving_anchor_account = models.TextField(null=True, blank=True)
     """
-    (optional) The stellar account ID of the user that wants to do the 
-    withdrawal. This is only needed if the anchor requires KYC information for
-    withdrawal. The anchor can use account to look up the user's KYC 
-    information.
-    """
-
-    send_anchor_account = models.TextField(null=True, blank=True)
-    """
-    Stellar account to send payment to
+    Stellar account to send payment or withdrawal funds to
     """
 
     refunded = models.BooleanField(default=False)
