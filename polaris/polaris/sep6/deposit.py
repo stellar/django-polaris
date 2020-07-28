@@ -37,8 +37,21 @@ def deposit(account: str, request: Request) -> Response:
         return args["error"]
     args["account"] = account
 
+    transaction_id = create_transaction_id()
+    transaction = Transaction(
+        id=transaction_id,
+        stellar_account=account,
+        asset=args["asset"],
+        kind=Transaction.KIND.deposit,
+        status=Transaction.STATUS.pending_user_transfer_start,
+        memo=args["memo"],
+        memo_type=args["memo_type"] or Transaction.MEMO_TYPES.text,
+        to_address=account,
+        protocol=Transaction.PROTOCOL.sep6,
+    )
+
     try:
-        integration_response = rdi.process_sep6_request(args)
+        integration_response = rdi.process_sep6_request(args, transaction)
     except ValueError as e:
         return render_error_response(str(e))
 
@@ -50,19 +63,13 @@ def deposit(account: str, request: Request) -> Response:
         )
 
     if status_code == 200:
-        transaction_id = create_transaction_id()
-        Transaction.objects.create(
-            id=transaction_id,
-            stellar_account=account,
-            asset=args["asset"],
-            kind=Transaction.KIND.deposit,
-            status=Transaction.STATUS.pending_user_transfer_start,
-            memo=args["memo"],
-            memo_type=args["memo_type"] or Transaction.MEMO_TYPES.text,
-            to_address=account,
-            protocol=Transaction.PROTOCOL.sep6,
+        logger.info(f"Created deposit transaction {transaction.id}")
+        transaction.save()
+    elif Transaction.objects.filter(id=transaction.id).exists():
+        logger.error("Do not save transaction objects for invalid SEP-6 requests")
+        return render_error_response(
+            _("unable to process the request"), status_code=500
         )
-        logger.info(f"Created deposit transaction {transaction_id}")
 
     return Response(response, status=status_code)
 
