@@ -458,17 +458,17 @@ bad_save_integration = Mock(
             },
         }
     ),
-    process_send_request=bad_process_send_request,
+    process_post_request=bad_process_send_request,
 )
 
 
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-@patch("polaris.sep31.send.registered_send_integration", bad_save_integration)
+@patch("polaris.sep31.transactions.registered_sep31_receiver_integration", bad_save_integration)
 def test_bad_save(client, usd_asset_factory):
     asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31])
     response = client.post(
-        send_endpoint,
+        transaction_endpoint,
         {
             "asset_code": asset.code,
             "asset_issuer": asset.issuer,

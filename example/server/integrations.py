@@ -593,7 +593,9 @@ class MySEP31ReceiverIntegration(SEP31ReceiverIntegration):
             },
         }
 
-    def process_post_request(self, params: Dict, transaction_id: str) -> Optional[Dict]:
+    def process_send_request(
+        self, params: Dict, transaction: Transaction
+    ) -> Optional[Dict]:
         _ = params.get("sender_id")  # not actually used
         receiver_id = params.get("receiver_id")
         transaction_fields = params.get("fields", {}).get("transaction")
@@ -611,7 +613,7 @@ class MySEP31ReceiverIntegration(SEP31ReceiverIntegration):
             receiving_user.save()
         # Transaction doesn't yet exist so transaction_id is a text field
         PolarisUserTransaction.objects.create(
-            user=receiving_user, transaction_id=transaction_id
+            user=receiving_user, transaction_id=transaction.id
         )
 
     def process_patch_request(self, params: Dict, transaction: Transaction):
@@ -730,7 +732,7 @@ class MyRailsIntegration(RailsIntegration):
             # Parse a mock bank API response to demonstrate how an anchor would
             # report back to the sending anchor which fields needed updating.
             error_fields = response.error.fields
-            info_fields = MySendIntegration().info(transaction.asset)
+            info_fields = MySEP31ReceiverIntegration().info(transaction.asset)
             required_info_update = defaultdict(dict)
             for field in error_fields:
                 if "name" in field:
