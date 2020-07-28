@@ -440,3 +440,43 @@ def test_bad_field_value_in_response():
             },
             Mock(id=uuid.uuid4()),
         )
+
+
+def bad_process_send_request(args, transaction):
+    transaction.save()
+    return {
+        "error": "customer_info_needed",
+        "fields": {"transaction": {"bank_account": {"description": "bank account"}}},
+    }
+
+
+bad_save_integration = Mock(
+    info=Mock(
+        return_value={
+            "fields": {
+                "transaction": {"bank_account": {"description": "bank account"}}
+            },
+        }
+    ),
+    process_send_request=bad_process_send_request,
+)
+
+
+@pytest.mark.django_db
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch("polaris.sep31.send.registered_send_integration", bad_save_integration)
+def test_bad_save(client, usd_asset_factory):
+    asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31])
+    response = client.post(
+        send_endpoint,
+        {
+            "asset_code": asset.code,
+            "asset_issuer": asset.issuer,
+            "amount": 100,
+            "fields": {"transaction": {"bank_account": "fake account"},},
+        },
+        content_type="application/json",
+    )
+    body = response.json()
+    assert response.status_code == 500
+    assert "error" in body
