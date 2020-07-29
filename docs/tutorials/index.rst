@@ -223,6 +223,26 @@ Running the SEP-24 service
 
 Polaris is a multi-process application, and ``poll_pending_deposits()`` and ``execute_outgoing_transation()`` are both called from their own process so that calling one is not delayed by calling the other. An easy way to run multi-process applications is with docker-compose_.
 
+First, create a ``requirements.txt`` file in the project's root directory:
+::
+
+    pip freeze > requirements.txt
+
+Now, lets write a simple ``Dockerfile`` in the project's root directory:
+::
+
+    FROM python:3.7-slim-buster
+
+    RUN apt-get update && apt-get install -y build-essential
+    WORKDIR /home
+    RUN mkdir /home/data
+    COPY app /home/app/
+    COPY .env requirements.txt /home/
+
+    RUN pip install -r requirements.txt && python /home/app/manage.py collectstatic --no-input
+
+    CMD python /home/app/manage.py runserver --nostatic 0.0.0.0:8000
+
 Write the following to a ``docker-compose.yml`` file within the project's root directory:
 ::
 
