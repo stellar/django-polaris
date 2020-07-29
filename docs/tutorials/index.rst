@@ -190,6 +190,32 @@ Since we won't be sending users their withdrawn funds from testnet either, we si
 
 Again, there are many more integrations Polaris provides, most notably those implemented by the ``DepositIntegration`` and ``WithdrawalIntegration`` classes. See the :doc:`SEP-6 & 24 documentation </sep6_and_sep24/index>` to see what else Polaris offers. You'll also likely want to add information to your :doc:`SEP-1 TOML file </sep1/index>`.
 
+Registering integrations
+------------------------
+
+Create an ``apps.py`` file within the inner ``app`` directory. We'll subclass Django's ``AppConfig`` class and register our integrations from its ``ready()`` function.
+::
+
+    from django.apps import AppConfig
+
+    class MyAppConfig(AppConfig):
+        name = "app"
+
+        def ready(self):
+            from polaris.integrations import register_integrations
+            from .integrations import MyRailsIntegration
+
+            register_integrations(
+                rails=MyRailsIntegration()
+            )
+
+Now we need to tell Django where to find our `AppConfig` subclass. Create or update the ``__init__.py`` file within the inner ``app`` directory and add the following:
+::
+
+    default_app_config = "app.apps.MyAppConfig"
+
+Polaris should now use your rails integrations, but these integration functions are not called from the web server process that we ran with the ``runserver`` command.
+
 Running the SEP-24 service
 --------------------------
 
@@ -238,11 +264,11 @@ Write the following to a ``docker-compose.yml`` file within the project's root d
           - ./data:/home/data
         command: python app/manage.py poll_pending_deposits --loop
 
-You'll notice we're also running the ``watch_transaction`` process. This Polaris CLI command streams payment transactions from every anchored asset's distribution account and updates the transaction's status to ``pending_anchor``. ``execute_outgoing_transactions`` then periodically queries for ``pending_anchor`` transactions so the anchor can send the withdrawn funds to the user.
+You'll notice we're also running the ``watch_transaction`` process. This Polaris CLI command streams payment transactions from every anchored asset's distribution account and updates the transaction's status to ``pending_anchor``. The ``execute_outgoing_transactions`` command then periodically queries for ``pending_anchor`` transactions so the funds withdrawn from Stellar can be sent off-chain to the user.
 
 Additionally, we're going to run the ``check_trustlines`` command. This Polaris command periodically checks the accounts that requested deposits but can't receive our payment due to lacking a trustline to our asset.
 
-Polaris comes with other commands that we won't run in this tutorial. For example, if our payment rails take some time before the user receives the funds sent, we could place the transaction the ``pending_external`` status, and our ``poll_outgoing_transactions`` Polaris CLI command would periodically check if the funds were received by the user and updating the status to ``completed`` if so.
+Polaris comes with other commands that we won't run in this tutorial. For example, the ``poll_outgoing_transactions`` Polaris CLI command could periodically check if the funds sent off-chain were received by the user and update the status to ``completed`` if so. You should do this on mainnet if your payment rails take some time before the user receives the funds sent off-chain.
 
 Now that our multi-process application is defined, lets build and run the containers:
 ::
@@ -251,3 +277,19 @@ Now that our multi-process application is defined, lets build and run the contai
     docker-compose up
 
 You should now be able to successfully deposit and withdraw funds on testnet using the SDF's demo client via SEP-24.
+
+What to read next
+-----------------
+
+If you want to continue building your SEP-24 server, some useful sections of the documentation are listed below.
+
+- :ref:`Adding information to the SEP-1 TOML file <sep1_integrations>`
+
+- :ref:`Collection & validating KYC data <sep24_integrations>`
+
+- :ref:`Customizing Polaris' static assets <static_assets>`
+
+- :ref:`Customizing transaction fee calculation <fee_integration>`
+
+Otherwise, check out the documentation page for each additional step you want to implement.
+
