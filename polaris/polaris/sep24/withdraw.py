@@ -262,7 +262,10 @@ def get_interactive_withdraw(request: Request) -> Response:
     elif content is None:
         content = {}
 
-    scripts = registered_scripts_func({"form": form, **content})
+    if form:
+        scripts = registered_scripts_func({"form": form, **content})
+    else:
+        scripts = registered_scripts_func(content)
 
     url_args = {"transaction_id": transaction.id, "asset_code": asset.code}
     if callback:
