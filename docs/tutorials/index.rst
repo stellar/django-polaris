@@ -81,6 +81,21 @@ Finally, allow Polaris to override Django's default form widget HTML & CSS.
 
     FORM_RENDERER = "django.forms.renderers.TemplatesSetting"
 
+Add Polaris endpoints
+----------------------
+
+Add Polaris' endpoints to ``urls.py`` in the ``app`` inner directory:
+::
+
+    from django.contrib import admin
+    from django.urls import path, include
+    import polaris.urls
+
+    urlpatterns = [
+        path('admin/', admin.site.urls),
+        path("", include(polaris.urls))
+    ]
+
 Specify environment variables
 -----------------------------
 
@@ -97,16 +112,6 @@ Many of these are self-explanatory, but ``LOCAL_MODE`` ensures Polaris runs prop
 
 There is one more variable that must be added to ``.env``, but we're going to wait until we issue the asset we intend to anchor.
 
-Collect static assets
----------------------
-
-Now that your settings are configured correctly, we can collect the static assets our app will use into a single directory that ``whitenoise`` can use.
-::
-
-    python manage.py collectstatic --no-input
-
-A ``collectstatic`` directory should now be created in the outer ``app`` directory containing the static files.
-
 Issue and add your asset
 ------------------------
 
@@ -117,7 +122,12 @@ Use `this tool`_ to create a token as well as setup issuer and distribution acco
 
     npx create-stellar-token --asset=TEST
 
-It should output a public and secret key for both the issuer and distribution account. Use these keypairs in the following steps.
+It should output a public and secret key for both the issuer and distribution account.
+
+Now, add an environment variable for the account used to sign SEP-10 transactions. You can use a random keypair, but a common pattern is to use the distribution account's public key. In ``.env`` or ``ENV_PATH``:
+::
+
+    SIGNING_SEED=<TEST's distribution account seed>
 
 Add the asset to the database
 -----------------------------
@@ -134,7 +144,7 @@ First, make sure you have configured your ``DATABASES`` in ``settings.py``. We'l
 Create the database with the schema defined for Polaris.
 ::
 
-    python manage.py migrate
+    python app/manage.py migrate
 
 Then, get into the python shell and create an ``Asset`` object.
 ::
@@ -148,10 +158,16 @@ Then, get into the python shell and create an ``Asset`` object.
         sep24_enabled=True
     )
 
-Finally, add an environment variable for the account used to sign SEP-10 transactions. You can use a random keypair or a common pattern is to use the distribution account's public key. In ``.env`` or ``ENV_PATH``:
+
+Collect static assets
+---------------------
+
+Now that your settings are configured correctly, we can collect the static assets our app will use into a single directory that ``whitenoise`` can use.
 ::
 
-    SIGNING_SEED=<a stellar address>
+    python app/manage.py collectstatic --no-input
+
+A ``collectstatic`` directory should now be created in the outer ``app`` directory containing the static files.
 
 Run the server
 --------------
@@ -161,9 +177,9 @@ Run the server
 You can now run the anchor server, although it doesn't yet have the functionality to complete a SEP-24 deposit or withdraw.
 ::
 
-    python manage.py runserver
+    python app/manage.py runserver
 
-Use the SDF's SEP-24 `demo client`_ to connect to your anchor service. You'll see that the client connects to the anchor service and attempts to checks the server's TOML file.
+Use the SDF's SEP-24 `demo client`_ to connect to your anchor service. You'll see that it successfully makes a deposit request and opens the anchor's interactive URL, but the client become stuck in polling loop after you complete the interactive web page. This is because we haven't implemented our banking rails with Polaris.
 
 Implement integrations
 ----------------------
@@ -173,7 +189,10 @@ In order to let the demo client create a deposit or withdrawal transaction we ha
 Create an ``integrations.py`` file within the inner ``app`` directory. Technically, the only required integration functions for a SEP-24 testnet anchor are called from the registered ``RailsIntegration`` subclass, specifically ``poll_pending_deposits()`` and ``execute_outgoing_transactions()``.
 ::
 
+    from typing import List
     from polaris.integrations import RailsIntegration
+    from polaris.models import Transaction
+    from django.db.models import QuerySet
 
     class MyRailsIntegration(RailsIntegration):
         def poll_pending_deposits(self, pending_deposits: QuerySet) -> List[Transaction]:
@@ -266,10 +285,8 @@ Write the following to a ``docker-compose.yml`` file within the project's root d
       check_trustlines:
         container_name: "test-check_trustlines"
         build: .
-        columns:
+        volumes:
           - ./data:/home/data
-        ports:
-          - "8000:8000"
         command: python app/manage.py check_trustlines --loop
       watch_transaction:
         container_name: "test-watch_transactions"
