@@ -1,6 +1,12 @@
-=====================
-Introduction
-=====================
+==================
+Welcome to Polaris
+==================
+
+To get a SEP-24 anchor server running quickly, see the :doc:`tutorial </tutorials/index>`.
+
+The documentation below outlines the common set up needed for any Polaris deployment, but
+each SEP implementation has its own configuration and integration requirements. These
+requirements are described in the documentation for each SEP.
 
 What is Polaris?
 ================
@@ -24,17 +30,14 @@ integration points, for developers to inject their own business logic.
 Polaris is completely open source and available on github_. The SDF also runs a reference
 server using Polaris that can be tested using our `demo client`_.
 
-The instructions below outline the common set up needed for any Polaris deployment, but
-each SEP implementation has its own configuration and integration requirements. These
-requirements are described in the documentation for each SEP.
-
 Installation and Configuration
 ==============================
 
 .. _Django docs: https://docs.djangoproject.com/en/3.0/
 
 These instructions assume you have already set up a django project. If you haven't,
-take a look at the `Django docs`_.
+take a look at the `Django docs`_. It also assumes you have a database configured
+from the project's ``settings.py``.
 
 First make sure you have ``cd``'ed into your django project's main directory
 and then run
@@ -104,6 +107,11 @@ Add the Polaris endpoints in ``urls.py``
         ...,
         path("", include(polaris.urls)),
     ]
+
+Once you have implemented all the steps above, go to the documentation for each SEP
+you want the anchor server to support and follow the configuration instructions. Once
+your SEPs are configured, you can build the database and create your an ``Asset``
+object.
 
 Database Models
 ^^^^^^^^^^^^^^^

@@ -464,7 +464,10 @@ bad_save_integration = Mock(
 
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-@patch("polaris.sep31.transactions.registered_sep31_receiver_integration", bad_save_integration)
+@patch(
+    "polaris.sep31.transactions.registered_sep31_receiver_integration",
+    bad_save_integration,
+)
 def test_bad_save(client, usd_asset_factory):
     asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31])
     response = client.post(

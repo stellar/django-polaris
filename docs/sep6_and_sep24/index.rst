@@ -30,6 +30,8 @@ Add the SEPs to ``ACTIVE_SEPS`` in in your settings file.
 
     ACTIVE_SEPS = ["sep-1", "sep-6", "sep-24", ...]
 
+.. _static_assets:
+
 Static Assets
 -------------
 
@@ -151,6 +153,8 @@ set of integration functions for anchors to implement themselves.
 
 .. autofunction:: polaris.integrations.RailsIntegration.execute_outgoing_transaction
 
+.. _fee_integration:
+
 Fee Integration
 ^^^^^^^^^^^^^^^
 
@@ -177,6 +181,8 @@ the functions described below are only for SEP-6.
 .. autofunction:: polaris.integrations.WithdrawalIntegration.process_sep6_request
 
 .. autofunction:: polaris.integrations.default_info_func
+
+.. _sep24_integrations:
 
 SEP-24 Integrations
 -------------------
@@ -207,7 +213,7 @@ The functions below facilitate the process of collecting the information needed.
 
 .. autofunction:: polaris.integrations.WithdrawalIntegration.form_for_transaction
 
-.. autofunction:: polaris.integrations.DepositIntegration.content_for_template
+.. autofunction:: polaris.integrations.WithdrawalIntegration.content_for_template
 
 .. autofunction:: polaris.integrations.WithdrawalIntegration.after_form_validation
 
