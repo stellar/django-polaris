@@ -46,10 +46,12 @@ class Command(BaseCommand):
         sep31_qparams = Q(
             protocol=Transaction.PROTOCOL.sep31,
             status=Transaction.STATUS.pending_receiver,
+            kind=Transaction.KIND.send,
         )
         sep6_24_qparams = Q(
             protocol__in=[Transaction.PROTOCOL.sep24, Transaction.PROTOCOL.sep6],
             status=Transaction.STATUS.pending_anchor,
+            kind=Transaction.KIND.withdrawal,
         )
         transactions = Transaction.objects.filter(sep6_24_qparams | sep31_qparams)
         num_completed = 0
@@ -74,10 +76,14 @@ class Command(BaseCommand):
             ]:
                 if transaction.amount_fee is None:
                     if registered_fee_func == calculate_fee:
+                        op = {
+                            Transaction.KIND.withdrawal: settings.OPERATION_WITHDRAWAL,
+                            Transaction.KIND.send: Transaction.KIND.send,
+                        }[transaction.kind]
                         transaction.amount_fee = calculate_fee(
                             {
                                 "amount": transaction.amount_in,
-                                "operation": Transaction.KIND.send,
+                                "operation": op,
                                 "asset_code": transaction.asset.code,
                             }
                         )
