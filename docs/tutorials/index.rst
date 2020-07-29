@@ -250,4 +250,4 @@ Now that our multi-process application is defined, lets build and run the contai
     docker-compose build
     docker-compose up
 
-You should not be able to successfully deposit and withdraw funds on testnet using the SDF's demo client via SEP-24.
+You should now be able to successfully deposit and withdraw funds on testnet using the SDF's demo client via SEP-24.
