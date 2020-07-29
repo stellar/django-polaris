@@ -160,3 +160,17 @@ Implementing integrations
 -------------------------
 
 In order to let the demo client create a deposit or withdrawal transaction we have to implement some of Polaris' integrations. There are many more integrations offered compared to the ones we will use in this tutorial, but the ones we use are required for a client to get though the entire flow on testnet.
+
+Create an ``integrations.py`` file within the inner ``app`` directory. Technically, the only required integration functions for a SEP-24 testnet anchor are called from the registered ``RailsIntegration`` subclass, specifically ``poll_pending_deposits()`` and ``execute_outgoing_transactions()``.
+::
+
+    from polaris.integrations import RailsIntegration
+
+    class MyRailsIntegration(RailsIntegration):
+        def poll_pending_deposits(self, pending_deposits: QuerySet) -> List[Transaction]:
+            return list(pending_deposits)
+
+        def execute_outgoing_transaction(self, transaction: Transaction):
+            transaction.amount_fee = 0
+            transaction.status = Transaction.STATUS.completed
+            transaction.save()
