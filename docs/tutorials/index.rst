@@ -10,7 +10,7 @@ Much of the content presented here can be found on other pages of the documentat
 
 SEP-24 is currently the most common SEP to implement using Polaris. It defines a standard protocol for allowing any wallet to request deposits or withdrawals on or off the Stellar network on behalf of it's users.
 
-Creating a project
+Create a project
 ------------------
 
 Assuming the project's root directory has been created, the first step is to create the django project.
@@ -153,8 +153,8 @@ Finally, add an environment variable for the account used to sign SEP-10 transac
 
     SIGNING_SEED=<a stellar address>
 
-Running the server
--------------------
+Run the server
+--------------
 
 .. _`demo client`: https://sep24.stellar.org
 
@@ -165,8 +165,8 @@ You can now run the anchor server, although it doesn't yet have the functionalit
 
 Use the SDF's SEP-24 `demo client`_ to connect to your anchor service. You'll see that the client connects to the anchor service and attempts to checks the server's TOML file.
 
-Implementing integrations
--------------------------
+Implement integrations
+----------------------
 
 In order to let the demo client create a deposit or withdrawal transaction we have to implement some of Polaris' integrations. There are many more integrations offered compared to the ones we will use in this tutorial, but the ones we use are required for a client to get though the entire flow on testnet.
 
@@ -190,8 +190,8 @@ Since we won't be sending users their withdrawn funds from testnet either, we si
 
 Again, there are many more integrations Polaris provides, most notably those implemented by the ``DepositIntegration`` and ``WithdrawalIntegration`` classes. See the :doc:`SEP-6 & 24 documentation </sep6_and_sep24/index>` to see what else Polaris offers. You'll also likely want to add information to your :doc:`SEP-1 TOML file </sep1/index>`.
 
-Registering integrations
-------------------------
+Register integrations
+---------------------
 
 Create an ``apps.py`` file within the inner ``app`` directory. We'll subclass Django's ``AppConfig`` class and register our integrations from its ``ready()`` function.
 ::
@@ -216,8 +216,8 @@ Now we need to tell Django where to find our `AppConfig` subclass. Create or upd
 
 Polaris should now use your rails integrations, but these integration functions are not called from the web server process that we ran with the ``runserver`` command.
 
-Running the SEP-24 service
---------------------------
+Run the SEP-24 service
+----------------------
 
 .. _`docker-compose`: https://docs.docker.com/compose/
 
