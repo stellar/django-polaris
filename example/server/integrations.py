@@ -24,6 +24,7 @@ from polaris.integrations import (
     CustomerIntegration,
     calculate_fee,
     RailsIntegration,
+    TransactionForm,
 )
 from polaris import settings
 
@@ -181,13 +182,15 @@ class MyDepositIntegration(DepositIntegration):
     def form_for_transaction(
         self, transaction: Transaction, post_data=None, amount=None
     ) -> Optional[forms.Form]:
-        kyc_form, na = SEP24KYC.check_kyc(transaction, post_data=post_data)
+        kyc_form, content = SEP24KYC.check_kyc(transaction, post_data=post_data)
         if kyc_form:
             return kyc_form
+        elif content or transaction.amount_in:
+            return None
+        elif post_data:
+            return TransactionForm(transaction, post_data)
         else:
-            return super().form_for_transaction(
-                transaction, post_data=post_data, amount=amount
-            )
+            return TransactionForm(transaction, initial={"amount": amount})
 
     def content_for_template(
         self,
@@ -273,15 +276,15 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
     def form_for_transaction(
         self, transaction: Transaction, post_data=None, amount=None
     ) -> Optional[forms.Form]:
-        kyc_form, na = SEP24KYC.check_kyc(transaction, post_data)
+        kyc_form, content = SEP24KYC.check_kyc(transaction, post_data)
         if kyc_form:
             return kyc_form
-        elif transaction.amount_in:
+        elif content or transaction.amount_in:
             return None
         elif post_data:
             return WithdrawForm(transaction, post_data)
         else:
-            return WithdrawForm(transaction, initial=amount)
+            return WithdrawForm(transaction, initial={"amount": amount})
 
     def content_for_template(
         self,
