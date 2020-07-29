@@ -78,7 +78,7 @@ this functionality using the settings listed in the `corsheaders documentation`_
 
 Ensure ``BASE_DIR`` is defined in your project's settings.py. Django adds this setting
 automatically. Polaris uses this to find your ``.env`` file. If this setting isn't present,
-Polaris will try to use the ``ENV_PATH`` setting. It should be the path to the ``.env`` file.
+Polaris will try to use the ``POLARIS_ENV_PATH`` setting. It should be the path to the ``.env`` file.
 ::
 
     BASE_DIR = "<path to your django project's top-level directory>"
@@ -87,7 +87,7 @@ Environment Variables
 ^^^^^^^^^^^^^^^^^^^^^
 
 Polaris uses environment variables that should be defined in the
-environment or included in ``BASE_DIR/.env`` or ``ENV_PATH``.
+environment or included in ``BASE_DIR/.env`` or ``POLARIS_ENV_PATH``.
 ::
 
     STELLAR_NETWORK_PASSPHRASE="Test SDF Network ; September 2015"

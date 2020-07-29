@@ -42,7 +42,7 @@ third_party_apps.append("polaris")
 
 INSTALLED_APPS = django_apps + third_party_apps
 
-ACTIVE_SEPS = ["sep-1", "sep-6", "sep-10", "sep-12", "sep-24", "sep-31"]
+POLARIS_ACTIVE_SEPS = ["sep-1", "sep-6", "sep-10", "sep-12", "sep-24", "sep-31"]
 
 # Modules to add to parent project's MIDDLEWARE
 MIDDLEWARE = [

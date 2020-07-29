@@ -21,7 +21,7 @@ transactions.
 Add SEP-10 to your list of active SEPs in settings.py:
 ::
 
-    ACTIVE_SEPS = ["sep-1", "sep-10", ...]
+    POLARIS_ACTIVE_SEPS = ["sep-1", "sep-10", ...]
 
 
 Integrations

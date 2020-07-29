@@ -17,10 +17,10 @@ SEP-31 anchor.
 Configuration
 =============
 
-Add the SEP to ``ACTIVE_SEPS`` in in your settings file.
+Add the SEP to ``POLARIS_ACTIVE_SEPS`` in in your settings file.
 ::
 
-    ACTIVE_SEPS = ["sep-1", "sep-10", "sep-31", ...]
+    POLARIS_ACTIVE_SEPS = ["sep-1", "sep-10", "sep-31", ...]
 
 Integrations
 ============

@@ -18,7 +18,7 @@ from django.urls import path, include
 
 
 urlpatterns = []
-active_seps = getattr(settings, "ACTIVE_SEPS")
+active_seps = getattr(settings, "POLARIS_ACTIVE_SEPS")
 if "sep-1" in active_seps:
     urlpatterns.append(path(".well-known/", include("polaris.sep1.urls")))
 

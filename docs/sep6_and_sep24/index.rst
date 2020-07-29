@@ -25,10 +25,10 @@ and cons, so make sure you understand the proposals before choosing.
 Configuration
 =============
 
-Add the SEPs to ``ACTIVE_SEPS`` in in your settings file.
+Add the SEPs to ``POLARIS_ACTIVE_SEPS`` in in your settings file.
 ::
 
-    ACTIVE_SEPS = ["sep-1", "sep-6", "sep-24", ...]
+    POLARIS_ACTIVE_SEPS = ["sep-1", "sep-6", "sep-24", ...]
 
 .. _static_assets:
 
