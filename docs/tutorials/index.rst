@@ -122,7 +122,16 @@ It should output a public and secret key for both the issuer and distribution ac
 Add the asset to the database
 -----------------------------
 
-Create or update the database with the schema defined for Polaris.
+First, make sure you have configured your ``DATABASES`` in ``settings.py``. We'll place the DB file in a ``data`` directory inside the project's root directory.
+::
+
+    DATABASES = {
+        'default': env.db(
+            "DATABASE_URL", default="sqlite:////" + os.path.join(os.path.dirname(BASE_DIR), "data/db.sqlite3")
+        )
+    }
+
+Create the database with the schema defined for Polaris.
 ::
 
     python manage.py migrate
@@ -174,3 +183,71 @@ Create an ``integrations.py`` file within the inner ``app`` directory. Technical
             transaction.amount_fee = 0
             transaction.status = Transaction.STATUS.completed
             transaction.save()
+
+Our ``poll_pending_deposits()`` function returns every pending deposit transaction since users aren't going to actually send the deposit amount when using testnet. Polaris then proceeds to submit stellar payment transactions to the network for each ``Transaction`` object returned.
+
+Since we won't be sending users their withdrawn funds from testnet either, we simply update the ``amount_fee`` and ``status`` columns of the transaction. Its good form to always assign a fee value for the sake of readability, but Polaris will try to calculate ``amount_fee`` if you have not registered a custom fee function and didn't update the column from ``execute_outgoing_transaction()``.
+
+Again, there are many more integrations Polaris provides, most notably those implemented by the ``DepositIntegration`` and ``WithdrawalIntegration`` classes. See the :doc:`SEP-6 & 24 documentation </sep6_and_sep24/index>` to see what else Polaris offers. You'll also likely want to add information to your :doc:`SEP-1 TOML file </sep1/index>`.
+
+Running the SEP-24 service
+--------------------------
+
+.. _`docker-compose`: https://docs.docker.com/compose/
+
+Polaris is a multi-process application, and ``poll_pending_deposits()`` and ``execute_outgoing_transation()`` are both called from their own process so that calling one is not delayed by calling the other. An easy way to run multi-process applications is with docker-compose_.
+
+Write the following to a ``docker-compose.yml`` file within the project's root directory:
+::
+
+    version: "3"
+
+    services:
+      server:
+        container_name: "test-server"
+        build: .
+        volumes:
+          - ./data:/home/data
+        ports:
+          - "8000:8000"
+        command: python app/manage.py runserver --nostatic 0.0.0.0:8000
+      execute_outgoing_transactions:
+        container_name: "test-execute_outgoing_transactions"
+        build: .
+        volumes:
+          - ./data:/home/data
+        command: python app/manage.py execute_outgoing_transactions --loop
+      check_trustlines:
+        container_name: "test-check_trustlines"
+        build: .
+        columns:
+          - ./data:/home/data
+        ports:
+          - "8000:8000"
+        command: python app/manage.py check_trustlines --loop
+      watch_transaction:
+        container_name: "test-watch_transactions"
+        build: .
+        volumes:
+          - ./data:/home/data
+        command: python app/manage.py watch_transactions
+      poll_pending_deposits:
+        container_name: "test-poll_pending_deposits"
+        build: .
+        volumes:
+          - ./data:/home/data
+        command: python app/manage.py poll_pending_deposits --loop
+
+You'll notice we're also running the ``watch_transaction`` process. This Polaris CLI command streams payment transactions from every anchored asset's distribution account and updates the transaction's status to ``pending_anchor``. ``execute_outgoing_transactions`` then periodically queries for ``pending_anchor`` transactions so the anchor can send the withdrawn funds to the user.
+
+Additionally, we're going to run the ``check_trustlines`` command. This Polaris command periodically checks the accounts that requested deposits but can't receive our payment due to lacking a trustline to our asset.
+
+Polaris comes with other commands that we won't run in this tutorial. For example, if our payment rails take some time before the user receives the funds sent, we could place the transaction the ``pending_external`` status, and our ``poll_outgoing_transactions`` Polaris CLI command would periodically check if the funds were received by the user and updating the status to ``completed`` if so.
+
+Now that our multi-process application is defined, lets build and run the containers:
+::
+
+    docker-compose build
+    docker-compose up
+
+You should not be able to successfully deposit and withdraw funds on testnet using the SDF's demo client via SEP-24.
