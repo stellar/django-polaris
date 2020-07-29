@@ -5,7 +5,8 @@ django-polaris documentation contents
     :maxdepth: 2
     :caption: Contents:
 
-    index
+    Introduction <index>
+    Tutorial <tutorials/index>
     sep1/index
     sep10/index
     sep12/index

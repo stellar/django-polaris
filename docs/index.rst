@@ -1,8 +1,8 @@
-=====================
-Documentation
-=====================
+==================
+Welcome to Polaris
+==================
 
-To quickly get a SEP-24 anchor server running, see the :doc:`tutorial </tutorials/index>`.
+To get a SEP-24 anchor server running quickly, see the :doc:`tutorial </tutorials/index>`.
 
 The documentation below outlines the common set up needed for any Polaris deployment, but
 each SEP implementation has its own configuration and integration requirements. These
