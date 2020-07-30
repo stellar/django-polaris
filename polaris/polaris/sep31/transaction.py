@@ -70,9 +70,9 @@ class TransactionAPIView(APIView):
         elif transaction.status != Transaction.STATUS.pending_info_update:
             return render_error_response(_("update not required"))
         try:
-            validate_update_fields(request.data, transaction)
+            validate_update_fields(request.data.get("fields"), transaction)
             registered_sep31_receiver_integration.process_patch_request(
-                params=dict(request.data), transaction=transaction,
+                params=request.data.get("fields"), transaction=transaction,
             )
         except ValueError as e:
             return render_error_response(str(e))

@@ -6,10 +6,10 @@ from stellar_sdk import Keypair
 
 from polaris.tests.helpers import mock_check_auth_success
 from polaris.models import Transaction
-from polaris.sep31.send import process_send_response
+from polaris.sep31.transaction import process_post_response
 
 
-send_endpoint = "/sep31/send"
+transaction_endpoint = "/sep31/transaction"
 
 
 success_send_integration = Mock(
@@ -20,17 +20,20 @@ success_send_integration = Mock(
             },
         }
     ),
-    process_send_request=Mock(return_value=None),
+    process_post_request=Mock(return_value=None),
 )
 
 
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-@patch("polaris.sep31.send.registered_send_integration", success_send_integration)
+@patch(
+    "polaris.sep31.transaction.registered_sep31_receiver_integration",
+    success_send_integration,
+)
 def test_successful_send(client, usd_asset_factory):
     asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31])
     response = client.post(
-        send_endpoint,
+        transaction_endpoint,
         {
             "asset_code": asset.code,
             "asset_issuer": asset.issuer,
@@ -53,18 +56,21 @@ def test_successful_send(client, usd_asset_factory):
 
 @pytest.mark.django_db
 def test_auth_check(client):
-    response = client.post(send_endpoint, {})
+    response = client.post(transaction_endpoint, {})
     assert response.status_code == 403
     assert "error" in response.json()
 
 
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-@patch("polaris.sep31.send.registered_send_integration", success_send_integration)
+@patch(
+    "polaris.sep31.transaction.registered_sep31_receiver_integration",
+    success_send_integration,
+)
 def test_missing_category(client, usd_asset_factory):
     asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31])
     response = client.post(
-        send_endpoint,
+        transaction_endpoint,
         {
             "asset_code": asset.code,
             "asset_issuer": asset.issuer,
@@ -83,11 +89,14 @@ def test_missing_category(client, usd_asset_factory):
 
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-@patch("polaris.sep31.send.registered_send_integration", success_send_integration)
+@patch(
+    "polaris.sep31.transaction.registered_sep31_receiver_integration",
+    success_send_integration,
+)
 def test_missing_field(client, usd_asset_factory):
     asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31])
     response = client.post(
-        send_endpoint,
+        transaction_endpoint,
         {
             "asset_code": asset.code,
             "asset_issuer": asset.issuer,
@@ -110,14 +119,17 @@ def test_missing_field(client, usd_asset_factory):
 
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-@patch("polaris.sep31.send.registered_send_integration", success_send_integration)
+@patch(
+    "polaris.sep31.transaction.registered_sep31_receiver_integration",
+    success_send_integration,
+)
 def test_extra_field(client, usd_asset_factory):
     """
     Don't return 400 on extra fields passed
     """
     asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31])
     response = client.post(
-        send_endpoint,
+        transaction_endpoint,
         {
             "asset_code": asset.code,
             "asset_issuer": asset.issuer,
@@ -133,11 +145,14 @@ def test_extra_field(client, usd_asset_factory):
 
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-@patch("polaris.sep31.send.registered_send_integration", success_send_integration)
+@patch(
+    "polaris.sep31.transaction.registered_sep31_receiver_integration",
+    success_send_integration,
+)
 def test_extra_category(client, usd_asset_factory):
     asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31])
     response = client.post(
-        send_endpoint,
+        transaction_endpoint,
         {
             "asset_code": asset.code,
             "asset_issuer": asset.issuer,
@@ -154,11 +169,14 @@ def test_extra_category(client, usd_asset_factory):
 
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-@patch("polaris.sep31.send.registered_send_integration", success_send_integration)
+@patch(
+    "polaris.sep31.transaction.registered_sep31_receiver_integration",
+    success_send_integration,
+)
 def test_missing_amount(client, usd_asset_factory):
     asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31])
     response = client.post(
-        send_endpoint,
+        transaction_endpoint,
         {
             "asset_code": asset.code,
             "asset_issuer": asset.issuer,
@@ -174,11 +192,14 @@ def test_missing_amount(client, usd_asset_factory):
 
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-@patch("polaris.sep31.send.registered_send_integration", success_send_integration)
+@patch(
+    "polaris.sep31.transaction.registered_sep31_receiver_integration",
+    success_send_integration,
+)
 def test_missing_asset_code(client, usd_asset_factory):
     asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31])
     response = client.post(
-        send_endpoint,
+        transaction_endpoint,
         {
             "asset_issuer": asset.issuer,
             "amount": 100,
@@ -194,11 +215,14 @@ def test_missing_asset_code(client, usd_asset_factory):
 
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-@patch("polaris.sep31.send.registered_send_integration", success_send_integration)
+@patch(
+    "polaris.sep31.transaction.registered_sep31_receiver_integration",
+    success_send_integration,
+)
 def test_bad_asset_issuer(client, usd_asset_factory):
     asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31])
     response = client.post(
-        send_endpoint,
+        transaction_endpoint,
         {
             "asset_code": asset.code,
             "asset_issuer": Keypair.random().public_key,
@@ -215,11 +239,14 @@ def test_bad_asset_issuer(client, usd_asset_factory):
 
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-@patch("polaris.sep31.send.registered_send_integration", success_send_integration)
+@patch(
+    "polaris.sep31.transaction.registered_sep31_receiver_integration",
+    success_send_integration,
+)
 def test_bad_asset_code(client, usd_asset_factory):
     asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31])
     response = client.post(
-        send_endpoint,
+        transaction_endpoint,
         {
             "asset_code": "FAKE",
             "asset_issuer": asset.issuer,
@@ -236,11 +263,14 @@ def test_bad_asset_code(client, usd_asset_factory):
 
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-@patch("polaris.sep31.send.registered_send_integration", success_send_integration)
+@patch(
+    "polaris.sep31.transaction.registered_sep31_receiver_integration",
+    success_send_integration,
+)
 def test_large_amount(client, usd_asset_factory):
     asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31])
     response = client.post(
-        send_endpoint,
+        transaction_endpoint,
         {
             "asset_code": asset.code,
             "asset_issuer": asset.issuer,
@@ -257,11 +287,14 @@ def test_large_amount(client, usd_asset_factory):
 
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-@patch("polaris.sep31.send.registered_send_integration", success_send_integration)
+@patch(
+    "polaris.sep31.transaction.registered_sep31_receiver_integration",
+    success_send_integration,
+)
 def test_small_amount(client, usd_asset_factory):
     asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31])
     response = client.post(
-        send_endpoint,
+        transaction_endpoint,
         {
             "asset_code": asset.code,
             "asset_issuer": asset.issuer,
@@ -278,11 +311,14 @@ def test_small_amount(client, usd_asset_factory):
 
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-@patch("polaris.sep31.send.registered_send_integration", success_send_integration)
+@patch(
+    "polaris.sep31.transaction.registered_sep31_receiver_integration",
+    success_send_integration,
+)
 def test_transaction_created(client, usd_asset_factory):
     asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31])
     response = client.post(
-        send_endpoint,
+        transaction_endpoint,
         {
             "asset_code": asset.code,
             "asset_issuer": asset.issuer,
@@ -308,11 +344,14 @@ def test_transaction_created(client, usd_asset_factory):
 
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-@patch("polaris.sep31.send.registered_send_integration", success_send_integration)
+@patch(
+    "polaris.sep31.transaction.registered_sep31_receiver_integration",
+    success_send_integration,
+)
 def test_unsupported_lang(client, usd_asset_factory):
     asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31])
     response = client.post(
-        send_endpoint,
+        transaction_endpoint,
         {
             "asset_code": asset.code,
             "asset_issuer": asset.issuer,
@@ -333,10 +372,13 @@ def test_unsupported_lang(client, usd_asset_factory):
 
 
 @pytest.mark.django_db
-@patch("polaris.sep31.send.registered_send_integration", success_send_integration)
+@patch(
+    "polaris.sep31.transaction.registered_sep31_receiver_integration",
+    success_send_integration,
+)
 def test_bad_customer_info_needed():
     with pytest.raises(ValueError) as e:
-        process_send_response(
+        process_post_response(
             {
                 "error": "customer_info_needed",
                 "fields": {"not in expected format": True},
@@ -347,20 +389,26 @@ def test_bad_customer_info_needed():
 
 
 @pytest.mark.django_db
-@patch("polaris.sep31.send.registered_send_integration", success_send_integration)
+@patch(
+    "polaris.sep31.transaction.registered_sep31_receiver_integration",
+    success_send_integration,
+)
 def test_bad_value_for_category_in_response():
     with pytest.raises(ValueError) as e:
-        process_send_response(
+        process_post_response(
             {"error": "customer_info_needed", "fields": {"sender": True}},
             Mock(id=uuid.uuid4()),
         )
 
 
 @pytest.mark.django_db
-@patch("polaris.sep31.send.registered_send_integration", success_send_integration)
+@patch(
+    "polaris.sep31.transaction.registered_sep31_receiver_integration",
+    success_send_integration,
+)
 def test_bad_field_in_response():
     with pytest.raises(ValueError) as e:
-        process_send_response(
+        process_post_response(
             {
                 "error": "customer_info_needed",
                 "fields": {
@@ -372,10 +420,13 @@ def test_bad_field_in_response():
 
 
 @pytest.mark.django_db
-@patch("polaris.sep31.send.registered_send_integration", success_send_integration)
+@patch(
+    "polaris.sep31.transaction.registered_sep31_receiver_integration",
+    success_send_integration,
+)
 def test_bad_field_value_in_response():
     with pytest.raises(ValueError) as e:
-        process_send_response(
+        process_post_response(
             {
                 "error": "customer_info_needed",
                 "fields": {
