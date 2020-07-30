@@ -20,7 +20,7 @@ from polaris.templates import Template
 from polaris.integrations import (
     DepositIntegration,
     WithdrawalIntegration,
-    SendIntegration,
+    SEP31ReceiverIntegration,
     CustomerIntegration,
     calculate_fee,
     RailsIntegration,
@@ -570,7 +570,7 @@ class MyCustomerIntegration(CustomerIntegration):
         return user, account
 
 
-class MySendIntegration(SendIntegration):
+class MySEP31ReceiverIntegration(SEP31ReceiverIntegration):
     def info(self, asset: Asset, lang: Optional[str] = None):
         return {
             "sender_sep12_type": "sep31-sender",
@@ -587,7 +587,7 @@ class MySendIntegration(SendIntegration):
             },
         }
 
-    def process_send_request(self, params: Dict, transaction_id: str) -> Optional[Dict]:
+    def process_post_request(self, params: Dict, transaction_id: str) -> Optional[Dict]:
         _ = params.get("sender_id")  # not actually used
         receiver_id = params.get("receiver_id")
         transaction_fields = params.get("fields", {}).get("transaction")
@@ -608,7 +608,7 @@ class MySendIntegration(SendIntegration):
             user=receiving_user, transaction_id=transaction_id
         )
 
-    def process_update_request(self, params: Dict, transaction: Transaction):
+    def process_patch_request(self, params: Dict, transaction: Transaction):
         info_fields = params.get("fields", {})
         transaction_fields = info_fields.get("transaction", {})
         if not isinstance(transaction_fields, dict):

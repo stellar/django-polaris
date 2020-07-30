@@ -3,7 +3,7 @@ from typing import Dict, Optional
 from polaris.models import Asset, Transaction
 
 
-class SendIntegration:
+class SEP31ReceiverIntegration:
     """
     The container class for SEP31 integrations
     """
@@ -48,7 +48,7 @@ class SendIntegration:
         """
         pass
 
-    def process_send_request(self, params: Dict, transaction_id: str) -> Optional[Dict]:
+    def process_post_request(self, params: Dict, transaction_id: str) -> Optional[Dict]:
         """
         .. _customer-info-needed: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0031.md#customer-info-needed-400-bad-request
         .. _transaction-info-needed: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0031.md#transaction-info-needed-400-bad-request
@@ -116,14 +116,14 @@ class SendIntegration:
         """
         pass
 
-    def process_update_request(self, params: Dict, transaction: Transaction):
+    def process_patch_request(self, params: Dict, transaction: Transaction):
         """
         Use the `params` passed in the request to update `transaction` or any
         related data.
 
         Polaris validates that every field listed in
         ``Transaction.required_info_update`` is present in `params` but cannot
-        validate the field values. If a ``ValueError`` is raised, Polaris will
+        validate the values. If a ``ValueError`` is raised, Polaris will
         return a 400 response containing the exception message in the body.
 
         If no exception is raised, Polaris assumes the update was successful and
@@ -136,7 +136,7 @@ class SendIntegration:
         ``RailsIntegration.execute_outgoing_transaction`` function for more
         information on the lifecycle of a transaction.
 
-        :param params: the parameters sent in the `/update` request
+        :param params: the request body of the `PATCH /transaction` request
         :param transaction: the ``Transaction`` object that should be updated
         """
         pass
@@ -152,4 +152,4 @@ class SendIntegration:
         pass
 
 
-registered_send_integration = SendIntegration()
+registered_sep31_receiver_integration = SEP31ReceiverIntegration()

@@ -8,7 +8,7 @@ from rest_framework.renderers import JSONRenderer, BrowsableAPIRenderer
 
 from polaris.models import Asset
 from polaris.utils import render_error_response, Logger
-from polaris.integrations import registered_send_integration
+from polaris.integrations import registered_sep31_receiver_integration
 
 
 logger = Logger(__name__)
@@ -22,7 +22,7 @@ def info(request: Request) -> Response:
     }
     for asset in Asset.objects.filter(sep31_enabled=True):
         try:
-            fields_and_types = registered_send_integration.info(
+            fields_and_types = registered_sep31_receiver_integration.info(
                 asset, request.GET.get("lang")
             )
         except ValueError:
