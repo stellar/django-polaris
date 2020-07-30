@@ -8,12 +8,12 @@ from polaris.models import Transaction
 from polaris.sep31.serializers import SEP31TransactionSerializer
 
 
-endpoint = "/sep31/transaction"
+endpoint = "/sep31/transaction/"
 
 
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-@patch("polaris.sep31.transaction.registered_send_integration", Mock())
+@patch("polaris.sep31.transaction.registered_sep31_receiver_integration", Mock())
 def test_successful_call(client, acc1_usd_deposit_transaction_factory):
     transaction = acc1_usd_deposit_transaction_factory(
         protocol=Transaction.PROTOCOL.sep31
@@ -26,7 +26,7 @@ def test_successful_call(client, acc1_usd_deposit_transaction_factory):
     # stellar account has to match auth token
     transaction.stellar_account = "test source address"
     transaction.save()
-    response = client.get(endpoint + "?id=" + str(transaction.id))
+    response = client.get(endpoint + str(transaction.id))
     serialization = {"transaction": SEP31TransactionSerializer(transaction).data}
     assert response.status_code == 200
     assert (
@@ -59,7 +59,7 @@ def test_successful_call(client, acc1_usd_deposit_transaction_factory):
 
 def test_no_auth(client):
     # No need for id arg
-    response = client.get(endpoint)
+    response = client.get(endpoint + "test")
     assert response.status_code == 403
 
 
@@ -68,33 +68,34 @@ mock_valid_sending_anchor = Mock(valid_sending_anchor=Mock(return_value=False))
 
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 @patch(
-    "polaris.sep31.transaction.registered_send_integration", mock_valid_sending_anchor
+    "polaris.sep31.transaction.registered_sep31_receiver_integration",
+    mock_valid_sending_anchor,
 )
 def test_invalid_anchor(client):
-    response = client.get(endpoint)
+    response = client.get(endpoint + "test")
     assert response.status_code == 403
     mock_valid_sending_anchor.valid_sending_anchor.assert_called()
 
 
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-@patch("polaris.sep31.transaction.registered_send_integration", Mock())
+@patch("polaris.sep31.transaction.registered_sep31_receiver_integration", Mock())
 def test_no_transaction(client):
-    response = client.get(endpoint + "?id=" + str(uuid.uuid4()))
+    response = client.get(endpoint + str(uuid.uuid4()))
     assert response.status_code == 404
 
 
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-@patch("polaris.sep31.transaction.registered_send_integration", Mock())
+@patch("polaris.sep31.transaction.registered_sep31_receiver_integration", Mock())
 def test_bad_id(client):
-    response = client.get(endpoint + "?id=notauuid")
+    response = client.get(endpoint + "notauuid")
     assert response.status_code == 404
 
 
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-@patch("polaris.sep31.transaction.registered_send_integration", Mock())
+@patch("polaris.sep31.transaction.registered_sep31_receiver_integration", Mock())
 def test_no_id(client):
     response = client.get(endpoint)
-    assert response.status_code == 400
+    assert response.status_code == 404
