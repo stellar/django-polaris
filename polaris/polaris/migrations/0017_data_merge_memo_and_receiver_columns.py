@@ -25,7 +25,7 @@ def merge_receiving_accounts(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("polaris", "0017_auto_20200723_2232"),
+        ("polaris", "0016_auto_20200610_2321"),
     ]
 
     operations = [
