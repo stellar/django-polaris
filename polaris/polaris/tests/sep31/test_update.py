@@ -7,12 +7,12 @@ from polaris.tests.helpers import mock_check_auth_success
 from polaris.models import Transaction
 
 
-endpoint = "/sep31/transaction/"
+endpoint = "/sep31/transactions/"
 
 
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-@patch("polaris.sep31.transaction.registered_sep31_receiver_integration", Mock())
+@patch("polaris.sep31.transactions.registered_sep31_receiver_integration", Mock())
 def test_success_update(client, acc1_usd_deposit_transaction_factory):
     transaction = acc1_usd_deposit_transaction_factory(
         protocol=Transaction.PROTOCOL.sep31
@@ -36,7 +36,7 @@ def test_success_update(client, acc1_usd_deposit_transaction_factory):
 
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-@patch("polaris.sep31.transaction.registered_sep31_receiver_integration", Mock())
+@patch("polaris.sep31.transactions.registered_sep31_receiver_integration", Mock())
 def test_bad_id(client, acc1_usd_deposit_transaction_factory):
     response = client.patch(
         endpoint + "not an id",
@@ -48,7 +48,7 @@ def test_bad_id(client, acc1_usd_deposit_transaction_factory):
 
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-@patch("polaris.sep31.transaction.registered_sep31_receiver_integration", Mock())
+@patch("polaris.sep31.transactions.registered_sep31_receiver_integration", Mock())
 def test_missing_id(client, acc1_usd_deposit_transaction_factory):
     response = client.patch(
         endpoint,
@@ -65,7 +65,7 @@ def test_no_auth(client):
 
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-@patch("polaris.sep31.transaction.registered_sep31_receiver_integration", Mock())
+@patch("polaris.sep31.transactions.registered_sep31_receiver_integration", Mock())
 def test_not_found(client):
     response = client.patch(
         endpoint + str(uuid.uuid4()),
@@ -77,7 +77,7 @@ def test_not_found(client):
 
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-@patch("polaris.sep31.transaction.registered_sep31_receiver_integration", Mock())
+@patch("polaris.sep31.transactions.registered_sep31_receiver_integration", Mock())
 def test_update_not_required(client, acc1_usd_deposit_transaction_factory):
     transaction = acc1_usd_deposit_transaction_factory(
         protocol=Transaction.PROTOCOL.sep31
@@ -97,7 +97,7 @@ def test_update_not_required(client, acc1_usd_deposit_transaction_factory):
 
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-@patch("polaris.sep31.transaction.registered_sep31_receiver_integration", Mock())
+@patch("polaris.sep31.transactions.registered_sep31_receiver_integration", Mock())
 def test_bad_info_update_column(client, acc1_usd_deposit_transaction_factory):
     transaction = acc1_usd_deposit_transaction_factory(
         protocol=Transaction.PROTOCOL.sep31
@@ -115,7 +115,7 @@ def test_bad_info_update_column(client, acc1_usd_deposit_transaction_factory):
 
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-@patch("polaris.sep31.transaction.registered_sep31_receiver_integration", Mock())
+@patch("polaris.sep31.transactions.registered_sep31_receiver_integration", Mock())
 def test_bad_update_body(client, acc1_usd_deposit_transaction_factory):
     transaction = acc1_usd_deposit_transaction_factory(
         protocol=Transaction.PROTOCOL.sep31
@@ -136,7 +136,7 @@ def test_bad_update_body(client, acc1_usd_deposit_transaction_factory):
 
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-@patch("polaris.sep31.transaction.registered_sep31_receiver_integration", Mock())
+@patch("polaris.sep31.transactions.registered_sep31_receiver_integration", Mock())
 def test_missing_update_category(client, acc1_usd_deposit_transaction_factory):
     transaction = acc1_usd_deposit_transaction_factory(
         protocol=Transaction.PROTOCOL.sep31
@@ -157,7 +157,7 @@ def test_missing_update_category(client, acc1_usd_deposit_transaction_factory):
 
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-@patch("polaris.sep31.transaction.registered_sep31_receiver_integration", Mock())
+@patch("polaris.sep31.transactions.registered_sep31_receiver_integration", Mock())
 def test_bad_category_value_type(client, acc1_usd_deposit_transaction_factory):
     transaction = acc1_usd_deposit_transaction_factory(
         protocol=Transaction.PROTOCOL.sep31
@@ -184,7 +184,7 @@ raise_error_integration = Mock(
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 @patch(
-    "polaris.sep31.transaction.registered_sep31_receiver_integration",
+    "polaris.sep31.transactions.registered_sep31_receiver_integration",
     raise_error_integration,
 )
 def test_user_defined_exception(client, acc1_usd_deposit_transaction_factory):

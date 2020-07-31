@@ -27,7 +27,7 @@ from polaris.utils import (
 logger = Logger(__name__)
 
 
-class TransactionAPIView(APIView):
+class TransactionsAPIView(APIView):
     parser_classes = [JSONParser, FormParser, MultiPartParser]
     renderer_classes = [JSONRenderer]
 

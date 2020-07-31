@@ -8,12 +8,12 @@ from polaris.models import Transaction
 from polaris.sep31.serializers import SEP31TransactionSerializer
 
 
-endpoint = "/sep31/transaction/"
+endpoint = "/sep31/transactions/"
 
 
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-@patch("polaris.sep31.transaction.registered_sep31_receiver_integration", Mock())
+@patch("polaris.sep31.transactions.registered_sep31_receiver_integration", Mock())
 def test_successful_call(client, acc1_usd_deposit_transaction_factory):
     transaction = acc1_usd_deposit_transaction_factory(
         protocol=Transaction.PROTOCOL.sep31
@@ -68,7 +68,7 @@ mock_valid_sending_anchor = Mock(valid_sending_anchor=Mock(return_value=False))
 
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 @patch(
-    "polaris.sep31.transaction.registered_sep31_receiver_integration",
+    "polaris.sep31.transactions.registered_sep31_receiver_integration",
     mock_valid_sending_anchor,
 )
 def test_invalid_anchor(client):
@@ -79,7 +79,7 @@ def test_invalid_anchor(client):
 
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-@patch("polaris.sep31.transaction.registered_sep31_receiver_integration", Mock())
+@patch("polaris.sep31.transactions.registered_sep31_receiver_integration", Mock())
 def test_no_transaction(client):
     response = client.get(endpoint + str(uuid.uuid4()))
     assert response.status_code == 404
@@ -87,7 +87,7 @@ def test_no_transaction(client):
 
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-@patch("polaris.sep31.transaction.registered_sep31_receiver_integration", Mock())
+@patch("polaris.sep31.transactions.registered_sep31_receiver_integration", Mock())
 def test_bad_id(client):
     response = client.get(endpoint + "notauuid")
     assert response.status_code == 404
@@ -95,7 +95,7 @@ def test_bad_id(client):
 
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-@patch("polaris.sep31.transaction.registered_sep31_receiver_integration", Mock())
+@patch("polaris.sep31.transactions.registered_sep31_receiver_integration", Mock())
 def test_no_id(client):
     response = client.get(endpoint)
     assert response.status_code == 404

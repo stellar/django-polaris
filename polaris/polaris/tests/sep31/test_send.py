@@ -6,10 +6,10 @@ from stellar_sdk import Keypair
 
 from polaris.tests.helpers import mock_check_auth_success
 from polaris.models import Transaction
-from polaris.sep31.transaction import process_post_response
+from polaris.sep31.transactions import process_post_response
 
 
-transaction_endpoint = "/sep31/transaction"
+transaction_endpoint = "/sep31/transactions"
 
 
 success_send_integration = Mock(
@@ -27,7 +27,7 @@ success_send_integration = Mock(
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 @patch(
-    "polaris.sep31.transaction.registered_sep31_receiver_integration",
+    "polaris.sep31.transactions.registered_sep31_receiver_integration",
     success_send_integration,
 )
 def test_successful_send(client, usd_asset_factory):
@@ -64,7 +64,7 @@ def test_auth_check(client):
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 @patch(
-    "polaris.sep31.transaction.registered_sep31_receiver_integration",
+    "polaris.sep31.transactions.registered_sep31_receiver_integration",
     success_send_integration,
 )
 def test_missing_category(client, usd_asset_factory):
@@ -90,7 +90,7 @@ def test_missing_category(client, usd_asset_factory):
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 @patch(
-    "polaris.sep31.transaction.registered_sep31_receiver_integration",
+    "polaris.sep31.transactions.registered_sep31_receiver_integration",
     success_send_integration,
 )
 def test_missing_field(client, usd_asset_factory):
@@ -120,7 +120,7 @@ def test_missing_field(client, usd_asset_factory):
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 @patch(
-    "polaris.sep31.transaction.registered_sep31_receiver_integration",
+    "polaris.sep31.transactions.registered_sep31_receiver_integration",
     success_send_integration,
 )
 def test_extra_field(client, usd_asset_factory):
@@ -146,7 +146,7 @@ def test_extra_field(client, usd_asset_factory):
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 @patch(
-    "polaris.sep31.transaction.registered_sep31_receiver_integration",
+    "polaris.sep31.transactions.registered_sep31_receiver_integration",
     success_send_integration,
 )
 def test_extra_category(client, usd_asset_factory):
@@ -170,7 +170,7 @@ def test_extra_category(client, usd_asset_factory):
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 @patch(
-    "polaris.sep31.transaction.registered_sep31_receiver_integration",
+    "polaris.sep31.transactions.registered_sep31_receiver_integration",
     success_send_integration,
 )
 def test_missing_amount(client, usd_asset_factory):
@@ -193,7 +193,7 @@ def test_missing_amount(client, usd_asset_factory):
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 @patch(
-    "polaris.sep31.transaction.registered_sep31_receiver_integration",
+    "polaris.sep31.transactions.registered_sep31_receiver_integration",
     success_send_integration,
 )
 def test_missing_asset_code(client, usd_asset_factory):
@@ -216,7 +216,7 @@ def test_missing_asset_code(client, usd_asset_factory):
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 @patch(
-    "polaris.sep31.transaction.registered_sep31_receiver_integration",
+    "polaris.sep31.transactions.registered_sep31_receiver_integration",
     success_send_integration,
 )
 def test_bad_asset_issuer(client, usd_asset_factory):
@@ -240,7 +240,7 @@ def test_bad_asset_issuer(client, usd_asset_factory):
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 @patch(
-    "polaris.sep31.transaction.registered_sep31_receiver_integration",
+    "polaris.sep31.transactions.registered_sep31_receiver_integration",
     success_send_integration,
 )
 def test_bad_asset_code(client, usd_asset_factory):
@@ -264,7 +264,7 @@ def test_bad_asset_code(client, usd_asset_factory):
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 @patch(
-    "polaris.sep31.transaction.registered_sep31_receiver_integration",
+    "polaris.sep31.transactions.registered_sep31_receiver_integration",
     success_send_integration,
 )
 def test_large_amount(client, usd_asset_factory):
@@ -288,7 +288,7 @@ def test_large_amount(client, usd_asset_factory):
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 @patch(
-    "polaris.sep31.transaction.registered_sep31_receiver_integration",
+    "polaris.sep31.transactions.registered_sep31_receiver_integration",
     success_send_integration,
 )
 def test_small_amount(client, usd_asset_factory):
@@ -312,7 +312,7 @@ def test_small_amount(client, usd_asset_factory):
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 @patch(
-    "polaris.sep31.transaction.registered_sep31_receiver_integration",
+    "polaris.sep31.transactions.registered_sep31_receiver_integration",
     success_send_integration,
 )
 def test_transaction_created(client, usd_asset_factory):
@@ -345,7 +345,7 @@ def test_transaction_created(client, usd_asset_factory):
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 @patch(
-    "polaris.sep31.transaction.registered_sep31_receiver_integration",
+    "polaris.sep31.transactions.registered_sep31_receiver_integration",
     success_send_integration,
 )
 def test_unsupported_lang(client, usd_asset_factory):
@@ -373,7 +373,7 @@ def test_unsupported_lang(client, usd_asset_factory):
 
 @pytest.mark.django_db
 @patch(
-    "polaris.sep31.transaction.registered_sep31_receiver_integration",
+    "polaris.sep31.transactions.registered_sep31_receiver_integration",
     success_send_integration,
 )
 def test_bad_customer_info_needed():
@@ -390,7 +390,7 @@ def test_bad_customer_info_needed():
 
 @pytest.mark.django_db
 @patch(
-    "polaris.sep31.transaction.registered_sep31_receiver_integration",
+    "polaris.sep31.transactions.registered_sep31_receiver_integration",
     success_send_integration,
 )
 def test_bad_value_for_category_in_response():
@@ -403,7 +403,7 @@ def test_bad_value_for_category_in_response():
 
 @pytest.mark.django_db
 @patch(
-    "polaris.sep31.transaction.registered_sep31_receiver_integration",
+    "polaris.sep31.transactions.registered_sep31_receiver_integration",
     success_send_integration,
 )
 def test_bad_field_in_response():
@@ -421,7 +421,7 @@ def test_bad_field_in_response():
 
 @pytest.mark.django_db
 @patch(
-    "polaris.sep31.transaction.registered_sep31_receiver_integration",
+    "polaris.sep31.transactions.registered_sep31_receiver_integration",
     success_send_integration,
 )
 def test_bad_field_value_in_response():
