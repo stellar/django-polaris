@@ -26,7 +26,9 @@ success_info_response = Mock(
 
 
 @pytest.mark.django_db
-@patch("polaris.sep31.info.registered_send_integration", success_info_response)
+@patch(
+    "polaris.sep31.info.registered_sep31_receiver_integration", success_info_response
+)
 def test_success_response(client, usd_asset_factory):
     asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31])
     response = client.get(endpoint)

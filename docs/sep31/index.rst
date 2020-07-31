@@ -20,26 +20,26 @@ Configuration
 Add the SEP to ``ACTIVE_SEPS`` in in your settings file.
 ::
 
-    ACTIVE_SEPS = ["sep-1", "sep-31", ...]
+    ACTIVE_SEPS = ["sep-1", "sep-10", "sep-31", ...]
 
 Integrations
 ============
 
 Where SEP-6 and SEP-24 use ``DepositIntegration`` and ``WithdrawalIntegration``,
-SEP-31 uses ``SendIntegration`` and ``RailsIntegration``. Note that in future
+SEP-31 uses ``SEP31ReceiverIntegration`` and ``RailsIntegration``. Note that in future
 releases, some SEP-6 and SEP-24 functions related to payment rails may be moved
 from ``DepositIntegration`` or ``WithdrawalIntegration`` to ``RailsIntegration``.
 
 SEP-31 Endpoints
 ^^^^^^^^^^^^^^^^
 
-.. autofunction:: polaris.integrations.SendIntegration.info
+.. autofunction:: polaris.integrations.SEP31ReceiverIntegration.info
 
-.. autofunction:: polaris.integrations.SendIntegration.process_send_request
+.. autofunction:: polaris.integrations.SEP31ReceiverIntegration.process_post_request
 
-.. autofunction:: polaris.integrations.SendIntegration.process_update_request
+.. autofunction:: polaris.integrations.SEP31ReceiverIntegration.process_patch_request
 
-.. autofunction:: polaris.integrations.SendIntegration.valid_sending_anchor
+.. autofunction:: polaris.integrations.SEP31ReceiverIntegration.valid_sending_anchor
 
 Payment Rails
 ^^^^^^^^^^^^^
@@ -61,8 +61,8 @@ Watch Transactions
 
 Polaris' ``watch_transactions`` command line tool streams transactions from
 every anchored asset's distribution account and attempts to match every incoming
-stellar payment with a Transaction object created by the sending anchor's `/send`
-request.
+stellar payment with a Transaction object created by the sending anchor's POST
+`/transaction` request.
 
 If it finds a match, it will update the transaction's status to
 ``pending_receiver`` and update the ``Transaction.amount_in`` field with the
