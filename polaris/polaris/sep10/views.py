@@ -7,15 +7,15 @@ See: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.
 """
 import os
 import binascii
-import json
 import time
 import jwt
-from urllib.parse import parse_qsl
 
-from django.http import JsonResponse
+from django.utils.translation import gettext as _
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.request import Request
+from rest_framework.response import Response
+from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 from stellar_sdk.sep.stellar_web_authentication import (
     build_challenge_transaction,
     read_challenge_transaction,
@@ -23,13 +23,10 @@ from stellar_sdk.sep.stellar_web_authentication import (
     verify_challenge_transaction_signed_by_client_master_key,
 )
 from stellar_sdk.sep.exceptions import InvalidSep10ChallengeError
-from stellar_sdk.exceptions import (
-    Ed25519PublicKeyInvalidError,
-    NotFoundError,
-)
+from stellar_sdk.exceptions import NotFoundError
 
 from polaris import settings
-from polaris.utils import Logger
+from polaris.utils import Logger, render_error_response
 
 MIME_URLENCODE, MIME_JSON = "application/x-www-form-urlencoded", "application/json"
 ANCHOR_NAME = "SEP 24 Reference"
@@ -44,23 +41,25 @@ class SEP10Auth(APIView):
     to the other SEP 24 endpoints.
     """
 
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
+
     ###############
     # GET functions
     ###############
-    def get(self, request, *args, **kwargs) -> JsonResponse:
+    def get(self, request, *args, **kwargs) -> Response:
         account = request.GET.get("account")
         if not account:
-            return JsonResponse(
+            return Response(
                 {"error": "no 'account' provided"}, status=status.HTTP_400_BAD_REQUEST
             )
 
         try:
             transaction = self._challenge_transaction(account)
         except ValueError as e:
-            return JsonResponse({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         logger.info(f"Returning SEP-10 challenge for account {account}")
-        return JsonResponse(
+        return Response(
             {
                 "transaction": transaction,
                 "network_passphrase": settings.STELLAR_NETWORK_PASSPHRASE,
@@ -85,14 +84,16 @@ class SEP10Auth(APIView):
     ################
     # POST functions
     ################
-    def post(self, request: Request, *args, **kwargs) -> JsonResponse:
+    def post(self, request: Request, *args, **kwargs) -> Response:
+        envelope_xdr = request.data.get("transaction")
+        if not envelope_xdr:
+            return render_error_response(_("'transaction' is required"))
         try:
-            envelope_xdr = self._get_transaction_xdr(request)
             self._validate_challenge_xdr(envelope_xdr)
         except ValueError as e:
-            return JsonResponse({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         else:
-            return JsonResponse({"token": self._generate_jwt(request, envelope_xdr)})
+            return Response({"token": self._generate_jwt(request, envelope_xdr)})
 
     @staticmethod
     def _validate_challenge_xdr(envelope_xdr: str):
@@ -181,40 +182,3 @@ class SEP10Auth(APIView):
         }
         encoded_jwt = jwt.encode(jwt_dict, settings.SERVER_JWT_KEY, algorithm="HS256")
         return encoded_jwt.decode("ascii")
-
-    def _get_transaction_xdr(self, request: Request) -> str:
-        """Get the transaction (base64 XDR) from the `POST <auth>` request."""
-        content_type = request.content_type
-        if content_type == MIME_URLENCODE:
-            return self._get_transaction_urlencode(request.body)
-        elif content_type == MIME_JSON:
-            return self._get_transaction_json(request.body)
-        else:
-            raise ValueError("invalid content type")
-
-    @staticmethod
-    def _get_transaction_json(body: str) -> str:
-        """
-        Get the transaction for JSON-encoded transaction data to `POST <auth>`.
-        """
-        try:
-            body_dict = json.loads(body)
-        except (ValueError, TypeError):
-            raise ValueError("invalid json")
-        try:
-            envelope_xdr = body_dict["transaction"]
-        except KeyError:
-            raise ValueError("no transaction found")
-        return envelope_xdr
-
-    @staticmethod
-    def _get_transaction_urlencode(body) -> str:
-        """
-        Get the transaction for URL encoded transaction data to `POST <auth>`.
-        """
-        args = dict(parse_qsl(body.decode("utf-8")))
-        if len(args) > 1:
-            raise ValueError("multiple query params provided")
-        elif not args or "transaction" not in args:
-            raise ValueError("no transaction provided")
-        return args["transaction"]
