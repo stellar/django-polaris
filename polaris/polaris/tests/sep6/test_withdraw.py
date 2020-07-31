@@ -255,8 +255,8 @@ def test_withdrawal_transaction_created(
         .first()
     )
     assert t
-    assert t.withdraw_memo_type == Transaction.MEMO_TYPES.hash
-    assert t.withdraw_anchor_account == distribution_address
+    assert t.memo_type == Transaction.MEMO_TYPES.hash
+    assert t.receiving_anchor_account == distribution_address
     assert t.stellar_account == "test source address"
     assert not t.amount_in
     assert t.asset == withdraw.asset

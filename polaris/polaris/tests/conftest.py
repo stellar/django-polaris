@@ -158,8 +158,8 @@ def acc1_usd_withdrawal_transaction_factory(usd_asset_factory):
             amount_fee=0,
             completed_at=datetime.datetime.now(datetime.timezone.utc),
             stellar_transaction_id="c5e8ada72c0e3c248ac7e1ec0ec97e204c06c295113eedbe632020cd6dc29ff8",
-            withdraw_memo="AAAAAAAAAAAAAAAAAAAAAIDqc+oB00EajZzqIpme754=",
-            withdraw_memo_type=Transaction.MEMO_TYPES.hash,
+            memo="AAAAAAAAAAAAAAAAAAAAAIDqc+oB00EajZzqIpme754=",
+            memo_type=Transaction.MEMO_TYPES.hash,
             protocol=protocol,
         )
 
@@ -192,9 +192,9 @@ def acc2_eth_withdrawal_transaction_factory(eth_asset_factory):
             external_transaction_id=(
                 "2dd16cb409513026fbe7defc0c6f826c2d2c65c3da993f747d09bf7dafd31094"
             ),
-            withdraw_anchor_account="1xb914",
-            withdraw_memo="Deposit for Mr. John Doe (id: 1001)",
-            withdraw_memo_type=Transaction.MEMO_TYPES.text,
+            receiving_anchor_account="1xb914",
+            memo="Deposit for Mr. John Doe (id: 1001)",
+            memo_type=Transaction.MEMO_TYPES.text,
             protocol=protocol,
         )
 
@@ -223,8 +223,8 @@ def acc2_eth_deposit_transaction_factory(eth_asset_factory):
             external_transaction_id=(
                 "fab370bc424ff5ce3b386dbfaae9990b66a2a37b4fbe51547e8794962a3f9fdf"
             ),
-            deposit_memo="86dbfaae9990b66a2a37b4",
-            deposit_memo_type=Transaction.MEMO_TYPES.hash,
+            memo="86dbfaae9990b66a2a37b4",
+            memo_type=Transaction.MEMO_TYPES.hash,
             protocol=protocol,
         )
 

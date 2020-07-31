@@ -70,12 +70,15 @@ class TransactionSerializer(serializers.ModelSerializer):
         data["to"] = data.pop("to_address")
         data["from"] = data.pop("from_address")
         if data["kind"] == Transaction.KIND.deposit:
-            del data["withdraw_memo"]
-            del data["withdraw_memo_type"]
-            del data["withdraw_anchor_account"]
-        else:  # withdrawal
-            del data["deposit_memo"]
-            del data["deposit_memo_type"]
+            data["deposit_memo_type"] = data["memo_type"]
+            data["deposit_memo"] = data["memo"]
+        else:
+            data["withdraw_memo_type"] = data["memo_type"]
+            data["withdraw_memo"] = data["memo"]
+            data["withdraw_anchor_account"] = data["receiving_anchor_account"]
+        del data["memo_type"]
+        del data["memo"]
+        del data["receiving_anchor_account"]
         return data
 
     class Meta:
@@ -94,11 +97,9 @@ class TransactionSerializer(serializers.ModelSerializer):
             "external_transaction_id",
             "from_address",
             "to_address",
-            "deposit_memo",
-            "deposit_memo_type",
-            "withdraw_anchor_account",
-            "withdraw_memo",
-            "withdraw_memo_type",
+            "receiving_anchor_account",
+            "memo",
+            "memo_type",
             "more_info_url",
             "refunded",
             "message",

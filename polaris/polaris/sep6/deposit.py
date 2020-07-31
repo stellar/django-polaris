@@ -57,8 +57,8 @@ def deposit(account: str, request: Request) -> Response:
             asset=args["asset"],
             kind=Transaction.KIND.deposit,
             status=Transaction.STATUS.pending_user_transfer_start,
-            deposit_memo=args["memo"],
-            deposit_memo_type=args["memo_type"] or Transaction.MEMO_TYPES.text,
+            memo=args["memo"],
+            memo_type=args["memo_type"] or Transaction.MEMO_TYPES.text,
             to_address=account,
             protocol=Transaction.PROTOCOL.sep6,
         )

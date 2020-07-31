@@ -166,10 +166,10 @@ def test_transactions_content(
     assert withdrawal_transaction["to"] is None
     assert (
         withdrawal_transaction["withdraw_anchor_account"]
-        == withdrawal.withdraw_anchor_account
+        == withdrawal.receiving_anchor_account
     )
-    assert withdrawal_transaction["withdraw_memo"] == withdrawal.withdraw_memo
-    assert withdrawal_transaction["withdraw_memo_type"] == withdrawal.withdraw_memo_type
+    assert withdrawal_transaction["withdraw_memo"] == withdrawal.memo
+    assert withdrawal_transaction["withdraw_memo_type"] == withdrawal.memo_type
 
     # Verifying the deposit transaction data:
     assert deposit_transaction["id"] == str(deposit.id)
@@ -194,8 +194,8 @@ def test_transactions_content(
     )
     assert deposit_transaction["from"] is None
     assert deposit_transaction["to"] is None
-    assert deposit_transaction["deposit_memo"] == deposit.deposit_memo
-    assert deposit_transaction["deposit_memo_type"] == deposit.deposit_memo_type
+    assert deposit_transaction["deposit_memo"] == deposit.memo
+    assert deposit_transaction["deposit_memo_type"] == deposit.memo_type
 
     # stellar_account and asset should not be exposed:
     with pytest.raises(KeyError):

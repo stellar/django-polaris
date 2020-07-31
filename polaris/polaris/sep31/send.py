@@ -58,9 +58,9 @@ def send(account: str, request: Request) -> Response:
         stellar_account=account,
         asset=params["asset"],
         amount_in=params["amount"],
-        send_memo=transaction_memo,
-        send_memo_type=Transaction.MEMO_TYPES.hash,
-        send_anchor_account=params["asset"].distribution_account,
+        memo=transaction_memo,
+        memo_type=Transaction.MEMO_TYPES.hash,
+        receiving_anchor_account=params["asset"].distribution_account,
     )
 
     error_data = registered_send_integration.process_send_request(
@@ -142,8 +142,8 @@ def process_send_response(error_data: Dict, transaction: Transaction) -> Dict:
         response_data = {
             "id": transaction.id,
             "stellar_account_id": transaction.asset.distribution_account,
-            "stellar_memo": transaction.send_memo,
-            "stellar_memo_type": transaction.send_memo_type,
+            "stellar_memo": transaction.memo,
+            "stellar_memo_type": transaction.memo_type,
         }
     else:
         if Transaction.objects.filter(id=transaction.id).exists():

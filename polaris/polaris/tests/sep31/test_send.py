@@ -297,12 +297,12 @@ def test_transaction_created(client, usd_asset_factory):
     assert t
     assert t.amount_in == 100
     assert t.stellar_account == "test source address"
-    assert t.send_memo
-    assert t.send_memo_type == Transaction.MEMO_TYPES.hash
+    assert t.memo
+    assert t.memo_type == Transaction.MEMO_TYPES.hash
     assert t.kind == Transaction.KIND.send
     assert t.status == Transaction.STATUS.pending_sender
     assert t.protocol == Transaction.PROTOCOL.sep31
-    assert t.send_anchor_account == asset.distribution_account
+    assert t.receiving_anchor_account == asset.distribution_account
     assert t.asset == asset
 
 

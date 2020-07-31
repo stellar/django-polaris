@@ -341,8 +341,8 @@ def deposit(account: str, request: Request) -> Response:
         status=Transaction.STATUS.incomplete,
         to_address=account,
         protocol=Transaction.PROTOCOL.sep24,
-        deposit_memo=memo,
-        deposit_memo_type=request.POST.get("memo_type") or Transaction.MEMO_TYPES.hash,
+        memo=memo,
+        memo_type=request.POST.get("memo_type") or Transaction.MEMO_TYPES.hash,
     )
     logger.info(f"Created deposit transaction {transaction_id}")
 

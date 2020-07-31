@@ -80,10 +80,10 @@ def test_transaction_id_filter_and_format(
     assert withdrawal_transaction["to"] is None
     assert (
         withdrawal_transaction["withdraw_anchor_account"]
-        == withdrawal.withdraw_anchor_account
+        == withdrawal.receiving_anchor_account
     )
-    assert withdrawal_transaction["withdraw_memo"] == withdrawal.withdraw_memo
-    assert withdrawal_transaction["withdraw_memo_type"] == withdrawal.withdraw_memo_type
+    assert withdrawal_transaction["withdraw_memo"] == withdrawal.memo
+    assert withdrawal_transaction["withdraw_memo_type"] == withdrawal.memo_type
 
 
 @pytest.mark.django_db

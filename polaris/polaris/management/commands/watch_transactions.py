@@ -66,7 +66,7 @@ class Command(BaseCommand):
                 )
             last_completed_transaction = (
                 Transaction.objects.filter(
-                    withdraw_anchor_account=account,
+                    receiving_anchor_account=account,
                     status=Transaction.STATUS.completed,
                     kind=Transaction.KIND.withdrawal,
                 )
@@ -93,13 +93,13 @@ class Command(BaseCommand):
 
         # Query filters for SEP6 and 24
         withdraw_filters = Q(
-            withdraw_anchor_account=account,
+            receiving_anchor_account=account,
             status=Transaction.STATUS.pending_user_transfer_start,
             kind=Transaction.KIND.withdrawal,
         )
         # Query filters for SEP31
         send_filters = Q(
-            send_anchor_account=account,
+            receiving_anchor_account=account,
             status=Transaction.STATUS.pending_sender,
             kind=Transaction.KIND.send,
         )
@@ -171,10 +171,10 @@ class Command(BaseCommand):
         memo = response.get("memo")
         if (
             transaction.protocol != Transaction.PROTOCOL.sep31
-            and memo != transaction.withdraw_memo
+            and memo != transaction.memo
         ) or (
             transaction.protocol == Transaction.PROTOCOL.sep31
-            and memo != transaction.send_memo
+            and memo != transaction.memo
         ):
             return
 

@@ -274,7 +274,7 @@ class Transaction(models.Model):
     STATUS = PolarisChoices(*list(status_to_message.keys()))
 
     MEMO_TYPES = PolarisChoices("text", "id", "hash")
-    """Type for the ``deposit_memo``. Can be either `hash`, `id`, or `text`"""
+    """Type for the ``memo``. Can be either `hash`, `id`, or `text`"""
 
     PROTOCOL = PolarisChoices("sep6", "sep24", "sep31")
     """Values for `protocol` column"""
@@ -451,13 +451,13 @@ class Transaction(models.Model):
     require updated information from the sender
     """
 
-    deposit_memo = models.TextField(null=True, blank=True)
+    memo = models.TextField(null=True, blank=True)
     """
     (optional) Value of memo to attach to transaction, for hash this should
     be base64-encoded.
     """
 
-    deposit_memo_type = models.CharField(
+    memo_type = models.CharField(
         choices=MEMO_TYPES, default=MEMO_TYPES.text, max_length=10
     )
     """
@@ -465,33 +465,9 @@ class Transaction(models.Model):
     transaction, one of text, id or hash.
     """
 
-    withdraw_anchor_account = models.TextField(null=True, blank=True)
+    receiving_anchor_account = models.TextField(null=True, blank=True)
     """
-    (optional) The stellar account ID of the user that wants to do the 
-    withdrawal. This is only needed if the anchor requires KYC information for
-    withdrawal. The anchor can use account to look up the user's KYC 
-    information.
-    """
-
-    withdraw_memo = models.TextField(null=True, blank=True)
-    """(if specified) use this memo in the payment transaction to the anchor."""
-
-    withdraw_memo_type = models.CharField(
-        choices=MEMO_TYPES, default=MEMO_TYPES.text, max_length=10
-    )
-    """Field for the ``MEMO_TYPES`` Choices"""
-
-    send_memo = models.TextField(null=True, blank=True)
-    """The memo to attach to the stellar payment"""
-
-    send_memo_type = models.CharField(
-        choices=MEMO_TYPES, default=MEMO_TYPES.text, max_length=10
-    )
-    """Field for the ``MEMO_TYPES`` Choices"""
-
-    send_anchor_account = models.TextField(null=True, blank=True)
-    """
-    Stellar account to send payment to
+    Stellar account to send payment or withdrawal funds to
     """
 
     refunded = models.BooleanField(default=False)
