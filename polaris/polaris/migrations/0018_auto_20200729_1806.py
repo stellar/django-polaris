@@ -4,6 +4,12 @@ import django.core.validators
 from django.db import migrations, models
 
 
+def null_to_zero(apps, schema_editor):
+    Asset = apps.get_model("polaris", "Asset")
+    Asset.objects.filter(send_fee_fixed=None).update(send_fee_fixed=0)
+    Asset.objects.filter(send_fee_percent=None).update(send_fee_percent=0)
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -11,6 +17,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        migrations.RunPython(null_to_zero),
         migrations.AlterField(
             model_name="asset",
             name="send_fee_fixed",
