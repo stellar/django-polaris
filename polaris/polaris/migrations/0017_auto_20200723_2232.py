@@ -32,6 +32,7 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.RunPython(migrate_memo_values),
+        migrations.RunPython(merge_receiving_accounts),
         migrations.RenameField(
             model_name="transaction", old_name="deposit_memo", new_name="memo",
         ),
@@ -44,7 +45,6 @@ class Migration(migrations.Migration):
         migrations.RemoveField(model_name="transaction", name="send_memo_type",),
         migrations.RemoveField(model_name="transaction", name="withdraw_memo",),
         migrations.RemoveField(model_name="transaction", name="withdraw_memo_type",),
-        migrations.RunPython(merge_receiving_accounts),
         migrations.RenameField(
             model_name="transaction",
             old_name="send_anchor_account",
