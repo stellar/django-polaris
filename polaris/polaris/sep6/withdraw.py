@@ -63,7 +63,9 @@ def withdraw(account: str, request: Request) -> Response:
     except ValueError as e:
         return render_error_response(str(e))
     try:
-        response, status_code = validate_response(args, integration_response)
+        response, status_code = validate_response(
+            args, integration_response, transaction
+        )
     except ValueError:
         return render_error_response(
             _("unable to process the request"), status_code=500
@@ -123,11 +125,13 @@ def parse_request_args(request: Request) -> Dict:
     }
 
 
-def validate_response(args: Dict, integration_response: Dict) -> Tuple[Dict, int]:
+def validate_response(
+    args: Dict, integration_response: Dict, transaction: Transaction
+) -> Tuple[Dict, int]:
     account = args["account"]
     asset = args["asset"]
     if "type" in integration_response:
-        return validate_403_response(account, integration_response), 403
+        return validate_403_response(account, integration_response, transaction), 403
 
     response = {
         "account_id": asset.distribution_account,

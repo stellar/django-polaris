@@ -1,13 +1,16 @@
-from typing import Dict, Optional
+from typing import Dict
 
 from polaris.utils import Logger, SEP_9_FIELDS
 from polaris.integrations import registered_customer_integration as rci
+from polaris.models import Transaction
 
 
 logger = Logger(__name__)
 
 
-def validate_403_response(account: str, integration_response: Dict) -> Dict:
+def validate_403_response(
+    account: str, integration_response: Dict, transaction: Transaction
+) -> Dict:
     """
     Ensures the response returned from `process_sep6_request()` matches the definitions
     described in SEP-6. This function can be used for both /deposit and /withdraw
@@ -23,6 +26,11 @@ def validate_403_response(account: str, integration_response: Dict) -> Dict:
     :return: a new dictionary containing the valid key-value pairs from
         integration_response
     """
+    if Transaction.objects.filter(id=transaction.id).exists():
+        logger.error(
+            "transaction cannot be saved when returning 403 SEP-6 deposit/withdraw response"
+        )
+        raise ValueError()
     statuses = ["pending", "denied"]
     types = ["customer_info_status", "non_interactive_customer_info_needed"]
     response = {"type": integration_response["type"]}

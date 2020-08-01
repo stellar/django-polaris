@@ -56,7 +56,9 @@ def deposit(account: str, request: Request) -> Response:
         return render_error_response(str(e))
 
     try:
-        response, status_code = validate_response(args, integration_response)
+        response, status_code = validate_response(
+            args, integration_response, transaction
+        )
     except (ValueError, KeyError):
         return render_error_response(
             _("unable to process the request"), status_code=500
@@ -74,14 +76,16 @@ def deposit(account: str, request: Request) -> Response:
     return Response(response, status=status_code)
 
 
-def validate_response(args: Dict, integration_response: Dict) -> Tuple[Dict, int]:
+def validate_response(
+    args: Dict, integration_response: Dict, transaction: Transaction
+) -> Tuple[Dict, int]:
     """
     Validate /deposit response returned from integration function
     """
     account = args["account"]
     asset = args["asset"]
     if "type" in integration_response:
-        return validate_403_response(account, integration_response), 403
+        return validate_403_response(account, integration_response, transaction), 403
 
     response = {
         "min_amount": round(asset.deposit_min_amount, asset.significant_decimals),

@@ -66,8 +66,7 @@ class Command(BaseCommand):
                 )
             last_completed_transaction = (
                 Transaction.objects.filter(
-                    Q(kind=Transaction.KIND.withdrawal)
-                    | Q(kind=Transaction.KIND.send),
+                    Q(kind=Transaction.KIND.withdrawal) | Q(kind=Transaction.KIND.send),
                     receiving_anchor_account=account,
                     status=Transaction.STATUS.completed,
                 )
