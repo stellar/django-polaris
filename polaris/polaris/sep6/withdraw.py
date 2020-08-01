@@ -38,40 +38,49 @@ def withdraw(account: str, request: Request) -> Response:
         return args["error"]
     args["account"] = account
 
+    transaction_id = create_transaction_id()
+    transaction_id_hex = transaction_id.hex
+    padded_hex_memo = "0" * (64 - len(transaction_id_hex)) + transaction_id_hex
+    memo = memo_hex_to_base64(padded_hex_memo)
+    transaction = Transaction(
+        id=transaction_id,
+        stellar_account=account,
+        asset=args["asset"],
+        kind=Transaction.KIND.withdrawal,
+        status=Transaction.STATUS.pending_user_transfer_start,
+        receiving_anchor_account=args["asset"].distribution_account,
+        memo=memo,
+        memo_type=Transaction.MEMO_TYPES.hash,
+        protocol=Transaction.PROTOCOL.sep6,
+    )
+
     # All request arguments are validated in parse_request_args()
     # except 'type', 'dest', and 'dest_extra'. Since Polaris doesn't know
     # which argument was invalid, the anchor is responsible for raising
     # an exception with a translated message.
     try:
-        integration_response = rwi.process_sep6_request(args)
+        integration_response = rwi.process_sep6_request(args, transaction)
     except ValueError as e:
         return render_error_response(str(e))
     try:
-        response, status_code = validate_response(args, integration_response)
+        response, status_code = validate_response(
+            args, integration_response, transaction
+        )
     except ValueError:
         return render_error_response(
             _("unable to process the request"), status_code=500
         )
 
     if status_code == 200:
-        transaction_id = create_transaction_id()
-        transaction_id_hex = transaction_id.hex
-        padded_hex_memo = "0" * (64 - len(transaction_id_hex)) + transaction_id_hex
-        memo = memo_hex_to_base64(padded_hex_memo)
-        Transaction.objects.create(
-            id=transaction_id,
-            stellar_account=account,
-            asset=args["asset"],
-            kind=Transaction.KIND.withdrawal,
-            status=Transaction.STATUS.pending_user_transfer_start,
-            receiving_anchor_account=args["asset"].distribution_account,
-            memo=memo,
-            memo_type=Transaction.MEMO_TYPES.hash,
-            protocol=Transaction.PROTOCOL.sep6,
-        )
         response["memo"] = memo
         response["memo_type"] = Transaction.MEMO_TYPES.hash
         logger.info(f"Created withdraw transaction {transaction_id}")
+        transaction.save()
+    elif Transaction.objects.filter(id=transaction.id).exists():
+        logger.error("Do not save transaction objects for invalid SEP-6 requests")
+        return render_error_response(
+            _("unable to process the request"), status_code=500
+        )
 
     return Response(response, status=status_code)
 
@@ -116,11 +125,13 @@ def parse_request_args(request: Request) -> Dict:
     }
 
 
-def validate_response(args: Dict, integration_response: Dict) -> Tuple[Dict, int]:
+def validate_response(
+    args: Dict, integration_response: Dict, transaction: Transaction
+) -> Tuple[Dict, int]:
     account = args["account"]
     asset = args["asset"]
     if "type" in integration_response:
-        return validate_403_response(account, integration_response), 403
+        return validate_403_response(account, integration_response, transaction), 403
 
     response = {
         "account_id": asset.distribution_account,

@@ -251,7 +251,7 @@ class DepositIntegration:
         """
         pass
 
-    def process_sep6_request(self, params: Dict) -> Dict:
+    def process_sep6_request(self, params: Dict, transaction: Transaction) -> Dict:
         """
         .. _deposit: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#deposit
         .. _Deposit no additional information needed: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#1-success-no-additional-information-needed
@@ -259,12 +259,14 @@ class DepositIntegration:
         .. _Customer Information Status: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#4-customer-information-status
 
         Process the request arguments passed to the deposit_ endpoint and return one of the
-        following responses as a dictionary:
+        following responses outlined below as a dictionary. Save `transaction` to the DB
+        if you plan to return a success response. If `transaction` is saved to the DB but a
+        failure response is returned, Polaris will return a 500 error to the user.
 
         `Deposit no additional information needed`_
 
-        Polaris creates most of the attributes described in this response. Simply return the
-        'how' and optionally 'extra_info' attributes. For example:
+        The success response. Polaris creates most of the attributes described in this response.
+        Simply return the 'how' and optionally 'extra_info' attributes. For example:
         ::
 
             return {
@@ -276,7 +278,7 @@ class DepositIntegration:
 
         `Customer information needed`_
 
-        Return the response as described in SEP.
+        A failure response. Return the response as described in SEP.
         ::
 
             return {
@@ -286,9 +288,9 @@ class DepositIntegration:
 
         `Customer Information Status`_
 
-        Return the 'type' and 'status' attributes. If ``CustomerIntegration.more_info_url()``
-        is implemented, Polaris will include the 'more_info_url' attribute in the response as
-        well.
+        A failure response. Return the 'type' and 'status' attributes. If
+        ``CustomerIntegration.more_info_url()`` is implemented, Polaris will include the
+        'more_info_url' attribute in the response as well.
         ::
 
             return {
@@ -297,6 +299,8 @@ class DepositIntegration:
             }
 
         :param params: the request parameters as described in /deposit_
+        :param transaction: an unsaved ``Transaction`` object representing the transaction
+            to be processed
         """
         raise NotImplementedError(
             "`process_sep6_request` must be implemented if SEP-6 is active"
@@ -394,18 +398,20 @@ class WithdrawalIntegration:
         """
         pass
 
-    def process_sep6_request(self, params: Dict) -> Dict:
+    def process_sep6_request(self, params: Dict, transaction: Transaction) -> Dict:
         """
         .. _/withdraw: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#withdraw
         .. _Withdraw no additional information needed: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#1-success-no-additional-information-needed-1
 
         Process the request arguments passed to the `/withdraw`_ endpoint and return one of the
-        following responses as a dictionary:
+        following responses outlined below as a dictionary. Save `transaction` to the DB
+        if you plan to return a success response. If `transaction` is saved to the DB but a
+        failure response is returned, Polaris will return a 500 error to the user.
 
         `Withdraw no additional information needed`_
 
-        Polaris populates most of the attributes for this response. Simply return an 'extra_info'
-        attribute if applicable:
+        A success response. Polaris populates most of the attributes for this response.
+        Simply return an 'extra_info' attribute if applicable:
         ::
 
             {

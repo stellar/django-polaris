@@ -226,7 +226,7 @@ class MyDepositIntegration(DepositIntegration):
                 f"{transaction.stellar_account}"
             )
 
-    def process_sep6_request(self, params: Dict) -> Dict:
+    def process_sep6_request(self, params: Dict, transaction: Transaction) -> Dict:
         qparams = {"account": params["account"], "memo": None}
         account = (
             PolarisStellarAccount.objects.filter(**qparams)
@@ -259,7 +259,10 @@ class MyDepositIntegration(DepositIntegration):
             # the flow since this is a reference server.
             pass
 
-        # request is valid, return success data
+        # request is valid, return success data and add transaction to user model
+        PolarisUserTransaction.objects.create(
+            transaction_id=transaction.id, user=account.user, account=account
+        )
         return {
             "how": "fake bank account number",
             "extra_info": {
@@ -325,7 +328,7 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
                 f"{transaction.stellar_account}"
             )
 
-    def process_sep6_request(self, params: Dict) -> Dict:
+    def process_sep6_request(self, params: Dict, transaction: Transaction) -> Dict:
         qparams = {"account": params["account"], "memo": None}
         account = (
             PolarisStellarAccount.objects.filter(**qparams)
@@ -384,6 +387,9 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
             response["memo_type"] = params["memo_type"]
             response["memo"] = params["memo"]
 
+        PolarisUserTransaction.objects.create(
+            transaction_id=transaction.id, user=account.user, account=account
+        )
         return response
 
 

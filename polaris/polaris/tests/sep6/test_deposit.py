@@ -11,9 +11,10 @@ DEPOSIT_PATH = "/sep6/deposit"
 
 
 class GoodDepositIntegration(DepositIntegration):
-    def process_sep6_request(self, params: Dict) -> Dict:
+    def process_sep6_request(self, params: Dict, transaction: Transaction) -> Dict:
         if params.get("type") not in [None, "good_type"]:
             raise ValueError("invalid 'type'")
+        transaction.save()
         return {"how": "test", "extra_info": {"test": "test"}}
 
 
@@ -104,7 +105,7 @@ def test_deposit_bad_type(
 
 
 class MissingHowDepositIntegration(DepositIntegration):
-    def process_sep6_request(self, params: Dict) -> Dict:
+    def process_sep6_request(self, params: Dict, transaction: Transaction) -> Dict:
         return {}
 
 
@@ -126,7 +127,8 @@ def test_deposit_missing_integration_response(
 
 
 class BadExtraInfoDepositIntegration(DepositIntegration):
-    def process_sep6_request(self, params: Dict) -> Dict:
+    def process_sep6_request(self, params: Dict, transaction: Transaction) -> Dict:
+        transaction.save()
         return {"how": "test", "extra_info": "not a dict"}
 
 
@@ -177,7 +179,7 @@ def test_deposit_transaction_created(
 
 
 class GoodInfoNeededDepositIntegration(DepositIntegration):
-    def process_sep6_request(self, params: Dict) -> Dict:
+    def process_sep6_request(self, params: Dict, transaction: Transaction) -> Dict:
         return {
             "type": "non_interactive_customer_info_needed",
             "fields": ["first_name", "last_name"],
@@ -205,7 +207,7 @@ def test_deposit_non_interactive_customer_info_needed(
 
 
 class BadTypeInfoNeededDepositIntegration(DepositIntegration):
-    def process_sep6_request(self, params: Dict) -> Dict:
+    def process_sep6_request(self, params: Dict, transaction: Transaction) -> Dict:
         return {"type": "bad type"}
 
 
@@ -227,7 +229,7 @@ def test_deposit_bad_integration_bad_type(
 
 
 class MissingFieldsInfoNeededDepositIntegration(DepositIntegration):
-    def process_sep6_request(self, params: Dict) -> Dict:
+    def process_sep6_request(self, params: Dict, transaction: Transaction) -> Dict:
         return {"type": "non_interactive_customer_info_needed"}
 
 
@@ -251,7 +253,7 @@ def test_deposit_missing_fields_integration(
 
 
 class BadFieldsInfoNeededDepositIntegration(DepositIntegration):
-    def process_sep6_request(self, params: Dict) -> Dict:
+    def process_sep6_request(self, params: Dict, transaction: Transaction) -> Dict:
         return {
             "type": "non_interactive_customer_info_needed",
             "fields": ["not in sep 9"],
@@ -276,7 +278,7 @@ def test_deposit_bad_fields_integration(
 
 
 class GoodCustomerInfoStatusDepositIntegration(DepositIntegration):
-    def process_sep6_request(self, params: Dict) -> Dict:
+    def process_sep6_request(self, params: Dict, transaction: Transaction) -> Dict:
         return {"type": "customer_info_status", "status": "pending"}
 
 
@@ -301,7 +303,7 @@ def test_deposit_good_integration_customer_info(
 
 
 class BadStatusCustomerInfoStatusDepositIntegration(DepositIntegration):
-    def process_sep6_request(self, params: Dict) -> Dict:
+    def process_sep6_request(self, params: Dict, transaction: Transaction) -> Dict:
         return {"type": "customer_info_status", "status": "approved"}
 
 
@@ -331,3 +333,28 @@ def test_deposit_bad_auth(client):
     content = json.loads(response.content)
     assert response.status_code == 403
     assert content == {"type": "authentication_required"}
+
+
+class BadSaveDepositIntegration(DepositIntegration):
+    def process_sep6_request(self, params: Dict, transaction: Transaction) -> Dict:
+        transaction.save()
+        return {
+            "type": "non_interactive_customer_info_needed",
+            "fields": ["first_name", "last_name"],
+        }
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.deposit.rdi", BadSaveDepositIntegration())
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_saved_transaction_on_failure_response(client, usd_asset_factory):
+    asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep6])
+    response = client.get(
+        DEPOSIT_PATH,
+        {
+            "asset_code": asset.code,
+            "type": "bank_account",
+            "dest": "test bank account number",
+        },
+    )
+    assert response.status_code == 500

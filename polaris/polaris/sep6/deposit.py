@@ -37,44 +37,55 @@ def deposit(account: str, request: Request) -> Response:
         return args["error"]
     args["account"] = account
 
+    transaction_id = create_transaction_id()
+    transaction = Transaction(
+        id=transaction_id,
+        stellar_account=account,
+        asset=args["asset"],
+        kind=Transaction.KIND.deposit,
+        status=Transaction.STATUS.pending_user_transfer_start,
+        memo=args["memo"],
+        memo_type=args["memo_type"] or Transaction.MEMO_TYPES.text,
+        to_address=account,
+        protocol=Transaction.PROTOCOL.sep6,
+    )
+
     try:
-        integration_response = rdi.process_sep6_request(args)
+        integration_response = rdi.process_sep6_request(args, transaction)
     except ValueError as e:
         return render_error_response(str(e))
 
     try:
-        response, status_code = validate_response(args, integration_response)
+        response, status_code = validate_response(
+            args, integration_response, transaction
+        )
     except (ValueError, KeyError):
         return render_error_response(
             _("unable to process the request"), status_code=500
         )
 
     if status_code == 200:
-        transaction_id = create_transaction_id()
-        Transaction.objects.create(
-            id=transaction_id,
-            stellar_account=account,
-            asset=args["asset"],
-            kind=Transaction.KIND.deposit,
-            status=Transaction.STATUS.pending_user_transfer_start,
-            memo=args["memo"],
-            memo_type=args["memo_type"] or Transaction.MEMO_TYPES.text,
-            to_address=account,
-            protocol=Transaction.PROTOCOL.sep6,
+        logger.info(f"Created deposit transaction {transaction.id}")
+        transaction.save()
+    elif Transaction.objects.filter(id=transaction.id).exists():
+        logger.error("Do not save transaction objects for invalid SEP-6 requests")
+        return render_error_response(
+            _("unable to process the request"), status_code=500
         )
-        logger.info(f"Created deposit transaction {transaction_id}")
 
     return Response(response, status=status_code)
 
 
-def validate_response(args: Dict, integration_response: Dict) -> Tuple[Dict, int]:
+def validate_response(
+    args: Dict, integration_response: Dict, transaction: Transaction
+) -> Tuple[Dict, int]:
     """
     Validate /deposit response returned from integration function
     """
     account = args["account"]
     asset = args["asset"]
     if "type" in integration_response:
-        return validate_403_response(account, integration_response), 403
+        return validate_403_response(account, integration_response, transaction), 403
 
     response = {
         "min_amount": round(asset.deposit_min_amount, asset.significant_decimals),

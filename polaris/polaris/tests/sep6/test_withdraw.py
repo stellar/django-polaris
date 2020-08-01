@@ -16,9 +16,10 @@ WITHDRAW_PATH = "/sep6/withdraw"
 
 
 class GoodWithdrawalIntegration(WithdrawalIntegration):
-    def process_sep6_request(self, params: Dict) -> Dict:
+    def process_sep6_request(self, params: Dict, transaction: Transaction) -> Dict:
         if params.get("type") == "bad type":
             raise ValueError()
+        transaction.save()
         return {"extra_info": {"test": "test"}}
 
 
@@ -121,7 +122,7 @@ def test_withdraw_bad_type(client, acc1_usd_withdrawal_transaction_factory):
 
 
 class MissingHowDepositIntegration(WithdrawalIntegration):
-    def process_sep6_request(self, params: Dict) -> Dict:
+    def process_sep6_request(self, params: Dict, transaction: Transaction) -> Dict:
         return {}
 
 
@@ -158,7 +159,7 @@ def test_withdraw_empty_integration_response(
 
 
 class BadExtraInfoWithdrawalIntegration(WithdrawalIntegration):
-    def process_sep6_request(self, params: Dict) -> Dict:
+    def process_sep6_request(self, params: Dict, transaction: Transaction) -> Dict:
         return {"extra_info": "not a dict"}
 
 
@@ -266,7 +267,7 @@ def test_withdrawal_transaction_created(
 
 
 class GoodInfoNeededWithdrawalIntegration(WithdrawalIntegration):
-    def process_sep6_request(self, params: Dict) -> Dict:
+    def process_sep6_request(self, params: Dict, transaction: Transaction) -> Dict:
         return {
             "type": "non_interactive_customer_info_needed",
             "fields": ["first_name", "last_name"],
@@ -287,7 +288,6 @@ def test_withdraw_non_interactive_customer_info_needed(
         {"asset_code": withdraw.asset.code, "type": "good type", "dest": "test"},
     )
     content = json.loads(response.content)
-    print(content)
     assert response.status_code == 403
     assert content == {
         "type": "non_interactive_customer_info_needed",
@@ -301,3 +301,28 @@ def test_deposit_bad_auth(client):
     content = json.loads(response.content)
     assert response.status_code == 403
     assert content == {"type": "authentication_required"}
+
+
+class BadSaveWithdrawalIntegration(WithdrawalIntegration):
+    def process_sep6_request(self, params: Dict, transaction: Transaction) -> Dict:
+        transaction.save()
+        return {
+            "type": "non_interactive_customer_info_needed",
+            "fields": ["first_name", "last_name"],
+        }
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.withdraw.rwi", BadSaveWithdrawalIntegration())
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_saved_transaction_on_failure_response(client, usd_asset_factory):
+    asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep6])
+    response = client.get(
+        WITHDRAW_PATH,
+        {
+            "asset_code": asset.code,
+            "type": "bank_account",
+            "dest": "test bank account number",
+        },
+    )
+    assert response.status_code == 500
