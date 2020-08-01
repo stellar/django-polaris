@@ -132,7 +132,7 @@ class TransactionsAPIView(APIView):
         )
 
         error_data = registered_sep31_receiver_integration.process_post_request(
-            params, transaction.id
+            params, transaction
         )
         try:
             response_data = process_post_response(error_data, transaction)

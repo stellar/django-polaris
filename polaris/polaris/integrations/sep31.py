@@ -48,7 +48,9 @@ class SEP31ReceiverIntegration:
         """
         pass
 
-    def process_post_request(self, params: Dict, transaction_id: str) -> Optional[Dict]:
+    def process_send_request(
+        self, params: Dict, transaction: Transaction
+    ) -> Optional[Dict]:
         """
         .. _customer-info-needed: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0031.md#customer-info-needed-400-bad-request
         .. _transaction-info-needed: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0031.md#transaction-info-needed-400-bad-request
@@ -56,7 +58,9 @@ class SEP31ReceiverIntegration:
 
         Use the `params` passed in the request to do any processing of the user
         and requested transaction necessary to facilitate the payment to the
-        receiving user.
+        receiving user. If the arguments are valid, save ``transaction`` and link it
+        to your other models. If the transaction is saved but an error response is
+        returned Polaris will return a 500 response to the user.
 
         Polaris validates that the request includes all the required fields returned
         by ``SendIntegration.info()`` but cannot validate the values. Return ``None``
@@ -106,13 +110,8 @@ class SEP31ReceiverIntegration:
                 "error": "invalid 'sender_bank_account' format"
             }
 
-        Note that the ``Transaction`` object specified by `transaction_id` does not
-        exist when this function is called. A transaction with the passed ID will only
-        be created if a non-error response is returned.
-
         :param params: The parameters included in the `/send` request
-        :param transaction_id: The UUID string that will be used as the primary key for
-            the Transaction object.
+        :param transaction: the ``Transaction`` object representing the transaction being processed
         """
         pass
 
