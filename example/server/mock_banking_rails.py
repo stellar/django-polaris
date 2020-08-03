@@ -45,7 +45,7 @@ class BankAPIClient:
         This is intended to be an example for how a real anchor would poll the
         anchors bank and identify a deposit from a particular user.
         """
-        return BankTransaction(self.account, deposit.amount_in, deposit.deposit_memo)
+        return BankTransaction(self.account, deposit.amount_in, deposit.memo)
 
     def send_funds(self, to_account: str, amount: Decimal):
         """
