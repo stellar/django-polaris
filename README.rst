@@ -1,15 +1,23 @@
-=====================
-Introduction
-=====================
+==================
+Welcome to Polaris
+==================
+
+.. _readthedocs: https://django-polaris.readthedocs.io/
+.. _tutorial: https://django-polaris.readthedocs.io/en/stable/tutorials/index.html
+
+To get a SEP-24 anchor server running quickly, see the tutorial_.
+
+The documentation below outlines the common set up needed for any Polaris deployment, but
+each SEP implementation has its own configuration and integration requirements. These
+requirements are described in the documentation for each SEP.
 
 What is Polaris?
 ================
 
 .. _Stellar Development Foundation: https://www.stellar.org/
 .. _github: https://github.com/stellar/django-polaris
-.. _django app: https://docs.djangoproject.com/en/3.0/intro/reusable-apps/
-.. _demo client: http://sep24.stellar.org/#HOME_DOMAIN=%22https://testanchor.stellar.org%22&TRANSFER_SERVER=%22%22&WEB_AUTH_ENDPOINT=%22%22&USER_SK=%22SBBMVOJQLRJTQISVSUPBI2ZNQLZYNR4ARGWFPDDEL2U7444HPDII4VCX%22&HORIZON_URL=%22https://horizon-testnet.stellar.org%22&ASSET_CODE=%22SRT%22&ASSET_ISSUER=%22%22&EMAIL_ADDRESS=%22%22&STRICT_MODE=false&AUTO_ADVANCE=true&PUBNET=false
-.. _readthedocs: https://django-polaris.readthedocs.io/
+.. _django app: https://docs.djangoproject.com/en/2.2/intro/reusable-apps/
+.. _demo wallet: http://demo-wallet.stellar.org
 
 Polaris is an extendable `django app`_ for Stellar Ecosystem Proposal (SEP) implementations
 maintained by the `Stellar Development Foundation`_ (SDF). Using Polaris, you can run a web
@@ -22,13 +30,8 @@ For example, only an anchor can implement the integration with their partner ban
 This is why each SEP implemented by Polaris comes with a programmable interface, or
 integration points, for developers to inject their own business logic.
 
-The SDF also runs a reference server using Polaris that can be tested using our `demo client`_.
-
-The instructions below outline the common set up needed for any Polaris deployment, but
-each SEP implementation has its own configuration and integration requirements. These
-requirements are described in the documentation for each SEP.
-
-The complete documentation can be found on readthedocs_.
+The complete documentation can be found on readthedocs_. The SDF also runs a reference
+server using Polaris that can be tested using our `demo wallet`_.
 
 Installation and Configuration
 ==============================
@@ -36,7 +39,8 @@ Installation and Configuration
 .. _Django docs: https://docs.djangoproject.com/en/3.0/
 
 These instructions assume you have already set up a django project. If you haven't,
-take a look at the `Django docs`_.
+take a look at the `Django docs`_. It also assumes you have a database configured
+from the project's ``settings.py``.
 
 First make sure you have ``cd``'ed into your django project's main directory
 and then run
@@ -86,7 +90,7 @@ Environment Variables
 ^^^^^^^^^^^^^^^^^^^^^
 
 Polaris uses environment variables that should be defined in the
-environment or included in ``PROJECT_ROOT/.env``.
+environment or included in ``BASE_DIR/.env`` or ``ENV_PATH``.
 ::
 
     STELLAR_NETWORK_PASSPHRASE="Test SDF Network ; September 2015"
@@ -107,12 +111,18 @@ Add the Polaris endpoints in ``urls.py``
         path("", include(polaris.urls)),
     ]
 
+Once you have implemented all the steps above, go to the documentation for each SEP
+you want the anchor server to support and follow the configuration instructions. Once
+your SEPs are configured, you can build the database and create your an ``Asset``
+object.
+
 Database Models
 ^^^^^^^^^^^^^^^
 
 .. _psycopg2: https://pypi.org/project/psycopg2/
 .. _repository: https://github.com/stellar/django-polaris/issues
 .. _Fernet symmetric encryption: https://cryptography.io/en/latest/fernet/
+.. _Asset: https://django-polaris.readthedocs.io/en/stable/models/index.html#polaris.models.Asset
 
 SEP-1, 6, and 24 require Polaris' database models. Polaris currently only supports
 PostgreSQL and uses psycopg2_ to connect to the database. If you use another
@@ -132,15 +142,15 @@ into your python shell, then run something like this:
         code="USD",
         issuer="<the issuer address>",
         distribution_seed="<distribution account secret key>",
-        significant_digits=2,
+        significant_decimals=2,
         deposit_fee_fixed=1,
         deposit_fee_percent=2,
-        withdraw_fee_fixed=1,
-        withdraw_fee_percent=2,
+        withdrawal_fee_fixed=1,
+        withdrawal_fee_percent=2,
         deposit_min_amount=10,
         deposit_max_amount=10000,
         withdrawal_min_amount=10,
-        withdrawal_min_amount=10000,
+        withdrawal_max_amount=10000,
         sep24_enabled=True,
         sep6_enabled=True
     )
@@ -150,7 +160,7 @@ encryption`_, and only decrypted when held in memory within an ``Asset`` object.
 your Django project's ``SECRET_KEY`` setting to generate the encryption key, **so make sure
 its value is unguessable and kept a secret**.
 
-See the ``Asset`` documentation for more information on the fields used.
+See the Asset_ documentation for more information on the fields used.
 
 At this point, you should configure Polaris for one or more of the
 SEPs currently supported. Once configured, check out how to run the
@@ -274,3 +284,5 @@ Submit a PR
 ^^^^^^^^^^^
 After you've made your changes, push them to you a remote branch
 and make a Pull Request on the stellar/django-polaris master branch.
+
+
