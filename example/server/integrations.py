@@ -593,7 +593,7 @@ class MySEP31ReceiverIntegration(SEP31ReceiverIntegration):
             },
         }
 
-    def process_send_request(
+    def process_post_request(
         self, params: Dict, transaction: Transaction
     ) -> Optional[Dict]:
         _ = params.get("sender_id")  # not actually used
