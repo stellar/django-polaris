@@ -1,0 +1,425 @@
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+#
+# oon arfiandwi <oon.arfiandwi@gmail.com>, 2020.
+msgid ""
+msgstr ""
+"Project-Id-Version: gettext-tools 0.18.3\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-07-09 19:01+0000\n"
+"PO-Revision-Date: 2020-08-04 00:37+0800\n"
+"Last-Translator: oon arfiandwi <oon.arfiandwi@gmail.com>\n"
+"Language-Team: Bahasa Indonesia"
+"Language: id\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: integrations/forms.py:31
+msgid "The credit card number is invalid"
+msgstr "Nomor kartu kredit tidak valid"
+
+#: integrations/forms.py:67
+msgid "Name"
+msgstr "Nama"
+
+#: integrations/forms.py:68
+msgid "Card Number"
+msgstr "Nomor Kartu"
+
+#: integrations/forms.py:69
+msgid "Expiration"
+msgstr "Kedaluwarsa"
+
+#: integrations/forms.py:70
+msgid "CVV"
+msgstr "CVV"
+
+#: integrations/forms.py:136
+msgid "Amount"
+msgstr "Jumlah"
+
+#: integrations/forms.py:144
+#, python-format
+#| msgid "(Minimum: %s)"
+msgid "(minimum: %s)"
+msgstr "(minimum: %s)"
+
+#: integrations/forms.py:146
+#, python-format
+#| msgid "(Maximum: %s)"
+msgid "(maximum: %s)"
+msgstr "(maksimum: %s)"
+
+#: integrations/forms.py:158
+#, python-format
+msgid "The minimum amount is: %s"
+msgstr "Jumlah minimum sebesar: %s"
+
+#: integrations/forms.py:163
+#, python-format
+msgid "The maximum amount is: %s"
+msgstr "Jumlah maksimum sebesar: %s"
+
+#: models.py:254
+#| msgid "processing"
+msgid "Processing"
+msgstr "Sedang diproses"
+
+#: models.py:255
+msgid "waiting for a trustline to be established"
+msgstr "menunggu trustline terhubung"
+
+#: models.py:256
+msgid "waiting on user action"
+msgstr "menunggu aksi pengguna"
+
+#: models.py:257
+msgid "waiting on the user to transfer funds"
+msgstr "menunggu pengguna untuk transfer dana"
+
+#: models.py:258
+msgid "incomplete"
+msgstr "tidak lengkap"
+
+#: models.py:259
+msgid "no market for the asset"
+msgstr "tidak ada pasar untuk aset"
+
+#: models.py:260
+msgid "the transaction amount is too small"
+msgstr "jumlah transaksi terlalu kecil"
+
+#: models.py:261
+msgid "the transaction amount is too big"
+msgstr "jumlah transaksinya terlalu besar"
+
+#: models.py:268
+msgid "complete"
+msgstr "lengkap"
+
+#: models.py:269
+msgid "error"
+msgstr "terjadi kesalahan"
+
+#: models.py:270
+msgid "waiting on an external entity"
+msgstr "menunggu entitas eksternal"
+
+#: models.py:271
+msgid "stellar is executing the transaction"
+msgstr "stellar sedang melakukan transaksi"
+
+#: sep12/customer.py:26 sep12/customer.py:73 sep6/transaction.py:37
+msgid "The account specified does not match authorization token"
+msgstr "Akun yang ditentukan tidak cocok dengan token otorisasi"
+
+#: sep12/customer.py:31
+msgid "unable to identify a user without 'id' or 'account'"
+msgstr "tidak dapat mengidentifikasi pengguna tanpa 'id' atau 'account'"
+
+#: sep12/customer.py:34 sep12/customer.py:77
+#| msgid "invalid 'memo' for 'memo_type'"
+msgid "missing 'memo' for 'memo_type'"
+msgstr "tidak menemukan 'memo' untuk 'memo_type'"
+
+#: sep12/customer.py:40 sep12/customer.py:83 sep24/deposit.py:299
+#: sep6/deposit.py:126 sep6/withdraw.py:100
+msgid "invalid 'memo' for 'memo_type'"
+msgstr "'memo' tidak valid untuk 'memo_type'"
+
+#: sep12/customer.py:60
+msgid "An exception was raised validating GET /customer response"
+msgstr "Pengecualian diajukan saat validasi respons GET /customer"
+
+#: sep12/customer.py:63
+#| msgid "unable to process the request"
+msgid "unable to process request."
+msgstr "tidak dapat memroses permintaan."
+
+#: sep12/customer.py:101 sep31/update.py:47
+#| msgid "unable to process the request"
+msgid "unable to process request"
+msgstr "tidak dapat memroses permintaan"
+
+#: sep24/deposit.py:93 sep24/deposit.py:236 sep24/withdraw.py:90
+#: sep24/withdraw.py:247
+msgid ""
+"The anchor did not provide content, is the interactive flow already complete?"
+msgstr "Anchor tidak menyediakan konten, apakah alur interaktif sudah lengkap?"
+
+#: sep24/deposit.py:99
+#| msgid "The anchor did not provide content, unable to serve page."
+msgid "The anchor did not provide form content, unable to serve page."
+msgstr ""
+"Anchor tidak menyediakan konten formulir, tidak dapat melayani halaman."
+
+#: sep24/deposit.py:108 sep24/withdraw.py:105
+msgid "Unable to validate form submission."
+msgstr "Tidak dapat melakukan validasi pengiriman formulir."
+
+#: sep24/deposit.py:182 sep24/withdraw.py:193
+msgid "Missing id parameter in URL"
+msgstr "Parameter id tidak ada di URL"
+
+#: sep24/deposit.py:242 sep24/withdraw.py:96 sep24/withdraw.py:253
+msgid "The anchor did not provide content, unable to serve page."
+msgstr "Anchor tidak menyediakan konten, tidak dapat melayani halaman."
+
+#: sep24/deposit.py:292
+msgid "`asset_code` and `account` are required parameters"
+msgstr "`asset_code` dan `account` adalah parameter wajib"
+
+#: sep24/deposit.py:304
+#, python-format
+msgid "unknown asset: %s"
+msgstr "aset tidak dikenal: %s"
+
+#: sep24/deposit.py:306 sep24/withdraw.py:309
+#, python-format
+msgid "invalid operation for asset %s"
+msgstr "operasi tidak valid untuk aset %s"
+
+#: sep24/deposit.py:311
+msgid "invalid 'account'"
+msgstr "'account' tidak valid"
+
+#: sep24/utils.py:108
+msgid "Invalid token issuer"
+msgstr "Penerbit token tidak valid"
+
+#: sep24/utils.py:110
+msgid "Token is not yet valid or is expired"
+msgstr "Token belum valid atau kedaluwarsa"
+
+#: sep24/utils.py:116 sep24/utils.py:143
+msgid "Transaction for account not found"
+msgstr "Transaksi untuk akun tidak ditemukan"
+
+#: sep24/utils.py:137
+msgid "Session is not authenticated"
+msgstr "Sesi tidak diautentikasi"
+
+#: sep24/utils.py:174
+msgid "no 'transaction_id' provided"
+msgstr "tidak ada 'transaction_id' yang tersedia"
+
+#: sep24/utils.py:180 sep6/deposit.py:110 sep6/withdraw.py:84
+msgid "invalid 'asset_code'"
+msgstr "'asset_code' tidak valid"
+
+#: sep24/utils.py:188
+msgid "Transaction with ID and asset_code not found"
+msgstr "Transaksi dengan ID dan asset_code tidak ditemukan"
+
+#: sep24/withdraw.py:299
+msgid "'asset_code' is required"
+msgstr "'asset_code' wajib ada"
+
+#: sep24/withdraw.py:304
+msgid "`memo` parameter is not supported"
+msgstr "Parameter `memo` tidak didukung"
+
+#: sep24/withdraw.py:311
+#, python-format
+msgid "unsupported asset type: %s"
+msgstr "tidak mendukung tipe aset: %s"
+
+#: sep31/info.py:35 sep31/send.py:74 sep6/deposit.py:49 sep6/info.py:41
+#: sep6/withdraw.py:53
+msgid "unable to process the request"
+msgstr "tidak dapat memroses permintaan"
+
+#: sep31/send.py:88
+#| msgid "invalid 'asset_code'"
+msgid "invalid 'asset_code' and 'asset_issuer'"
+msgstr "'asset_code' dan 'asset_issuer' tidak valid"
+
+#: sep31/send.py:92 sep31/send.py:94
+#| msgid "invalid 'account'"
+msgid "invalid 'amount'"
+msgstr "'amount' tidak valid"
+
+#: sep31/send.py:101
+msgid "'fields' must serialize to a JSON object"
+msgstr "'fields' harus diserialisasi ke objek JSON"
+
+#: sep31/send.py:107
+msgid "'transaction' value in 'fields' must be a dict"
+msgstr "'transaction' nilai dalam 'fields' harus berupa kamus (dict)"
+
+#: sep31/send.py:112
+msgid "'sender_id' and 'receiver_id' values must be strings"
+msgstr "Nilai 'sender_id' dan 'receiver_id' harus berupa string"
+
+#: sep31/transaction.py:20
+#| msgid "invalid 'account'"
+msgid "invalid sending account."
+msgstr "akun pengirim tidak valid."
+
+#: sep31/transaction.py:22
+#| msgid "Missing id parameter in URL"
+msgid "missing 'id' parameter"
+msgstr "parameter 'id' tidak ditemukan"
+
+#: sep31/transaction.py:28 sep31/transaction.py:30 sep31/update.py:34
+#: shared/endpoints.py:29
+msgid "transaction not found"
+msgstr "transaksi tidak ditemukan"
+
+#: sep31/update.py:25
+#| msgid "invalid 'account'"
+msgid "invalid sending account"
+msgstr "akun pengirim tidak valid"
+
+#: sep31/update.py:36
+#| msgid "'type' is required"
+msgid "update not required"
+msgstr "pembaruan tidak diperlukan"
+
+#: sep31/update.py:64
+#, python-format
+msgid "missing %s fields"
+msgstr "kolom %s tidak ditemukan"
+
+#: sep31/update.py:66
+#, python-format
+msgid "invalid type for %s, must be an object"
+msgstr "tipe tidak valid untuk %s, harus berupa objek"
+
+#: sep31/update.py:69
+#, python-brace-format
+msgid "missing %{field}s in %{category}s"
+msgstr "%{field}s pada %{category}s tidak ditemukan"
+
+#: sep6/deposit.py:121 sep6/withdraw.py:95
+msgid "invalid 'memo_type'"
+msgstr "'memo_type' tidak valid"
+
+#: sep6/withdraw.py:103
+msgid "'type' is required"
+msgstr "'type' wajib ada"
+
+#: sep6/withdraw.py:105
+msgid "'dest' is required"
+msgstr "'dest' wajib ada"
+
+#: shared/endpoints.py:219
+msgid ""
+"at least one of id, stellar_transaction_id, or external_transaction_id must "
+"be provided"
+msgstr ""
+"setidaknya satu id, stellar_transaction_id, atau external_transaction_id"
+" harus "
+"tersedia"
+
+#: templates/base.html:10
+msgid "SEP24 reference server"
+msgstr "Server referensi SEP24"
+
+#: templates/deposit/form.html:4
+msgid "Interactive Deposit Info Form"
+msgstr "Penyetoran Interaktif Formulir Info"
+
+#: templates/deposit/form.html:13 templates/withdraw/form.html:13
+msgid "Please fill out the fields below."
+msgstr "Silakan isi kolom di bawah ini."
+
+#: templates/deposit/form.html:39 templates/withdraw/form.html:37
+msgid "Fee"
+msgstr "Biaya"
+
+#: templates/deposit/form.html:40 templates/withdraw/form.html:38
+msgid "Total"
+msgstr "Total"
+
+#: templates/deposit/form.html:45
+msgid "Submit"
+msgstr "Kirimkan"
+
+#: templates/deposit/form.html:52 templates/withdraw/form.html:49
+msgid "Refresh"
+msgstr "Aktualkan"
+
+#: templates/django/forms/widgets/clearable_file_input.html:2
+#: templates/django/forms/widgets/file.html:2
+msgid "Select a file"
+msgstr "Pilih file"
+
+#: templates/error.html:4 templates/error.html:9
+#, python-format
+msgid "Error: %(status_code)s"
+msgstr "Terjadi Kesalahan: %(status_code)s"
+
+#: templates/transaction/more_info.html:4
+msgid "Transaction More Info"
+msgstr "Transaksi Info Lebih Lanjut"
+
+#: templates/transaction/more_info.html:12
+msgid "instructions"
+msgstr "instruksi"
+
+#: templates/transaction/more_info.html:21
+msgid "kind"
+msgstr "jenis"
+
+#: templates/transaction/more_info.html:25
+msgid "deposit"
+msgstr "penyetoran"
+
+#: templates/transaction/more_info.html:27
+msgid "withdrawal"
+msgstr "penarikan"
+
+#: templates/transaction/more_info.html:34
+msgid "ID"
+msgstr "ID"
+
+#: templates/transaction/more_info.html:43
+msgid "amount received"
+msgstr "jumlah yang diterima"
+
+#: templates/transaction/more_info.html:52
+msgid "fee"
+msgstr "biaya"
+
+#: templates/transaction/more_info.html:62
+msgid "amount deposited"
+msgstr "jumlah yang disetorkan"
+
+#: templates/transaction/more_info.html:64
+msgid "amount withdrawn"
+msgstr "jumlah yang ditarik"
+
+#: templates/transaction/more_info.html:74
+msgid "status"
+msgstr "status"
+
+#: templates/transaction/more_info.html:83
+msgid "start"
+msgstr "mulai"
+
+#: templates/transaction/more_info.html:93
+msgid "completed"
+msgstr "selesai"
+
+#: templates/withdraw/form.html:4
+msgid "Interactive Withdraw Info Form"
+msgstr "Penarikan Interaktif Formulir Info"
+
+#: templates/withdraw/form.html:43
+msgid "Continue"
+msgstr "Lanjut"
+
+#: utils.py:119
+#, python-format
+msgid "the specified operation is not available for '%s'"
+msgstr "operasi yang ditentukan tidak tersedia untuk '%s'"
+
+#: utils.py:124
+#, python-format
+msgid "Asset amount must be within bounds [%(min)s, %(max)s]"
+msgstr "Jumlah aset harus dalam batas [%(min)s, %(max)s]"
+
+
