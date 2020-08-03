@@ -6,9 +6,9 @@ Internationalization
 .. _gettext: https://www.gnu.org/software/gettext
 .. _translations: https://docs.djangoproject.com/en/2.2/topics/i18n/translation/
 
-Polaris currently supports English and Portuguese. Note that this feature depends
-on the GNU gettext_ library. This page assumes you understand how `translations`_
-work in Django.
+Polaris currently supports English, Portuguese and Indonesian. Note that this 
+feature depends on the GNU gettext_ library. This page assumes you understand how 
+`translations`_ work in Django.
 
 If you'd like to add support for another language, make a pull request to Polaris
 with the necessary translation files. If Polaris supports the language you wish to
@@ -23,7 +23,7 @@ To enable this support, add the following to your settings.py:
     USE_I18N = True
     USE_L10N = True
     USE_THOUSAND_SEPARATOR = True
-    LANGUAGES = [("en", _("English")), ("pt", _("Portuguese"))]
+    LANGUAGES = [("en", _("English")), ("pt", _("Portuguese")), ("id", _("Bahasa Indonesia"))]
 
 Note that adding the ``LANGUAGE`` setting is **required**. Without this,
 Django assumes your application supports every language Django itself
