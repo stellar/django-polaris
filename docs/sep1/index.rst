@@ -5,10 +5,10 @@ SEP-1
 Configuration
 -------------
 
-Simply add the SEP to your ``ACTIVE_SEPS`` list in settings.py:
+Simply add the SEP to your ``POLARIS_ACTIVE_SEPS`` list in settings.py:
 ::
 
-    ACTIVE_SEPS = ["sep-1", "sep-10", ...]
+    POLARIS_ACTIVE_SEPS = ["sep-1", "sep-10", ...]
 
 .. _sep1_integrations:
 

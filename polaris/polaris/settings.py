@@ -13,16 +13,18 @@ env = environ.Env()
 env_file = os.path.join(getattr(settings, "BASE_DIR", ""), ".env")
 if os.path.exists(env_file):
     env.read_env(env_file)
-elif hasattr(settings, "ENV_PATH") and os.path.exists(settings.ENV_PATH):
-    env.read_env(settings.ENV_PATH)
+elif hasattr(settings, "POLARIS_ENV_PATH") and os.path.exists(
+    settings.POLARIS_ENV_PATH
+):
+    env.read_env(settings.POLARIS_ENV_PATH)
 
 SIGNING_SEED, SIGNING_KEY = None, None
-if "sep-10" in settings.ACTIVE_SEPS:
+if "sep-10" in settings.POLARIS_ACTIVE_SEPS:
     SIGNING_SEED = env("SIGNING_SEED")
     SIGNING_KEY = Keypair.from_secret(SIGNING_SEED).public_key
 
 SERVER_JWT_KEY = None
-if any(sep in settings.ACTIVE_SEPS for sep in ["sep-10", "sep-24"]):
+if any(sep in settings.POLARIS_ACTIVE_SEPS for sep in ["sep-10", "sep-24"]):
     SERVER_JWT_KEY = env("SERVER_JWT_KEY")
 
 STELLAR_NETWORK_PASSPHRASE = env(

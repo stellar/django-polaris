@@ -377,14 +377,14 @@ def extract_sep9_fields(args):
 def check_config():
     from polaris.sep24.utils import check_sep24_config
 
-    if not hasattr(django_settings, "ACTIVE_SEPS"):
+    if not hasattr(django_settings, "POLARIS_ACTIVE_SEPS"):
         raise AttributeError(
-            "ACTIVE_SEPS must be defined in your django settings file."
+            "POLARIS_ACTIVE_SEPS must be defined in your django settings file."
         )
 
     check_middleware()
     check_protocol()
-    if "sep-24" in django_settings.ACTIVE_SEPS:
+    if "sep-24" in django_settings.POLARIS_ACTIVE_SEPS:
         check_sep24_config()
 
 
