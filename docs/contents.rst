@@ -17,6 +17,7 @@ django-polaris documentation contents
     forms/index
     middleware/index
     internationalization/index
+    celery/index
 
 
 Indices and tables
