@@ -14,9 +14,9 @@ from stellar_sdk.client.aiohttp_client import AiohttpClient
 
 from polaris import settings
 from polaris.models import Asset, Transaction
-from polaris.utils import Logger
+from polaris.utils import getLogger
 
-logger = Logger(__name__)
+logger = getLogger(__name__)
 
 
 class Command(BaseCommand):

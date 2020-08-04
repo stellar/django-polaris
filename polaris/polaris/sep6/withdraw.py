@@ -1,4 +1,5 @@
 from typing import Dict, Tuple
+from polaris.utils import getLogger
 
 from django.utils.translation import gettext as _
 from rest_framework.request import Request
@@ -8,7 +9,6 @@ from rest_framework.renderers import JSONRenderer
 from stellar_sdk.exceptions import MemoInvalidException
 
 from polaris.utils import (
-    Logger,
     render_error_response,
     create_transaction_id,
     extract_sep9_fields,
@@ -26,7 +26,7 @@ from polaris.integrations import (
 )
 
 
-logger = Logger(__name__)
+logger = getLogger(__name__)
 
 
 @api_view(["GET"])

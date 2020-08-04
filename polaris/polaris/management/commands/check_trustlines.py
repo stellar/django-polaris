@@ -6,10 +6,10 @@ from stellar_sdk.exceptions import BaseHorizonError
 from polaris import settings
 from polaris.utils import create_stellar_deposit
 from polaris.models import Transaction
-from polaris.utils import Logger
+from polaris.utils import getLogger
 from polaris.integrations import registered_deposit_integration as rdi
 
-logger = Logger(__name__)
+logger = getLogger(__name__)
 
 
 class Command(BaseCommand):

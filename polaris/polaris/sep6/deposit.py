@@ -1,4 +1,5 @@
 from typing import Dict, Tuple
+from polaris.utils import getLogger
 
 from django.utils.translation import gettext as _
 from rest_framework.decorators import api_view, renderer_classes
@@ -11,7 +12,6 @@ from polaris.models import Asset, Transaction
 from polaris.locale.utils import validate_language, activate_lang_for_request
 from polaris.utils import (
     render_error_response,
-    Logger,
     create_transaction_id,
     extract_sep9_fields,
     memo_str,
@@ -25,7 +25,7 @@ from polaris.integrations import (
 )
 
 
-logger = Logger(__name__)
+logger = getLogger(__name__)
 
 
 @api_view(["GET"])

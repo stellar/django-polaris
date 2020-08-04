@@ -100,7 +100,11 @@ USE_I18N = True
 USE_L10N = True
 USE_TZ = True
 USE_THOUSAND_SEPARATOR = True
-LANGUAGES = [("en", _("English")), ("pt", _("Portuguese")), ("id", _("Bahasa Indonesia"))]
+LANGUAGES = [
+    ("en", _("English")),
+    ("pt", _("Portuguese")),
+    ("id", _("Bahasa Indonesia")),
+]
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.2/howto/static-files/
@@ -139,9 +143,9 @@ CORS_ORIGIN_ALLOW_ALL = True
 
 LOGGING = {
     "version": 1,
-    "disable_existing_loggers": False,
+    "disable_existing_loggers": True,
     "formatters": {
-        "verbose": {"format": "{asctime} - {levelname} - {message}", "style": "{",},
+        "verbose": {"format": "{asctime} - {levelname}: {message}", "style": "{",},
     },
     "handlers": {
         "console": {
@@ -151,7 +155,7 @@ LOGGING = {
         },
     },
     "loggers": {
-        "django": {"handlers": ["console"], "propogate": False, "level": "INFO"},
+        "server": {"handlers": ["console"], "propogate": False, "level": "DEBUG"},
         "polaris": {"handlers": ["console"], "propogate": False, "level": "DEBUG"},
     },
 }

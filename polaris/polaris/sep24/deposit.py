@@ -3,6 +3,7 @@ This module implements the logic for the `/transactions/deposit` endpoints.
 This lets a user initiate a deposit of an asset into their Stellar account.
 """
 from urllib.parse import urlencode
+from polaris.utils import getLogger
 
 from django.urls import reverse
 from django.shortcuts import redirect
@@ -21,7 +22,6 @@ from polaris import settings
 from polaris.templates import Template
 from polaris.utils import (
     render_error_response,
-    Logger,
     extract_sep9_fields,
     create_transaction_id,
     memo_str,
@@ -45,7 +45,7 @@ from polaris.integrations import (
     calculate_fee,
 )
 
-logger = Logger(__name__)
+logger = getLogger(__name__)
 
 
 @xframe_options_exempt

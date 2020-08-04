@@ -12,9 +12,9 @@ from polaris.integrations import (
     calculate_fee,
 )
 from polaris.models import Transaction
-from polaris.utils import Logger
+from polaris.utils import getLogger
 
-logger = Logger(__name__)
+logger = getLogger(__name__)
 
 
 def execute_deposit(transaction: Transaction) -> bool:

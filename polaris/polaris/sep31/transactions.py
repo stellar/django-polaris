@@ -2,6 +2,7 @@ import json
 from typing import Dict, Optional
 from decimal import Decimal, InvalidOperation
 from collections import defaultdict
+from polaris.utils import getLogger
 
 from django.utils.translation import gettext as _
 from django.core.exceptions import ValidationError
@@ -18,13 +19,12 @@ from polaris.integrations import registered_sep31_receiver_integration
 from polaris.sep31.serializers import SEP31TransactionSerializer
 from polaris.utils import (
     render_error_response,
-    Logger,
     create_transaction_id,
     memo_hex_to_base64,
 )
 
 
-logger = Logger(__name__)
+logger = getLogger(__name__)
 
 
 class TransactionsAPIView(APIView):

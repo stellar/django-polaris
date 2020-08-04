@@ -4,6 +4,7 @@ This lets a user withdraw some asset from their Stellar account into a
 non-Stellar-based account.
 """
 from urllib.parse import urlencode
+from polaris.utils import getLogger
 
 from django.urls import reverse
 from django.views.decorators.clickjacking import xframe_options_exempt
@@ -18,7 +19,6 @@ from polaris import settings
 from polaris.templates import Template
 from polaris.utils import (
     render_error_response,
-    Logger,
     extract_sep9_fields,
     create_transaction_id,
     memo_hex_to_base64,
@@ -42,7 +42,7 @@ from polaris.integrations import (
     calculate_fee,
 )
 
-logger = Logger(__name__)
+logger = getLogger(__name__)
 
 
 @xframe_options_exempt
