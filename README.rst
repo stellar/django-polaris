@@ -86,6 +86,41 @@ Polaris will try to use the ``ENV_PATH`` setting. It should be the path to the `
 
     BASE_DIR = "<path to your django project's top-level directory>"
 
+Optionally, you can add Polaris' logger to your `LOGGING` configuration. For example:
+::
+
+    LOGGING = {
+        'version': 1,
+        'disable_existing_loggers': False,
+        'formatters': {
+            'simple': {
+                'format': '{levelname} {message}',
+                'style': '{',
+            },
+        },
+        'handlers': {
+            'console': {
+                'level': 'DEBUG',
+                'class': 'logging.StreamHandler',
+                'formatter': 'simple'
+            }
+        },
+        'loggers': {
+            'myapp': {
+                'handlers': ['console'],
+                'propogate': True,
+                'LEVEL': 'DEBUG'
+            },
+            'polaris': {
+                'handlers': ['console'],
+                'propagate': True,
+                'LEVEL': 'INFO'
+            },
+        }
+    }
+
+You may want to configure the ``LEVEL`` of the Polaris logger differently depending on whether you're running the service locally or in production. One way to do this by reading a ``POLARIS_LOG_LEVEL`` variable, or something similar, from the project's environment.
+
 Environment Variables
 ^^^^^^^^^^^^^^^^^^^^^
 
