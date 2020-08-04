@@ -31,6 +31,7 @@ django-cors-headers = "*"
 toml = "*"
 pyjwt = "*"
 cryptography = "*"
+celery = "*"
 
 [requires]
 python_version = "3.7"
