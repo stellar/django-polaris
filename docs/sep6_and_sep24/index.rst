@@ -254,7 +254,9 @@ Running the Service
 ===================
 
 In addition to the web server, SEP-6 and SEP-24 require five additional processes
-to be run in order to work.
+to be run in order to work. If you're familiar with Celery, you can run four of the
+five commands documented here as periodic tasks. See the
+:doc:`documentation </celery/index>` for more information.
 
 Polling Pending Deposits
 ------------------------

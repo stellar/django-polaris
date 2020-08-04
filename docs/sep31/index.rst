@@ -54,7 +54,9 @@ Running the Service
 ===================
 
 In addition to the web server, SEP-31 requires three additional processes to be run
-in order to work.
+in order to work. If you're familiar with Celery, you can run two of the
+three commands documented here as periodic tasks. See the
+:doc:`documentation </celery/index>` for more information.
 
 Watch Transactions
 ^^^^^^^^^^^^^^^^^^
