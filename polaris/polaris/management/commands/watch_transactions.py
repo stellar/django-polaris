@@ -11,10 +11,12 @@ from stellar_sdk.xdr import Xdr
 from stellar_sdk.operation import Operation
 from stellar_sdk.server import Server
 from stellar_sdk.client.aiohttp_client import AiohttpClient
+from kombu.exceptions import OperationalError
 
 from polaris import settings
 from polaris.models import Asset, Transaction
 from polaris.utils import Logger
+from polaris.tasks import execute_outgoing_transaction
 
 logger = Logger(__name__)
 
@@ -32,9 +34,38 @@ class Command(BaseCommand):
     the payment or withdrawal.
     """
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--execute-transactions",
+            "-e",
+            action="store_true",
+            help=(
+                "call the registered RailsIntegration.execute_outgoing_transaction() "
+                "integration function for each transaction that matches an entry in the "
+                "database."
+            ),
+        )
+        parser.add_argument(
+            "--use-celery",
+            "-c",
+            action="store_true",
+            help=(
+                "this option is invalid if --execute-transactions is not also used. "
+                "Polaris will attempt to schedule a celery task for each transaction "
+                "that matches an entry in the database. Each task will call "
+                "the registered execute_outgoing_transaction() function."
+            ),
+        )
+
     def handle(self, *args, **options):  # pragma: no cover
+        if options.get("execute_transactions") and not options.get("use_celery"):
+            logger.warning(
+                "using --execute-transactions without --use-celery blocks the asyncio "
+                "event loop. The next transaction will be streamed only after the previous "
+                "transaction has been initiated off-chain."
+            )
         try:
-            asyncio.run(self.watch_transactions())
+            asyncio.run(self.watch_transactions(**options))
         except Exception as e:
             # This is very likely a bug, so re-raise the error and crash.
             # Heroku will restart the process unless it is repeatedly crashing,
@@ -42,15 +73,15 @@ class Command(BaseCommand):
             logger.exception("watch_transactions() threw an unexpected exception")
             raise e
 
-    async def watch_transactions(self):  # pragma: no cover
+    async def watch_transactions(self, **options):  # pragma: no cover
         await asyncio.gather(
             *[
-                self._for_account(asset.distribution_account)
+                self._for_account(asset.distribution_account, **options)
                 for asset in Asset.objects.exclude(distribution_seed__isnull=True)
             ]
         )
 
-    async def _for_account(self, account: str):  # pragma: no cover
+    async def _for_account(self, account: str, **options):  # pragma: no cover
         """
         Stream transactions for the server Stellar address.
         """
@@ -80,10 +111,12 @@ class Command(BaseCommand):
 
             endpoint = server.transactions().for_account(account).cursor(cursor)
             async for response in endpoint.stream():
-                self.process_response(response, account)
+                self.process_response(response, account, **options)
 
     @classmethod
-    def process_response(cls, response, account):
+    def process_response(
+        cls, response, account, execute_transactions=False, use_celery=False
+    ):
         # We should not match valid pending transactions with ones that were
         # unsuccessful on the stellar network. If they were unsuccessful, the
         # client is also aware of the failure and will likely attempt to
@@ -141,12 +174,25 @@ class Command(BaseCommand):
         if matching_transaction.protocol == Transaction.PROTOCOL.sep31:
             # SEP-31 uses 'pending_receiver' status
             matching_transaction.status = Transaction.STATUS.pending_receiver
-            matching_transaction.save()
         else:
             # SEP-6 and 24 uses 'pending_anchor' status
             matching_transaction.status = Transaction.STATUS.pending_anchor
-            matching_transaction.save()
-        return
+
+        matching_transaction.save()
+
+        if execute_transactions:
+            try:
+                if use_celery:
+                    execute_outgoing_transaction.delay(matching_transaction)
+                else:
+                    execute_outgoing_transaction(matching_transaction)
+            except (OperationalError, Exception):
+                # .delay() may raise an OperationalError if Polaris cannot connect
+                # to the Celery service. Exception is listed as a catch-all.
+                logger.exception(
+                    "An exception was raised by execute_outgoing_transaction() "
+                    "from watch_transactions()"
+                )
 
     @classmethod
     def find_matching_payment_op(
