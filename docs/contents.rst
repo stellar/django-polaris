@@ -7,17 +7,17 @@ django-polaris documentation contents
 
     Introduction <index>
     Tutorial <tutorials/index>
+    register_integrations/index
+    deployment/index
     sep1/index
     sep10/index
     sep12/index
     sep6_and_sep24/index
     sep31/index
-    register_integrations/index
     models/index
     forms/index
     middleware/index
     internationalization/index
-    celery/index
 
 
 Indices and tables
