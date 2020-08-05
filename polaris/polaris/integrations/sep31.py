@@ -63,9 +63,9 @@ class SEP31ReceiverIntegration:
         returned Polaris will return a 500 response to the user.
 
         Polaris validates that the request includes all the required fields returned
-        by ``SendIntegration.info()`` but cannot validate the values. Return ``None``
-        if the params passed are valid, otherwise return one of the error dictionaries
-        outlined below.
+        by ``SEP31ReceiverIntegration.info()`` but cannot validate the values. Return
+        ``None`` if the params passed are valid, otherwise return one of the error
+        dictionaries outlined below.
 
         If the `sender_id` or `receiver_id` values are invalid or the information
         collected for these users is not sufficient to process this request, return
