@@ -54,62 +54,61 @@ class Command(BaseCommand):
             kind=Transaction.KIND.withdrawal,
         )
         transactions = Transaction.objects.filter(sep6_24_qparams | sep31_qparams)
-        num_completed = 0
         for transaction in transactions:
-            try:
-                rri.execute_outgoing_transaction(transaction)
-            except Exception:
-                logger.exception(
-                    "An exception was raised by execute_outgoing_transaction()"
-                )
-                continue
+            execute_outgoing_transaction(transaction)
 
-            transaction.refresh_from_db()
-            if transaction.status == Transaction.STATUS.pending_receiver:
-                logger.error(
-                    f"Transaction {transaction.id} status must be "
-                    f"updated after call to execute_outgoing_transaction()"
-                )
-                continue
-            elif transaction.status in [
-                Transaction.STATUS.pending_external,
-                Transaction.STATUS.completed,
-            ]:
-                if transaction.amount_fee is None:
-                    if registered_fee_func == calculate_fee:
-                        op = {
-                            Transaction.KIND.withdrawal: settings.OPERATION_WITHDRAWAL,
-                            Transaction.KIND.send: Transaction.KIND.send,
-                        }[transaction.kind]
-                        transaction.amount_fee = calculate_fee(
-                            {
-                                "amount": transaction.amount_in,
-                                "operation": op,
-                                "asset_code": transaction.asset.code,
-                            }
-                        )
-                    else:
-                        transaction.amount_fee = Decimal(0)
-                transaction.amount_out = transaction.amount_in - transaction.amount_fee
-                # Anchors can mark transactions as pending_external if the transfer
-                # cannot be completed immediately due to external processing.
-                # poll_pending_transfers will check on these transfers and mark them
-                # as complete when the funds have been received by the user.
-                if transaction.status == Transaction.STATUS.completed:
-                    num_completed += 1
-                    transaction.completed_at = datetime.now(timezone.utc)
-            elif transaction.status not in [
-                Transaction.STATUS.error,
-                Transaction.STATUS.pending_transaction_info_update,
-                Transaction.STATUS.pending_customer_info_update,
-            ]:
-                logger.error(
-                    f"Transaction {transaction.id} was moved to invalid status"
-                    f" {transaction.status}"
-                )
-                continue
 
-            transaction.save()
+def execute_outgoing_transaction(transaction: Transaction):
+    try:
+        rri.execute_outgoing_transaction(transaction)
+    except Exception:
+        logger.exception("An exception was raised by execute_outgoing_transaction()")
+        return
 
-        if num_completed:
-            logger.info(f"{num_completed} transfers have been completed")
+    transaction.refresh_from_db()
+    if transaction.status == Transaction.STATUS.pending_receiver:
+        logger.error(
+            f"Transaction {transaction.id} status must be "
+            f"updated after call to execute_outgoing_transaction()"
+        )
+        return
+    elif transaction.status in [
+        Transaction.STATUS.pending_external,
+        Transaction.STATUS.completed,
+    ]:
+        if transaction.amount_fee is None:
+            if registered_fee_func == calculate_fee:
+                op = {
+                    Transaction.KIND.withdrawal: settings.OPERATION_WITHDRAWAL,
+                    Transaction.KIND.send: Transaction.KIND.send,
+                }[transaction.kind]
+                transaction.amount_fee = calculate_fee(
+                    {
+                        "amount": transaction.amount_in,
+                        "operation": op,
+                        "asset_code": transaction.asset.code,
+                    }
+                )
+            else:
+                transaction.amount_fee = Decimal(0)
+        transaction.amount_out = transaction.amount_in - transaction.amount_fee
+        # Anchors can mark transactions as pending_external if the transfer
+        # cannot be completed immediately due to external processing.
+        # poll_pending_transfers will check on these transfers and mark them
+        # as complete when the funds have been received by the user.
+        if transaction.status == Transaction.STATUS.completed:
+            logger.info(f"Transaction {transaction.id} has been completed")
+            transaction.completed_at = datetime.now(timezone.utc)
+    elif transaction.status not in [
+        Transaction.STATUS.error,
+        Transaction.STATUS.pending_transaction_info_update,
+        Transaction.STATUS.pending_customer_info_update,
+    ]:
+        logger.error(
+            f"Transaction {transaction.id} was moved to invalid status"
+            f" {transaction.status}"
+        )
+        return
+
+    transaction.save()
+    return

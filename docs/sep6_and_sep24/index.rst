@@ -253,10 +253,7 @@ Javascript Integration
 Running the Service
 ===================
 
-In addition to the web server, SEP-6 and SEP-24 require five additional processes
-to be run in order to work. If you're familiar with Celery, you can run four of the
-five commands documented here as periodic tasks. See the
-:doc:`documentation </celery/index>` for more information.
+Polaris supports several different deployment configurations documented in the :doc:`Deploying Polaris </deployment/index>` section. However, the original and most commonly used strategy is to run additional processes via Polaris CLI commands. For SEP-6 and 24, there are four or five depending on if the anchor's payment rails are fast enough to mark transactions as ``completed`` from ``execute_outgoing_transaction()``.
 
 Polling Pending Deposits
 ------------------------

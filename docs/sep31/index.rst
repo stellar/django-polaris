@@ -53,10 +53,7 @@ Payment Rails
 Running the Service
 ===================
 
-In addition to the web server, SEP-31 requires three additional processes to be run
-in order to work. If you're familiar with Celery, you can run two of the
-three commands documented here as periodic tasks. See the
-:doc:`documentation </celery/index>` for more information.
+Polaris supports several different deployment configurations documented in the :doc:`Deploying Polaris </deployment/index>` section. However, the original and most commonly used strategy is to run additional processes via Polaris CLI commands. For SEP-31, there are two or three depending on if the anchor's payment rails are fast enough to mark transactions as ``completed`` from ``execute_outgoing_transaction()``.
 
 Watch Transactions
 ^^^^^^^^^^^^^^^^^^
