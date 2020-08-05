@@ -41,7 +41,12 @@ class CustomerIntegration:
         in the exception will be passed as the error message in the response.
 
         Return a customer ID that clients can use in future requests, such as a `GET /customer`
-        request or a SEP-31 `POST /send` request.
+        request or a SEP-31 `POST /transactions` request.
+
+        If the required information is provided and the customer has ``Transaction`` objects
+        in the ``pending_customer_info_update`` status, all such ``Transaction.status`` values
+        should be updated to ``pending_receiver``. Polaris will then call the
+        ``execute_outgoing_transaction`` integration function for each updated transaction.
 
         :param params: request parameters as described in SEP-12_
         """

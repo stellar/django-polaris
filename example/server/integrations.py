@@ -745,7 +745,7 @@ class MyRailsIntegration(RailsIntegration):
                     ][field]
             transaction.required_info_update = json.dumps(required_info_update)
             transaction.required_info_message = response.error.message
-            transaction.status = Transaction.STATUS.pending_info_update
+            transaction.status = Transaction.STATUS.pending_transaction_info_update
 
         transaction.save()
 
