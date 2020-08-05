@@ -13,7 +13,7 @@ class SEP31TransactionSerializer(serializers.ModelSerializer):
     stellar_memo = serializers.SerializerMethodField()
     stellar_memo_type = serializers.SerializerMethodField()
     required_info_message = serializers.SerializerMethodField()
-    required_info_update = serializers.SerializerMethodField()
+    required_info_updates = serializers.SerializerMethodField()
 
     @staticmethod
     def get_stellar_account_id(instance):
@@ -32,9 +32,9 @@ class SEP31TransactionSerializer(serializers.ModelSerializer):
         return instance.required_info_message
 
     @staticmethod
-    def get_required_info_update(instance):
-        if instance.required_info_update:
-            return json.loads(instance.required_info_update)
+    def get_required_info_updates(instance):
+        if instance.required_info_updates:
+            return json.loads(instance.required_info_updates)
         else:
             return None
 
@@ -83,6 +83,6 @@ class SEP31TransactionSerializer(serializers.ModelSerializer):
             "stellar_account_id",
             "stellar_memo",
             "stellar_memo_type",
-            "required_info_update",
+            "required_info_updates",
             "required_info_message",
         ]

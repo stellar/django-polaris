@@ -60,12 +60,12 @@ class RailsIntegration:
 
         If ``transaction.protocol == Transaction.PROTOCOL.sep31`` and more information
         is required from the sending anchor or user to complete the transaction, update
-        the status to ``Transaction.STATUS.pending_info_update`` and save a JSON-serialized
-        string of the missing fields to the ``Transaction.required_info_update`` column.
-        The JSON string should be in the format returned from ``SendIntegration.info()``.
-        You can also optionally save a human-readable message to
-        ``Transaction.required_info_message``. Both fields will included in the
-        `/transaction` response requested by the sending anchor.
+        the status to ``Transaction.STATUS.pending_transaction_info_update`` and save a
+        JSON-serialized string containing the fields that need updating to the
+        ``Transaction.required_info_update`` column. The JSON string should be in the
+        format returned from ``SendIntegration.info()``. You can also optionally save a
+        human-readable message to ``Transaction.required_info_message``. Both fields
+        will included in the `/transaction` response requested by the sending anchor.
 
         If the SEP-31 transaction is waiting for an update, the sending anchor will
         eventually make a request to the `/update` endpoint with the information

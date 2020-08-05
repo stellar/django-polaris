@@ -50,7 +50,7 @@ def test_successful_call(client, acc1_usd_deposit_transaction_factory):
                 "stellar_account_id": None,
                 "stellar_memo": None,
                 "stellar_memo_type": "text",
-                "required_info_update": None,
+                "required_info_updates": None,
                 "required_info_message": None,
             }
         }

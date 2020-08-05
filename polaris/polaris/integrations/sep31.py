@@ -121,13 +121,13 @@ class SEP31ReceiverIntegration:
         related data.
 
         Polaris validates that every field listed in
-        ``Transaction.required_info_update`` is present in `params` but cannot
-        validate the values. If a ``ValueError`` is raised, Polaris will
+        ``Transaction.required_info_updates`` is present in `params` but
+        cannot validate the values. If a ``ValueError`` is raised, Polaris will
         return a 400 response containing the exception message in the body.
 
         If no exception is raised, Polaris assumes the update was successful and
         will update the transaction's status back to ``pending_receiver`` as well
-        as clear the ``required_info_update`` and ``required_info_message`` fields.
+        as clear the ``required_info_updates`` and ``required_info_message`` fields.
 
         Once the transaction enters the ``pending_receiver`` status, the
         `execute_outgoing_transactions` process will attempt to send the payment

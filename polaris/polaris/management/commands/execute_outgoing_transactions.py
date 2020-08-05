@@ -64,6 +64,7 @@ class Command(BaseCommand):
                 )
                 continue
 
+            transaction.refresh_from_db()
             if transaction.status == Transaction.STATUS.pending_receiver:
                 logger.error(
                     f"Transaction {transaction.id} status must be "
@@ -99,7 +100,8 @@ class Command(BaseCommand):
                     transaction.completed_at = datetime.now(timezone.utc)
             elif transaction.status not in [
                 Transaction.STATUS.error,
-                Transaction.STATUS.pending_info_update,
+                Transaction.STATUS.pending_transaction_info_update,
+                Transaction.STATUS.pending_customer_info_update,
             ]:
                 logger.error(
                     f"Transaction {transaction.id} was moved to invalid status"
