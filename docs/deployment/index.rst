@@ -76,8 +76,12 @@ The one CLI command that doesn't have a task is ``watch_transactions``. This is 
 
 So, all Polaris deployments will always have at least two processes running: the web server and ``watch_transactions``. The other three pieces of functionality can be invoked periodically using a job scheduler or from their own CLI command.
 
-However, Polaris can also be configured schedule a calls to ``RailsIntegration.execute_outgoing_transaction()`` from ``watch_transactions``. This would remove the need to schedule jobs running the ``execute_outgoing_transactions`` CLI command periodically and may be ideal if the number of transactions that need to be executed off-chain is large, since you can distribute the workload across many worker nodes. To do so, add the following environment variable:
+However, Polaris can also be configured schedule a calls to ``RailsIntegration.execute_outgoing_transaction()`` from ``watch_transactions``. This would remove the need to schedule jobs running the ``execute_outgoing_transactions`` CLI command periodically and may be ideal if the number of transactions that need to be executed off-chain is large, since you can distribute the workload across many worker nodes. To do so, simply pass the following options to the ``watch_transactions`` CLI command:
 ::
 
-    # this should be named better
-    POLARIS_EXECUTE_OUTGOING_TRANSACTIONS_AFTER_MATCHING=True
+    $ python manage.py watch_transactions --execute-transactions  --use-celery
+
+This tells ``watch_transactions`` to schedule a celery task for each transaction that matches one in our database. ``execute_outgoing_transaction()`` will be called for every valid transaction
+passed.
+
+Its worth noting that the use of ``--use-celery`` is invalid without ``--execute-transactions``. If ``--use-celery`` is omitted, ``watch_transactions`` will call ``execute_outgoing_transaction()`` synchronously.
