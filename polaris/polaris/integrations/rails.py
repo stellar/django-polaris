@@ -68,9 +68,9 @@ class RailsIntegration:
         will included in the `/transaction` response requested by the sending anchor.
 
         If the SEP-31 transaction is waiting for an update, the sending anchor will
-        eventually make a request to the `/update` endpoint with the information
-        specified in ``Transaction.required_info_update``. Once updated, this function
-        will be called again with the updated transaction.
+        eventually make a request to the `PATCH /transaction` endpoint with the
+        information specified in ``Transaction.required_info_update``. Once updated,
+        this function will be called again with the updated transaction.
 
         :param transaction: the ``Transaction`` object associated with the payment
             this function should make

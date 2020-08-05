@@ -110,7 +110,7 @@ class SEP31ReceiverIntegration:
                 "error": "invalid 'sender_bank_account' format"
             }
 
-        :param params: The parameters included in the `/send` request
+        :param params: The parameters included in the `/transaction` request
         :param transaction: the ``Transaction`` object representing the transaction being processed
         """
         pass
