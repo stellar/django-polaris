@@ -67,7 +67,7 @@ class TransactionsAPIView(APIView):
             return render_error_response(_("transaction not found"), status_code=404)
         if not transaction:
             return render_error_response(_("transaction not found"), status_code=404)
-        elif transaction.status != Transaction.STATUS.pending_info_update:
+        elif transaction.status != Transaction.STATUS.pending_transaction_info_update:
             return render_error_response(_("update not required"))
         try:
             validate_update_fields(request.data.get("fields"), transaction)
@@ -82,7 +82,7 @@ class TransactionsAPIView(APIView):
                 _("unable to process request"), status_code=500
             )
         transaction.status = Transaction.STATUS.pending_receiver
-        transaction.required_info_update = None
+        transaction.required_info_updates = None
         transaction.required_info_message = None
         transaction.save()
         return Response(status=200)
@@ -121,7 +121,7 @@ class TransactionsAPIView(APIView):
         transaction = Transaction(
             id=transaction_id,
             protocol=Transaction.PROTOCOL.sep31,
-            kind="send",
+            kind=Transaction.KIND.send,
             status=Transaction.STATUS.pending_sender,
             stellar_account=account,
             asset=params["asset"],
@@ -264,7 +264,7 @@ def validate_post_fields_needed(response_fields: Dict, asset: Asset):
 
 def validate_update_fields(fields: Dict, transaction: Transaction):
     try:
-        required_info_updates = json.loads(transaction.required_info_update)
+        required_info_updates = json.loads(transaction.required_info_updates)
     except (ValueError, TypeError):
         raise RuntimeError(
             "expected json-encoded string from transaction.required_info_update"

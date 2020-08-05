@@ -63,9 +63,9 @@ class SEP31ReceiverIntegration:
         returned Polaris will return a 500 response to the user.
 
         Polaris validates that the request includes all the required fields returned
-        by ``SendIntegration.info()`` but cannot validate the values. Return ``None``
-        if the params passed are valid, otherwise return one of the error dictionaries
-        outlined below.
+        by ``SEP31ReceiverIntegration.info()`` but cannot validate the values. Return
+        ``None`` if the params passed are valid, otherwise return one of the error
+        dictionaries outlined below.
 
         If the `sender_id` or `receiver_id` values are invalid or the information
         collected for these users is not sufficient to process this request, return
@@ -110,7 +110,7 @@ class SEP31ReceiverIntegration:
                 "error": "invalid 'sender_bank_account' format"
             }
 
-        :param params: The parameters included in the `/send` request
+        :param params: The parameters included in the `/transaction` request
         :param transaction: the ``Transaction`` object representing the transaction being processed
         """
         pass
@@ -121,13 +121,13 @@ class SEP31ReceiverIntegration:
         related data.
 
         Polaris validates that every field listed in
-        ``Transaction.required_info_update`` is present in `params` but cannot
-        validate the values. If a ``ValueError`` is raised, Polaris will
+        ``Transaction.required_info_updates`` is present in `params` but
+        cannot validate the values. If a ``ValueError`` is raised, Polaris will
         return a 400 response containing the exception message in the body.
 
         If no exception is raised, Polaris assumes the update was successful and
         will update the transaction's status back to ``pending_receiver`` as well
-        as clear the ``required_info_update`` and ``required_info_message`` fields.
+        as clear the ``required_info_updates`` and ``required_info_message`` fields.
 
         Once the transaction enters the ``pending_receiver`` status, the
         `execute_outgoing_transactions` process will attempt to send the payment

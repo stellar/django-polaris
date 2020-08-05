@@ -263,7 +263,8 @@ class Transaction(models.Model):
         # messages are None because they are never displayed to user
         "pending_sender": None,
         "pending_receiver": None,
-        "pending_info_update": None,
+        "pending_transaction_info_update": None,
+        "pending_customer_info_update": None,
         # Shared
         "completed": _("complete"),
         "error": _("error"),
@@ -358,9 +359,12 @@ class Transaction(models.Model):
     * **pending_stellar**
     
         transaction has been submitted to Stellar network, but is not yet confirmed.
-    * **pending_info_update**
+    * **pending_transaction_info_update**
     
-        certain pieces of information need to be updated by the sending anchor.
+        transaction details must be updated to successfully execute transaction off-chain
+    * **pending_customer_info_update**
+    
+        customer (SEP-12) information must be updated to facilitate transactions
     * **pending_receiver**
     
         payment is being processed by the receiving anchor.
@@ -438,11 +442,10 @@ class Transaction(models.Model):
     withdrawal or send, Stellar address in the case of a deposit).
     """
 
-    required_info_update = models.TextField(null=True, blank=True)
+    required_info_updates = models.TextField(null=True, blank=True)
     """
     (SEP31) (optional) A set of fields that require an update from the sender, 
-    in the same format as described in /info. Fields should be broken out by 
-    sender, receiver, and transaction as specified in /info.
+    in the same format as described in /info.
     """
 
     required_info_message = models.TextField(null=True, blank=True)
