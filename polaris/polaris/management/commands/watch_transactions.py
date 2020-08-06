@@ -6,7 +6,10 @@ from decimal import Decimal
 from django.core.management.base import BaseCommand
 from django.db.models import Q
 from stellar_sdk.exceptions import NotFoundError
-from stellar_sdk.transaction_envelope import TransactionEnvelope
+from stellar_sdk.transaction_envelope import (
+    TransactionEnvelope,
+    Transaction as HorizonTransaction,
+)
 from stellar_sdk.xdr import Xdr
 from stellar_sdk.operation import Operation
 from stellar_sdk.server import Server
@@ -91,42 +94,51 @@ class Command(BaseCommand):
         if not response.get("successful"):
             return
 
+        try:
+            stellar_transaction_id = response["id"]
+            envelope_xdr = response["envelope_xdr"]
+            memo = response["memo"]
+        except KeyError:
+            return
+
+        horizon_tx = TransactionEnvelope.from_xdr(
+            envelope_xdr, network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
+        ).transaction
+
         # Query filters for SEP6 and 24
         withdraw_filters = Q(
-            receiving_anchor_account=account,
             status=Transaction.STATUS.pending_user_transfer_start,
             kind=Transaction.KIND.withdrawal,
         )
         # Query filters for SEP31
         send_filters = Q(
-            receiving_anchor_account=account,
-            status=Transaction.STATUS.pending_sender,
-            kind=Transaction.KIND.send,
+            status=Transaction.STATUS.pending_sender, kind=Transaction.KIND.send,
         )
-        pending_withdrawal_transactions = Transaction.objects.filter(
-            # query SEP 6, 24, & 31 pending transactions
-            withdraw_filters
-            | send_filters
-        )
-
-        matching_transaction, payment_op = None, None
-        for transaction in pending_withdrawal_transactions:
-            payment_op = cls.find_matching_payment_op(response, transaction)
-            if not payment_op:
-                continue
-            else:
-                matching_transaction = transaction
-                break
-
-        if not matching_transaction:
+        transactions = Transaction.objects.filter(
+            withdraw_filters | send_filters, memo=memo, receiving_anchor_account=account
+        ).all()
+        if not transactions:
             logger.info(f"No match found for stellar transaction {response['id']}")
+            return
+        elif len(transactions) == 1:
+            transaction = transactions[0]
+        else:
+            # in the prior implementation of watch_transactions, the first transaction
+            # to have the same memo is matched, so we'll do the same in the refactored
+            # version.
+            logger.error(f"multiple Transaction objects returned for memo: {memo}")
+            transaction = transactions[0]
+
+        payment_op = cls.find_matching_payment_op(response, horizon_tx, transaction)
+        if not payment_op:
+            logger.warning(f"Transaction matching memo {memo} has no payment operation")
             return
 
         # Transaction.amount_in is overwritten with the actual amount sent in the stellar
         # transaction. This allows anchors to validate the actual amount sent in
         # execute_outgoing_transactions() and handle invalid amounts appropriately.
-        matching_transaction.amount_in = round(
-            Decimal(payment_op.amount), matching_transaction.asset.significant_decimals,
+        transaction.amount_in = round(
+            Decimal(payment_op.amount), transaction.asset.significant_decimals,
         )
 
         # The stellar transaction has been matched with an existing record in the DB.
@@ -138,19 +150,19 @@ class Command(BaseCommand):
         # allows anchors to check on transactions that have been submitted to a
         # non-stellar payment network but have not completed, and expects anchors to
         # update them when they have.
-        if matching_transaction.protocol == Transaction.PROTOCOL.sep31:
+        if transaction.protocol == Transaction.PROTOCOL.sep31:
             # SEP-31 uses 'pending_receiver' status
-            matching_transaction.status = Transaction.STATUS.pending_receiver
-            matching_transaction.save()
+            transaction.status = Transaction.STATUS.pending_receiver
+            transaction.save()
         else:
             # SEP-6 and 24 uses 'pending_anchor' status
-            matching_transaction.status = Transaction.STATUS.pending_anchor
-            matching_transaction.save()
+            transaction.status = Transaction.STATUS.pending_anchor
+            transaction.save()
         return
 
     @classmethod
     def find_matching_payment_op(
-        cls, response: Dict, transaction: Transaction
+        cls, response: Dict, horizon_tx: HorizonTransaction, transaction: Transaction
     ) -> Optional[Operation]:
         """
         Determines whether or not the given ``response`` represents the given
@@ -158,29 +170,10 @@ class Command(BaseCommand):
         response matches the `transaction.memo`, as well as ensuring the
         transaction includes a payment operation of the anchored asset.
 
-        :param response: a response body returned from Horizon for the transaction
+        :param response: the JSON response from horizon for the transaction
+        :param horizon_tx: the decoded Transaction object contained in the Horizon response
         :param transaction: a database model object representing the transaction
         """
-        try:
-            stellar_transaction_id = response["id"]
-            envelope_xdr = response["envelope_xdr"]
-        except KeyError:
-            return
-
-        # memo from response must match transaction memo
-        memo = response.get("memo")
-        if (
-            transaction.protocol != Transaction.PROTOCOL.sep31
-            and memo != transaction.memo
-        ) or (
-            transaction.protocol == Transaction.PROTOCOL.sep31
-            and memo != transaction.memo
-        ):
-            return
-
-        horizon_tx = TransactionEnvelope.from_xdr(
-            envelope_xdr, network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
-        ).transaction
         if horizon_tx.source.public_key != transaction.stellar_account:
             # transaction wasn't created by sender of payment
             return
@@ -188,7 +181,7 @@ class Command(BaseCommand):
         matching_payment_op = None
         for operation in horizon_tx.operations:
             if cls._check_payment_op(operation, transaction.asset):
-                transaction.stellar_transaction_id = stellar_transaction_id
+                transaction.stellar_transaction_id = response["id"]
                 transaction.from_address = horizon_tx.source.public_key
                 transaction.paging_token = response["paging_token"]
                 transaction.status_eta = 0
