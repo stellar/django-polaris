@@ -222,8 +222,8 @@
     </script>
 
     {# Rendered via Polaris javascript integrations #}
-    {% for script in scripts %}
-      {{ script|safe }}
+    {% for script_src in scripts %}
+      <script src="/static/{{ script_src }}"></script>
     {% endfor %}
 
   </body>
