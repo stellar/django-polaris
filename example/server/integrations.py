@@ -531,8 +531,8 @@ class MyCustomerIntegration(CustomerIntegration):
         if not user:
             user = account.user
             if (
-                user.email != params.get("email_address") and
-                PolarisUser.objects.filter(email=params["email_address"]).exists()
+                user.email != params.get("email_address")
+                and PolarisUser.objects.filter(email=params["email_address"]).exists()
             ):
                 raise ValueError("email_address is taken")
 
@@ -786,7 +786,7 @@ def scripts_integration(page_content: Optional[Dict]):
     tags = []
     tags.append("sep24_scripts/test.js")
 
-    ## ALEC TODO - uncomment and move to static folder
+    # ALEC TODO - uncomment and move to static folder
     # tags = [
     #     # Google Analytics
     #     """
