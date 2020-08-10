@@ -1,7 +1,18 @@
 from typing import List, Dict, Optional
 
 
-def scripts(page_content: Optional[Dict]) -> List[str]:
+class TemplateScript:
+    def __init__(self, path: str = None, url: str = None, is_async: bool = False):
+        if path and url:
+            raise AttributeError("a script can only have one source from either a path or url.")
+        elif not (path or url):
+            raise AttributeError("must give either a local path or a url for TemplateScript.")
+        self.path = path
+        self.is_async = is_async
+        self.url = url
+
+
+def scripts(page_content: Optional[Dict]) -> List[TemplateScript]:
     """
     .. _`example reference server`: https://github.com/stellar/django-polaris/tree/master/example
 
@@ -9,13 +20,21 @@ def scripts(page_content: Optional[Dict]) -> List[str]:
     ``register_integrations()`` as described in
     :doc:`Registering Integrations</register_integrations/index>`.
 
-    Return a list of strings containing script tags that will be added to the
-    bottom of the HTML body served for the current request. The scripts
+    Return a list of TemplateScript objects containing script source file locations to be added 
+    to the bottom of the HTML body served for the current request. The scripts
     will be rendered like so:
     ::
 
         {% for script in scripts %}
-            {{ script|safe }}
+          {% if script.path %}
+
+            <script src="/static/{{ script.path }}" {% if script.is_async %}async{% endif %} ></script>
+
+          {% elif script.url %}
+
+            <script src="{{ script.url }}" {% if script.is_async %}async{% endif %}></script>
+
+          {% endif %}
         {% endfor %}
 
     `page_content` will be the return value from ``content_for_template()``.
