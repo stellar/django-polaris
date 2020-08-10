@@ -4,7 +4,9 @@ from polaris.integrations.info import default_info_func, registered_info_func
 from polaris.integrations.fees import calculate_fee, registered_fee_func
 from polaris.integrations.forms import TransactionForm, CreditCardForm
 from polaris.integrations.toml import get_stellar_toml, registered_toml_func
-from polaris.integrations.javascript import scripts, registered_scripts_func
+from polaris.integrations.javascript import (
+    scripts, registered_scripts_func, TemplateScript
+)
 from polaris.integrations.customers import (
     CustomerIntegration,
     registered_customer_integration,

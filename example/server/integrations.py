@@ -25,6 +25,7 @@ from polaris.integrations import (
     calculate_fee,
     RailsIntegration,
     TransactionForm,
+    TemplateScript
 )
 from polaris import settings
 
@@ -783,83 +784,28 @@ def toml_integration():
 
 
 def scripts_integration(page_content: Optional[Dict]):
-    tags = []
-    tags.append("sep24_scripts/test.js")
+    tag_paths = []
 
-    # ALEC TODO - uncomment and move to static folder
-    # tags = [
-    #     # Google Analytics
-    #     """
-    #     <!-- Global site tag (gtag.js) - Google Analytics -->
-    #     <script async src="https://www.googletagmanager.com/gtag/js?id=UA-53373928-6"></script>
-    #     <script>
-    #       window.dataLayer = window.dataLayer || [];
-    #       function gtag(){dataLayer.push(arguments);}
-    #       gtag('js', new Date());
-    #       gtag('config', 'UA-53373928-6');
-    #     </script>
-    #     """
-    # ]
-    # if (
-    #     page_content
-    #     and "form" not in page_content
-    #     and page_content.get("title") == CONFIRM_EMAIL_PAGE_TITLE
-    # ):
-    #     # Refresh the confirm email page whenever the user brings the popup
-    #     # back into focus. This is not strictly necessary since deposit.html
-    #     # and withdraw.html have 'Refresh' buttons, but this is a better UX.
-    #     tags.append(
-    #         """
-    #         <script>
-    #             window.addEventListener("load", () => {
-    #                 window.addEventListener("focus", () => {
-    #                     // Hit the /webapp endpoint again to check if the user's
-    #                     // email has been confirmed.
-    #                     window.location.reload(true);
-    #                 });
-    #             });
-    #         </script>
-    #         """
-    #     )
-    #     # Add a "Skip Confirmation" button that will make a GET request to the
-    #     # skip confirmation endpoint and reload the page. The email confirmation
-    #     # functionality is just for sake of demonstration anyway.
-    #     tags.append(
-    #         """
-    #         <script>
-    #             (function () {
-    #                 let section = document.querySelector(".main-content").firstElementChild;
-    #                 let button = document.createElement("button");
-    #                 button.className = "button";
-    #                 button.innerHTML = "Skip Confirmation";
-    #                 button.setAttribute("test-action", "submit");
-    #                 button.addEventListener("click", function () {
-    #                     this.disabled = true;
-    #                     let url = window.location.protocol + "//" + window.location.host + "/skip_confirm_email";
-    #                     fetch(url).then(res => res.json()).then((json) => {
-    #                         if (json["status"] === "not found") {
-    #                             // This would only happen if the PolarisStellarAccount doesn't exist.
-    #                             // It should always exist because the user needs to have an existing
-    #                             // account to access the confirm email page.
-    #                             let errElement = document.createElement("p");
-    #                             errElement.style = "color:red";
-    #                             errElement.innerHTML = "Error: Unable to skip confirmation step";
-    #                             errElement.align = "center";
-    #                             section.appendChild(document.createElement("br"));
-    #                             section.appendChild(errElement);
-    #                         } else {
-    #                             window.location.reload(true);
-    #                         }
-    #                     });
-    #                 });
-    #                 section.appendChild(document.createElement("br"));
-    #                 section.appendChild(button);
-    #             })();
-    #         </script>
-    #         """
-    #     )
+    # Google Analytics
+    # <!-- Global site tag (gtag.js) - Google Analytics -->
+    tag_paths.append(TemplateScript(url="https://www.googletagmanager.com/gtag/js?id=UA-53373928-6", is_async=True))
+    tag_paths.append(TemplateScript(file_path="sep24_scripts/google_analytics.js"))
 
-    return tags
+    if (
+        page_content
+        and "form" not in page_content
+        and page_content.get("title") == CONFIRM_EMAIL_PAGE_TITLE
+    ):
+        # Refresh the confirm email page whenever the user brings the popup
+        # back into focus. This is not strictly necessary since deposit.html
+        # and withdraw.html have 'Refresh' buttons, but this is a better UX.
+        tag_paths.append(TemplateScript(file_path="sep24_scripts/check_email_confirmation.js"))
+        # Add a "Skip Confirmation" button that will make a GET request to the
+        # skip confirmation endpoint and reload the page. The email confirmation
+        # functionality is just for sake of demonstration anyway.
+        tag_paths.append(TemplateScript(file_path="sep24_scripts/add_skip_confirmation_btn.js"))
+
+    return tag_paths
 
 
 def fee_integration(fee_params: Dict) -> Decimal:
