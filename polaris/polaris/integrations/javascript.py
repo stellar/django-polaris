@@ -2,12 +2,12 @@ from typing import List, Dict, Optional
 
 
 class TemplateScript:
-    def __init__(self, file_path: str = None, url: str = None, is_async: bool = False):
-        if file_path and url:
-            raise AttributeError("A script can only have one source from either a file_path or url.")
-        elif not (file_path or url):
-            raise AttributeError("Must give a source for TemplateScript.")
-        self.file_path = file_path
+    def __init__(self, path: str = None, url: str = None, is_async: bool = False):
+        if path and url:
+            raise AttributeError("a script can only have one source from either a path or url.")
+        elif not (path or url):
+            raise AttributeError("must give either a local path or a url for TemplateScript.")
+        self.path = path
         self.is_async = is_async
         self.url = url
 
@@ -26,9 +26,9 @@ def scripts(page_content: Optional[Dict]) -> List[TemplateScript]:
     ::
 
         {% for script in scripts %}
-          {% if script.file_path %}
+          {% if script.path %}
 
-            <script src="/static/{{ script.file_path }}" {% if script.is_async %}async{% endif %} ></script>
+            <script src="/static/{{ script.path }}" {% if script.is_async %}async{% endif %} ></script>
 
           {% elif script.url %}
 

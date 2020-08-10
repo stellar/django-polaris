@@ -784,28 +784,29 @@ def toml_integration():
 
 
 def scripts_integration(page_content: Optional[Dict]):
-    tag_paths = []
 
-    # Google Analytics
-    # <!-- Global site tag (gtag.js) - Google Analytics -->
-    tag_paths.append(TemplateScript(url="https://www.googletagmanager.com/gtag/js?id=UA-53373928-6", is_async=True))
-    tag_paths.append(TemplateScript(file_path="sep24_scripts/google_analytics.js"))
+    scripts = [
+        # Google Analytics
+        # <!-- Global site tag (gtag.js) - Google Analytics -->
+        TemplateScript(url="https://www.googletagmanager.com/gtag/js?id=UA-53373928-6", is_async=True),
+        TemplateScript(path="sep24_scripts/google_analytics.js")
+    ]
 
     if (
-        page_content
-        and "form" not in page_content
-        and page_content.get("title") == CONFIRM_EMAIL_PAGE_TITLE
+        page_content and
+        "form" not in page_content and
+        page_content.get("title") == CONFIRM_EMAIL_PAGE_TITLE
     ):
         # Refresh the confirm email page whenever the user brings the popup
         # back into focus. This is not strictly necessary since deposit.html
         # and withdraw.html have 'Refresh' buttons, but this is a better UX.
-        tag_paths.append(TemplateScript(file_path="sep24_scripts/check_email_confirmation.js"))
+        scripts.append(TemplateScript(path="sep24_scripts/check_email_confirmation.js"))
         # Add a "Skip Confirmation" button that will make a GET request to the
         # skip confirmation endpoint and reload the page. The email confirmation
         # functionality is just for sake of demonstration anyway.
-        tag_paths.append(TemplateScript(file_path="sep24_scripts/add_skip_confirmation_btn.js"))
+        scripts.append(TemplateScript(path="sep24_scripts/add_skip_confirmation_btn.js"))
 
-    return tag_paths
+    return scripts
 
 
 def fee_integration(fee_params: Dict) -> Decimal:

@@ -223,8 +223,8 @@
 
     {# Rendered via Polaris javascript integrations #}
     {% for script in scripts %}
-      {% if script.file_path %}
-      <script src="/static/{{ script.file_path }}" {% if script.is_async %}async{% endif %} ></script>
+      {% if script.path %}
+      <script src="/static/{{ script.path }}" {% if script.is_async %}async{% endif %} ></script>
       {% elif script.url %}
       <script src="{{ script.url }}" {% if script.is_async %}async{% endif %}></script>
       {% endif %}
