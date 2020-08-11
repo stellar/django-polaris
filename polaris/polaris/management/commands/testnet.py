@@ -66,7 +66,6 @@ class Command(BaseCommand):
             `paging_token` attribute to None. This signals to
             watch_transactions to stream using the `"now"` keyword.
         """
-        pass
 
     def issue(self, **options):
         """
@@ -140,7 +139,7 @@ class Command(BaseCommand):
             limit = amount if src == issuer else None
             tb.append_change_trust_op(code, issuer.public_key, limit, dest.public_key)
             payment_amount = amount
-        elif balance < amount:
+        elif Decimal(balance) < amount:
             print(f"\nReplenishing {code} balance to {amount} for {dest.public_key}")
             payment_amount = amount - Decimal(balance)
 
