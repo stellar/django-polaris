@@ -5,6 +5,7 @@ from typing import List, Dict, Optional, Tuple
 from urllib.parse import urlencode
 from base64 import b64encode
 from collections import defaultdict
+from logging import getLogger
 
 from django.db.models import QuerySet
 from django.utils.translation import gettext as _
@@ -15,7 +16,6 @@ from django.conf import settings as server_settings
 from django.template.loader import render_to_string
 
 from polaris.models import Transaction, Asset
-from polaris.utils import Logger
 from polaris.templates import Template
 from polaris.integrations import (
     DepositIntegration,
@@ -34,7 +34,7 @@ from .models import PolarisUser, PolarisStellarAccount, PolarisUserTransaction
 from .forms import KYCForm, WithdrawForm
 
 
-logger = Logger(__name__)
+logger = getLogger(__name__)
 CONFIRM_EMAIL_PAGE_TITLE = _("Confirm Email")
 
 
@@ -817,7 +817,6 @@ def fee_integration(fee_params: Dict) -> Decimal:
     However, since we don't have any custom logic to implement, it simply
     calls the default that has been replaced.
     """
-    logger.info("Using custom fee function")
     return calculate_fee(fee_params)
 
 

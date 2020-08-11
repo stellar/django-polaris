@@ -1,4 +1,5 @@
 from typing import Dict
+from polaris.utils import getLogger
 
 from django.utils.translation import gettext as _
 from rest_framework.views import APIView
@@ -7,12 +8,12 @@ from rest_framework.response import Response
 from rest_framework.decorators import api_view, renderer_classes
 from rest_framework.renderers import JSONRenderer
 
-from polaris.utils import extract_sep9_fields, render_error_response, Logger, memo_str
+from polaris.utils import extract_sep9_fields, render_error_response, memo_str
 from polaris.sep10.utils import validate_sep10_token
 from polaris.integrations import registered_customer_integration as rci
 
 
-logger = Logger(__name__)
+logger = getLogger(__name__)
 
 
 class CustomerAPIView(APIView):

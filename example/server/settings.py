@@ -143,9 +143,9 @@ CORS_ORIGIN_ALLOW_ALL = True
 
 LOGGING = {
     "version": 1,
-    "disable_existing_loggers": False,
+    "disable_existing_loggers": True,
     "formatters": {
-        "verbose": {"format": "{asctime} - {levelname} - {message}", "style": "{",},
+        "verbose": {"format": "{asctime} - {levelname}: {message}", "style": "{",},
     },
     "handlers": {
         "console": {
@@ -155,7 +155,7 @@ LOGGING = {
         },
     },
     "loggers": {
-        "django": {"handlers": ["console"], "propogate": False, "level": "INFO"},
+        "server": {"handlers": ["console"], "propogate": False, "level": "DEBUG"},
         "polaris": {"handlers": ["console"], "propogate": False, "level": "DEBUG"},
     },
 }

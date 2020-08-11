@@ -1,4 +1,5 @@
 from typing import Dict
+from polaris.utils import getLogger
 
 from django.utils.translation import gettext as _
 from rest_framework.decorators import api_view, renderer_classes
@@ -7,7 +8,7 @@ from rest_framework.response import Response
 from rest_framework.renderers import JSONRenderer, BrowsableAPIRenderer
 
 from polaris.models import Asset
-from polaris.utils import render_error_response, Logger
+from polaris.utils import render_error_response
 from polaris.integrations import (
     registered_fee_func,
     calculate_fee,
@@ -15,7 +16,7 @@ from polaris.integrations import (
 )
 
 
-logger = Logger(__name__)
+logger = getLogger(__name__)
 
 
 @api_view(["GET"])

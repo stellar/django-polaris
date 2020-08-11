@@ -14,13 +14,13 @@ from django.conf import settings as django_settings
 from django.urls import reverse
 
 from polaris import settings
-from polaris.utils import Logger
+from polaris.utils import getLogger
 from polaris.middleware import import_path
 from polaris.models import Asset, Transaction
 from polaris.utils import render_error_response, verify_valid_asset_operation
 
 
-logger = Logger(__name__)
+logger = getLogger(__name__)
 
 
 def check_authentication(content_type: str = "text/html") -> Callable:

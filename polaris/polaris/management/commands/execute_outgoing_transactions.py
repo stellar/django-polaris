@@ -7,12 +7,12 @@ from django.core.management import BaseCommand
 
 from polaris import settings
 from polaris.integrations import registered_fee_func, calculate_fee
-from polaris.utils import Logger
+from polaris.utils import getLogger
 from polaris.models import Transaction
 from polaris.integrations import registered_rails_integration as rri
 
 
-logger = Logger(__name__)
+logger = getLogger(__name__)
 
 
 class Command(BaseCommand):

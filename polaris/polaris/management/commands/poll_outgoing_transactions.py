@@ -3,12 +3,12 @@ from datetime import datetime, timezone
 
 from django.core.management import BaseCommand
 
-from polaris.utils import Logger
+from polaris.utils import getLogger
 from polaris.models import Transaction
 from polaris.integrations import registered_rails_integration as rri
 
 
-logger = Logger(__name__)
+logger = getLogger(__name__)
 
 
 class Command(BaseCommand):

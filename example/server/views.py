@@ -1,3 +1,4 @@
+from logging import getLogger
 from django.utils.translation import gettext as _
 
 from rest_framework.request import Request
@@ -7,10 +8,10 @@ from rest_framework.renderers import TemplateHTMLRenderer, JSONRenderer
 
 from .forms import AllFieldsForm
 from .models import PolarisStellarAccount
-from polaris.utils import render_error_response, Logger
+from polaris.utils import render_error_response
 
 
-logger = Logger(__name__)
+logger = getLogger(__name__)
 
 
 @api_view(["GET"])

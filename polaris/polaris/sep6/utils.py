@@ -1,11 +1,12 @@
 from typing import Dict
 
-from polaris.utils import Logger, SEP_9_FIELDS
+from polaris.utils import getLogger
+from polaris.utils import SEP_9_FIELDS
 from polaris.integrations import registered_customer_integration as rci
 from polaris.models import Transaction
 
 
-logger = Logger(__name__)
+logger = getLogger(__name__)
 
 
 def validate_403_response(

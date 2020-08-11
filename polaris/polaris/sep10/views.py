@@ -9,6 +9,7 @@ import os
 import binascii
 import time
 import jwt
+from polaris.utils import getLogger
 
 from django.utils.translation import gettext as _
 from rest_framework import status
@@ -26,11 +27,11 @@ from stellar_sdk.sep.exceptions import InvalidSep10ChallengeError
 from stellar_sdk.exceptions import NotFoundError
 
 from polaris import settings
-from polaris.utils import Logger, render_error_response
+from polaris.utils import render_error_response
 
 MIME_URLENCODE, MIME_JSON = "application/x-www-form-urlencoded", "application/json"
 ANCHOR_NAME = "SEP 24 Reference"
-logger = Logger(__name__)
+logger = getLogger(__name__)
 
 
 class SEP10Auth(APIView):

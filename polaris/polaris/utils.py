@@ -1,9 +1,9 @@
 """This module defines helpers for various endpoints."""
-import logging
 import codecs
 import datetime
 import uuid
 from typing import Optional
+from logging import getLogger as get_logger, LoggerAdapter
 
 from django.utils.translation import gettext as _
 from django.conf import settings as django_settings
@@ -19,46 +19,16 @@ from polaris import settings
 from polaris.models import Transaction
 
 
-class Logger:
-    """
-    Additional log message pre-processing.
-
-    Right now this class allows loggers to be defined with additional
-    meta-data that can be used to pre-process log statements. This
-    could be done using a logging.Handler.
-    """
-
-    def __init__(self, namespace):
-        if not getattr(django_settings, "LOGGING"):
-            logging.basicConfig()
-        self.logger = logging.getLogger("polaris")
-        self.namespace = namespace
-
-    def fmt(self, msg):
-        return f'{self.namespace}: "{msg}"'
-
-    # typical logging.Logger mock methods
-
-    def debug(self, msg):
-        self.logger.debug(self.fmt(msg))
-
-    def info(self, msg):
-        self.logger.info(self.fmt(msg))
-
-    def warning(self, msg):
-        self.logger.warning(self.fmt(msg))
-
-    def error(self, msg):
-        self.logger.error(self.fmt(msg))
-
-    def critical(self, msg):
-        self.logger.critical(self.fmt(msg))
-
-    def exception(self, msg):
-        self.logger.exception(self.fmt(msg))
+class PolarisLoggerAdapter(LoggerAdapter):
+    def process(self, msg, kwargs):
+        return f"{self.extra['python_path']}: {msg}", kwargs
 
 
-logger = Logger(__name__)
+def getLogger(name):
+    return PolarisLoggerAdapter(get_logger(name), extra={"python_path": name})
+
+
+logger = getLogger(__name__)
 
 
 def render_error_response(
@@ -398,7 +368,7 @@ def check_middleware():
 def check_protocol():
     if settings.LOCAL_MODE:
         logger.warning(
-            "Polaris in in local mode. This makes the SEP-24 interactive flow "
+            "Polaris is in local mode. This makes the SEP-24 interactive flow "
             "insecure and should only be used for local development."
         )
     if not (settings.LOCAL_MODE or getattr(django_settings, "SECURE_SSL_REDIRECT")):
