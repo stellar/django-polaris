@@ -3,10 +3,17 @@ from decimal import Decimal
 from typing import Optional
 from logging import getLogger
 
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
+from django.db.models import Q
 from stellar_sdk import Keypair, TransactionBuilder, Server
 from stellar_sdk.account import Account, Thresholds
-from stellar_sdk.exceptions import NotFoundError, ConnectionError, BaseHorizonError
+from stellar_sdk.exceptions import (
+    NotFoundError,
+    BaseHorizonError,
+    Ed25519SecretSeedInvalidError,
+)
+
+from polaris.models import Transaction, Asset
 
 logger = getLogger(__name__)
 
@@ -66,6 +73,37 @@ class Command(BaseCommand):
             `paging_token` attribute to None. This signals to
             watch_transactions to stream using the `"now"` keyword.
         """
+        print("\nResetting each asset's most recent paging token")
+        for asset in Asset.objects.filter(distribution_seed__isnull=False):
+            Transaction.objects.filter(
+                Q(kind=Transaction.KIND.withdrawal) | Q(kind=Transaction.KIND.send),
+                receiving_anchor_account=asset.distribution_account,
+                status=Transaction.STATUS.completed,
+            ).order_by("-completed_at").update(paging_token=None)
+        for asset in Asset.objects.filter(issuer__isnull=False):
+            print(f"\nIssuing {asset.code}")
+            issuer_seed = input(f"Seed for {asset.code} issuer: ")
+            try:
+                Keypair.from_secret(issuer_seed)
+            except Ed25519SecretSeedInvalidError:
+                raise CommandError("Bad seed string for issuer account")
+            distribution_seed = asset.distribution_seed
+            if not distribution_seed:
+                distribution_seed = input(
+                    f"Seed for {asset.code} distribution account: "
+                )
+                try:
+                    Keypair.from_secret(distribution_seed)
+                except Ed25519SecretSeedInvalidError:
+                    raise CommandError("Bad seed string for distribution account")
+            self.issue(
+                **{
+                    "asset": asset.code,
+                    "issuer_seed": issuer_seed,
+                    "distribution_seed": distribution_seed,
+                    "issue_amount": Decimal(10000000),
+                }
+            )
 
     def issue(self, **options):
         """
@@ -142,6 +180,12 @@ class Command(BaseCommand):
         elif Decimal(balance) < amount:
             print(f"\nReplenishing {code} balance to {amount} for {dest.public_key}")
             payment_amount = amount - Decimal(balance)
+        else:
+            print(
+                "Destination account already has more than the amount "
+                "specified, skipping"
+            )
+            return
 
         print(f"Sending {code} payment of {payment_amount} to {dest.public_key}")
         tb.append_payment_op(
