@@ -8,6 +8,7 @@ from collections import defaultdict
 from logging import getLogger
 
 from django.db.models import QuerySet
+from django.core.exceptions import ObjectDoesNotExist
 from django.utils.translation import gettext as _
 from django import forms
 from django.urls import reverse
@@ -503,7 +504,7 @@ class MyCustomerIntegration(CustomerIntegration):
         if params.get("id"):
             user = PolarisUser.objects.filter(id=params["id"]).first()
             if not user:
-                raise ValueError("could not identify user customer 'id'")
+                raise ObjectDoesNotExist("could not identify user customer 'id'")
         else:
             # query params for fetching/creating the PolarisStellarAccount
             qparams = {"account": params["account"]}

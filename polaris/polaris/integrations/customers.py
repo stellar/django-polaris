@@ -38,10 +38,14 @@ class CustomerIntegration:
 
         If the information passed in `params` is invalid in some way, raise a ``ValueError``
         for Polaris to return a 400 Bad Request response to the client. The message contained
-        in the exception will be passed as the error message in the response.
+        in the exception will be passed as the error message in the response. If the request
+        specified a customer `id` in the request body but a record with that ID doesn't exist,
+        raise a ``django.exceptions.ObjectDoesNotExist`` exception. Polaris will return a 404
+        response.
 
         Return a customer ID that clients can use in future requests, such as a `GET /customer`
-        request or a SEP-31 `POST /transactions` request.
+        request or a SEP-31 `POST /transactions` request. If the request included an `id`
+        parameter, make sure the same id is returned.
 
         If the required information is provided and the customer has ``Transaction`` objects
         in the ``pending_customer_info_update`` status, all such ``Transaction.status`` values
