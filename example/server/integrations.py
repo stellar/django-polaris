@@ -500,17 +500,26 @@ class MyCustomerIntegration(CustomerIntegration):
                 )
 
     def put(self, params: Dict) -> str:
-        # query params for fetching/creating the PolarisStellarAccount
-        qparams = {"account": params["account"]}
-        if params.get("memo"):
-            qparams["memo"] = params["memo"]
-            qparams["memo_type"] = params["memo_type"]
+        if params.get("id"):
+            user = PolarisUser.objects.filter(id=params["id"]).first()
+            if not user:
+                raise ValueError("could not identify user customer 'id'")
         else:
-            qparams["memo"] = None
-        user = None
-        account = PolarisStellarAccount.objects.filter(**qparams).first()
-        if not account:
-            if "email_address" in params:
+            # query params for fetching/creating the PolarisStellarAccount
+            qparams = {"account": params["account"]}
+            if params.get("memo"):
+                qparams["memo"] = params["memo"]
+                qparams["memo_type"] = params["memo_type"]
+            else:
+                qparams["memo"] = None
+            account = PolarisStellarAccount.objects.filter(**qparams).first()
+            if not account:
+                # email_address is a secondary ID
+                if "email_address" not in params:
+                    raise ValueError(
+                        "SEP-9 fields were not passed for new customer. "
+                        "'first_name', 'last_name', and 'email_address' are required."
+                    )
                 # find existing user by previously-specified email
                 user = PolarisUser.objects.filter(email=params["email_address"]).first()
                 if user:
@@ -525,17 +534,13 @@ class MyCustomerIntegration(CustomerIntegration):
                     user, account = self.create_new_user(params, qparams)
                     send_confirmation_email(user, account)
             else:
-                raise ValueError(
-                    "SEP-9 fields were not passed for new customer. "
-                    "'first_name', 'last_name', and 'email_address' are required."
-                )
-        if not user:
-            user = account.user
-            if (
-                user.email != params.get("email_address")
-                and PolarisUser.objects.filter(email=params["email_address"]).exists()
-            ):
-                raise ValueError("email_address is taken")
+                user = account.user
+
+        if (
+            user.email != params.get("email_address")
+            and PolarisUser.objects.filter(email=params["email_address"]).exists()
+        ):
+            raise ValueError("email_address is taken")
 
         user.email = params.get("email_address") or user.email
         user.first_name = params.get("first_name") or user.first_name

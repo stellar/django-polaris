@@ -70,7 +70,8 @@ class CustomerAPIView(APIView):
     @validate_sep10_token("sep6")
     def put(account: str, request: Request) -> Response:
         if request.data.get("id") and not request.data.get("account"):
-            pass
+            if not isinstance(request.data.get("id"), str):
+                return render_error_response(_("bad ID value, expected str"))
         elif account != request.data.get("account"):
             return render_error_response(
                 _("The account specified does not match authorization token"),
@@ -90,7 +91,7 @@ class CustomerAPIView(APIView):
             customer_id = rci.put(
                 {
                     "id": request.data.get("id"),
-                    "account": request.data.get("account"),
+                    "account": account,
                     "memo": request.data.get("memo"),
                     "memo_type": request.data.get("memo_type"),
                     **extract_sep9_fields(request.data),
