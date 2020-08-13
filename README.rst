@@ -317,7 +317,11 @@ this may be slower.
 
 Submit a PR
 ^^^^^^^^^^^
+.. _black: https://pypi.org/project/black/
+
 After you've made your changes, push them to you a remote branch
 and make a Pull Request on the stellar/django-polaris master branch.
+Note that Polaris user the `black`_ code formatter, so please format your
+code before requesting us to merge your changes.
 
 
