@@ -8,6 +8,7 @@ from collections import defaultdict
 from logging import getLogger
 
 from django.db.models import QuerySet
+from django.core.exceptions import ObjectDoesNotExist
 from django.utils.translation import gettext as _
 from django import forms
 from django.urls import reverse
@@ -25,7 +26,7 @@ from polaris.integrations import (
     calculate_fee,
     RailsIntegration,
     TransactionForm,
-    TemplateScript
+    TemplateScript,
 )
 from polaris import settings
 
@@ -500,17 +501,26 @@ class MyCustomerIntegration(CustomerIntegration):
                 )
 
     def put(self, params: Dict) -> str:
-        # query params for fetching/creating the PolarisStellarAccount
-        qparams = {"account": params["account"]}
-        if params.get("memo"):
-            qparams["memo"] = params["memo"]
-            qparams["memo_type"] = params["memo_type"]
+        if params.get("id"):
+            user = PolarisUser.objects.filter(id=params["id"]).first()
+            if not user:
+                raise ObjectDoesNotExist("could not identify user customer 'id'")
         else:
-            qparams["memo"] = None
-        user = None
-        account = PolarisStellarAccount.objects.filter(**qparams).first()
-        if not account:
-            if "email_address" in params:
+            # query params for fetching/creating the PolarisStellarAccount
+            qparams = {"account": params["account"]}
+            if params.get("memo"):
+                qparams["memo"] = params["memo"]
+                qparams["memo_type"] = params["memo_type"]
+            else:
+                qparams["memo"] = None
+            account = PolarisStellarAccount.objects.filter(**qparams).first()
+            if not account:
+                # email_address is a secondary ID
+                if "email_address" not in params:
+                    raise ValueError(
+                        "SEP-9 fields were not passed for new customer. "
+                        "'first_name', 'last_name', and 'email_address' are required."
+                    )
                 # find existing user by previously-specified email
                 user = PolarisUser.objects.filter(email=params["email_address"]).first()
                 if user:
@@ -525,17 +535,13 @@ class MyCustomerIntegration(CustomerIntegration):
                     user, account = self.create_new_user(params, qparams)
                     send_confirmation_email(user, account)
             else:
-                raise ValueError(
-                    "SEP-9 fields were not passed for new customer. "
-                    "'first_name', 'last_name', and 'email_address' are required."
-                )
-        if not user:
-            user = account.user
-            if (
-                user.email != params.get("email_address")
-                and PolarisUser.objects.filter(email=params["email_address"]).exists()
-            ):
-                raise ValueError("email_address is taken")
+                user = account.user
+
+        if (
+            user.email != params.get("email_address")
+            and PolarisUser.objects.filter(email=params["email_address"]).exists()
+        ):
+            raise ValueError("email_address is taken")
 
         user.email = params.get("email_address") or user.email
         user.first_name = params.get("first_name") or user.first_name
@@ -788,14 +794,17 @@ def scripts_integration(page_content: Optional[Dict]):
     scripts = [
         # Google Analytics
         # <!-- Global site tag (gtag.js) - Google Analytics -->
-        TemplateScript(url="https://www.googletagmanager.com/gtag/js?id=UA-53373928-6", is_async=True),
-        TemplateScript(path="sep24_scripts/google_analytics.js")
+        TemplateScript(
+            url="https://www.googletagmanager.com/gtag/js?id=UA-53373928-6",
+            is_async=True,
+        ),
+        TemplateScript(path="sep24_scripts/google_analytics.js"),
     ]
 
     if (
-        page_content and
-        "form" not in page_content and
-        page_content.get("title") == CONFIRM_EMAIL_PAGE_TITLE
+        page_content
+        and "form" not in page_content
+        and page_content.get("title") == CONFIRM_EMAIL_PAGE_TITLE
     ):
         # Refresh the confirm email page whenever the user brings the popup
         # back into focus. This is not strictly necessary since deposit.html
@@ -804,7 +813,9 @@ def scripts_integration(page_content: Optional[Dict]):
         # Add a "Skip Confirmation" button that will make a GET request to the
         # skip confirmation endpoint and reload the page. The email confirmation
         # functionality is just for sake of demonstration anyway.
-        scripts.append(TemplateScript(path="sep24_scripts/add_skip_confirmation_btn.js"))
+        scripts.append(
+            TemplateScript(path="sep24_scripts/add_skip_confirmation_btn.js")
+        )
 
     return scripts
 

@@ -1,3 +1,4 @@
+from django.core.exceptions import ObjectDoesNotExist
 from unittest.mock import Mock, patch
 from urllib.parse import urlencode
 from polaris.tests.helpers import mock_check_auth_success
@@ -25,6 +26,50 @@ def test_put_success(client):
     )
     assert response.status_code == 202
     assert response.json() == {"id": "123"}
+
+
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch("polaris.sep12.customer.rci", mock_success_integration)
+def test_put_existing_id(client):
+    response = client.put(
+        endpoint,
+        data={
+            "account": "test source address",
+            "first_name": "Test",
+            "email_address": "test@example.com",
+        },
+        content_type="application/json",
+    )
+    response = client.put(
+        endpoint,
+        data={
+            "id": response.json()["id"],
+            "first_name": "Test2",
+            "email_address": "test@example.com",
+        },
+        content_type="application/json",
+    )
+    assert response.status_code == 202
+    assert response.json() == {"id": "123"}
+
+
+mock_raise_bad_id_error = Mock(put=Mock(side_effect=ObjectDoesNotExist("bad id")))
+
+
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch("polaris.sep12.customer.rci", mock_raise_bad_id_error)
+def test_bad_existing_id(client):
+    response = client.put(
+        endpoint,
+        data={
+            "id": "notanid",
+            "first_name": "Test2",
+            "email_address": "test@example.com",
+        },
+        content_type="application/json",
+    )
+    assert response.status_code == 404
+    assert response.json()["error"] == "bad id"
 
 
 @patch("polaris.sep12.customer.rci", mock_success_integration)
@@ -158,6 +203,7 @@ def test_sep9_params(client):
     )
     mock_put.assert_called_with(
         {
+            "id": None,
             "memo": None,
             "memo_type": None,
             "account": "test source address",

@@ -2,6 +2,7 @@ from typing import Dict
 from polaris.utils import getLogger
 
 from django.utils.translation import gettext as _
+from django.core.exceptions import ObjectDoesNotExist
 from rest_framework.views import APIView
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -69,7 +70,10 @@ class CustomerAPIView(APIView):
     @staticmethod
     @validate_sep10_token("sep6")
     def put(account: str, request: Request) -> Response:
-        if account != request.data.get("account"):
+        if request.data.get("id") and not request.data.get("account"):
+            if not isinstance(request.data.get("id"), str):
+                return render_error_response(_("bad ID value, expected str"))
+        elif account != request.data.get("account"):
             return render_error_response(
                 _("The account specified does not match authorization token"),
                 status_code=403,
@@ -77,16 +81,18 @@ class CustomerAPIView(APIView):
         elif request.data.get("memo_type") and not request.data.get("memo"):
             return render_error_response(_("missing 'memo' for 'memo_type'"))
 
-        try:
-            # validate memo and memo_type
-            memo_str(request.data.get("memo"), request.data.get("memo_type"))
-        except ValueError:
-            return render_error_response(_("invalid 'memo' for 'memo_type'"))
+        if request.data.get("memo"):
+            try:
+                # validate memo and memo_type
+                memo_str(request.data.get("memo"), request.data.get("memo_type"))
+            except ValueError:
+                return render_error_response(_("invalid 'memo' for 'memo_type'"))
 
         try:
             customer_id = rci.put(
                 {
-                    "account": request.data.get("account"),
+                    "id": request.data.get("id"),
+                    "account": account,
                     "memo": request.data.get("memo"),
                     "memo_type": request.data.get("memo_type"),
                     **extract_sep9_fields(request.data),
@@ -94,6 +100,8 @@ class CustomerAPIView(APIView):
             )
         except ValueError as e:
             return render_error_response(str(e), status_code=400)
+        except ObjectDoesNotExist as e:
+            return render_error_response(str(e), status_code=404)
 
         if not isinstance(customer_id, str):
             logger.error(
