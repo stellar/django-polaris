@@ -69,7 +69,9 @@ class CustomerAPIView(APIView):
     @staticmethod
     @validate_sep10_token("sep6")
     def put(account: str, request: Request) -> Response:
-        if account != request.data.get("account"):
+        if request.data.get("id") and not request.data.get("account"):
+            pass
+        elif account != request.data.get("account"):
             return render_error_response(
                 _("The account specified does not match authorization token"),
                 status_code=403,
@@ -77,15 +79,17 @@ class CustomerAPIView(APIView):
         elif request.data.get("memo_type") and not request.data.get("memo"):
             return render_error_response(_("missing 'memo' for 'memo_type'"))
 
-        try:
-            # validate memo and memo_type
-            memo_str(request.data.get("memo"), request.data.get("memo_type"))
-        except ValueError:
-            return render_error_response(_("invalid 'memo' for 'memo_type'"))
+        if request.get("memo"):
+            try:
+                # validate memo and memo_type
+                memo_str(request.data.get("memo"), request.data.get("memo_type"))
+            except ValueError:
+                return render_error_response(_("invalid 'memo' for 'memo_type'"))
 
         try:
             customer_id = rci.put(
                 {
+                    "id": request.data.get("id"),
                     "account": request.data.get("account"),
                     "memo": request.data.get("memo"),
                     "memo_type": request.data.get("memo_type"),

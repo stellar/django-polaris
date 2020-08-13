@@ -4,9 +4,13 @@ from typing import List, Dict, Optional
 class TemplateScript:
     def __init__(self, path: str = None, url: str = None, is_async: bool = False):
         if path and url:
-            raise AttributeError("a script can only have one source from either a path or url.")
+            raise AttributeError(
+                "a script can only have one source from either a path or url."
+            )
         elif not (path or url):
-            raise AttributeError("must give either a local path or a url for TemplateScript.")
+            raise AttributeError(
+                "must give either a local path or a url for TemplateScript."
+            )
         self.path = path
         self.is_async = is_async
         self.url = url
