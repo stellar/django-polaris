@@ -75,11 +75,21 @@ class Command(BaseCommand):
         """
         print("\nResetting each asset's most recent paging token")
         for asset in Asset.objects.filter(distribution_seed__isnull=False):
-            Transaction.objects.filter(
-                Q(kind=Transaction.KIND.withdrawal) | Q(kind=Transaction.KIND.send),
-                receiving_anchor_account=asset.distribution_account,
-                status=Transaction.STATUS.completed,
-            ).order_by("-completed_at").update(paging_token=None)
+            transaction = (
+                Transaction.objects.filter(
+                    Q(kind=Transaction.KIND.withdrawal) | Q(kind=Transaction.KIND.send),
+                    receiving_anchor_account=asset.distribution_account,
+                    status=Transaction.STATUS.completed,
+                )
+                .order_by("-completed_at")
+                .first()
+            )
+            transaction.paging_token = None
+            transaction.save()
+        print("\nPlacing all pending_trust transactions into error status")
+        Transaction.objects.filter(status=Transaction.STATUS.pending_trust).update(
+            status=Transaction.STATUS.error
+        )
         for asset in Asset.objects.filter(issuer__isnull=False):
             print(f"\nIssuing {asset.code}")
             issuer_seed = input(f"Seed for {asset.code} issuer: ")
