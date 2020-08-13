@@ -69,6 +69,7 @@ class Command(BaseCommand):
         state after a testnet reset. Currently this involves the following:
 
         - re-issuing every Asset object in the DB
+        - moves all `pending_trust` Transactions to `error`
         - setting the most-recently streamed Transaction object's
             `paging_token` attribute to None. This signals to
             watch_transactions to stream using the `"now"` keyword.
