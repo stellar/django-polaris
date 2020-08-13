@@ -139,6 +139,8 @@ def validate_response_data(data: Dict):
             f"unexpected attribute included in GET /customer response. "
             f"Accepted attributes: {attrs}"
         )
+    elif not isinstance(data["id"], str):
+        raise ValueError("customer IDs must be strings")
     accepted_statuses = ["ACCEPTED", "PROCESSING", "NEEDS_INFO", "REJECTED"]
     if not data.get("status") or data.get("status") not in accepted_statuses:
         raise ValueError("invalid status in SEP-12 GET /customer response")

@@ -486,7 +486,7 @@ class MyCustomerIntegration(CustomerIntegration):
                 )
         else:
             user = account.user
-            response_data = {"id": user.id}
+            response_data = {"id": str(user.id)}
             if (user.bank_number and user.bank_account_number) or (
                 params.get("type") in ["sep6-deposit", "sep31-sender", "sep31-receiver"]
             ):
