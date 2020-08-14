@@ -51,7 +51,6 @@ HOST_URL = env_or_settings("HOST_URL")
 LOCAL_MODE = env_or_settings("LOCAL_MODE", bool=True) or False
 
 # Constants
-
 OPERATION_DEPOSIT = "deposit"
 OPERATION_WITHDRAWAL = "withdraw"
 ACCOUNT_STARTING_BALANCE = str(2.01)
