@@ -9,7 +9,7 @@ Implementing SEP 6, 24, or 31 requires more than a web server. Anchors must also
 
 To support these requirements, Polaris deployments must also include additional services to run alongside the web server. The SDF currently deploys Polaris using its CLI commands. Each command either periodically checks external state or constantly streams events from an external data source.
 
-With the exception of `watch_transactions`, every CLI command can be run once or repeatedly on some interval using the `--loop` and `--interval <seconds>` arguments. These commands should either be run by a job scheduler like Jenkins and CircleCI or run with the `--loop` argument.
+With the exception of ``watch_transactions``, every CLI command can be run once or repeatedly on some interval using the ``--loop`` and ``--interval <seconds>`` arguments. These commands should either be run by a job scheduler like Jenkins and CircleCI or run with the ``--loop`` argument.
 
 watch_transactions
 ^^^^^^^^^^^^^^^^^^
