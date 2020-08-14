@@ -52,7 +52,7 @@ The ``testnet`` command comes with two subcommands, ``issue`` and ``reset``.
 
 ``issue`` allows users to create assets on the Stellar testnet network, porting the functionality originally offered by the `create-stellar-token`_ tool. When the test network resets, you'll have to reissue your assets.
 
-``reset`` calls the functionality involved with ``issue`` for each asset in the anchor's database. Since the database does not store the issuing account's secret key, the user must input each key as requested by the Polaris command. It also performs a couple other functions necessary to ensure your Polaris instance runs successfully after a testnet reset:
+``reset`` calls the functionality invoked with ``issue`` for each asset in the anchor's database. Since the database does not store the issuing account's secret key, the user must input each key as requested by the Polaris command. It also performs a couple other functions necessary to ensure your Polaris instance runs successfully after a testnet reset:
 
 - Moves all ``pending_trust`` transactions to ``error``
 
