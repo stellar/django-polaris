@@ -107,27 +107,21 @@ Within the ``BASE_DIR`` directory, write the following variables to a ``.env`` f
     HOST_URL="http://localhost:8000"
     LOCAL_MODE=1
     SERVER_JWT_KEY="supersecretjwtencodingstring"
+    SIGNING_SEED=
 
-Many of these are self-explanatory, but ``LOCAL_MODE`` ensures Polaris runs properly using HTTP. In production Polaris should run under HTTPS. ``SERVER_JWT_KEY`` is a secret string used to encode the client's authenticated session as a token.
+Many of these are self-explanatory, but ``LOCAL_MODE`` ensures Polaris runs properly using HTTP. In production Polaris should run under HTTPS. ``SERVER_JWT_KEY`` is a secret string used to encode the client's authenticated session as a token. Finally, ``SIGNING_SEED`` should be the secret key for the keypair you intend to use for signing SEP-10 challenge transactions.
 
 There is one more variable that must be added to ``.env``, but we're going to wait until we issue the asset we intend to anchor.
 
 Issue and add your asset
 ------------------------
 
-.. _`this tool`: https://github.com/stellar/create-stellar-token
-
-Use `this tool`_ to create a token as well as setup issuer and distribution accounts for a fake asset we're going to anchor.
+Use Polaris' ``testnet issue`` subcommand to create a token as well as setup issuer and distribution accounts for a fake asset we're going to anchor.
 ::
 
-    npx create-stellar-token --asset=TEST
+    python app/manage.py testnet issue --asset=TEST
 
 It should output a public and secret key for both the issuer and distribution account.
-
-Now, add an environment variable for the account used to sign SEP-10 transactions. You can use a random keypair, but a common pattern is to use the distribution account's public key. In ``.env`` or ``ENV_PATH``:
-::
-
-    SIGNING_SEED=<TEST's distribution account seed>
 
 Add the asset to the database
 -----------------------------
