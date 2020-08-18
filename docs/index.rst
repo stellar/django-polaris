@@ -121,13 +121,21 @@ You may want to configure the ``LEVEL`` of the Polaris logger differently depend
 Environment Variables
 ^^^^^^^^^^^^^^^^^^^^^
 
-Polaris uses environment variables that should be defined in the
-environment or included in ``BASE_DIR/.env`` or ``POLARIS_ENV_PATH``.
+Polaris uses environment variables that should be defined in the environment or included in ``BASE_DIR/.env`` or ``POLARIS_ENV_PATH``.
 ::
 
     STELLAR_NETWORK_PASSPHRASE="Test SDF Network ; September 2015"
     HORIZON_URI="https://horizon-testnet.stellar.org/"
     HOST_URL="https://example.com"
+
+Polaris also supports specifying your environment variables in your project's ``settings.py``. However, any variable Polaris expects in the environment must be prepended with ``POLARIS_`` if declared in `settings.py``. For example,
+::
+
+    POLARIS_STELLAR_NETWORK_PASSPHRASE = "Test SDF Network ; September 2015"
+    POLARIS_HORIZON_URI = "https://horizon-testnet.stellar.org/"
+    POLARIS_HOST_URL = "https://example.com"
+
+If a variable cannot be found in the environment, Polaris will look in the ``settings.py`` file, or more generally, ``django.conf.settings``. Be careful not to check in secrets like your ``SERVER_JWT_KEY`` into your version control history, especially if your repository is not private.
 
 Endpoints
 ^^^^^^^^^
