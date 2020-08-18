@@ -135,7 +135,7 @@ Polaris also supports specifying your environment variables in your project's ``
     POLARIS_HORIZON_URI = "https://horizon-testnet.stellar.org/"
     POLARIS_HOST_URL = "https://example.com"
 
-If a variable cannot be found in the environment, Polaris will look in the ``settings.py`` file. Be careful not to check in secrets like your ``SERVER_JWT_KEY`` into your version control history, especially if your repository is not private.
+If a variable cannot be found in the environment, Polaris will look in the ``settings.py`` file, or more generally, ``django.conf.settings``. Be careful not to check in secrets like your ``SERVER_JWT_KEY`` into your version control history, especially if your repository is not private.
 
 Endpoints
 ^^^^^^^^^
