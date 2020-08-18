@@ -44,7 +44,7 @@ class Migration(migrations.Migration):
                         verbose_name="modified",
                     ),
                 ),
-                ("code", models.TextField(default="USD")),
+                ("code", models.TextField()),
                 (
                     "issuer",
                     models.TextField(
