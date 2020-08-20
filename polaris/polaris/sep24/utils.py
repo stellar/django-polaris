@@ -15,7 +15,6 @@ from django.urls import reverse
 
 from polaris import settings
 from polaris.utils import getLogger
-from polaris.middleware import import_path
 from polaris.models import Asset, Transaction
 from polaris.utils import render_error_response, verify_valid_asset_operation
 
@@ -240,15 +239,8 @@ def check_middleware():
     """
     err_msg = "{} is not installed in settings.MIDDLEWARE"
     session_middleware_path = "django.contrib.sessions.middleware.SessionMiddleware"
-    if import_path not in django_settings.MIDDLEWARE:
-        raise ValueError(err_msg.format(import_path))
-    elif session_middleware_path not in django_settings.MIDDLEWARE:
+    if session_middleware_path not in django_settings.MIDDLEWARE:
         raise ValueError(err_msg.format(session_middleware_path))
-    elif django_settings.MIDDLEWARE.index(
-        import_path
-    ) > django_settings.MIDDLEWARE.index(session_middleware_path):
-        err_msg = f"{import_path} must be listed before {session_middleware_path}"
-        raise ValueError(err_msg)
 
 
 def check_protocol():
