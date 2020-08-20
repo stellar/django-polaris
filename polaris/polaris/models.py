@@ -92,7 +92,7 @@ class Asset(TimeStampedModel):
     This defines an Asset, as described in the SEP-24 Info_ endpoint.
     """
 
-    code = models.TextField(default="USD")
+    code = models.TextField()
     """The asset code as defined on the Stellar network."""
 
     issuer = models.TextField(validators=[MinLengthValidator(56)])
