@@ -35,18 +35,16 @@ def check_authentication(content_type: str = "text/html") -> Callable:
                 return render_error_response(
                     str(e), content_type=content_type, status_code=403
                 )
-            else:
-                response = view(request)
-                if (
-                    django_settings.SESSION_COOKIE_NAME in response.cookies
-                    and not settings.LOCAL_MODE
-                ):
-                    response.set_cookie(
-                        django_settings.SESSION_COOKIE_NAME,
-                        request.session,
-                        secure=True,
-                    )
-                return response
+
+            response = view(request)
+            if (
+                django_settings.SESSION_COOKIE_NAME in response.cookies
+                and not settings.LOCAL_MODE
+            ):
+                response.set_cookie(
+                    django_settings.SESSION_COOKIE_NAME, request.session, secure=True,
+                )
+            return response
 
         return wrapper
 
@@ -66,18 +64,16 @@ def authenticate_session(content_type: str = "text/html") -> Callable:
                 return render_error_response(
                     str(e), content_type=content_type, status_code=403
                 )
-            else:
-                response = view(request)
-                if (
-                    django_settings.SESSION_COOKIE_NAME in response.cookies
-                    and not settings.LOCAL_MODE
-                ):
-                    response.set_cookie(
-                        django_settings.SESSION_COOKIE_NAME,
-                        request.session,
-                        secure=True,
-                    )
-                return response
+
+            response = view(request)
+            if (
+                django_settings.SESSION_COOKIE_NAME in response.cookies
+                and not settings.LOCAL_MODE
+            ):
+                response.set_cookie(
+                    django_settings.SESSION_COOKIE_NAME, request.session, secure=True,
+                )
+            return response
 
         return wrapper
 
