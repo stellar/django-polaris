@@ -20,7 +20,7 @@ django-compressor = "*"
 django-sass-processor = "*"
 
 [packages]
-django = "==3.1"
+django = "~=3.0"
 django-environ = "*"
 django-model-utils = "*"
 djangorestframework = "*"
