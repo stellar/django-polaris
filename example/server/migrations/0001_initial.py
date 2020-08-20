@@ -10,7 +10,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ("polaris", "0003_auto_20191211_1512"),
+        ("polaris", "0001_initial"),
     ]
 
     operations = [
