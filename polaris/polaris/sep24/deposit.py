@@ -9,6 +9,7 @@ from django.urls import reverse
 from django.shortcuts import redirect
 from django.views.decorators.clickjacking import xframe_options_exempt
 from django.utils.translation import gettext as _
+from django.conf import settings as django_settings
 
 from rest_framework import status
 from rest_framework.decorators import api_view, renderer_classes
