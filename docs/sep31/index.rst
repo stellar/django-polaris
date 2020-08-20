@@ -54,7 +54,7 @@ Running the Service
 ===================
 
 In addition to the web server, SEP-31 requires three additional processes to be run
-in order to work.
+in order to work. See the :doc:`CLI Commands </deployment/index>` for more information on all Polaris commands.
 
 Watch Transactions
 ^^^^^^^^^^^^^^^^^^
