@@ -42,7 +42,10 @@ def check_authentication(content_type: str = "text/html") -> Callable:
                 and not settings.LOCAL_MODE
             ):
                 response.set_cookie(
-                    django_settings.SESSION_COOKIE_NAME, request.session, secure=True,
+                    django_settings.SESSION_COOKIE_NAME,
+                    request.session,
+                    secure=True,
+                    samesite="None",
                 )
             return response
 
@@ -71,7 +74,10 @@ def authenticate_session(content_type: str = "text/html") -> Callable:
                 and not settings.LOCAL_MODE
             ):
                 response.set_cookie(
-                    django_settings.SESSION_COOKIE_NAME, request.session, secure=True,
+                    django_settings.SESSION_COOKIE_NAME,
+                    request.session,
+                    secure=True,
+                    samesite="None",
                 )
             return response
 
