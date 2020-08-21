@@ -49,6 +49,21 @@ class Command(BaseCommand):
         await asyncio.gather(
             *[
                 self._for_account(asset.distribution_account)
+                # Synchronous queries are not allowed in Django 3.1
+                # We might be able to transition watch_transactions to a fully async
+                # command by running blocking IO code in its own thread.
+                # This free's the event loop to regain control and move to the
+                # next non-blocking IO call.
+                #
+                # The result will be a thread-per-query style architecture.
+                # This introduces more overhead to each query, and instead of
+                # blocking on the main thread, this process will switch between
+                # threads every time a synchronous call is made, adding more
+                # overhead.
+                #
+                # This change may warrant a rewrite of watch_transactions so that
+                # blocking IO calls are not made in async contexts. If thats
+                # possible, we should do it before releasing Polaris with Django 3.1
                 for asset in Asset.objects.exclude(distribution_seed__isnull=True)
             ]
         )
