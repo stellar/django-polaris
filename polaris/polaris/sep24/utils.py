@@ -51,7 +51,7 @@ def check_authentication(content_type: str = "text/html") -> Callable:
                     secure=True,
                     samesite="None",
                 )
-                logger.info(request.cookies[django_settings.SESSION_COOKIE_NAME])
+                logger.info(response.cookies[django_settings.SESSION_COOKIE_NAME])
             return response
 
         return wrapper
