@@ -38,7 +38,7 @@ def check_authentication(content_type: str = "text/html") -> Callable:
 
             response = view(request)
             logger.info("Got response, checking for session cookie")
-            logger.info(repr(response.cookies), type(response.cookies))
+            logger.info(repr(response.cookies), str(type(response.cookies)))
             logger.info(request.session.items())
             if (
                 django_settings.SESSION_COOKIE_NAME in response.cookies
