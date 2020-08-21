@@ -40,7 +40,6 @@ def check_authentication(content_type: str = "text/html") -> Callable:
             logger.info("Got response, checking for session cookie")
             logger.info(repr(response.cookies))
             logger.info(str(request.session.items()))
-            logger.info()
             if (
                 django_settings.SESSION_COOKIE_NAME in response.cookies
                 and not settings.LOCAL_MODE
