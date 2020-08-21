@@ -75,7 +75,7 @@ def authenticate_session(content_type: str = "text/html") -> Callable:
 
             response = view(request)
             logger.info("Got response, checking for session cookie")
-            logger.info(repr(response.cookies), type(response.cookies))
+            logger.info(repr(response.cookies), str(type(response.cookies)))
             logger.info(request.session.items())
             if (
                 django_settings.SESSION_COOKIE_NAME in response.cookies
@@ -88,7 +88,7 @@ def authenticate_session(content_type: str = "text/html") -> Callable:
                     secure=True,
                     samesite="None",
                 )
-                logger.info(request.cookies[django_settings.SESSION_COOKIE_NAME])
+                logger.info(response.cookies[django_settings.SESSION_COOKIE_NAME])
             return response
 
         return wrapper
