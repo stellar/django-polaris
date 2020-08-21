@@ -11,7 +11,7 @@ codecov = "*"
 watchdog = "<0.10"
 
 [packages]
-django = "<3.0"
+django = "~=3.0"
 django-environ = "*"
 gunicorn = "*"
 whitenoise = "*"
