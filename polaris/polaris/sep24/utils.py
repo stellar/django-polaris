@@ -38,6 +38,8 @@ def check_authentication(content_type: str = "text/html") -> Callable:
 
             response = view(request)
             logger.info("Got response, checking for session cookie")
+            logger.info(response.cookies)
+            logger.info(request.session)
             if (
                 django_settings.SESSION_COOKIE_NAME in response.cookies
                 and not settings.LOCAL_MODE
@@ -73,6 +75,8 @@ def authenticate_session(content_type: str = "text/html") -> Callable:
 
             response = view(request)
             logger.info("Got response, checking for session cookie")
+            logger.info(response.cookies)
+            logger.info(request.session)
             if (
                 django_settings.SESSION_COOKIE_NAME in response.cookies
                 and not settings.LOCAL_MODE
