@@ -45,13 +45,16 @@ def check_authentication(content_type: str = "text/html") -> Callable:
                 and not settings.LOCAL_MODE
             ):
                 logger.info("Setting session cookie")
-                response.set_cookie(
-                    django_settings.SESSION_COOKIE_NAME,
-                    request.session,
-                    secure=True,
-                    samesite="None",
-                )
-                logger.info(response.cookies[django_settings.SESSION_COOKIE_NAME])
+                try:
+                    response.set_cookie(
+                        django_settings.SESSION_COOKIE_NAME,
+                        request.session,
+                        secure=True,
+                        samesite="None",
+                    )
+                except Exception as e:
+                    logger.info(str(e))
+                logger.info(str(response.cookies[django_settings.SESSION_COOKIE_NAME]))
             return response
 
         return wrapper
@@ -79,13 +82,16 @@ def authenticate_session(content_type: str = "text/html") -> Callable:
             logger.info(str(request.session.items()))
             if not settings.LOCAL_MODE:
                 logger.info("Setting session cookie")
-                response.set_cookie(
-                    django_settings.SESSION_COOKIE_NAME,
-                    request.session,
-                    secure=True,
-                    samesite="None",
-                )
-                logger.info(response.cookies[django_settings.SESSION_COOKIE_NAME])
+                try:
+                    response.set_cookie(
+                        django_settings.SESSION_COOKIE_NAME,
+                        request.session,
+                        secure=True,
+                        samesite="None",
+                    )
+                except Exception as e:
+                    logger.info(str(e))
+                logger.info(str(response.cookies[django_settings.SESSION_COOKIE_NAME]))
             return response
 
         return wrapper
