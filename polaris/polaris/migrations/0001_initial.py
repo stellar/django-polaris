@@ -231,7 +231,7 @@ class Migration(migrations.Migration):
                             ("pending_stellar", "pending_stellar"),
                         ],
                         default="pending_external",
-                        max_length=30,
+                        max_length=31,
                     ),
                 ),
                 ("status_eta", models.IntegerField(blank=True, null=True)),

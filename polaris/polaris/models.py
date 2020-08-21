@@ -299,7 +299,7 @@ class Transaction(models.Model):
     """The character field for the available ``KIND`` choices."""
 
     status = models.CharField(
-        choices=STATUS, default=STATUS.pending_external, max_length=30
+        choices=STATUS, default=STATUS.pending_external, max_length=31
     )
     """
     Choices field for processing status of deposit, withdrawal, & send.
