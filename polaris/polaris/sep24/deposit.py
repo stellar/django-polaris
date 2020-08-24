@@ -159,6 +159,7 @@ def post_interactive_deposit(request: Request) -> Response:
         post_url = f"{reverse('post_interactive_deposit')}?{urlencode(url_args)}"
         get_url = f"{reverse('get_interactive_deposit')}?{urlencode(url_args)}"
         content.update(
+            form=form,
             post_url=post_url,
             get_url=get_url,
             scripts=scripts,
