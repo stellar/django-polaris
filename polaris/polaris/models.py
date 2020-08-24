@@ -92,7 +92,7 @@ class Asset(TimeStampedModel):
     This defines an Asset, as described in the SEP-24 Info_ endpoint.
     """
 
-    code = models.TextField(default="USD")
+    code = models.TextField()
     """The asset code as defined on the Stellar network."""
 
     issuer = models.TextField(validators=[MinLengthValidator(56)])
@@ -299,7 +299,7 @@ class Transaction(models.Model):
     """The character field for the available ``KIND`` choices."""
 
     status = models.CharField(
-        choices=STATUS, default=STATUS.pending_external, max_length=30
+        choices=STATUS, default=STATUS.pending_external, max_length=31
     )
     """
     Choices field for processing status of deposit, withdrawal, & send.
