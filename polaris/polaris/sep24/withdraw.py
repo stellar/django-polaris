@@ -346,7 +346,6 @@ def withdraw(account: str, request: Request) -> Response:
         id=transaction_id,
         stellar_account=account,
         asset=asset,
-        amount_in=amount,
         kind=Transaction.KIND.withdrawal,
         status=Transaction.STATUS.incomplete,
         receiving_anchor_account=asset.distribution_account,
@@ -356,7 +355,12 @@ def withdraw(account: str, request: Request) -> Response:
     logger.info(f"Created withdrawal transaction {transaction_id}")
 
     url = interactive_url(
-        request, str(transaction_id), account, asset_code, settings.OPERATION_WITHDRAWAL
+        request,
+        str(transaction_id),
+        account,
+        asset_code,
+        settings.OPERATION_WITHDRAWAL,
+        amount,
     )
     return Response(
         {"type": "interactive_customer_info_needed", "url": url, "id": transaction_id}
