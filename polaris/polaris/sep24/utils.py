@@ -261,15 +261,21 @@ def check_protocol():
 
 
 def interactive_url(
-    request: Request, transaction_id: str, account: str, asset_code: str, op_type: str
+    request: Request,
+    transaction_id: str,
+    account: str,
+    asset_code: str,
+    op_type: str,
+    amount: Optional[Decimal],
 ) -> Optional[str]:
-    qparams = urlencode(
-        {
-            "asset_code": asset_code,
-            "transaction_id": transaction_id,
-            "token": generate_interactive_jwt(request, transaction_id, account),
-        }
-    )
+    params = {
+        "asset_code": asset_code,
+        "transaction_id": transaction_id,
+        "token": generate_interactive_jwt(request, transaction_id, account),
+    }
+    if amount:
+        params["amount"] = amount
+    qparams = urlencode(params)
     if op_type == settings.OPERATION_WITHDRAWAL:
         url_params = f"{reverse('get_interactive_withdraw')}?{qparams}"
     else:
