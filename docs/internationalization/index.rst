@@ -35,7 +35,6 @@ You must also add ``django.middleware.locale.LocaleMiddleware`` to your
 
     MIDDLEWARE = [
         ...,
-        'polaris.middleware.PolarisSameSiteMiddleware',
         'django.contrib.sessions.middleware.SessionMiddleware',
         'django.middleware.locale.LocaleMiddleware',
         'corsheaders.middleware.CorsMiddleware',

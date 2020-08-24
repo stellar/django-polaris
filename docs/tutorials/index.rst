@@ -36,18 +36,18 @@ Add the following to ``INSTALLED_APPS`` in settings.py.
         "polaris",
     ]
 
-Add the following to your ``MIDDLEWARE`` list. Make sure ``PolarisSameSiteMiddleware`` is
-above ``SessionMiddleware`` and ``WhiteNoiseMiddleware`` is below ``CorsMiddleware``.
+Add the following to your ``MIDDLEWARE`` list. Make sure ``WhiteNoiseMiddleware`` is below ``CorsMiddleware``.
 ::
 
     MIDDLEWARE = [
         ...,
         'corsheaders.middleware.CorsMiddleware',
         'whitenoise.middleware.WhiteNoiseMiddleware',
-        'polaris.middleware.PolarisSameSiteMiddleware',
         'django.contrib.sessions.middleware.SessionMiddleware',
         ...
     ]
+
+:doc:`PolarisSameSiteMiddleware </middleware/index>` can also be used if your anchor service should support wallets that use iframes to open interactive URL's. Popups are the recommend strategy per SEP-24.
 
 Ensure ``BASE_DIR`` is defined. Django adds this setting automatically, and Polaris expects a ``.env`` file to be present in this directory. If this setting isn't present, or if the ``.env`` isn't found there, Polaris will try to use the ``ENV_PATH`` setting. You can also use the `environ` package installed with Polaris to configure your settings.py variables with values stored in your environment.
 ::
