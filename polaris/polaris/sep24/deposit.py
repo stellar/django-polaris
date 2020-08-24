@@ -84,9 +84,6 @@ def post_interactive_deposit(request: Request) -> Response:
     amount = args_or_error["amount"]
 
     form = rdi.form_for_transaction(transaction, post_data=request.POST)
-    content = rdi.content_for_template(
-        Template.DEPOSIT, form=form, transaction=transaction
-    )
     if not form:
         logger.error(
             "Initial form_for_transaction() call returned None in "
@@ -145,6 +142,12 @@ def post_interactive_deposit(request: Request) -> Response:
             return redirect(f"{url}?{args}")
 
     else:
+        content = (
+            rdi.content_for_template(
+                Template.DEPOSIT, form=form, transaction=transaction
+            )
+            or {}
+        )
         scripts = registered_scripts_func({"form": form, **content})
 
         url_args = {"transaction_id": transaction.id, "asset_code": asset.code}
