@@ -282,10 +282,9 @@ user to send the tokenized amount to the anchor's stellar account. Polaris'
 anchored asset's distribution account and attempts to match every incoming
 deposit with a pending withdrawal.
 
-If it finds a match, it will update the transaction's status and call
-the ``process_withdrawal()`` integration function. Use this function to
-connect to your banking rails and send the transaction amount to the user's
-bank account.
+If it finds a match, it will update the transaction's status to ``pending_anchor``,
+signaling to Polaris that it needs to submit the transaction to the external rails
+used by the anchor.
 
 Run the process like so:
 ::
@@ -296,7 +295,7 @@ Executing Outgoing Transactions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The ``execute_outgoing_transactions`` CLI tool polls the database for transactions
-in the ``pending_receiver`` status and passes them to the
+in the ``pending_anchor`` status and passes them to the
 ``RailsIntegration.execute_outgoing_transaction()`` function for the anchor to
 initiate the payment to the receiving user. See the integration function's
 documentation for more information about this step.
