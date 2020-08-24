@@ -53,7 +53,7 @@ class DepositIntegration:
         ::
 
             def form_for_transaction(self, transaction, post_data = None, amount = None):
-                if not transaction.amount_in:
+                if transaction.amount_in:
                     return
                 elif post_data:
                     return TransactionForm(transaction, post_data)
