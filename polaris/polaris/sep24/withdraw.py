@@ -3,6 +3,7 @@ This module implements the logic for the `/transactions/withdraw` endpoint.
 This lets a user withdraw some asset from their Stellar account into a
 non-Stellar-based account.
 """
+from decimal import Decimal, DecimalException
 from urllib.parse import urlencode
 from polaris.utils import getLogger
 
@@ -318,6 +319,13 @@ def withdraw(account: str, request: Request) -> Response:
         # require new or adjusted integration points.
         return render_error_response(_("`memo` parameter is not supported"))
 
+    amount = None
+    if request.POST.get("amount"):
+        try:
+            amount = Decimal(request.POST.get("amount"))
+        except DecimalException as e:
+            return render_error_response(_("Invalid 'amount'"))
+
     # Verify that the asset code exists in our database, with withdraw enabled.
     asset = Asset.objects.filter(code=asset_code).first()
     if not (asset and asset.withdrawal_enabled and asset.sep24_enabled):
@@ -338,6 +346,7 @@ def withdraw(account: str, request: Request) -> Response:
         id=transaction_id,
         stellar_account=account,
         asset=asset,
+        amount_in=amount,
         kind=Transaction.KIND.withdrawal,
         status=Transaction.STATUS.incomplete,
         receiving_anchor_account=asset.distribution_account,

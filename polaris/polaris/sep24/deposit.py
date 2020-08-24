@@ -2,6 +2,7 @@
 This module implements the logic for the `/transactions/deposit` endpoints.
 This lets a user initiate a deposit of an asset into their Stellar account.
 """
+from decimal import Decimal, DecimalException
 from urllib.parse import urlencode
 from polaris.utils import getLogger
 
@@ -315,6 +316,13 @@ def deposit(account: str, request: Request) -> Response:
     except ValueError:
         return render_error_response(_("invalid 'memo' for 'memo_type'"))
 
+    amount = None
+    if request.POST.get("amount"):
+        try:
+            amount = Decimal(request.POST.get("amount"))
+        except DecimalException as e:
+            return render_error_response(_("Invalid 'amount'"))
+
     # Verify that the asset code exists in our database, with deposit enabled.
     asset = Asset.objects.filter(code=asset_code).first()
     if not asset:
@@ -341,6 +349,7 @@ def deposit(account: str, request: Request) -> Response:
         id=transaction_id,
         stellar_account=account,
         asset=asset,
+        amount_in=amount,
         kind=Transaction.KIND.deposit,
         status=Transaction.STATUS.incomplete,
         to_address=account,
