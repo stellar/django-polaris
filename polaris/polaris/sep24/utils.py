@@ -235,20 +235,12 @@ def check_sep24_config():
 def check_middleware():
     """
     Ensures the Django app running Polaris has the correct middleware
-    configuration. Polaris requires SessionMiddleware and
-    PolarisSameSiteMiddleware to be installed.
+    configuration. Polaris requires SessionMiddleware to be installed.
     """
     err_msg = "{} is not installed in settings.MIDDLEWARE"
     session_middleware_path = "django.contrib.sessions.middleware.SessionMiddleware"
-    if import_path not in django_settings.MIDDLEWARE:
-        raise ValueError(err_msg.format(import_path))
-    elif session_middleware_path not in django_settings.MIDDLEWARE:
+    if session_middleware_path not in django_settings.MIDDLEWARE:
         raise ValueError(err_msg.format(session_middleware_path))
-    elif django_settings.MIDDLEWARE.index(
-        import_path
-    ) > django_settings.MIDDLEWARE.index(session_middleware_path):
-        err_msg = f"{import_path} must be listed before {session_middleware_path}"
-        raise ValueError(err_msg)
 
 
 def check_protocol():

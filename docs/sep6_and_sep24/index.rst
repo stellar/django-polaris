@@ -100,9 +100,10 @@ so add the follow environment variable.
 
     SERVER_JWT_KEY="yoursupersecretjwtkey"
 
-Add Polaris' ``PolarisSameSiteMiddleware`` to your
-``settings.MIDDLEWARE``. ``SessionMiddleware`` must be listed `below`
-``PolarisSameSiteMiddleware``.
+Some wallets may open the interactive URL's returned by Polaris in iframes instead of popups.
+This affects the way in which HTTPS cookie headers must be configured. Add Polaris' ``PolarisSameSiteMiddleware`` to your ``settings.MIDDLEWARE`` if you want to support wallets using iframes.
+
+``SessionMiddleware`` is required for all SEP-24 deployments, and must be listed `below` ``PolarisSameSiteMiddleware``.
 ::
 
     MIDDLEWARE = [

@@ -3,12 +3,12 @@ class PolarisSameSiteMiddleware:
     Middleware to add a `SameSite=None` attribute to the session cookie for
     `deposit/webapp` responses. This is a work-around in-place of
     :class:`django.http.HttpResponse.set_cookie`, which does not
-    allow `samesite` values of ``None``.
+    allow `samesite` values of ``None``. **This is only required if you want
+    to support clients that open interactive URLs in iframes instead of
+    the recommended strategy of using popups.
 
-    Polaris developers MUST add this class to their Django app's
-    ``settings.MIDDLEWARE``. Specifically, the class must be listed
-    `above` :class:`django.contrib.sessions.middleware.SessionMiddleware`,
-    like so:
+    If used, the class must be listed `above`
+    :class:`django.contrib.sessions.middleware.SessionMiddleware`, like so:
     ::
 
         MIDDLEWARE = [
