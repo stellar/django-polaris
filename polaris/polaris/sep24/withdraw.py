@@ -81,9 +81,6 @@ def post_interactive_withdraw(request: Request) -> Response:
     amount = args_or_error["amount"]
 
     form = rwi.form_for_transaction(transaction, post_data=request.POST)
-    content = rwi.content_for_template(
-        Template.WITHDRAW, form=form, transaction=transaction
-    )
     if not form:
         logger.error(
             "Initial form_for_transaction() call returned None " f"for {transaction.id}"
@@ -154,6 +151,12 @@ def post_interactive_withdraw(request: Request) -> Response:
             return redirect(f"{url}?{args}")
 
     else:
+        content = (
+            rwi.content_for_template(
+                Template.WITHDRAW, form=form, transaction=transaction
+            )
+            or {}
+        )
         scripts = registered_scripts_func({"form": form, **content})
 
         url_args = {"transaction_id": transaction.id, "asset_code": asset.code}
