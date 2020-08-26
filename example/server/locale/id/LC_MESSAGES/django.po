@@ -7,11 +7,11 @@ msgid ""
 msgstr ""
 "Project-Id-Version: 1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-07-09 19:01+0000\n"
+"POT-Creation-Date: 2020-08-26 16:01+0000\n"
 "PO-Revision-Date: 2020-08-04 01:29+0800\n"
 "Last-Translator: oon arfiandwi <oon.arfiandwi@gmail.com>\n"
-"Language-Team: Bahasa Indonesia"
-"Language: id\n"
+"Language-Team: Bahasa IndonesiaLanguage: id\n"
+"Language: \n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -97,47 +97,46 @@ msgstr "Area teks"
 msgid "Password"
 msgstr "Kata sandi"
 
-#: integrations.py:37 templates/confirmation_email.html:8
+#: integrations.py:39 templates/confirmation_email.html:8
 #: templates/confirmation_email.html:124
 msgid "Confirm Email"
 msgstr "Konfirmasi email"
 
-#: integrations.py:53
+#: integrations.py:55
 msgid "Reference Anchor Server: Confirm Email"
 msgstr "Referensi Server Anchor: Konfirmasikan Email"
 
-#: integrations.py:55
+#: integrations.py:57
 #, python-format
 msgid "Confirm your email by pasting this URL in your browser: %s"
 msgstr ""
 "Konfirmasikan email Anda dengan menempelkan URL ini di browser Anda: %s"
 
-#: integrations.py:121 integrations.py:142 integrations.py:219
-#: integrations.py:307
+#: integrations.py:128 integrations.py:152 integrations.py:212
+#: integrations.py:217 integrations.py:308 integrations.py:319
 msgid "Stellar Development Foundation"
 msgstr "Stellar Development Foundation"
 
-#: integrations.py:122
+#: integrations.py:129
 msgid "Polaris KYC Information"
 msgstr "Informasi KYC Polaris"
 
-#: integrations.py:125
+#: integrations.py:132
 msgid ""
 "We're legally required to know our customers. Please enter the information "
 "requested."
 msgstr ""
-"Kami diharuskan secara hukum untuk mengetahui pelanggan kami. Silakan"
-" masukkan informasi yang"
-"diminta."
+"Kami diharuskan secara hukum untuk mengetahui pelanggan kami. Silakan "
+"masukkan informasi yangdiminta."
 
-#: integrations.py:139
+#: integrations.py:149
 msgid ""
 "We sent you a confirmation email. Once confirmed, continue on this page."
 msgstr ""
-"Kami mengirimi Anda email konfirmasi. Setelah dikonfirmasi, lanjutkan ke"
-" halaman ini."
+"Kami mengirimi Anda email konfirmasi. Setelah dikonfirmasi, lanjutkan ke "
+"halaman ini."
 
-#: integrations.py:193
+#: integrations.py:175
 #, python-format
 msgid ""
 "Include this code as the memo when making the deposit: <strong>%s</strong>. "
@@ -145,95 +144,100 @@ msgid ""
 "(This deposit is automatically confirmed for demonstration purposes. Please "
 "wait.)"
 msgstr ""
-"Masukkan kode ini sebagai memo ketika melakukan setoran: <strong>%s</strong>. "
-"Kami akan menggunakan memo ini untuk mengidentifikasi Anda sebagai pengirim.\n"
+"Masukkan kode ini sebagai memo ketika melakukan setoran: <strong>%s</"
+"strong>. Kami akan menggunakan memo ini untuk mengidentifikasi Anda sebagai "
+"pengirim.\n"
 "(Setoran ini secara otomatis dikonfirmasi untuk tujuan demonstrasi. Mohon "
 "tunggu.)"
 
-#: integrations.py:217 integrations.py:306
+#: integrations.py:210 integrations.py:216 integrations.py:307
+#: integrations.py:318
 msgid "Polaris Transaction Information"
 msgstr "Informasi Transaksi Polaris"
 
-#: integrations.py:218
+#: integrations.py:211
 msgid "Please enter the amount you would like to transfer."
 msgstr "Silakan masukkan jumlah yang ingin Anda transfer."
 
-#: integrations.py:254 integrations.py:348
+#: integrations.py:253 integrations.py:355
 msgid "'type' must be 'bank_account'"
 msgstr "'type' harus 'bank_account'"
 
-#: integrations.py:310
+#: integrations.py:311
 msgid ""
 "Please enter the banking details for the account you would like to receive "
 "your funds."
 msgstr ""
-"Silakan masukkan detail perbankan untuk akun yang ingin anda terima"
-"dananya."
+"Silakan masukkan detail perbankan untuk akun yang ingin anda terimadananya."
 
-#: integrations.py:350
+#: integrations.py:357
 msgid "'dest' is required"
 msgstr "'dest' wajib ada"
 
-#: integrations.py:352
+#: integrations.py:359
 msgid "'dest_extra' is required"
 msgstr "'dest_extra' wajib ada"
 
-#: integrations.py:354
+#: integrations.py:361
 msgid "'dest' must match bank account number for account"
 msgstr "'dest' harus cocok dengan nomor rekening bank untuk akun"
 
-#: integrations.py:357
+#: integrations.py:364
 msgid "'dest_extra' must match bank routing number for account"
 msgstr "'dest_extra' harus cocok dengan nomor perutean bank untuk akun"
 
-#: integrations.py:466
+#: integrations.py:476
 #, python-format
 msgid "customer not found using: %s"
 msgstr "pelanggan tidak ditemukan menggunakan: %s"
 
-#: integrations.py:475 integrations.py:487
+#: integrations.py:485 integrations.py:500
 msgid "invalid 'type'. see /info response for valid values."
 msgstr "'type' tidak valid. lihat respons /info untuk nilai yang valid."
 
-#: integrations.py:583
+#: integrations.py:611
 msgid " is not of type str"
 msgstr "bukan tipe str"
 
-#: integrations.py:602
+#: integrations.py:630
 msgid "'transaction' value must be an object"
 msgstr "nilai 'transaction' harus sebuah objek"
 
-#: integrations.py:608
+#: integrations.py:636
 msgid "No fields provided"
 msgstr "Tidak ada kolom yang tersedia"
 
-#: integrations.py:610
+#: integrations.py:638
 msgid "unexpected fields provided"
 msgstr "kolom yang tidak terduga disediakan"
 
-#: integrations.py:612
+#: integrations.py:640
 msgid "field values must be strings"
 msgstr "nilai kolom harus berupa string"
 
-#: integrations.py:804
+#: integrations.py:842
 msgid "'bank_account' is the only value supported'"
 msgstr "'bank_account' adalah satu-satunya nilai yang didukung'"
 
-#: integrations.py:811
+#: integrations.py:849
 msgid "bank account number"
 msgstr "Nomor rekening bank"
 
-#: integrations.py:812
+#: integrations.py:850
 msgid "bank routing number"
 msgstr "nomor perutean bank"
 
-#: settings.py:104
+#: settings.py:103
 msgid "English"
 msgstr "Bahasa Inggris"
 
 #: settings.py:104
 msgid "Portuguese"
 msgstr "Bahasa Portugis"
+
+#: settings.py:105
+msgid "Bahasa Indonesia"
+msgstr ""
 
 #: templates/confirmation_email.html:115
 #, python-format
@@ -245,8 +249,8 @@ msgid ""
 "Thanks for using the Stellar Development Foundation's reference anchor "
 "server. Click the button below to confirm your email."
 msgstr ""
-"Terima kasih telah menggunakan server anchor referensi Stellar Development"
-" Foundation. Klik tombol di bawah untuk melakukan konfirmasi email Anda."
+"Terima kasih telah menggunakan server anchor referensi Stellar Development "
+"Foundation. Klik tombol di bawah untuk melakukan konfirmasi email Anda."
 
 #: templates/confirmation_email.html:132
 msgid "The reference server is powered by "
@@ -265,8 +269,8 @@ msgid ""
 "Your email has been confirmed! Please continue with your deposit or "
 "withdrawal on the original page."
 msgstr ""
-"Email Anda telah dikonfirmasi! Silakan lanjutkan dengan setoran Anda atau"
-"penarikan di halaman asal."
+"Email Anda telah dikonfirmasi! Silakan lanjutkan dengan setoran Anda "
+"ataupenarikan di halaman asal."
 
 #: templates/readonly_login.html:21
 msgid "Please correct the error below."
@@ -282,9 +286,8 @@ msgid ""
 "You are authenticated as %(username)s, but are not authorized to access this "
 "page. Would you like to login to a different account?"
 msgstr ""
-"Anda diautentikasi sebagai %(username)s, tetapi tidak diizinkan untuk"
-" mengakses"
-"halaman ini. Apakah anda ingin menggunakan akun lain?"
+"Anda diautentikasi sebagai %(username)s, tetapi tidak diizinkan untuk "
+"mengakseshalaman ini. Apakah anda ingin menggunakan akun lain?"
 
 #: templates/readonly_login.html:64
 msgid "Forgotten your password or username?"
@@ -294,7 +297,6 @@ msgstr "Lupa kata sandi atau nama pengguna anda?"
 msgid "Log in"
 msgstr "Masuk"
 
-#: views.py:22
+#: views.py:23
 msgid "This form contains every field type."
 msgstr "Formulir ini berisi setiap jenis kolom."
-

@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: 1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-07-09 19:01+0000\n"
+"POT-Creation-Date: 2020-08-26 16:01+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -97,30 +97,30 @@ msgstr "Área de Texto"
 msgid "Password"
 msgstr "Senha"
 
-#: integrations.py:37 templates/confirmation_email.html:8
+#: integrations.py:39 templates/confirmation_email.html:8
 #: templates/confirmation_email.html:124
 msgid "Confirm Email"
 msgstr "Confirmar Email"
 
-#: integrations.py:53
+#: integrations.py:55
 msgid "Reference Anchor Server: Confirm Email"
 msgstr "Servidor Âncora de Referência: Confirmação de Email"
 
-#: integrations.py:55
+#: integrations.py:57
 #, python-format
 msgid "Confirm your email by pasting this URL in your browser: %s"
 msgstr "Confirme seu email colando essa URL no seu navegador: %s"
 
-#: integrations.py:121 integrations.py:142 integrations.py:219
-#: integrations.py:307
+#: integrations.py:128 integrations.py:152 integrations.py:212
+#: integrations.py:217 integrations.py:308 integrations.py:319
 msgid "Stellar Development Foundation"
 msgstr "Stellar Development Foundation"
 
-#: integrations.py:122
+#: integrations.py:129
 msgid "Polaris KYC Information"
 msgstr "Informações de KYC do Polaris"
 
-#: integrations.py:125
+#: integrations.py:132
 msgid ""
 "We're legally required to know our customers. Please enter the information "
 "requested."
@@ -128,14 +128,14 @@ msgstr ""
 "Para seguir regulações, temos que conhecer nossos usuários. Por favor "
 "forneça as seguintes informações."
 
-#: integrations.py:139
+#: integrations.py:149
 msgid ""
 "We sent you a confirmation email. Once confirmed, continue on this page."
 msgstr ""
 "Um email de confirmação foi enviado. Uma vez que a confirmação for feita, "
 "continue nesta página."
 
-#: integrations.py:193
+#: integrations.py:175
 #, python-format
 msgid ""
 "Include this code as the memo when making the deposit: <strong>%s</strong>. "
@@ -148,89 +148,94 @@ msgstr ""
 "(Este depósito é automaticamente confirmado para fins de demonstração. Por "
 "favor aguarde.)"
 
-#: integrations.py:217 integrations.py:306
+#: integrations.py:210 integrations.py:216 integrations.py:307
+#: integrations.py:318
 msgid "Polaris Transaction Information"
 msgstr "Informações de Transações do Polaris"
 
-#: integrations.py:218
+#: integrations.py:211
 msgid "Please enter the amount you would like to transfer."
 msgstr "Por favor informe o valor que você quer transferir."
 
-#: integrations.py:254 integrations.py:348
+#: integrations.py:253 integrations.py:355
 msgid "'type' must be 'bank_account'"
 msgstr "o ‘type’ deve ser ‘bank_account’"
 
-#: integrations.py:310
+#: integrations.py:311
 msgid ""
 "Please enter the banking details for the account you would like to receive "
 "your funds."
 msgstr ""
 "Por favor informe os detalhes bancários da conta que vai receber os fundos."
 
-#: integrations.py:350
+#: integrations.py:357
 msgid "'dest' is required"
 msgstr "'dest' é necessário"
 
-#: integrations.py:352
+#: integrations.py:359
 msgid "'dest_extra' is required"
 msgstr "'dest_extra' é necessário"
 
-#: integrations.py:354
+#: integrations.py:361
 msgid "'dest' must match bank account number for account"
 msgstr "'dest' deve corresponder ao número da conta de banco"
 
-#: integrations.py:357
+#: integrations.py:364
 msgid "'dest_extra' must match bank routing number for account"
 msgstr "'dest_extra' deve corresponder ao número de roteamento da conta"
 
-#: integrations.py:466
+#: integrations.py:476
 #, python-format
 msgid "customer not found using: %s"
 msgstr "cliente não encontrado usando: %s"
 
-#: integrations.py:475 integrations.py:487
+#: integrations.py:485 integrations.py:500
 msgid "invalid 'type'. see /info response for valid values."
 msgstr "tipo inválido. Acesse /info para os valores válidos."
 
-#: integrations.py:583
+#: integrations.py:611
 msgid " is not of type str"
 msgstr "não é do tipo str"
 
-#: integrations.py:602
+#: integrations.py:630
 msgid "'transaction' value must be an object"
 msgstr "o valor de 'transaction' precisa ser um objeto"
 
-#: integrations.py:608
+#: integrations.py:636
 msgid "No fields provided"
 msgstr "Nenhum campo informado"
 
-#: integrations.py:610
+#: integrations.py:638
 msgid "unexpected fields provided"
 msgstr "campo inesperado informado"
 
-#: integrations.py:612
+#: integrations.py:640
 msgid "field values must be strings"
 msgstr "o valor dos campos precisa ser 'string'"
 
-#: integrations.py:804
+#: integrations.py:842
 msgid "'bank_account' is the only value supported'"
 msgstr "'bank_account' é o único valor suportado"
 
-#: integrations.py:811
+#: integrations.py:849
 msgid "bank account number"
 msgstr "número da conta de banco"
 
-#: integrations.py:812
+#: integrations.py:850
 msgid "bank routing number"
 msgstr "número de roteamento bancário"
 
-#: settings.py:104
+#: settings.py:103
 msgid "English"
 msgstr "Inglês"
 
 #: settings.py:104
 msgid "Portuguese"
 msgstr "Português"
+
+#: settings.py:105
+msgid "Bahasa Indonesia"
+msgstr ""
 
 #: templates/confirmation_email.html:115
 #, python-format
@@ -290,6 +295,6 @@ msgstr "Esqueceu a senha ou usuário?"
 msgid "Log in"
 msgstr "Entrar"
 
-#: views.py:22
+#: views.py:23
 msgid "This form contains every field type."
 msgstr "Este formulário possui todos os tipos de campos."
