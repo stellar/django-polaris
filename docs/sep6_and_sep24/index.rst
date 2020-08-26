@@ -254,7 +254,7 @@ Javascript Integration
 Running the Service
 ===================
 
-In addition to the web server, SEP-6 and SEP-24 require five additional processes to be run in order to work. See the :doc:`<CLI Commands /deployment/index>` for more information on all Polaris commands.
+In addition to the web server, SEP-6 and SEP-24 require five additional processes to be run in order to work. See the :doc:`CLI Commands </deployment/index>` for more information on all Polaris commands.
 
 Polling Pending Deposits
 ------------------------
