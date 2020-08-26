@@ -235,7 +235,7 @@ msgstr "Português"
 
 #: settings.py:105
 msgid "Bahasa Indonesia"
-msgstr ""
+msgstr "Indonésio"
 
 #: templates/confirmation_email.html:115
 #, python-format
@@ -267,16 +267,16 @@ msgid ""
 "Your email has been confirmed! Please continue with your deposit or "
 "withdrawal on the original page."
 msgstr ""
-"Seu email foi confirmado! Por favor continue o seu deposito ou saque na "
+"Seu email foi confirmado! Por favor continue o seu depósito ou saque na "
 "página original."
 
 #: templates/readonly_login.html:21
 msgid "Please correct the error below."
-msgstr "Por favor corrija o erro a baixo."
+msgstr "Por favor corrija o erro abaixo."
 
 #: templates/readonly_login.html:21
 msgid "Please correct the errors below."
-msgstr "Por favor corrija os erros a baixo."
+msgstr "Por favor corrija os erros abaixo."
 
 #: templates/readonly_login.html:37
 #, python-format
@@ -284,7 +284,7 @@ msgid ""
 "You are authenticated as %(username)s, but are not authorized to access this "
 "page. Would you like to login to a different account?"
 msgstr ""
-"Você está autenticado como %(username)s, mas não está autorizaado a acessar "
+"Você está autenticado como %(username)s, mas não está autorizado a acessar "
 "essa página. Você gostaria de realizar o acesso com outra conta?"
 
 #: templates/readonly_login.html:64
