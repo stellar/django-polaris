@@ -7,14 +7,15 @@ msgstr ""
 "Project-Id-Version: gettext-tools 0.18.3\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2020-08-26 16:01+0000\n"
-"PO-Revision-Date: 2020-08-04 00:37+0800\n"
+"PO-Revision-Date: 2020-08-27 09:26+0800\n"
 "Last-Translator: oon arfiandwi <oon.arfiandwi@gmail.com>\n"
-"Language-Team: Bahasa IndonesiaLanguage: id\n"
-"Language: \n"
+"Language-Team: Indonesian <>\n"
+"Language: id\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Generator: Lokalize 2.0\n"
 
 #: integrations/forms.py:31
 msgid "The credit card number is invalid"
@@ -90,7 +91,7 @@ msgstr "jumlah transaksi terlalu kecil"
 
 #: models.py:261
 msgid "the transaction amount is too big"
-msgstr "jumlah transaksinya terlalu besar"
+msgstr "jumlah transaksi terlalu besar"
 
 #: models.py:269
 msgid "complete"
@@ -109,10 +110,9 @@ msgid "stellar is executing the transaction"
 msgstr "stellar sedang melakukan transaksi"
 
 #: sep10/views.py:91
-#, fuzzy
 #| msgid "'dest' is required"
 msgid "'transaction' is required"
-msgstr "'dest' wajib ada"
+msgstr "'transaction' wajib ada"
 
 #: sep12/customer.py:28 sep12/customer.py:78 sep6/transaction.py:37
 msgid "The account specified does not match authorization token"
@@ -141,7 +141,7 @@ msgstr "tidak dapat memroses permintaan."
 
 #: sep12/customer.py:75
 msgid "bad ID value, expected str"
-msgstr ""
+msgstr "nilai ID salah, yang diharapkan str"
 
 #: sep12/customer.py:110 sep31/transactions.py:82
 msgid "unable to process request"
@@ -242,17 +242,16 @@ msgstr "tidak dapat memroses permintaan"
 
 #: sep31/transactions.py:39
 msgid "GET requests must include a transaction ID in the URI"
-msgstr ""
+msgstr "Permintaan GET harus menyertakan ID transaksi di URI"
 
 #: sep31/transactions.py:42
 msgid "invalid sending account."
 msgstr "akun pengirim tidak valid."
 
 #: sep31/transactions.py:44
-#, fuzzy
 #| msgid "Missing id parameter in URL"
 msgid "missing 'id' in URI"
-msgstr "Parameter id tidak ada di URL"
+msgstr "tidak menemukan 'id' di URI"
 
 #: sep31/transactions.py:50 sep31/transactions.py:52 sep31/transactions.py:67
 #: sep31/transactions.py:69 shared/endpoints.py:31
@@ -261,7 +260,7 @@ msgstr "transaksi tidak ditemukan"
 
 #: sep31/transactions.py:60
 msgid "PATCH requests must include a transaction ID in the URI"
-msgstr ""
+msgstr "Permintaan PATCH harus menyertakan ID transaksi di URI"
 
 #: sep31/transactions.py:63
 msgid "invalid sending account"
@@ -273,7 +272,7 @@ msgstr "pembaruan tidak diperlukan"
 
 #: sep31/transactions.py:95
 msgid "POST requests should not specify subresources in the URI"
-msgstr ""
+msgstr "Permintaan POST tidak boleh menentukan sub-sumber di URI"
 
 #: sep31/transactions.py:156
 msgid "invalid 'asset_code' and 'asset_issuer'"
@@ -289,7 +288,7 @@ msgstr "'fields' harus diserialisasi ke objek JSON"
 
 #: sep31/transactions.py:175
 msgid "'transaction' value in 'fields' must be a dict"
-msgstr "'transaction' nilai dalam 'fields' harus berupa kamus (dict)"
+msgstr "Nilai 'transaction' dalam 'fields' harus berupa kamus (dict)"
 
 #: sep31/transactions.py:180
 msgid "'sender_id' and 'receiver_id' values must be strings"
@@ -306,10 +305,10 @@ msgid "invalid type for %s, must be an object"
 msgstr "tipe tidak valid untuk %s, harus berupa objek"
 
 #: sep31/transactions.py:280
-#, fuzzy, python-format
+#, python-format
 #| msgid "missing %{field}s in %{category}s"
 msgid "missing %(field)s in %(category)s"
-msgstr "%{field}s pada %{category}s tidak ditemukan"
+msgstr "%(field)s pada %(category)s tidak ditemukan"
 
 #: sep6/deposit.py:132 sep6/withdraw.py:104
 msgid "invalid 'memo_type'"
@@ -328,7 +327,8 @@ msgid ""
 "at least one of id, stellar_transaction_id, or external_transaction_id must "
 "be provided"
 msgstr ""
-"setidaknya satu id, stellar_transaction_id, atau external_transaction_id "
+"setidaknya salah satu id, stellar_transaction_id, atau"
+" external_transaction_id "
 "harus tersedia"
 
 #: templates/base.html:10
@@ -362,7 +362,7 @@ msgstr "Aktualkan"
 #: templates/django/forms/widgets/clearable_file_input.html:2
 #: templates/django/forms/widgets/file.html:2
 msgid "Select a file"
-msgstr "Pilih file"
+msgstr "Pilih berkas"
 
 #: templates/error.html:4 templates/error.html:9
 #, python-format
@@ -371,7 +371,7 @@ msgstr "Terjadi Kesalahan: %(status_code)s"
 
 #: templates/transaction/more_info.html:4
 msgid "Transaction More Info"
-msgstr "Transaksi Info Lebih Lanjut"
+msgstr "Info Transaksi Lebih Lanjut"
 
 #: templates/transaction/more_info.html:12
 msgid "instructions"
