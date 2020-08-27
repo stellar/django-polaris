@@ -8,14 +8,15 @@ msgstr ""
 "Project-Id-Version: 1.0\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2020-08-26 16:01+0000\n"
-"PO-Revision-Date: 2020-08-04 01:29+0800\n"
+"PO-Revision-Date: 2020-08-27 09:36+0800\n"
 "Last-Translator: oon arfiandwi <oon.arfiandwi@gmail.com>\n"
-"Language-Team: Bahasa IndonesiaLanguage: id\n"
-"Language: \n"
+"Language-Team: Indonesian <>\n"
+"Language: id\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Generator: Lokalize 2.0\n"
 
 #: forms.py:11
 msgid "First Name"
@@ -39,7 +40,7 @@ msgstr "Akun bank"
 
 #: forms.py:40
 msgid "Enter the bank to withdraw from."
-msgstr "Masukkan bank untuk penarikan."
+msgstr "Masukkan bank untuk formulir penarikan."
 
 #: forms.py:44
 msgid "Bank"
@@ -75,7 +76,7 @@ msgstr "Pilihan ganda"
 
 #: forms.py:61
 msgid "Datetime"
-msgstr "Tanggal Waktu"
+msgstr "Tanggal waktu"
 
 #: forms.py:62
 msgid "Date"
@@ -104,7 +105,7 @@ msgstr "Konfirmasi email"
 
 #: integrations.py:55
 msgid "Reference Anchor Server: Confirm Email"
-msgstr "Referensi Server Anchor: Konfirmasikan Email"
+msgstr "Server Anchor Referensi: Konfirmasikan Email"
 
 #: integrations.py:57
 #, python-format
@@ -127,7 +128,7 @@ msgid ""
 "requested."
 msgstr ""
 "Kami diharuskan secara hukum untuk mengetahui pelanggan kami. Silakan "
-"masukkan informasi yangdiminta."
+"masukkan informasi yang diminta."
 
 #: integrations.py:149
 msgid ""
@@ -144,9 +145,8 @@ msgid ""
 "(This deposit is automatically confirmed for demonstration purposes. Please "
 "wait.)"
 msgstr ""
-"Masukkan kode ini sebagai memo ketika melakukan setoran: <strong>%s</"
-"strong>. Kami akan menggunakan memo ini untuk mengidentifikasi Anda sebagai "
-"pengirim.\n"
+"Masukkan kode ini sebagai memo ketika melakukan setoran: <strong>%s</strong>. "
+"Kami akan menggunakan memo ini untuk mengidentifikasi Anda sebagai pengirim.\n"
 "(Setoran ini secara otomatis dikonfirmasi untuk tujuan demonstrasi. Mohon "
 "tunggu.)"
 
@@ -168,7 +168,8 @@ msgid ""
 "Please enter the banking details for the account you would like to receive "
 "your funds."
 msgstr ""
-"Silakan masukkan detail perbankan untuk akun yang ingin anda terimadananya."
+"Silakan masukkan detail perbankan untuk akun yang ingin anda terima "
+"dananya."
 
 #: integrations.py:357
 msgid "'dest' is required"
@@ -201,7 +202,7 @@ msgstr "bukan tipe str"
 
 #: integrations.py:630
 msgid "'transaction' value must be an object"
-msgstr "nilai 'transaction' harus sebuah objek"
+msgstr "Nilai 'transaction' harus sebuah objek"
 
 #: integrations.py:636
 msgid "No fields provided"
@@ -221,7 +222,7 @@ msgstr "'bank_account' adalah satu-satunya nilai yang didukung'"
 
 #: integrations.py:849
 msgid "bank account number"
-msgstr "Nomor rekening bank"
+msgstr "nomor rekening bank"
 
 #: integrations.py:850
 msgid "bank routing number"
@@ -237,7 +238,7 @@ msgstr "Bahasa Portugis"
 
 #: settings.py:105
 msgid "Bahasa Indonesia"
-msgstr ""
+msgstr "Bahasa Indonesia"
 
 #: templates/confirmation_email.html:115
 #, python-format
@@ -270,7 +271,7 @@ msgid ""
 "withdrawal on the original page."
 msgstr ""
 "Email Anda telah dikonfirmasi! Silakan lanjutkan dengan setoran Anda "
-"ataupenarikan di halaman asal."
+"atau penarikan di halaman asal."
 
 #: templates/readonly_login.html:21
 msgid "Please correct the error below."
@@ -287,7 +288,7 @@ msgid ""
 "page. Would you like to login to a different account?"
 msgstr ""
 "Anda diautentikasi sebagai %(username)s, tetapi tidak diizinkan untuk "
-"mengakseshalaman ini. Apakah anda ingin menggunakan akun lain?"
+"mengakses halaman ini. Apakah anda ingin menggunakan akun lain?"
 
 #: templates/readonly_login.html:64
 msgid "Forgotten your password or username?"
@@ -300,3 +301,4 @@ msgstr "Masuk"
 #: views.py:23
 msgid "This form contains every field type."
 msgstr "Formulir ini berisi setiap jenis kolom."
+
