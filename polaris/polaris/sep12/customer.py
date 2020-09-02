@@ -45,7 +45,9 @@ class CustomerAPIView(APIView):
             response_data = rci.get(
                 {
                     "id": request.GET.get("id"),
-                    "account": request.GET.get("account"),
+                    # anchors need to be able to filter out customers who weren't
+                    # created by the following SEP-10 JWT source account.
+                    "account": account,
                     "memo": request.GET.get("memo"),
                     "memo_type": request.GET.get("memo_type"),
                     "type": request.GET.get("type"),
@@ -54,6 +56,8 @@ class CustomerAPIView(APIView):
             )
         except ValueError as e:
             return render_error_response(str(e), status_code=400)
+        except ObjectDoesNotExist as e:
+            return render_error_response(str(e), status_code=404)
 
         try:
             validate_response_data(response_data)

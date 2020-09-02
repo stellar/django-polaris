@@ -17,14 +17,18 @@ class CustomerIntegration:
     def get(self, params: Dict) -> Dict:
         """
         .. _`SEP-12 GET /customer`: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0012.md#customer-get
+        .. _ObjectDoesNotExist: https://docs.djangoproject.com/en/3.1/ref/exceptions/#objectdoesnotexist
 
         Return a dictionary matching the response schema outlined in `SEP-12 GET /customer`_
         based on the `params` passed. The key-value pairs in `params` match the arguments
-        sent in the request.
+        sent in the request with the exception of ``account``, which will always be
+        included in `params` so the anchor can ensure the customer returned was created
+        by the same ``account``.
 
-        Raise a ``ValueError`` if the parameters are invalid or the transaction specified
-        is not found. An error response will be sent using the message passed to the
-        exception.
+        Raise a ``ValueError`` if the parameters are invalid, or raise an
+        ObjectDoesNotExist_ exception if the customer specified via the ``id`` parameter
+        does not exist. An error response with the appropriate status will be sent using
+        the message passed to the exception.
 
         :param params: request parameters as described in SEP-12
         """
