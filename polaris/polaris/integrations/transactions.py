@@ -366,7 +366,7 @@ class WithdrawalIntegration:
         """
         pass
 
-    def after_form_validation(self, form: TransactionForm, transaction: Transaction):
+    def after_form_validation(self, form: forms.Form, transaction: Transaction):
         """
         Same as ``DepositIntegration.after_form_validation``, except
         `transaction.to_address` should be saved here when present in `form`.
