@@ -45,9 +45,8 @@ class CustomerAPIView(APIView):
             response_data = rci.get(
                 {
                     "id": request.GET.get("id"),
-                    # anchors need to be able to filter out customers who weren't
-                    # created by the following SEP-10 JWT source account.
-                    "account": account,
+                    "sep10_client_account": account,
+                    "account": request.GET.get("account"),
                     "memo": request.GET.get("memo"),
                     "memo_type": request.GET.get("memo_type"),
                     "type": request.GET.get("type"),
