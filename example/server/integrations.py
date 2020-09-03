@@ -464,12 +464,6 @@ class MyCustomerIntegration(CustomerIntegration):
         }
 
     def get(self, params: Dict) -> Dict:
-        if params.get("account") and params.get("sep10_client_account") != params.get(
-            "account"
-        ):
-            raise ValueError(
-                _("'account' passed does not match the SEP-10 client account")
-            )
         query_params = {}
         for attr in ["id", "memo", "memo_type", "sep10_client_account"]:
             if params.get(attr):
