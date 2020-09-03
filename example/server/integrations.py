@@ -464,15 +464,22 @@ class MyCustomerIntegration(CustomerIntegration):
         }
 
     def get(self, params: Dict) -> Dict:
+        if params.get("account") and params.get("sep10_client_account") != params.get(
+            "account"
+        ):
+            raise ValueError(
+                _("'account' passed does not match the SEP-10 client account")
+            )
         query_params = {}
-        for attr in ["id", "memo", "memo_type", "account"]:
+        for attr in ["id", "memo", "memo_type", "sep10_client_account"]:
             if params.get(attr):
-                query_params[attr] = params.get(attr)
+                qkey = attr if attr != "sep10_client_account" else "account"
+                query_params[qkey] = params.get(attr)
         account = PolarisStellarAccount.objects.filter(**query_params).first()
         if "id" in query_params and not account:
             # client believes the customer already exists but it doesn't,
             # at least not with the same ID, memo, account values.
-            raise ValueError(
+            raise ObjectDoesNotExist(
                 _("customer not found using: %s") % list(query_params.keys())
             )
         elif not account:
