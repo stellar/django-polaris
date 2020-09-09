@@ -443,7 +443,7 @@ def test_delete_memo_customer(mock_delete, client):
     mock_delete.assert_called_with("test source address", "a valid text memo", "text")
 
 
-mock_bad_delete = Mock(side_effect=ValueError)
+mock_bad_delete = Mock(side_effect=ObjectDoesNotExist)
 
 
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
