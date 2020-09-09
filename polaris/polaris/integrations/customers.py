@@ -63,8 +63,8 @@ class CustomerIntegration:
     def delete(self, account: str, memo: Optional[str], memo_type: Optional[str]):
         """
         Delete the record of the customer specified by `account`, `memo`, and `memo_type`.
-        If such a record does not exist, raise a ``ValueError`` for Polaris to return a
-        404 Not Found response.
+        If such a record does not exist, raise a ``ObjectDoesNotExist`` exception for Polaris
+        to return a 404 Not Found response.
 
         :param account: the stellar account associated with the customer
         :param memo: the optional memo used to create the customer

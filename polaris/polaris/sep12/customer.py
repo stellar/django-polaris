@@ -127,7 +127,7 @@ def delete(account_from_auth: str, request: Request, account: str) -> Response:
         return render_error_response("invalid 'memo' for 'memo_type'")
     try:
         rci.delete(account, memo, request.data.get("memo_type"))
-    except ValueError:
+    except ObjectDoesNotExist:
         return render_error_response("account not found", status_code=404)
     else:
         return Response({}, status=200)
