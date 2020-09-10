@@ -563,7 +563,7 @@ class MyCustomerIntegration(CustomerIntegration):
             qparams["memo_type"] = memo_type
         account = PolarisStellarAccount.objects.filter(**qparams).first()
         if not account:
-            raise ValueError()
+            raise ObjectDoesNotExist()
         account.user.delete()
 
     @staticmethod
