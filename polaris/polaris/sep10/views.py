@@ -31,8 +31,7 @@ from polaris.utils import getLogger
 from polaris.utils import render_error_response
 
 MIME_URLENCODE, MIME_JSON = "application/x-www-form-urlencoded", "application/json"
-# Is netloc the correct attribute or is hostname better?
-DOMAIN_NAME = urlparse(settings.HOST_URL).netloc
+DOMAIN_NAME = urlparse(settings.HOST_URL).hostname
 logger = getLogger(__name__)
 
 
