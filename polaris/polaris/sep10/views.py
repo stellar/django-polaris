@@ -9,7 +9,7 @@ import os
 import binascii
 import time
 import jwt
-from polaris.utils import getLogger
+from urllib.parse import urlparse
 
 from django.utils.translation import gettext as _
 from rest_framework import status
@@ -27,10 +27,12 @@ from stellar_sdk.sep.exceptions import InvalidSep10ChallengeError
 from stellar_sdk.exceptions import NotFoundError
 
 from polaris import settings
+from polaris.utils import getLogger
 from polaris.utils import render_error_response
 
 MIME_URLENCODE, MIME_JSON = "application/x-www-form-urlencoded", "application/json"
-ANCHOR_NAME = "SEP 24 Reference"
+# Is netloc the correct attribute or is hostname better?
+DOMAIN_NAME = urlparse(settings.HOST_URL).netloc
 logger = getLogger(__name__)
 
 
@@ -77,7 +79,7 @@ class SEP10Auth(APIView):
         return build_challenge_transaction(
             server_secret=settings.SIGNING_SEED,
             client_account_id=client_account,
-            anchor_name=ANCHOR_NAME,
+            domain_name=DOMAIN_NAME,
             network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
             timeout=900,
         )
@@ -116,7 +118,7 @@ class SEP10Auth(APIView):
         logger.info("Validating challenge transaction")
         try:
             tx_envelope, account_id = read_challenge_transaction(
-                envelope_xdr, server_key, net
+                envelope_xdr, server_key, DOMAIN_NAME, net
             )
         except InvalidSep10ChallengeError as e:
             err_msg = f"Error while validating challenge: {str(e)}"
@@ -131,7 +133,7 @@ class SEP10Auth(APIView):
             )
             try:
                 verify_challenge_transaction_signed_by_client_master_key(
-                    envelope_xdr, server_key, net
+                    envelope_xdr, server_key, DOMAIN_NAME, net
                 )
                 if len(tx_envelope.signatures) != 2:
                     raise InvalidSep10ChallengeError(
@@ -151,7 +153,7 @@ class SEP10Auth(APIView):
         threshold = account.thresholds.med_threshold
         try:
             signers_found = verify_challenge_transaction_threshold(
-                envelope_xdr, server_key, net, threshold, signers
+                envelope_xdr, server_key, DOMAIN_NAME, net, threshold, signers
             )
         except InvalidSep10ChallengeError as e:
             logger.info(str(e))
@@ -168,7 +170,10 @@ class SEP10Auth(APIView):
         """
         issued_at = time.time()
         transaction_envelope, source_account = read_challenge_transaction(
-            envelope_xdr, settings.SIGNING_KEY, settings.STELLAR_NETWORK_PASSPHRASE
+            envelope_xdr,
+            settings.SIGNING_KEY,
+            DOMAIN_NAME,
+            settings.STELLAR_NETWORK_PASSPHRASE,
         )
         logger.info(
             f"Challenge verified, generating SEP-10 token for account {source_account}"
