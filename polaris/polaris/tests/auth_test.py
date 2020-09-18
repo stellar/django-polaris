@@ -43,7 +43,7 @@ def test_auth_get_account(client):
     manage_data_op = transaction_object.operations[0]
     assert manage_data_op.type_code() == Xdr.const.MANAGE_DATA
     assert manage_data_op.data_name == "localhost:8000 auth"
-    assert len(manage_data_op.data_value) == 64
+    assert len(manage_data_op.data_value) <= 64
     assert len(base64.b64decode(manage_data_op.data_value)) == 48
 
     signatures = envelope_object.signatures
