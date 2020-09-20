@@ -1,3 +1,4 @@
+import signal
 import time
 from datetime import datetime, timezone
 
@@ -12,6 +13,23 @@ logger = getLogger(__name__)
 
 
 class Command(BaseCommand):
+    default_interval = 30
+    terminate = False
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        signal.signal(signal.SIGINT, self.exit_gracefully)
+        signal.signal(signal.SIGTERM, self.exit_gracefully)
+
+    def exit_gracefully(self, sig, frame):
+        self.terminate = True
+
+    def sleep(self, seconds):
+        for i in range(0, seconds):
+            if self.terminate:
+                break
+            time.sleep(1)
+
     def add_arguments(self, parser):
         parser.add_argument(
             "--loop",
@@ -23,17 +41,18 @@ class Command(BaseCommand):
             "-i",
             type=int,
             help=(
-                "The number of seconds to wait before "
-                "restarting command. Defaults to 30."
+                "The number of seconds to wait before restarting command. "
+                "Defaults to {}.".format(self.default_interval)
             ),
-            default=30,
         )
 
     def handle(self, *args, **options):
         if options.get("loop"):
             while True:
+                if self.terminate:
+                    break
                 self.poll_outgoing_transactions()
-                time.sleep(options.get("interval"))
+                self.sleep(options.get("interval") or self.default_interval)
         else:
             self.poll_outgoing_transactions()
 

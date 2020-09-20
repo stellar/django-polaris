@@ -1,3 +1,4 @@
+import signal
 import time
 
 from django.core.management.base import BaseCommand
@@ -17,31 +18,49 @@ class Command(BaseCommand):
     Create Stellar transaction for deposit transactions marked as pending trust, if a
     trustline has been created.
     """
+    default_interval = 60
+    terminate = False
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        signal.signal(signal.SIGINT, self.exit_gracefully)
+        signal.signal(signal.SIGTERM, self.exit_gracefully)
+
+    def exit_gracefully(self, sig, frame):
+        self.terminate = True
+
+    def sleep(self, seconds):
+        for i in range(0, seconds):
+            if self.terminate:
+                break
+            time.sleep(1)
 
     def add_arguments(self, parser):
         parser.add_argument(
             "--loop",
             action="store_true",
-            help="Continually restart command after a specified " "number of seconds.",
+            help="Continually restart command after a specified number of seconds.",
         )
         parser.add_argument(
             "--interval",
             "-i",
             type=int,
-            help="The number of seconds to wait before "
-            "restarting command. Defaults to 60.",
+            help="The number of seconds to wait before restarting command. "
+            "Defaults to {}.".format(self.default_interval),
         )
 
     def handle(self, *args, **options):
         if options.get("loop"):
             while True:
-                self.check_trustlines()
-                time.sleep(options.get("interval") or 60)
+                if self.terminate:
+                    break
+                self.check_trustlines(self)
+                self.sleep(options.get("interval") or self.default_interval)
         else:
-            self.check_trustlines()
+            self.check_trustlines(self)
 
     @staticmethod
-    def check_trustlines():
+    def check_trustlines(self=None):
         """
         Create Stellar transaction for deposit transactions marked as pending trust, if a
         trustline has been created.
@@ -51,6 +70,8 @@ class Command(BaseCommand):
         )
         server = settings.HORIZON_SERVER
         for transaction in transactions:
+            if self is not None and self.terminate:
+                break
             try:
                 account = (
                     server.accounts().account_id(transaction.stellar_account).call()

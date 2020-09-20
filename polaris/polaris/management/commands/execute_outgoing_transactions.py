@@ -1,3 +1,4 @@
+import signal
 import time
 from decimal import Decimal
 from datetime import datetime, timezone
@@ -16,6 +17,23 @@ logger = getLogger(__name__)
 
 
 class Command(BaseCommand):
+    default_interval = 30
+    terminate = False
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        signal.signal(signal.SIGINT, self.exit_gracefully)
+        signal.signal(signal.SIGTERM, self.exit_gracefully)
+
+    def exit_gracefully(self, sig, frame):
+        self.terminate = True
+
+    def sleep(self, seconds):
+        for i in range(0, seconds):
+            if self.terminate:
+                break
+            time.sleep(1)
+
     def add_arguments(self, parser):
         parser.add_argument(
             "--loop",
@@ -27,22 +45,23 @@ class Command(BaseCommand):
             "-i",
             type=int,
             help=(
-                "The number of seconds to wait before "
-                "restarting command. Defaults to 30."
+                "The number of seconds to wait before restarting command. "
+                "Defaults to {}.".format(self.default_interval)
             ),
-            default=10,
         )
 
     def handle(self, *args, **options):
         if options.get("loop"):
             while True:
-                self.execute_outgoing_transactions()
-                time.sleep(options.get("interval"))
+                if self.terminate:
+                    break
+                self.execute_outgoing_transactions(self)
+                self.sleep(options.get("interval") or self.default_interval)
         else:
-            self.execute_outgoing_transactions()
+            self.execute_outgoing_transactions(self)
 
     @staticmethod
-    def execute_outgoing_transactions():
+    def execute_outgoing_transactions(self=None):
         sep31_qparams = Q(
             protocol=Transaction.PROTOCOL.sep31,
             status=Transaction.STATUS.pending_receiver,
@@ -56,6 +75,9 @@ class Command(BaseCommand):
         transactions = Transaction.objects.filter(sep6_24_qparams | sep31_qparams)
         num_completed = 0
         for transaction in transactions:
+            if self is not None and self.terminate:
+                break
+
             try:
                 rri.execute_outgoing_transaction(transaction)
             except Exception:

@@ -1,3 +1,4 @@
+import signal
 import time
 from decimal import Decimal
 
@@ -59,32 +60,49 @@ class Command(BaseCommand):
     for execution, and executes them. This process can be run in a loop,
     restarting every 10 seconds (or a user-defined time period)
     """
+    default_interval = 10
+    terminate = False
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        signal.signal(signal.SIGINT, self.exit_gracefully)
+        signal.signal(signal.SIGTERM, self.exit_gracefully)
+
+    def exit_gracefully(self, sig, frame):
+        self.terminate = True
+
+    def sleep(self, seconds):
+        for i in range(0, seconds):
+            if self.terminate:
+                break
+            time.sleep(1)
 
     def add_arguments(self, parser):  # pragma: no cover
         parser.add_argument(
             "--loop",
             action="store_true",
-            help="Continually restart command after a specified "
-            "number of seconds (10)",
+            help="Continually restart command after a specified number of seconds.",
         )
         parser.add_argument(
             "--interval",
             "-i",
             type=int,
-            help="The number of seconds to wait before "
-            "restarting command. Defaults to 10.",
+            help="The number of seconds to wait before restarting command. "
+            "Defaults to {}.".format(self.default_interval),
         )
 
     def handle(self, *args, **options):  # pragma: no cover
         if options.get("loop"):
             while True:
-                self.execute_deposits()
-                time.sleep(options.get("interval") or 10)
+                if self.terminate:
+                    break
+                self.execute_deposits(self)
+                self.sleep(options.get("interval") or self.default_interval)
         else:
-            self.execute_deposits()
+            self.execute_deposits(self)
 
     @classmethod
-    def execute_deposits(cls):
+    def execute_deposits(cls, self=None):
         """
         Right now, execute_deposits assumes all pending deposits are SEP-6 or 24
         transactions. This may change in the future if Polaris adds support for
@@ -110,6 +128,9 @@ class Command(BaseCommand):
                 "Ensure is returns a list of transaction objects."
             )
         for transaction in ready_transactions:
+            if self is not None and self.terminate:
+                break
+
             try:
                 success = execute_deposit(transaction)
             except ValueError as e:
