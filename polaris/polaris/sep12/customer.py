@@ -95,6 +95,7 @@ class CustomerAPIView(APIView):
             customer_id = rci.put(
                 {
                     "id": request.data.get("id"),
+                    "sep10_client_account": account,
                     "account": account,
                     "memo": request.data.get("memo"),
                     "memo_type": request.data.get("memo_type"),
