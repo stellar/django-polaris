@@ -2,7 +2,7 @@
 import codecs
 import datetime
 import uuid
-from typing import Optional
+from typing import Optional, Tuple, Union
 from logging import getLogger as get_logger, LoggerAdapter
 
 from django.utils.translation import gettext as _
@@ -10,10 +10,11 @@ from django.conf import settings as django_settings
 from rest_framework import status
 from rest_framework.response import Response
 from stellar_sdk.transaction_builder import TransactionBuilder
-from stellar_sdk.exceptions import BaseHorizonError
+from stellar_sdk.exceptions import BaseHorizonError, NotFoundError
 from stellar_sdk.xdr import StellarXDR_const as const
 from stellar_sdk.xdr.StellarXDR_type import TransactionResult
-from stellar_sdk import Memo, TextMemo, IdMemo, HashMemo
+from stellar_sdk import TextMemo, IdMemo, HashMemo
+from stellar_sdk.account import Account
 
 from polaris import settings
 from polaris.models import Transaction
@@ -110,10 +111,9 @@ def create_stellar_deposit(transaction_id: str) -> bool:
     """
     transaction = Transaction.objects.get(id=transaction_id)
 
-    # We check the Transaction status to avoid double submission of a Stellar
-    # transaction. The Transaction can be either `pending_anchor` if the task
-    # is called from `poll_pending_deposits()` or `pending_trust` if called
-    # from the `check_trustlines()`.
+    # The Transaction can be either `pending_anchor` if the task is called
+    # from `poll_pending_deposits()` or `pending_trust` if called from the
+    # `check_trustlines()`.
     if transaction.status not in [
         Transaction.STATUS.pending_anchor,
         Transaction.STATUS.pending_trust,
@@ -129,132 +129,147 @@ def create_stellar_deposit(transaction_id: str) -> bool:
         )
         transaction.save()
         raise ValueError(transaction.status_message)
-    transaction.status = Transaction.STATUS.pending_stellar
-    transaction.save()
-    logger.info(f"Transaction {transaction_id} now pending_stellar")
 
-    # We can assume transaction has valid stellar_account, amount_in, and asset
-    # because this task is only called after those parameters are validated.
-    stellar_account = transaction.stellar_account
-    payment_amount = round(
-        transaction.amount_in - transaction.amount_fee,
-        transaction.asset.significant_decimals,
-    )
-    asset = transaction.asset
-    memo = make_memo(transaction.memo, transaction.memo_type)
-
-    # If the given Stellar account does not exist, create
-    # the account with at least enough XLM for the minimum
-    # reserve and a trust line (recommended 2.01 XLM), update
-    # the transaction in our internal database, and return.
-
-    server = settings.HORIZON_SERVER
-    starting_balance = settings.ACCOUNT_STARTING_BALANCE
-    server_account = server.load_account(asset.distribution_account)
-    base_fee = server.fetch_base_fee()
-    builder = TransactionBuilder(
-        source_account=server_account,
-        network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
-        base_fee=base_fee,
-    )
     try:
-        server.load_account(stellar_account)
-    except BaseHorizonError as address_exc:
-        # 404 code corresponds to Resource Missing.
-        if address_exc.status != 404:  # pragma: no cover
-            msg = (
-                "Horizon error when loading stellar account: " f"{address_exc.message}"
-            )
-            logger.error(msg)
-            transaction.status_message = msg
-            transaction.status = Transaction.STATUS.error
-            transaction.save()
-            return False
-
-        logger.info(f"Stellar account {stellar_account} does not exist. Creating.")
-        transaction_envelope = builder.append_create_account_op(
-            destination=stellar_account,
-            starting_balance=starting_balance,
-            source=asset.distribution_account,
-        ).build()
-        transaction_envelope.sign(asset.distribution_seed)
-        try:
-            server.submit_transaction(transaction_envelope)
-        except BaseHorizonError as submit_exc:  # pragma: no cover
-            msg = (
-                "Horizon error when submitting create account to horizon: "
-                f"{submit_exc.message}"
-            )
-            logger.error(msg)
-            transaction.status_message = msg
-            transaction.status = Transaction.STATUS.error
-            transaction.save()
-            return False
-
-        transaction.status = Transaction.STATUS.pending_trust
+        account, created = get_or_create_stellar_account(transaction)
+    except RuntimeError as e:
+        transaction.status = Transaction.STATUS.error
+        transaction.status_message = str(e)
         transaction.save()
-        logger.info(f"Transaction for account {stellar_account} now pending_trust.")
+        logger.error(transaction.status_message)
         return False
 
-    # If the account does exist, deposit the desired amount of the given
-    # asset via a Stellar payment. If that payment succeeds, we update the
-    # transaction to completed at the current time. If it fails due to a
-    # trustline error, we update the database accordingly. Else, we do not update.
+    if created or not account:
+        # the create account TX needs more signatures or the account is pending_trust
+        return False
 
-    builder.append_payment_op(
-        destination=stellar_account,
-        asset_code=asset.code,
-        asset_issuer=asset.issuer,
-        amount=str(payment_amount),
+    server_account = settings.HORIZON_SERVER.load_account(
+        transaction.asset.distribution_account
     )
-    if memo:
-        builder.add_memo(memo)
-    transaction_envelope = builder.build()
-    transaction_envelope.sign(asset.distribution_seed)
+    envelope = create_transaction_envelope(transaction, server_account)
     try:
-        response = server.submit_transaction(transaction_envelope)
-    # Functional errors at this stage are Horizon errors.
+        return submit_stellar_deposit(transaction, envelope)
+    except RuntimeError as e:
+        transaction.status_message = str(e)
+        transaction.status = Transaction.STATUS.error
+        transaction.save()
+        logger.error(transaction.status_message)
+        return False
+
+
+def submit_stellar_deposit(transaction, envelope):
+    transaction.status = Transaction.STATUS.pending_stellar
+    transaction.save()
+    logger.info(f"Transaction {transaction.id} now pending_stellar")
+    try:
+        response = settings.HORIZON_SERVER.submit_transaction(envelope)
     except BaseHorizonError as exception:
         tx_result = TransactionResult.from_xdr(exception.result_xdr)
         op_result = tx_result.result.results[0]
         if op_result.tr.paymentResult.code != const.PAYMENT_NO_TRUST:
-            msg = (
+            raise RuntimeError(
                 "Unable to submit payment to horizon, "
                 f"non-trustline failure: {exception.message}"
             )
-            logger.error(msg)
-            transaction.status_message = msg
-            transaction.status = Transaction.STATUS.error
-            transaction.save()
-            return False
-        msg = "trustline error when submitting transaction to horizon"
-        logger.error(msg)
-        transaction.status_message = msg
+        transaction.status_message = (
+            "trustline error when submitting transaction to horizon"
+        )
         transaction.status = Transaction.STATUS.pending_trust
         transaction.save()
+        logger.error(transaction.status_message)
         return False
 
     if not response.get("successful"):
         transaction_result = TransactionResult.from_xdr(response["result_xdr"])
-        msg = (
+        raise RuntimeError(
             "Stellar transaction failed when submitted to horizon: "
             f"{transaction_result.result.results}"
         )
-        logger.error(msg)
-        transaction.status_message = msg
-        transaction.status = Transaction.STATUS.error
-        transaction.save()
-        return False
 
     transaction.paging_token = response["paging_token"]
     transaction.stellar_transaction_id = response["id"]
     transaction.status = Transaction.STATUS.completed
     transaction.completed_at = datetime.datetime.now(datetime.timezone.utc)
-    transaction.status_eta = 0  # No more status change.
-    transaction.amount_out = payment_amount
+    transaction.status_eta = 0
+    transaction.amount_out = round(
+        transaction.amount_in - transaction.amount_fee,
+        transaction.asset.significant_decimals,
+    )
     transaction.save()
     logger.info(f"Transaction {transaction.id} completed.")
     return True
+
+
+def additional_signatures_needed(envelope, account):
+    pass
+
+
+def get_or_create_stellar_account(transaction) -> Tuple[Optional[Account], bool]:
+    """
+    Returns the stellar_sdk.account.Account loaded from Horizon as well as
+    whether or not the account was created as a result of calling this function.
+    """
+    server = settings.HORIZON_SERVER
+    try:
+        account = server.load_account(transaction.stellar_account)
+        account.load_ed25519_public_key_signers()
+        return account, True
+    except NotFoundError:
+        base_fee = server.fetch_base_fee()
+        server_account = server.load_account(transaction.asset.distribution_account)
+        builder = TransactionBuilder(
+            source_account=server_account,
+            network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
+            base_fee=base_fee,
+        )
+        transaction_envelope = builder.append_create_account_op(
+            destination=transaction.stellar_account,
+            starting_balance=settings.ACCOUNT_STARTING_BALANCE,
+            source=transaction.asset.distribution_account,
+        ).build()
+        transaction_envelope.sign(transaction.asset.distribution_seed)
+        if additional_signatures_needed(transaction, server_account):
+            transaction.envelope = transaction_envelope
+            transaction.pending_signatures = True
+            return None, False
+
+        try:
+            server.submit_transaction(transaction_envelope)
+        except BaseHorizonError as submit_exc:  # pragma: no cover
+            raise RuntimeError(
+                "Horizon error when submitting create account to horizon: "
+                f"{submit_exc.message}"
+            )
+
+        transaction.status = Transaction.STATUS.pending_trust
+        transaction.save()
+        account = server.load_account(transaction.stellar_account)
+        account.load_ed25519_public_key_signers()
+        return account, True
+    except BaseHorizonError as e:
+        raise RuntimeError(f"Horizon error when loading stellar account: {e.message}")
+
+
+def create_transaction_envelope(transaction, server_account):
+    payment_amount = round(
+        transaction.amount_in - transaction.amount_fee,
+        transaction.asset.significant_decimals,
+    )
+    memo = make_memo(transaction.memo, transaction.memo_type)
+    base_fee = settings.HORIZON_SERVER.fetch_base_fee()
+    builder = TransactionBuilder(
+        source_account=server_account,
+        network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
+        base_fee=base_fee,
+    ).append_payment_op(
+        destination=transaction.stellar_account,
+        asset_code=transaction.asset.code,
+        asset_issuer=transaction.asset.issuer,
+        amount=str(payment_amount),
+    )
+    if memo:
+        builder.add_memo(memo)
+    return builder.build()
 
 
 def memo_str(memo: str, memo_type: str) -> Optional[str]:
@@ -269,7 +284,7 @@ def memo_str(memo: str, memo_type: str) -> Optional[str]:
         return memo.memo_text.decode()
 
 
-def make_memo(memo: str, memo_type: str) -> Optional[Memo]:
+def make_memo(memo: str, memo_type: str) -> Optional[Union[TextMemo, HashMemo, IdMemo]]:
     if not memo:
         return None
     if memo_type == Transaction.MEMO_TYPES.id:
