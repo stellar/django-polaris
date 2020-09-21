@@ -68,7 +68,7 @@ def post_interactive_withdraw(request: Request) -> Response:
            the next form in the flow.
         5. form_for_transaction() is called again to retrieve the next
            form to be served to the user. If a form is returned, the
-           function redirects to GET /transaction/deposit/webapp. Otherwise,
+           function redirects to GET /transaction/withdraw/webapp. Otherwise,
            The user's session is invalidated, the transaction status is
            updated, and the function redirects to GET /more_info.
     """
@@ -167,8 +167,8 @@ def post_interactive_withdraw(request: Request) -> Response:
             url_args["amount"] = amount
 
         toml_data = registered_toml_func()
-        post_url = f"{reverse('post_interactive_deposit')}?{urlencode(url_args)}"
-        get_url = f"{reverse('get_interactive_deposit')}?{urlencode(url_args)}"
+        post_url = f"{reverse('post_interactive_withdraw')}?{urlencode(url_args)}"
+        get_url = f"{reverse('get_interactive_withdraw')}?{urlencode(url_args)}"
         content.update(
             form=form,
             post_url=post_url,
