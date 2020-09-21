@@ -10,6 +10,7 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
+from django.core.exceptions import ValidationError
 from django.core.validators import (
     MinLengthValidator,
     MinValueValidator,
@@ -21,6 +22,8 @@ from django.db import models
 from model_utils.models import TimeStampedModel
 from model_utils import Choices
 from stellar_sdk.keypair import Keypair
+from stellar_sdk.transaction_envelope import TransactionEnvelope
+from stellar_sdk.exceptions import SdkError
 
 
 def utc_now():
@@ -237,6 +240,21 @@ class Asset(TimeStampedModel):
 
     def __str__(self):
         return f"{self.code} - issuer({self.issuer})"
+
+
+def deserialize(value):
+    """
+    Validation function for Transaction.envelope
+    """
+    from polaris import settings
+
+    try:
+        TransactionEnvelope.from_xdr(value, settings.STELLAR_NETWORK_PASSPHRASE)
+    except SdkError as e:
+        raise ValidationError(
+            _("Cannot decode envelope XDR for transaction: %(error)s"),
+            params={"error": str(e)},
+        )
 
 
 class Transaction(models.Model):
@@ -478,6 +496,18 @@ class Transaction(models.Model):
 
     protocol = models.CharField(choices=PROTOCOL, null=True, max_length=5)
     """Either 'sep6' or 'sep24'"""
+
+    pending_signatures = models.BooleanField(default=False)
+    """
+    Boolean for whether or not non-Polaris signatures are needed for this 
+    transaction's envelope.
+    """
+
+    envelope = models.TextField(validators=[deserialize], null=True)
+    """
+    The base64-encoded XDR blob that can be deserialized to inspect and sign 
+    the encoded transaction.
+    """
 
     objects = models.Manager()
 
