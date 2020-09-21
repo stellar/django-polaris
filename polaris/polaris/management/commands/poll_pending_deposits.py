@@ -6,7 +6,7 @@ from decimal import Decimal
 from django.core.management import BaseCommand, CommandError
 
 from polaris import settings
-from polaris.utils import create_stellar_deposit
+from polaris.utils import create_stellar_deposit, create_transaction_envelope
 from polaris.integrations import (
     registered_deposit_integration as rdi,
     registered_rails_integration as rri,
@@ -135,9 +135,24 @@ class Command(BaseCommand):
                 "poll_pending_deposits() returned None. "
                 "Ensure is returns a list of transaction objects."
             )
+        distribution_accounts = {}
         for transaction in ready_transactions:
             if module.TERMINATE:
                 break
+            if transaction.pending_signatures:
+                transaction.status = Transaction.STATUS.pending_anchor
+                asset_code = transaction.asset.code
+                if asset_code not in distribution_accounts:
+                    distribution_accounts[
+                        asset_code
+                    ] = settings.HORIZON_SERVER.load_account(
+                        transaction.asset.distribution_account
+                    )
+                transaction.envelope = create_transaction_envelope(
+                    transaction, distribution_accounts[asset_code]
+                )
+                transaction.save()
+                continue
             try:
                 success = execute_deposit(transaction)
             except ValueError as e:
