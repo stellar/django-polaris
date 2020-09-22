@@ -220,6 +220,7 @@ def get_or_create_stellar_account(transaction) -> Tuple[Optional[Account], bool]
         server_account = settings.HORIZON_SERVER.load_account(
             transaction.asset.distribution_account
         )
+        server_account.load_ed25519_public_key_signers()
         builder = TransactionBuilder(
             source_account=server_account,
             network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
@@ -231,7 +232,7 @@ def get_or_create_stellar_account(transaction) -> Tuple[Optional[Account], bool]
             source=transaction.asset.distribution_account,
         ).build()
         transaction_envelope.sign(transaction.asset.distribution_seed)
-        if additional_signatures_needed(transaction, server_account):
+        if additional_signatures_needed(transaction_envelope, server_account):
             transaction.envelope = transaction_envelope
             transaction.pending_signatures = True
             return None, False

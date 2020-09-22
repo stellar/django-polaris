@@ -3,7 +3,7 @@ import json
 from unittest.mock import patch, Mock
 
 from stellar_sdk import Keypair
-from stellar_sdk import Account
+from stellar_sdk.account import Account, Thresholds
 from stellar_sdk.client.response import Response
 from stellar_sdk.exceptions import NotFoundError, BaseHorizonError
 
@@ -34,7 +34,10 @@ def mock_load_account_no_account(account_id):
                 status_code=404, headers={}, url="", text=json.dumps(dict(status=404))
             )
         )
-    return Account(account_id, 1)
+    account = Account(account_id, 1)
+    account.signers = []
+    account.thresholds = Thresholds(0, 0, 0)
+    return account
 
 
 mock_server_no_account = Mock(
