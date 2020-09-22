@@ -48,5 +48,5 @@ def test_poll_pending_deposits_bad_integration(
 
     logger.error.assert_called_with(
         f"Unexpected transaction status: {withdrawal_transaction.status}, expecting "
-        f"{Transaction.STATUS.pending_user_transfer_start}"
+        f"{Transaction.STATUS.pending_user_transfer_start} or {Transaction.STATUS.pending_anchor}."
     )

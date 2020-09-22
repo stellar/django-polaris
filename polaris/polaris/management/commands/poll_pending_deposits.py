@@ -4,6 +4,7 @@ import time
 from decimal import Decimal
 
 from django.core.management import BaseCommand, CommandError
+from django.db.models import Q
 
 from polaris import settings
 from polaris.utils import create_stellar_deposit, create_transaction_envelope
@@ -31,12 +32,16 @@ def execute_deposit(transaction: Transaction) -> bool:
     :returns a boolean of whether or not the transaction was
         completed successfully on the Stellar network.
     """
+    valid_statuses = [
+        Transaction.STATUS.pending_user_transfer_start,
+        Transaction.STATUS.pending_anchor,
+    ]
     if transaction.kind != transaction.KIND.deposit:
         raise ValueError("Transaction not a deposit")
-    elif transaction.status != transaction.STATUS.pending_user_transfer_start:
+    elif transaction.status not in valid_statuses:
         raise ValueError(
             f"Unexpected transaction status: {transaction.status}, expecting "
-            f"{transaction.STATUS.pending_user_transfer_start}"
+            f"{' or '.join(valid_statuses)}."
         )
     elif transaction.amount_fee is None:
         if registered_fee_func == calculate_fee:
@@ -49,7 +54,8 @@ def execute_deposit(transaction: Transaction) -> bool:
             )
         else:
             transaction.amount_fee = Decimal(0)
-    transaction.status = Transaction.STATUS.pending_anchor
+    if transaction.status != Transaction.STATUS.pending_anchor:
+        transaction.status = Transaction.STATUS.pending_anchor
     transaction.status_eta = 5  # Ledger close time.
     transaction.save()
     logger.info(f"Transaction {transaction.id} now pending_anchor, initiating deposit")
@@ -117,8 +123,8 @@ class Command(BaseCommand):
         """
         module = sys.modules[__name__]
         pending_deposits = Transaction.objects.filter(
-            kind=Transaction.KIND.deposit,
             status=Transaction.STATUS.pending_user_transfer_start,
+            kind=Transaction.KIND.deposit,
         )
         try:
             ready_transactions = rri.poll_pending_deposits(pending_deposits)
@@ -136,6 +142,27 @@ class Command(BaseCommand):
                 "Ensure is returns a list of transaction objects."
             )
         distribution_accounts = {}
+        # Add the transactions that the anchor has been collecting signatures for
+        # but are now ready to submit.
+        # TODO: PR REVIEWERS, should we ask the anchor which transactions should
+        #  be added to the list of ready transactions or try to query them ourselves
+        #  like so?
+        #  We should definitely provide an integration function or explict
+        #  Transaction boolean column if the query below could in theory collect
+        #  transactions that are not ready. From my understanding, all Transaction
+        #  objects collected with the attribute values below _would_ be ready.
+        #  The idea is that anchors change the _status_ and _pending_signatures_
+        #  field to signal to Polaris that the object is ready.
+        ready_transactions.extend(
+            list(
+                Transaction.objects.filter(
+                    kind=Transaction.KIND.deposit,
+                    status=Transaction.STATUS.pending_anchor,
+                    pending_signatures=False,
+                    envelope__isnull=False,
+                )
+            )
+        )
         for transaction in ready_transactions:
             if module.TERMINATE:
                 break
