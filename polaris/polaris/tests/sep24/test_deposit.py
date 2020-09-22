@@ -260,7 +260,6 @@ def test_interactive_deposit_success(client, acc1_usd_deposit_transaction_factor
         f"&asset_code={deposit.asset.code}"
     )
     assert response.status_code == 403
-
     assert "Unexpected one-time auth token" in str(response.content)
 
     response = client.post(
