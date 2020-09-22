@@ -13,11 +13,8 @@ from django.utils.translation import gettext as _
 from django.conf import settings as django_settings
 from django.urls import reverse
 
-from django.contrib.sessions.backends.base import SessionBase
-
 from polaris import settings
 from polaris.utils import getLogger
-from polaris.middleware import import_path
 from polaris.models import Asset, Transaction
 from polaris.utils import render_error_response, verify_valid_asset_operation
 
