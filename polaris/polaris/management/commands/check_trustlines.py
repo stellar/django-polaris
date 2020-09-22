@@ -18,6 +18,7 @@ class Command(BaseCommand):
     Create Stellar transaction for deposit transactions marked as pending trust, if a
     trustline has been created.
     """
+
     default_interval = 60
     _terminate = False
 
