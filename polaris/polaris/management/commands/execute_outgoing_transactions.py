@@ -27,6 +27,7 @@ class Command(BaseCommand):
 
     @staticmethod
     def exit_gracefully(sig, frame):
+        logger.info("Exiting execute_outgoing_transactions...")
         module = sys.modules[__name__]
         module.TERMINATE = True
 

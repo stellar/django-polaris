@@ -21,7 +21,9 @@ class Command(BaseCommand):
         signal.signal(signal.SIGINT, self.exit_gracefully)
         signal.signal(signal.SIGTERM, self.exit_gracefully)
 
-    def exit_gracefully(self, sig, frame):
+    @staticmethod
+    def exit_gracefully(sig, frame):
+        logger.info("Exiting poll_outgoing_transactions...")
         module = sys.modules[__name__]
         module.TERMINATE = True
 

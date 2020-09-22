@@ -70,7 +70,8 @@ class Command(BaseCommand):
         signal.signal(signal.SIGTERM, self.exit_gracefully)
 
     @staticmethod
-    def exit_gracefully(self, sig, frame):
+    def exit_gracefully(sig, frame):
+        logger.info("Exiting poll_pending_deposits...")
         module = sys.modules[__name__]
         module.TERMINATE = True
 

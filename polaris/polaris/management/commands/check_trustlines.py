@@ -29,6 +29,7 @@ class Command(BaseCommand):
 
     @staticmethod
     def exit_gracefully(sig, frame):
+        logger.info("Exiting check_trustlines...")
         module = sys.modules[__name__]
         module.TERMINATE = True
 
