@@ -1,3 +1,4 @@
+import sys
 import signal
 import time
 from decimal import Decimal
@@ -14,26 +15,26 @@ from polaris.integrations import registered_rails_integration as rri
 
 
 logger = getLogger(__name__)
+DEFAULT_INTERVAL = 30
+TERMINATE = False
 
 
 class Command(BaseCommand):
-    default_interval = 30
-    _terminate = False
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         signal.signal(signal.SIGINT, self.exit_gracefully)
         signal.signal(signal.SIGTERM, self.exit_gracefully)
 
-    def exit_gracefully(self, sig, frame):
-        self._terminate = True
+    @staticmethod
+    def exit_gracefully(sig, frame):
+        module = sys.modules[__name__]
+        module.TERMINATE = True
 
-    def terminate(self):
-        return self._terminate
-
-    def sleep(self, seconds):
-        for i in range(0, seconds):
-            if self.terminate():
+    @staticmethod
+    def sleep(seconds):
+        module = sys.modules[__name__]
+        for _ in range(seconds):
+            if module.TERMINATE:
                 break
             time.sleep(1)
 
@@ -49,29 +50,27 @@ class Command(BaseCommand):
             type=int,
             help=(
                 "The number of seconds to wait before restarting command. "
-                "Defaults to {}.".format(self.default_interval)
+                "Defaults to {}.".format(DEFAULT_INTERVAL)
             ),
         )
 
     def handle(self, *args, **options):
+        module = sys.modules[__name__]
         if options.get("loop"):
             while True:
-                if self.terminate():
+                if module.TERMINATE:
                     break
-                self.execute_outgoing_transactions(self.terminate)
-                self.sleep(options.get("interval") or self.default_interval)
+                self.execute_outgoing_transactions()
+                self.sleep(options.get("interval") or DEFAULT_INTERVAL)
         else:
-            self.execute_outgoing_transactions(self.terminate)
+            self.execute_outgoing_transactions()
 
     @staticmethod
-    def execute_outgoing_transactions(terminate_func=None):
+    def execute_outgoing_transactions():
         """
         Execute pending withdrawals.
-
-        :param terminate_func: optional function that returns True or False:
-            - if True, this function will exit gracefully
-            - if False, this function will keep running until it finishes
         """
+        module = sys.modules[__name__]
         sep31_qparams = Q(
             protocol=Transaction.PROTOCOL.sep31,
             status=Transaction.STATUS.pending_receiver,
@@ -85,7 +84,7 @@ class Command(BaseCommand):
         transactions = Transaction.objects.filter(sep6_24_qparams | sep31_qparams)
         num_completed = 0
         for transaction in transactions:
-            if terminate_func is not None and terminate_func():
+            if module.TERMINATE:
                 break
 
             try:

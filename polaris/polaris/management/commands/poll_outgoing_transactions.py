@@ -1,3 +1,4 @@
+import sys
 import signal
 import time
 from datetime import datetime, timezone
@@ -10,26 +11,25 @@ from polaris.integrations import registered_rails_integration as rri
 
 
 logger = getLogger(__name__)
+DEFAULT_INTERVAL = 30
+TERMINATE = False
 
 
 class Command(BaseCommand):
-    default_interval = 30
-    _terminate = False
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         signal.signal(signal.SIGINT, self.exit_gracefully)
         signal.signal(signal.SIGTERM, self.exit_gracefully)
 
     def exit_gracefully(self, sig, frame):
-        self._terminate = True
+        module = sys.modules[__name__]
+        module.TERMINATE = True
 
-    def terminate(self):
-        return self._terminate
-
-    def sleep(self, seconds):
-        for i in range(0, seconds):
-            if self.terminate():
+    @staticmethod
+    def sleep(seconds):
+        module = sys.modules[__name__]
+        for _ in range(seconds):
+            if module.TERMINATE:
                 break
             time.sleep(1)
 
@@ -45,17 +45,18 @@ class Command(BaseCommand):
             type=int,
             help=(
                 "The number of seconds to wait before restarting command. "
-                "Defaults to {}.".format(self.default_interval)
+                "Defaults to {}.".format(DEFAULT_INTERVAL)
             ),
         )
 
     def handle(self, *args, **options):
+        module = sys.modules[__name__]
         if options.get("loop"):
             while True:
-                if self.terminate():
+                if module.TERMINATE:
                     break
                 self.poll_outgoing_transactions()
-                self.sleep(options.get("interval") or self.default_interval)
+                self.sleep(options.get("interval") or DEFAULT_INTERVAL)
         else:
             self.poll_outgoing_transactions()
 
