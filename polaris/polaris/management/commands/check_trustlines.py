@@ -1,3 +1,4 @@
+import sys
 import signal
 import time
 
@@ -11,6 +12,8 @@ from polaris.utils import getLogger
 from polaris.integrations import registered_deposit_integration as rdi
 
 logger = getLogger(__name__)
+TERMINATE = False
+DEFAULT_INTERVAL = 60
 
 
 class Command(BaseCommand):
@@ -19,23 +22,21 @@ class Command(BaseCommand):
     trustline has been created.
     """
 
-    default_interval = 60
-    _terminate = False
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         signal.signal(signal.SIGINT, self.exit_gracefully)
         signal.signal(signal.SIGTERM, self.exit_gracefully)
 
-    def exit_gracefully(self, sig, frame):
-        self._terminate = True
+    @staticmethod
+    def exit_gracefully(sig, frame):
+        module = sys.modules[__name__]
+        module.TERMINATE = True
 
-    def terminate(self):
-        return self._terminate
-
-    def sleep(self, seconds):
-        for i in range(0, seconds):
-            if self.terminate():
+    @staticmethod
+    def sleep(seconds):
+        module = sys.modules[__name__]
+        for _ in range(seconds):
+            if module.TERMINATE:
                 break
             time.sleep(1)
 
@@ -50,35 +51,33 @@ class Command(BaseCommand):
             "-i",
             type=int,
             help="The number of seconds to wait before restarting command. "
-            "Defaults to {}.".format(self.default_interval),
+            "Defaults to {}.".format(DEFAULT_INTERVAL),
         )
 
     def handle(self, *args, **options):
+        module = sys.modules[__name__]
         if options.get("loop"):
             while True:
-                if self.terminate():
+                if module.TERMINATE:
                     break
-                self.check_trustlines(self.terminate)
-                self.sleep(options.get("interval") or self.default_interval)
+                self.check_trustlines()
+                self.sleep(options.get("interval") or DEFAULT_INTERVAL)
         else:
-            self.check_trustlines(self.terminate)
+            self.check_trustlines()
 
     @staticmethod
-    def check_trustlines(terminate_func=None):
+    def check_trustlines():
         """
         Create Stellar transaction for deposit transactions marked as pending
         trust, if a trustline has been created.
-
-        :param terminate_func: optional function that returns True or False:
-            - if True, this function will exit gracefully
-            - if False, this function will keep running until it finishes
         """
+        module = sys.modules[__name__]
         transactions = Transaction.objects.filter(
             kind=Transaction.KIND.deposit, status=Transaction.STATUS.pending_trust
         )
         server = settings.HORIZON_SERVER
         for transaction in transactions:
-            if terminate_func is not None and terminate_func():
+            if module.TERMINATE:
                 break
             try:
                 account = (
