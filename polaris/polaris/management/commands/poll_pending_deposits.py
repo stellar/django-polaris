@@ -1,3 +1,5 @@
+import sys
+import signal
 import time
 from decimal import Decimal
 
@@ -15,6 +17,8 @@ from polaris.models import Transaction
 from polaris.utils import getLogger
 
 logger = getLogger(__name__)
+TERMINATE = False
+DEFAULT_INTERVAL = 10
 
 
 def execute_deposit(transaction: Transaction) -> bool:
@@ -60,26 +64,47 @@ class Command(BaseCommand):
     restarting every 10 seconds (or a user-defined time period)
     """
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        signal.signal(signal.SIGINT, self.exit_gracefully)
+        signal.signal(signal.SIGTERM, self.exit_gracefully)
+
+    @staticmethod
+    def exit_gracefully(sig, frame):
+        logger.info("Exiting poll_pending_deposits...")
+        module = sys.modules[__name__]
+        module.TERMINATE = True
+
+    @staticmethod
+    def sleep(seconds):
+        module = sys.modules[__name__]
+        for _ in range(seconds):
+            if module.TERMINATE:
+                break
+            time.sleep(1)
+
     def add_arguments(self, parser):  # pragma: no cover
         parser.add_argument(
             "--loop",
             action="store_true",
-            help="Continually restart command after a specified "
-            "number of seconds (10)",
+            help="Continually restart command after a specified number of seconds.",
         )
         parser.add_argument(
             "--interval",
             "-i",
             type=int,
-            help="The number of seconds to wait before "
-            "restarting command. Defaults to 10.",
+            help="The number of seconds to wait before restarting command. "
+            "Defaults to {}.".format(DEFAULT_INTERVAL),
         )
 
     def handle(self, *args, **options):  # pragma: no cover
+        module = sys.modules[__name__]
         if options.get("loop"):
             while True:
+                if module.TERMINATE:
+                    break
                 self.execute_deposits()
-                time.sleep(options.get("interval") or 10)
+                self.sleep(options.get("interval") or DEFAULT_INTERVAL)
         else:
             self.execute_deposits()
 
@@ -90,6 +115,7 @@ class Command(BaseCommand):
         transactions. This may change in the future if Polaris adds support for
         another SEP that checks for incoming deposits.
         """
+        module = sys.modules[__name__]
         pending_deposits = Transaction.objects.filter(
             kind=Transaction.KIND.deposit,
             status=Transaction.STATUS.pending_user_transfer_start,
@@ -110,6 +136,8 @@ class Command(BaseCommand):
                 "Ensure is returns a list of transaction objects."
             )
         for transaction in ready_transactions:
+            if module.TERMINATE:
+                break
             try:
                 success = execute_deposit(transaction)
             except ValueError as e:

@@ -1,3 +1,5 @@
+import sys
+import signal
 import time
 from decimal import Decimal
 from datetime import datetime, timezone
@@ -13,9 +15,30 @@ from polaris.integrations import registered_rails_integration as rri
 
 
 logger = getLogger(__name__)
+DEFAULT_INTERVAL = 30
+TERMINATE = False
 
 
 class Command(BaseCommand):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        signal.signal(signal.SIGINT, self.exit_gracefully)
+        signal.signal(signal.SIGTERM, self.exit_gracefully)
+
+    @staticmethod
+    def exit_gracefully(sig, frame):
+        logger.info("Exiting execute_outgoing_transactions...")
+        module = sys.modules[__name__]
+        module.TERMINATE = True
+
+    @staticmethod
+    def sleep(seconds):
+        module = sys.modules[__name__]
+        for _ in range(seconds):
+            if module.TERMINATE:
+                break
+            time.sleep(1)
+
     def add_arguments(self, parser):
         parser.add_argument(
             "--loop",
@@ -27,22 +50,28 @@ class Command(BaseCommand):
             "-i",
             type=int,
             help=(
-                "The number of seconds to wait before "
-                "restarting command. Defaults to 30."
+                "The number of seconds to wait before restarting command. "
+                "Defaults to {}.".format(DEFAULT_INTERVAL)
             ),
-            default=10,
         )
 
     def handle(self, *args, **options):
+        module = sys.modules[__name__]
         if options.get("loop"):
             while True:
+                if module.TERMINATE:
+                    break
                 self.execute_outgoing_transactions()
-                time.sleep(options.get("interval"))
+                self.sleep(options.get("interval") or DEFAULT_INTERVAL)
         else:
             self.execute_outgoing_transactions()
 
     @staticmethod
     def execute_outgoing_transactions():
+        """
+        Execute pending withdrawals.
+        """
+        module = sys.modules[__name__]
         sep31_qparams = Q(
             protocol=Transaction.PROTOCOL.sep31,
             status=Transaction.STATUS.pending_receiver,
@@ -56,6 +85,9 @@ class Command(BaseCommand):
         transactions = Transaction.objects.filter(sep6_24_qparams | sep31_qparams)
         num_completed = 0
         for transaction in transactions:
+            if module.TERMINATE:
+                break
+
             try:
                 rri.execute_outgoing_transaction(transaction)
             except Exception:
