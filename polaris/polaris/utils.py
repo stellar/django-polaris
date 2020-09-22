@@ -15,6 +15,7 @@ from stellar_sdk.xdr import StellarXDR_const as const
 from stellar_sdk.xdr.StellarXDR_type import TransactionResult
 from stellar_sdk import TextMemo, IdMemo, HashMemo
 from stellar_sdk.account import Account
+from stellar_sdk.sep.stellar_web_authentication import _verify_transaction_signatures
 
 from polaris import settings
 from polaris.models import Transaction
@@ -201,7 +202,8 @@ def submit_stellar_deposit(transaction, envelope):
 
 
 def additional_signatures_needed(envelope, account):
-    return False
+    found_signers = _verify_transaction_signatures(envelope, account.signers)
+    return sum(s.weight for s in found_signers) < account.thresholds.med_threshold
 
 
 def get_or_create_stellar_account(transaction) -> Tuple[Optional[Account], bool]:
