@@ -18,7 +18,7 @@ logger = getLogger(__name__)
 
 class Command(BaseCommand):
     default_interval = 30
-    terminate = False
+    _terminate = False
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -26,11 +26,14 @@ class Command(BaseCommand):
         signal.signal(signal.SIGTERM, self.exit_gracefully)
 
     def exit_gracefully(self, sig, frame):
-        self.terminate = True
+        self._terminate = True
+
+    def terminate(self):
+        return self._terminate
 
     def sleep(self, seconds):
         for i in range(0, seconds):
-            if self.terminate:
+            if self.terminate():
                 break
             time.sleep(1)
 
@@ -53,15 +56,22 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         if options.get("loop"):
             while True:
-                if self.terminate:
+                if self.terminate():
                     break
-                self.execute_outgoing_transactions(self)
+                self.execute_outgoing_transactions(self.terminate)
                 self.sleep(options.get("interval") or self.default_interval)
         else:
-            self.execute_outgoing_transactions(self)
+            self.execute_outgoing_transactions(self.terminate)
 
     @staticmethod
-    def execute_outgoing_transactions(self=None):
+    def execute_outgoing_transactions(terminate_func=None):
+        """
+        Execute pending withdrawals.
+
+        :param terminate_func: optional function that returns True or False:
+            - if True, this function will exit gracefully
+            - if False, this function will keep running until it finishes
+        """
         sep31_qparams = Q(
             protocol=Transaction.PROTOCOL.sep31,
             status=Transaction.STATUS.pending_receiver,
@@ -75,7 +85,7 @@ class Command(BaseCommand):
         transactions = Transaction.objects.filter(sep6_24_qparams | sep31_qparams)
         num_completed = 0
         for transaction in transactions:
-            if self is not None and self.terminate:
+            if terminate_func is not None and terminate_func():
                 break
 
             try:

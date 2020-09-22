@@ -19,7 +19,7 @@ class Command(BaseCommand):
     trustline has been created.
     """
     default_interval = 60
-    terminate = False
+    _terminate = False
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -27,11 +27,14 @@ class Command(BaseCommand):
         signal.signal(signal.SIGTERM, self.exit_gracefully)
 
     def exit_gracefully(self, sig, frame):
-        self.terminate = True
+        self._terminate = True
+
+    def terminate(self):
+        return self._terminate
 
     def sleep(self, seconds):
         for i in range(0, seconds):
-            if self.terminate:
+            if self.terminate():
                 break
             time.sleep(1)
 
@@ -52,25 +55,29 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         if options.get("loop"):
             while True:
-                if self.terminate:
+                if self.terminate():
                     break
-                self.check_trustlines(self)
+                self.check_trustlines(self.terminate)
                 self.sleep(options.get("interval") or self.default_interval)
         else:
-            self.check_trustlines(self)
+            self.check_trustlines(self.terminate)
 
     @staticmethod
-    def check_trustlines(self=None):
+    def check_trustlines(terminate_func=None):
         """
-        Create Stellar transaction for deposit transactions marked as pending trust, if a
-        trustline has been created.
+        Create Stellar transaction for deposit transactions marked as pending
+        trust, if a trustline has been created.
+
+        :param terminate_func: optional function that returns True or False:
+            - if True, this function will exit gracefully
+            - if False, this function will keep running until it finishes
         """
         transactions = Transaction.objects.filter(
             kind=Transaction.KIND.deposit, status=Transaction.STATUS.pending_trust
         )
         server = settings.HORIZON_SERVER
         for transaction in transactions:
-            if self is not None and self.terminate:
+            if terminate_func is not None and terminate_func():
                 break
             try:
                 account = (

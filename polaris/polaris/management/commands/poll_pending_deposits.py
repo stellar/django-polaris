@@ -61,7 +61,7 @@ class Command(BaseCommand):
     restarting every 10 seconds (or a user-defined time period)
     """
     default_interval = 10
-    terminate = False
+    _terminate = False
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -69,11 +69,14 @@ class Command(BaseCommand):
         signal.signal(signal.SIGTERM, self.exit_gracefully)
 
     def exit_gracefully(self, sig, frame):
-        self.terminate = True
+        self._terminate = True
+
+    def terminate(self):
+        return self._terminate
 
     def sleep(self, seconds):
         for i in range(0, seconds):
-            if self.terminate:
+            if self.terminate():
                 break
             time.sleep(1)
 
@@ -94,19 +97,23 @@ class Command(BaseCommand):
     def handle(self, *args, **options):  # pragma: no cover
         if options.get("loop"):
             while True:
-                if self.terminate:
+                if self.terminate():
                     break
-                self.execute_deposits(self)
+                self.execute_deposits(self.terminate)
                 self.sleep(options.get("interval") or self.default_interval)
         else:
-            self.execute_deposits(self)
+            self.execute_deposits(self.terminate)
 
     @classmethod
-    def execute_deposits(cls, self=None):
+    def execute_deposits(cls, terminate_func=None):
         """
         Right now, execute_deposits assumes all pending deposits are SEP-6 or 24
         transactions. This may change in the future if Polaris adds support for
         another SEP that checks for incoming deposits.
+
+        :param terminate_func: optional function that returns True or False:
+            - if True, this function will exit gracefully
+            - if False, this function will keep running until it finishes
         """
         pending_deposits = Transaction.objects.filter(
             kind=Transaction.KIND.deposit,
@@ -128,7 +135,7 @@ class Command(BaseCommand):
                 "Ensure is returns a list of transaction objects."
             )
         for transaction in ready_transactions:
-            if self is not None and self.terminate:
+            if terminate_func is not None and terminate_func():
                 break
 
             try:

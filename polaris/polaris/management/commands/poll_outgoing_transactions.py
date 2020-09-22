@@ -14,7 +14,7 @@ logger = getLogger(__name__)
 
 class Command(BaseCommand):
     default_interval = 30
-    terminate = False
+    _terminate = False
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -22,11 +22,14 @@ class Command(BaseCommand):
         signal.signal(signal.SIGTERM, self.exit_gracefully)
 
     def exit_gracefully(self, sig, frame):
-        self.terminate = True
+        self._terminate = True
+
+    def terminate(self):
+        return self._terminate
 
     def sleep(self, seconds):
         for i in range(0, seconds):
-            if self.terminate:
+            if self.terminate():
                 break
             time.sleep(1)
 
@@ -49,7 +52,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         if options.get("loop"):
             while True:
-                if self.terminate:
+                if self.terminate():
                     break
                 self.poll_outgoing_transactions()
                 self.sleep(options.get("interval") or self.default_interval)
