@@ -113,10 +113,6 @@ class Command(BaseCommand):
         Right now, execute_deposits assumes all pending deposits are SEP-6 or 24
         transactions. This may change in the future if Polaris adds support for
         another SEP that checks for incoming deposits.
-
-        :param terminate_func: optional function that returns True or False:
-            - if True, this function will exit gracefully
-            - if False, this function will keep running until it finishes
         """
         module = sys.modules[__name__]
         pending_deposits = Transaction.objects.filter(
