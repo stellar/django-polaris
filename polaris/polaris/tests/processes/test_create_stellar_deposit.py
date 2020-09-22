@@ -58,7 +58,8 @@ def test_deposit_stellar_no_account(acc1_usd_deposit_transaction_factory):
     deposit = acc1_usd_deposit_transaction_factory()
     deposit.status = Transaction.STATUS.pending_anchor
     deposit.save()
-    assert not create_stellar_deposit(deposit.id)
+    with pytest.raises(NotFoundError):
+        create_stellar_deposit(deposit.id)
     assert mock_server_no_account.submit_transaction.was_called
     assert (
         Transaction.objects.get(id=deposit.id).status
@@ -67,11 +68,15 @@ def test_deposit_stellar_no_account(acc1_usd_deposit_transaction_factory):
     mock_server_no_account.reset_mock()
 
 
+mock_account = Account(STELLAR_ACCOUNT_1, 1)
+mock_account.signers = []
+
+
 @pytest.mark.django_db
 @patch(
     "polaris.utils.settings.HORIZON_SERVER",
     Mock(
-        load_account=Mock(return_value=Account(STELLAR_ACCOUNT_1, 1)),
+        load_account=Mock(return_value=mock_account),
         submit_transaction=Mock(return_value=HORIZON_SUCCESS_RESPONSE),
         fetch_base_fee=Mock(return_value=100),
     ),
@@ -105,7 +110,7 @@ no_trust_exp = BaseHorizonError(
 @patch(
     "polaris.utils.settings.HORIZON_SERVER",
     Mock(
-        load_account=Mock(return_value=Account(STELLAR_ACCOUNT_1, 1)),
+        load_account=Mock(return_value=mock_account),
         submit_transaction=Mock(side_effect=no_trust_exp),
         fetch_base_fee=Mock(return_value=100),
     ),

@@ -201,7 +201,7 @@ def submit_stellar_deposit(transaction, envelope):
 
 
 def additional_signatures_needed(envelope, account):
-    pass
+    return False
 
 
 def get_or_create_stellar_account(transaction) -> Tuple[Optional[Account], bool]:
@@ -209,14 +209,15 @@ def get_or_create_stellar_account(transaction) -> Tuple[Optional[Account], bool]
     Returns the stellar_sdk.account.Account loaded from Horizon as well as
     whether or not the account was created as a result of calling this function.
     """
-    server = settings.HORIZON_SERVER
     try:
-        account = server.load_account(transaction.stellar_account)
+        account = settings.HORIZON_SERVER.load_account(transaction.stellar_account)
         account.load_ed25519_public_key_signers()
-        return account, True
+        return account, False
     except NotFoundError:
-        base_fee = server.fetch_base_fee()
-        server_account = server.load_account(transaction.asset.distribution_account)
+        base_fee = settings.HORIZON_SERVER.fetch_base_fee()
+        server_account = settings.HORIZON_SERVER.load_account(
+            transaction.asset.distribution_account
+        )
         builder = TransactionBuilder(
             source_account=server_account,
             network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
@@ -234,7 +235,7 @@ def get_or_create_stellar_account(transaction) -> Tuple[Optional[Account], bool]
             return None, False
 
         try:
-            server.submit_transaction(transaction_envelope)
+            settings.HORIZON_SERVER.submit_transaction(transaction_envelope)
         except BaseHorizonError as submit_exc:  # pragma: no cover
             raise RuntimeError(
                 "Horizon error when submitting create account to horizon: "
@@ -243,7 +244,7 @@ def get_or_create_stellar_account(transaction) -> Tuple[Optional[Account], bool]
 
         transaction.status = Transaction.STATUS.pending_trust
         transaction.save()
-        account = server.load_account(transaction.stellar_account)
+        account = settings.HORIZON_SERVER.load_account(transaction.stellar_account)
         account.load_ed25519_public_key_signers()
         return account, True
     except BaseHorizonError as e:
