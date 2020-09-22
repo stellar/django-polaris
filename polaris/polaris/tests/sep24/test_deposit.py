@@ -182,7 +182,7 @@ def test_interactive_deposit_no_token(client):
     response.
     """
     response = client.get(WEBAPP_PATH)
-    assert "Missing authentication token" in str(response.content)
+    assert "Missing authentication token" in response.content.decode()
     assert response.status_code == 403
 
 

@@ -93,14 +93,14 @@ def authenticate_session_helper(r: Request):
                 id=tid, stellar_account=r.session["account"]
             )
             if not (tid in r.session.get("transactions", []) and tqs.exists()):
-                raise ValueError(f"not authenticated for transaction ID: {tid}")
+                raise ValueError(f"Not authenticated for transaction ID: {tid}")
             else:  # pragma: no cover
                 # client has been authenticated for the requested transaction
                 return
         else:
-            raise ValueError("missing authentication token")
-    elif r.session.exists():
-        raise ValueError("unexpected one-time auth token")
+            raise ValueError("Missing authentication token")
+    elif r.session.exists(r.session.session_key):
+        raise ValueError("Unexpected one-time auth token")
 
     try:
         jwt_dict = jwt.decode(token, settings.SERVER_JWT_KEY, algorithms=["HS256"])
@@ -109,15 +109,15 @@ def authenticate_session_helper(r: Request):
 
     now = time.time()
     if jwt_dict["iss"] != r.build_absolute_uri("interactive"):
-        raise ValueError(_("invalid token issuer"))
+        raise ValueError(_("Invalid token issuer"))
     elif jwt_dict["iat"] > now or jwt_dict["exp"] < now:
-        raise ValueError(_("token is not yet valid or is expired"))
+        raise ValueError(_("Token is not yet valid or is expired"))
 
     transaction_qs = Transaction.objects.filter(
         id=jwt_dict["jti"], stellar_account=jwt_dict["sub"]
     )
     if not transaction_qs.exists():
-        raise ValueError(_("transaction for account not found"))
+        raise ValueError(_("Transaction for account not found"))
 
     # JWT is valid, authenticate session
     r.session["authenticated"] = True
