@@ -253,6 +253,16 @@ def test_interactive_deposit_success(client, acc1_usd_deposit_transaction_factor
     assert response.status_code == 200
     assert client.session["authenticated"] is True
 
+    response = client.get(
+        f"{WEBAPP_PATH}"
+        f"?token={token}"
+        f"&transaction_id={deposit.id}"
+        f"&asset_code={deposit.asset.code}"
+    )
+    assert response.status_code == 403
+
+    assert "Unexpected one-time auth token" in str(response.content)
+
     response = client.post(
         f"{WEBAPP_PATH}/submit"
         f"?transaction_id={deposit.id}"
