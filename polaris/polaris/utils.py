@@ -9,13 +9,18 @@ from django.utils.translation import gettext as _
 from django.conf import settings as django_settings
 from rest_framework import status
 from rest_framework.response import Response
+from stellar_sdk import TransactionEnvelope
 from stellar_sdk.transaction_builder import TransactionBuilder
 from stellar_sdk.exceptions import BaseHorizonError, NotFoundError
 from stellar_sdk.xdr import StellarXDR_const as const
 from stellar_sdk.xdr.StellarXDR_type import TransactionResult
 from stellar_sdk import TextMemo, IdMemo, HashMemo
 from stellar_sdk.account import Account
-from stellar_sdk.sep.stellar_web_authentication import _verify_transaction_signatures
+from stellar_sdk.sep.stellar_web_authentication import (
+    _verify_transaction_signatures,
+    _verify_te_signed_by_account_id,
+)
+from stellar_sdk.sep.exceptions import InvalidSep10ChallengeError
 
 from polaris import settings
 from polaris.models import Transaction
@@ -144,12 +149,27 @@ def create_stellar_deposit(transaction_id: str) -> bool:
         # the create account TX needs more signatures or the account is pending_trust
         return False
 
-    server_account = settings.HORIZON_SERVER.load_account(
-        transaction.asset.distribution_account
-    )
-    envelope = create_transaction_envelope(transaction, server_account)
+    if transaction.envelope:
+        envelope = TransactionEnvelope.from_xdr(
+            transaction.envelope, settings.STELLAR_NETWORK_PASSPHRASE
+        )
+        try:
+            _verify_te_signed_by_account_id(
+                envelope, transaction.asset.distribution_account
+            )
+        except InvalidSep10ChallengeError:
+            envelope.sign(transaction.asset.distribution_seed)
+            transaction.envelope = envelope.to_xdr()
+    else:
+        server_account = settings.HORIZON_SERVER.load_account(
+            transaction.asset.distribution_account
+        )
+        envelope = create_transaction_envelope(transaction, server_account)
+        envelope.sign(transaction.asset.distribution_seed)
+        transaction.envelope = envelope.to_xdr()
+
     try:
-        return submit_stellar_deposit(transaction, envelope)
+        return submit_stellar_deposit(transaction)
     except RuntimeError as e:
         transaction.status_message = str(e)
         transaction.status = Transaction.STATUS.error
@@ -158,10 +178,13 @@ def create_stellar_deposit(transaction_id: str) -> bool:
         return False
 
 
-def submit_stellar_deposit(transaction, envelope):
+def submit_stellar_deposit(transaction) -> bool:
     transaction.status = Transaction.STATUS.pending_stellar
     transaction.save()
     logger.info(f"Transaction {transaction.id} now pending_stellar")
+    envelope = TransactionEnvelope.from_xdr(
+        transaction.envelope, settings.STELLAR_NETWORK_PASSPHRASE
+    )
     try:
         response = settings.HORIZON_SERVER.submit_transaction(envelope)
     except BaseHorizonError as exception:
@@ -233,7 +256,7 @@ def get_or_create_stellar_account(transaction) -> Tuple[Optional[Account], bool]
         ).build()
         transaction_envelope.sign(transaction.asset.distribution_seed)
         if additional_signatures_needed(transaction_envelope, server_account):
-            transaction.envelope = transaction_envelope
+            transaction.envelope = transaction_envelope.to_xdr()
             transaction.pending_signatures = True
             return None, False
 
@@ -254,7 +277,7 @@ def get_or_create_stellar_account(transaction) -> Tuple[Optional[Account], bool]
         raise RuntimeError(f"Horizon error when loading stellar account: {e.message}")
 
 
-def create_transaction_envelope(transaction, server_account):
+def create_transaction_envelope(transaction, server_account) -> TransactionEnvelope:
     payment_amount = round(
         transaction.amount_in - transaction.amount_fee,
         transaction.asset.significant_decimals,

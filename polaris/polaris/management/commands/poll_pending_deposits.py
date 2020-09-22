@@ -177,7 +177,7 @@ class Command(BaseCommand):
                     )
                 transaction.envelope = create_transaction_envelope(
                     transaction, distribution_accounts[asset_code]
-                )
+                ).to_xdr()
                 transaction.save()
                 continue
             try:
