@@ -509,6 +509,14 @@ class Transaction(models.Model):
     the encoded transaction.
     """
 
+    channel_seed = models.TextField(null=True)
+    """
+    A keypair of the account used when sending SEP-6 or SEP-24 deposit 
+    transactions to Transaction.stellar_account, if present. 
+    This is only used for transactions requiring signatures Polaris cannot
+    add itself.
+    """
+
     objects = models.Manager()
 
     @property
@@ -521,6 +529,12 @@ class Transaction(models.Model):
         Human readable explanation of transaction status
         """
         return self.status_to_message[str(self.status)]
+
+    @property
+    def channel_account(self):
+        if not self.channel_seed:
+            return None
+        return Keypair.from_secret(str(self.channel_seed)).public_key
 
     class Meta:
         ordering = ("-started_at",)

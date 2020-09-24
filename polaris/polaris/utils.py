@@ -2,6 +2,7 @@
 import codecs
 import datetime
 import uuid
+from decimal import Decimal
 from typing import Optional, Tuple, Union
 from logging import getLogger as get_logger, LoggerAdapter
 
@@ -104,22 +105,14 @@ def verify_valid_asset_operation(
         )
 
 
-def create_stellar_deposit(transaction_id: str) -> bool:
+def create_stellar_deposit(transaction: Transaction) -> bool:
     """
     Create and submit the Stellar transaction for the deposit.
 
-    :returns a boolean indicating whether or not the deposit was successfully
-        completed. One reason a transaction may not be completed is if a
-        trustline must be established. The transaction's status will be set as
-        ``pending_stellar`` and the status_message will be populated
-        with a description of the problem encountered.
-    :raises ValueError: the transaction has an unexpected status
+    The Transaction can be either `pending_anchor` if the task is called
+    from `poll_pending_deposits()` or `pending_trust` if called from the
+    `check_trustlines()`.
     """
-    transaction = Transaction.objects.get(id=transaction_id)
-
-    # The Transaction can be either `pending_anchor` if the task is called
-    # from `poll_pending_deposits()` or `pending_trust` if called from the
-    # `check_trustlines()`.
     if transaction.status not in [
         Transaction.STATUS.pending_anchor,
         Transaction.STATUS.pending_trust,
@@ -137,7 +130,7 @@ def create_stellar_deposit(transaction_id: str) -> bool:
         raise ValueError(transaction.status_message)
 
     try:
-        account, created = get_or_create_stellar_account(transaction)
+        account, created = get_or_create_transaction_destination_account(transaction)
     except RuntimeError as e:
         transaction.status = Transaction.STATUS.error
         transaction.status_message = str(e)
@@ -150,21 +143,32 @@ def create_stellar_deposit(transaction_id: str) -> bool:
         return False
 
     if transaction.envelope:
+        # Transactions with multiple signers should be signed by the channel account and
+        # the asset's distribution account, in addition to other signatures Polaris anchors
+        # collect outside the flow Polaris supports.
         envelope = TransactionEnvelope.from_xdr(
             transaction.envelope, settings.STELLAR_NETWORK_PASSPHRASE
         )
+        modified = False
         try:
             _verify_te_signed_by_account_id(
                 envelope, transaction.asset.distribution_account
             )
         except InvalidSep10ChallengeError:
+            modified = True
             envelope.sign(transaction.asset.distribution_seed)
+        try:
+            _verify_te_signed_by_account_id(envelope, transaction.channel_account)
+        except InvalidSep10ChallengeError:
+            modified = True
+            envelope.sign(transaction.channel_seed)
+        if modified:
             transaction.envelope = envelope.to_xdr()
     else:
-        server_account = settings.HORIZON_SERVER.load_account(
+        distribution_acc = settings.HORIZON_SERVER.load_account(
             transaction.asset.distribution_account
         )
-        envelope = create_transaction_envelope(transaction, server_account)
+        envelope = create_transaction_envelope(transaction, distribution_acc)
         envelope.sign(transaction.asset.distribution_seed)
         transaction.envelope = envelope.to_xdr()
 
@@ -216,7 +220,7 @@ def submit_stellar_deposit(transaction) -> bool:
     transaction.completed_at = datetime.datetime.now(datetime.timezone.utc)
     transaction.status_eta = 0
     transaction.amount_out = round(
-        transaction.amount_in - transaction.amount_fee,
+        Decimal(transaction.amount_in) - Decimal(transaction.amount_fee),
         transaction.asset.significant_decimals,
     )
     transaction.save()
@@ -229,16 +233,45 @@ def additional_signatures_needed(envelope, account):
     return sum(s.weight for s in found_signers) < account.thresholds.med_threshold
 
 
-def get_or_create_stellar_account(transaction) -> Tuple[Optional[Account], bool]:
+def get_or_create_transaction_destination_account(
+    transaction,
+) -> Tuple[Optional[Account], bool]:
     """
-    Returns the stellar_sdk.account.Account loaded from Horizon as well as
-    whether or not the account was created as a result of calling this function.
+    Returns the stellar_sdk.account.Account for which this transaction's payment will be sent to as
+    as well as whether or not the account was created as a result of calling this function.
+
+    If the account exists, the function simply returns the account and False.
+
+    If the account doesn't exist, Polaris must create the account using an account provided by the
+    anchor. Polaris can use the distribution account of the anchored asset or a channel account if
+    the asset's distribution account requires non-master signatures.
+
+    If the transacted asset's distribution account does not require non-master signatures, Polaris
+    can create the destination account using the distribution account. On successful creation,
+    this function will return the account and True. On failure, a RuntimeError exception is raised.
+
+    If the transacted asset's distribution account does require non-master signatures, the anchor
+    should provide a keypair for a pre-existing Stellar account to use as the channel account via
+    DepositIntegration.channel_keypair_for_multisig_transaction().
+
+    This channel account must not be used by any service other than Polaris, and should not submit
+    any non-Polaris transactions. If it does, the transaction's signatures will be invalidated. This
+    account must also not require any non-master signatures, which may make the account-per-transaction
+    approach more secure.
+
+    After the transaction for creating the destination account has been submitted to the stellar network
+    and the transaction has been created, this function will return the account and True. If the
+    transaction was not submitted successfully, a RuntimeError exception will be raised.
     """
     try:
         account = settings.HORIZON_SERVER.load_account(transaction.stellar_account)
         account.load_ed25519_public_key_signers()
         return account, False
     except NotFoundError:
+        if transaction.channel_seed:
+            source_account_pk = transaction.channel_account
+        else:
+            source_account_pk = transaction.asset.distrbution_account
         base_fee = settings.HORIZON_SERVER.fetch_base_fee()
         server_account = settings.HORIZON_SERVER.load_account(
             transaction.asset.distribution_account
@@ -250,7 +283,7 @@ def get_or_create_stellar_account(transaction) -> Tuple[Optional[Account], bool]
             base_fee=base_fee,
         )
         transaction_envelope = builder.append_create_account_op(
-            destination=transaction.stellar_account,
+            destination=source_account_pk,
             starting_balance=settings.ACCOUNT_STARTING_BALANCE,
             source=transaction.asset.distribution_account,
         ).build()
@@ -270,22 +303,22 @@ def get_or_create_stellar_account(transaction) -> Tuple[Optional[Account], bool]
 
         transaction.status = Transaction.STATUS.pending_trust
         transaction.save()
-        account = settings.HORIZON_SERVER.load_account(transaction.stellar_account)
+        account = settings.HORIZON_SERVER.load_account(source_account_pk)
         account.load_ed25519_public_key_signers()
         return account, True
     except BaseHorizonError as e:
         raise RuntimeError(f"Horizon error when loading stellar account: {e.message}")
 
 
-def create_transaction_envelope(transaction, server_account) -> TransactionEnvelope:
+def create_transaction_envelope(transaction, source_account) -> TransactionEnvelope:
     payment_amount = round(
-        transaction.amount_in - transaction.amount_fee,
+        Decimal(transaction.amount_in) - Decimal(transaction.amount_fee),
         transaction.asset.significant_decimals,
     )
     memo = make_memo(transaction.memo, transaction.memo_type)
     base_fee = settings.HORIZON_SERVER.fetch_base_fee()
     builder = TransactionBuilder(
-        source_account=server_account,
+        source_account=source_account,
         network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
         base_fee=base_fee,
     ).append_payment_op(

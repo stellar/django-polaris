@@ -21,7 +21,7 @@ from polaris.models import Transaction
 def test_bad_status(acc1_usd_deposit_transaction_factory):
     deposit = acc1_usd_deposit_transaction_factory()
     with pytest.raises(ValueError):
-        create_stellar_deposit(deposit.id)
+        create_stellar_deposit(deposit)
 
 
 def mock_load_account_no_account(account_id):
@@ -62,7 +62,7 @@ def test_deposit_stellar_no_account(acc1_usd_deposit_transaction_factory):
     deposit.status = Transaction.STATUS.pending_anchor
     deposit.save()
     with pytest.raises(NotFoundError):
-        create_stellar_deposit(deposit.id)
+        create_stellar_deposit(deposit)
     assert mock_server_no_account.submit_transaction.was_called
     assert (
         Transaction.objects.get(id=deposit.id).status
@@ -94,7 +94,7 @@ def test_deposit_stellar_success(acc1_usd_deposit_transaction_factory):
     deposit = acc1_usd_deposit_transaction_factory()
     deposit.status = Transaction.STATUS.pending_anchor
     deposit.save()
-    assert create_stellar_deposit(deposit.id)
+    assert create_stellar_deposit(deposit)
     assert Transaction.objects.get(id=deposit.id).status == Transaction.STATUS.completed
 
 
@@ -127,7 +127,7 @@ def test_deposit_stellar_no_trustline(acc1_usd_deposit_transaction_factory):
     deposit = acc1_usd_deposit_transaction_factory()
     deposit.status = Transaction.STATUS.pending_anchor
     deposit.save()
-    assert not create_stellar_deposit(deposit.id)
+    assert not create_stellar_deposit(deposit)
     assert (
         Transaction.objects.get(id=deposit.id).status
         == Transaction.STATUS.pending_trust

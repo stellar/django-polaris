@@ -115,7 +115,7 @@ class Command(BaseCommand):
                         f"Account {account['id']} has established a trustline for {asset_code}, "
                         f"initiating deposit for {transaction.id}"
                     )
-                    if create_stellar_deposit(transaction.id):
+                    if create_stellar_deposit(transaction):
                         transaction.refresh_from_db()
                         try:
                             rdi.after_deposit(transaction)

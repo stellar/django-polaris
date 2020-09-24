@@ -21,4 +21,9 @@ class Migration(migrations.Migration):
             name="pending_signatures",
             field=models.BooleanField(default=False),
         ),
+        migrations.AddField(
+            model_name="transaction",
+            name="channel_secret",
+            field=models.TextField(null=True),
+        ),
     ]

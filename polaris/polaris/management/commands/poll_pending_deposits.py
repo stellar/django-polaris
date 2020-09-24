@@ -4,10 +4,15 @@ import time
 from decimal import Decimal
 
 from django.core.management import BaseCommand, CommandError
-from django.db.models import Q
+from django.utils.translation import gettext as _
+from stellar_sdk.exceptions import NotFoundError
 
 from polaris import settings
-from polaris.utils import create_stellar_deposit, create_transaction_envelope
+from polaris.utils import (
+    create_stellar_deposit,
+    create_transaction_envelope,
+    get_or_create_transaction_destination_account,
+)
 from polaris.integrations import (
     registered_deposit_integration as rdi,
     registered_rails_integration as rri,
@@ -23,15 +28,6 @@ DEFAULT_INTERVAL = 10
 
 
 def execute_deposit(transaction: Transaction) -> bool:
-    """
-    The external deposit has been completed, so the transaction
-    status must now be updated to *pending_anchor*. Executes the
-    transaction by calling :func:`create_stellar_deposit`.
-
-    :param transaction: the transaction to be executed
-    :returns a boolean of whether or not the transaction was
-        completed successfully on the Stellar network.
-    """
     valid_statuses = [
         Transaction.STATUS.pending_user_transfer_start,
         Transaction.STATUS.pending_anchor,
@@ -43,24 +39,32 @@ def execute_deposit(transaction: Transaction) -> bool:
             f"Unexpected transaction status: {transaction.status}, expecting "
             f"{' or '.join(valid_statuses)}."
         )
-    elif transaction.amount_fee is None:
-        if registered_fee_func == calculate_fee:
-            transaction.amount_fee = calculate_fee(
-                {
-                    "amount": transaction.amount_in,
-                    "operation": settings.OPERATION_DEPOSIT,
-                    "asset_code": transaction.asset.code,
-                }
-            )
-        else:
-            transaction.amount_fee = Decimal(0)
     if transaction.status != Transaction.STATUS.pending_anchor:
         transaction.status = Transaction.STATUS.pending_anchor
     transaction.status_eta = 5  # Ledger close time.
     transaction.save()
     logger.info(f"Transaction {transaction.id} now pending_anchor, initiating deposit")
     # launch the deposit Stellar transaction.
-    return create_stellar_deposit(transaction.id)
+    return create_stellar_deposit(transaction)
+
+
+def get_channel_account_for_transaction(channel_kp, transaction):
+    try:
+        channel_account = settings.HORIZON_SERVER.load_account(channel_kp.public_key)
+    except NotFoundError:
+        logger.error(
+            "channel_keypair_for_multisig_transaction() returned a "
+            "keypair for a non-existent account"
+        )
+        transaction.status = Transaction.STATUS.error
+        transaction.status_message = _(
+            f"channel account {channel_kp.public_key} does not exist "
+            f"for this multi-signature transaction"
+        )
+        transaction.save()
+        return None
+    else:
+        return channel_account
 
 
 class Command(BaseCommand):
@@ -141,18 +145,8 @@ class Command(BaseCommand):
                 "poll_pending_deposits() returned None. "
                 "Ensure is returns a list of transaction objects."
             )
-        distribution_accounts = {}
         # Add the transactions that the anchor has been collecting signatures for
         # but are now ready to submit.
-        # TODO: PR REVIEWERS, should we ask the anchor which transactions should
-        #  be added to the list of ready transactions or try to query them ourselves
-        #  like so?
-        #  We should definitely provide an integration function or explict
-        #  Transaction boolean column if the query below could in theory collect
-        #  transactions that are not ready. From my understanding, all Transaction
-        #  objects collected with the attribute values below _would_ be ready.
-        #  The idea is that anchors change the _status_ and _pending_signatures_
-        #  field to signal to Polaris that the object is ready.
         ready_transactions.extend(
             list(
                 Transaction.objects.filter(
@@ -166,20 +160,47 @@ class Command(BaseCommand):
         for transaction in ready_transactions:
             if module.TERMINATE:
                 break
+            elif transaction.amount_in is None:
+                raise CommandError(
+                    "poll_pending_deposits() did not assign a value to the "
+                    "amount_in field of a Transaction object returned"
+                )
+            elif transaction.amount_fee is None:
+                if registered_fee_func == calculate_fee:
+                    transaction.amount_fee = calculate_fee(
+                        {
+                            "amount": transaction.amount_in,
+                            "operation": settings.OPERATION_DEPOSIT,
+                            "asset_code": transaction.asset.code,
+                        }
+                    )
+                else:
+                    transaction.amount_fee = Decimal(0)
+            try:
+                account, created = get_or_create_transaction_destination_account(
+                    transaction
+                )
+            except RuntimeError as e:
+                transaction.status = Transaction.STATUS.error
+                transaction.status_message = str(e)
+                transaction.save()
+                logger.error(transaction.status_message)
+                continue
             if transaction.pending_signatures:
                 transaction.status = Transaction.STATUS.pending_anchor
-                asset_code = transaction.asset.code
-                if asset_code not in distribution_accounts:
-                    distribution_accounts[
-                        asset_code
-                    ] = settings.HORIZON_SERVER.load_account(
-                        transaction.asset.distribution_account
-                    )
-                transaction.envelope = create_transaction_envelope(
-                    transaction, distribution_accounts[asset_code]
-                ).to_xdr()
                 transaction.save()
+                channel_kp = rdi.channel_keypair_for_multisig_transaction(transaction)
+                channel_account = get_channel_account_for_transaction(
+                    channel_kp, transaction
+                )
+                if channel_account:
+                    envelope = create_transaction_envelope(transaction, channel_account)
+                    envelope.sign(channel_kp)
+                    transaction.envelope = envelope.to_xdr()
+                    transaction.save()
+                # Now Polaris waits for signatures to be collected by the anchor
                 continue
+            # Deposit transaction (which may be multisig) is ready to be submitted
             try:
                 success = execute_deposit(transaction)
             except ValueError as e:
