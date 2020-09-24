@@ -4,6 +4,7 @@ import time
 
 from django.core.management.base import BaseCommand
 from stellar_sdk.exceptions import BaseHorizonError
+from stellar_sdk.account import Account, Thresholds
 
 from polaris import settings
 from polaris.utils import create_stellar_deposit
@@ -115,7 +116,7 @@ class Command(BaseCommand):
                         f"Account {account['id']} has established a trustline for {asset_code}, "
                         f"initiating deposit for {transaction.id}"
                     )
-                    if create_stellar_deposit(transaction):
+                    if create_stellar_deposit(transaction, destination_exists=True):
                         transaction.refresh_from_db()
                         try:
                             rdi.after_deposit(transaction)

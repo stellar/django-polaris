@@ -55,8 +55,7 @@ channel_account.thresholds = Thresholds(0, 0, 0)
 @pytest.mark.django_db
 @patch("polaris.utils.settings.HORIZON_SERVER", mock_server_no_account)
 @patch(
-    "polaris.utils.get_channel_account_for_transaction",
-    Mock(return_value=channel_account),
+    "polaris.utils.get_channel_account", Mock(return_value=channel_account),
 )
 @patch(
     "polaris.integrations.registered_deposit_integration",

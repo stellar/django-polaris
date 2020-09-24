@@ -107,7 +107,7 @@ def verify_valid_asset_operation(
 
 
 def create_stellar_deposit(
-    transaction: Transaction, destination_account: Account = None
+    transaction: Transaction, destination_exists: bool = False
 ) -> bool:
     """
     Create and submit the Stellar transaction for the deposit.
@@ -132,23 +132,18 @@ def create_stellar_deposit(
         transaction.save()
         raise ValueError(transaction.status_message)
 
-    if destination_account:
-        account, created = destination_account, False
-    else:
+    if not destination_exists:
         try:
-            account, created = get_or_create_transaction_destination_account(
-                transaction
-            )
+            na, created = get_or_create_transaction_destination_account(transaction)
         except RuntimeError as e:
             transaction.status = Transaction.STATUS.error
             transaction.status_message = str(e)
             transaction.save()
             logger.error(transaction.status_message)
             return False
-
-    if created:
-        # the account is pending_trust for the asset to be received
-        return False
+        if created:
+            # the account is pending_trust for the asset to be received
+            return False
 
     if transaction.is_multisig:
         envelope = TransactionEnvelope.from_xdr(
@@ -227,7 +222,7 @@ def submit_stellar_deposit(transaction) -> bool:
     return True
 
 
-def get_channel_account_for_transaction(channel_kp, transaction):
+def get_channel_account(channel_kp):
     try:
         return settings.HORIZON_SERVER.load_account(channel_kp.public_key)
     except NotFoundError:
@@ -306,9 +301,7 @@ def get_or_create_transaction_destination_account(
             source_account_kp = rdi.channel_keypair_for_multisig_transaction(
                 transaction
             )
-            source_account = get_channel_account_for_transaction(
-                source_account_kp, transaction
-            )
+            source_account = get_channel_account(source_account_kp)
             transaction.is_multisig = True
             transaction.save()
 

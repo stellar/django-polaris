@@ -10,7 +10,7 @@ from polaris.utils import (
     create_stellar_deposit,
     create_transaction_envelope,
     get_or_create_transaction_destination_account,
-    get_channel_account_for_transaction,
+    get_channel_account,
 )
 from polaris.integrations import (
     registered_deposit_integration as rdi,
@@ -44,7 +44,7 @@ def execute_deposit(transaction: Transaction) -> bool:
     transaction.save()
     logger.info(f"Transaction {transaction.id} now pending_anchor, initiating deposit")
     # launch the deposit Stellar transaction.
-    return create_stellar_deposit(transaction)
+    return create_stellar_deposit(transaction, destination_exists=True)
 
 
 class Command(BaseCommand):
@@ -157,9 +157,7 @@ class Command(BaseCommand):
                 else:
                     transaction.amount_fee = Decimal(0)
             try:
-                account, created = get_or_create_transaction_destination_account(
-                    transaction
-                )
+                na, created = get_or_create_transaction_destination_account(transaction)
             except RuntimeError as e:
                 transaction.status = Transaction.STATUS.error
                 transaction.status_message = str(e)
