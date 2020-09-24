@@ -22,6 +22,7 @@ from stellar_sdk.sep.stellar_web_authentication import (
     _verify_te_signed_by_account_id,
 )
 from stellar_sdk.sep.exceptions import InvalidSep10ChallengeError
+from stellar_sdk.keypair import Keypair
 
 from polaris import settings
 from polaris.models import Transaction
@@ -105,7 +106,9 @@ def verify_valid_asset_operation(
         )
 
 
-def create_stellar_deposit(transaction: Transaction) -> bool:
+def create_stellar_deposit(
+    transaction: Transaction, destination_account: Account = None
+) -> bool:
     """
     Create and submit the Stellar transaction for the deposit.
 
@@ -129,41 +132,37 @@ def create_stellar_deposit(transaction: Transaction) -> bool:
         transaction.save()
         raise ValueError(transaction.status_message)
 
-    try:
-        account, created = get_or_create_transaction_destination_account(transaction)
-    except RuntimeError as e:
-        transaction.status = Transaction.STATUS.error
-        transaction.status_message = str(e)
-        transaction.save()
-        logger.error(transaction.status_message)
+    if destination_account:
+        account, created = destination_account, False
+    else:
+        try:
+            account, created = get_or_create_transaction_destination_account(
+                transaction
+            )
+        except RuntimeError as e:
+            transaction.status = Transaction.STATUS.error
+            transaction.status_message = str(e)
+            transaction.save()
+            logger.error(transaction.status_message)
+            return False
+
+    if created:
+        # the account is pending_trust for the asset to be received
         return False
 
-    if created or not account:
-        # the create account TX needs more signatures or the account is pending_trust
-        return False
-
-    if transaction.envelope:
-        # Transactions with multiple signers should be signed by the channel account and
-        # the asset's distribution account, in addition to other signatures Polaris anchors
-        # collect outside the flow Polaris supports.
+    if transaction.is_multisig:
         envelope = TransactionEnvelope.from_xdr(
             transaction.envelope, settings.STELLAR_NETWORK_PASSPHRASE
         )
-        modified = False
-        try:
-            _verify_te_signed_by_account_id(
-                envelope, transaction.asset.distribution_account
-            )
-        except InvalidSep10ChallengeError:
-            modified = True
-            envelope.sign(transaction.asset.distribution_seed)
         try:
             _verify_te_signed_by_account_id(envelope, transaction.channel_account)
         except InvalidSep10ChallengeError:
-            modified = True
-            envelope.sign(transaction.channel_seed)
-        if modified:
-            transaction.envelope = envelope.to_xdr()
+            transaction.status = Transaction.STATUS.error
+            transaction.status_message = _(
+                "Multisig transaction's envelope was not signed by channel account"
+            )
+            transaction.save()
+            return False
     else:
         distribution_acc = settings.HORIZON_SERVER.load_account(
             transaction.asset.distribution_account
@@ -228,6 +227,34 @@ def submit_stellar_deposit(transaction) -> bool:
     return True
 
 
+def get_channel_account_for_transaction(channel_kp, transaction):
+    try:
+        return settings.HORIZON_SERVER.load_account(channel_kp.public_key)
+    except NotFoundError:
+        logger.error(
+            "channel_keypair_for_multisig_transaction() returned a "
+            "keypair for a non-existent account"
+        )
+        raise RuntimeError(
+            f"channel account {channel_kp.public_key} does not exist "
+            "for this multi-signature transaction"
+        )
+
+
+def master_signer_meets_medium_threshold(public_key: str) -> bool:
+    try:
+        account = settings.HORIZON_SERVER.load_account(public_key)
+    except NotFoundError:
+        raise RuntimeError("unable to fetch account")
+    account.load_ed25519_public_key_signers()
+    master_weight = None
+    for signer in account.signers:
+        if signer.key == public_key:
+            master_weight = signer.weight
+            break
+    return (master_weight or 0) >= account.thresholds.med_threshold
+
+
 def additional_signatures_needed(envelope, account):
     found_signers = _verify_transaction_signatures(envelope, account.signers)
     return sum(s.weight for s in found_signers) < account.thresholds.med_threshold
@@ -268,30 +295,35 @@ def get_or_create_transaction_destination_account(
         account.load_ed25519_public_key_signers()
         return account, False
     except NotFoundError:
-        if transaction.channel_seed:
-            source_account_pk = transaction.channel_account
+        if master_signer_meets_medium_threshold(transaction.asset.distribution_account):
+            source_account_kp = Keypair.from_secret(transaction.asset.distribution_seed)
+            source_account = settings.HORIZON_SERVER.load_account(
+                source_account_kp.public_key
+            )
         else:
-            source_account_pk = transaction.asset.distrbution_account
+            from polaris.integrations import registered_deposit_integration as rdi
+
+            source_account_kp = rdi.channel_keypair_for_multisig_transaction(
+                transaction
+            )
+            source_account = get_channel_account_for_transaction(
+                source_account_kp, transaction
+            )
+            transaction.is_multisig = True
+            transaction.save()
+
         base_fee = settings.HORIZON_SERVER.fetch_base_fee()
-        server_account = settings.HORIZON_SERVER.load_account(
-            transaction.asset.distribution_account
-        )
-        server_account.load_ed25519_public_key_signers()
+        source_account.load_ed25519_public_key_signers()
         builder = TransactionBuilder(
-            source_account=server_account,
+            source_account=source_account,
             network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
             base_fee=base_fee,
         )
         transaction_envelope = builder.append_create_account_op(
-            destination=source_account_pk,
+            destination=transaction.stellar_account,
             starting_balance=settings.ACCOUNT_STARTING_BALANCE,
-            source=transaction.asset.distribution_account,
         ).build()
-        transaction_envelope.sign(transaction.asset.distribution_seed)
-        if additional_signatures_needed(transaction_envelope, server_account):
-            transaction.envelope = transaction_envelope.to_xdr()
-            transaction.pending_signatures = True
-            return None, False
+        transaction_envelope.sign(source_account_kp)
 
         try:
             settings.HORIZON_SERVER.submit_transaction(transaction_envelope)
@@ -303,7 +335,7 @@ def get_or_create_transaction_destination_account(
 
         transaction.status = Transaction.STATUS.pending_trust
         transaction.save()
-        account = settings.HORIZON_SERVER.load_account(source_account_pk)
+        account = settings.HORIZON_SERVER.load_account(transaction.stellar_account)
         account.load_ed25519_public_key_signers()
         return account, True
     except BaseHorizonError as e:

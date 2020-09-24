@@ -3,12 +3,17 @@ from unittest.mock import patch, Mock
 
 from polaris.management.commands.poll_pending_deposits import Command, rdi, rri, logger
 from polaris.models import Transaction
+from polaris.tests.processes.test_create_stellar_deposit import channel_account
 
 test_module = "polaris.management.commands.poll_pending_deposits"
 
 
 @pytest.mark.django_db
-@patch(f"{test_module}.create_stellar_deposit", return_value=True)
+@patch(f"{test_module}.create_stellar_deposit", Mock(return_value=True))
+@patch(
+    f"{test_module}.get_or_create_transaction_destination_account",
+    Mock(return_value=(channel_account, False)),
+)
 def test_poll_pending_deposits_success(client, acc1_usd_deposit_transaction_factory):
     transaction = acc1_usd_deposit_transaction_factory()
     rri.poll_pending_deposits = Mock(return_value=[transaction])
@@ -22,6 +27,11 @@ def test_poll_pending_deposits_success(client, acc1_usd_deposit_transaction_fact
 
 
 @pytest.mark.django_db
+@patch(f"{test_module}.create_stellar_deposit", Mock(return_value=True))
+@patch(
+    f"{test_module}.get_or_create_transaction_destination_account",
+    Mock(return_value=(channel_account, False)),
+)
 def test_poll_pending_deposits_bad_integration(
     client,
     acc1_usd_deposit_transaction_factory,

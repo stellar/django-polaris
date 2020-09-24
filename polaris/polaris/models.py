@@ -517,6 +517,13 @@ class Transaction(models.Model):
     add itself.
     """
 
+    is_multisig = models.BooleanField(default=False)
+    """
+    A boolean column indicating if this transaction is a multisig transaction,
+    meaning more than one signature still needs to be added or already has 
+    already been added to Transaction.envelope before submitting.
+    """
+
     objects = models.Manager()
 
     @property

@@ -46,9 +46,24 @@ mock_server_no_account = Mock(
     fetch_base_fee=Mock(return_value=100),
 )
 
+channel_account_kp = Keypair.random()
+channel_account = Account(channel_account_kp.public_key, 1)
+channel_account.signers = []
+channel_account.thresholds = Thresholds(0, 0, 0)
+
 
 @pytest.mark.django_db
 @patch("polaris.utils.settings.HORIZON_SERVER", mock_server_no_account)
+@patch(
+    "polaris.utils.get_channel_account_for_transaction",
+    Mock(return_value=channel_account),
+)
+@patch(
+    "polaris.integrations.registered_deposit_integration",
+    Mock(
+        channel_keypair_for_multisig_transaction=Mock(return_value=channel_account_kp)
+    ),
+)
 def test_deposit_stellar_no_account(acc1_usd_deposit_transaction_factory):
     """
     `create_stellar_deposit` sets the transaction with the provided `transaction_id` to

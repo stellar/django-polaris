@@ -9,6 +9,8 @@ from polaris.models import Transaction, Asset
 from polaris.integrations.forms import TransactionForm
 from polaris.templates import Template
 
+from stellar_sdk.keypair import Keypair
+
 
 class DepositIntegration:
     """
@@ -305,6 +307,11 @@ class DepositIntegration:
         raise NotImplementedError(
             "`process_sep6_request` must be implemented if SEP-6 is active"
         )
+
+    def channel_keypair_for_multisig_transaction(
+        self, transaction: Transaction
+    ) -> Keypair:
+        pass
 
 
 class WithdrawalIntegration:

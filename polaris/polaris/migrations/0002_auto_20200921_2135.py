@@ -23,7 +23,12 @@ class Migration(migrations.Migration):
         ),
         migrations.AddField(
             model_name="transaction",
-            name="channel_secret",
+            name="channel_seed",
             field=models.TextField(null=True),
+        ),
+        migrations.AddField(
+            model_name="transaction",
+            name="is_multisig",
+            field=models.BooleanField(default=False),
         ),
     ]

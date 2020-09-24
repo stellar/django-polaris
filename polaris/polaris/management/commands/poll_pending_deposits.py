@@ -4,14 +4,13 @@ import time
 from decimal import Decimal
 
 from django.core.management import BaseCommand, CommandError
-from django.utils.translation import gettext as _
-from stellar_sdk.exceptions import NotFoundError
 
 from polaris import settings
 from polaris.utils import (
     create_stellar_deposit,
     create_transaction_envelope,
     get_or_create_transaction_destination_account,
+    get_channel_account_for_transaction,
 )
 from polaris.integrations import (
     registered_deposit_integration as rdi,
@@ -46,25 +45,6 @@ def execute_deposit(transaction: Transaction) -> bool:
     logger.info(f"Transaction {transaction.id} now pending_anchor, initiating deposit")
     # launch the deposit Stellar transaction.
     return create_stellar_deposit(transaction)
-
-
-def get_channel_account_for_transaction(channel_kp, transaction):
-    try:
-        channel_account = settings.HORIZON_SERVER.load_account(channel_kp.public_key)
-    except NotFoundError:
-        logger.error(
-            "channel_keypair_for_multisig_transaction() returned a "
-            "keypair for a non-existent account"
-        )
-        transaction.status = Transaction.STATUS.error
-        transaction.status_message = _(
-            f"channel account {channel_kp.public_key} does not exist "
-            f"for this multi-signature transaction"
-        )
-        transaction.save()
-        return None
-    else:
-        return channel_account
 
 
 class Command(BaseCommand):
@@ -186,16 +166,32 @@ class Command(BaseCommand):
                 transaction.save()
                 logger.error(transaction.status_message)
                 continue
+            if created:
+                # Transaction.status == pending_trust, wait for client
+                # to add trustline for asset to send
+                continue
             if transaction.pending_signatures:
+                transaction.is_multisig = True
                 transaction.status = Transaction.STATUS.pending_anchor
                 transaction.save()
                 channel_kp = rdi.channel_keypair_for_multisig_transaction(transaction)
-                channel_account = get_channel_account_for_transaction(
-                    channel_kp, transaction
-                )
-                if channel_account:
+                try:
+                    channel_account = get_channel_account_for_transaction(
+                        channel_kp, transaction
+                    )
+                except RuntimeError as e:
+                    # The anchor returned a bad channel keypair for the account
+                    transaction.status = Transaction.STATUS.error
+                    transaction.status_message = str(e)
+                    transaction.save()
+                    logger.error(transaction.status_message)
+                else:
+                    # Clear seed in case a channel was used to create destination account
+                    transaction.channel_seed = None
+                    # Create the initial envelope XDR with the channel signature
                     envelope = create_transaction_envelope(transaction, channel_account)
                     envelope.sign(channel_kp)
+                    transaction.channel_seed = channel_kp.secret
                     transaction.envelope = envelope.to_xdr()
                     transaction.save()
                 # Now Polaris waits for signatures to be collected by the anchor
