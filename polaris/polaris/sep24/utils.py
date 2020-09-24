@@ -15,7 +15,6 @@ from django.urls import reverse
 
 from polaris import settings
 from polaris.utils import getLogger
-from polaris.middleware import import_path
 from polaris.models import Asset, Transaction
 from polaris.utils import render_error_response, verify_valid_asset_operation
 
@@ -97,6 +96,8 @@ def authenticate_session_helper(r: Request):
                 return
         else:
             raise ValueError("Missing authentication token")
+    elif r.session.exists(r.session.session_key):
+        raise ValueError("Unexpected one-time auth token")
 
     try:
         jwt_dict = jwt.decode(token, settings.SERVER_JWT_KEY, algorithms=["HS256"])
