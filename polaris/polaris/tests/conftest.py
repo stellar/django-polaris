@@ -2,10 +2,11 @@
 This module sets up the test configuration. It defines fixtures needed to test various Django
 models, such as the transactions and assets.
 """
+import json
 import pytest
 import datetime
 from typing import Optional, List
-from decimal import Decimal
+from unittest.mock import Mock
 
 from polaris.models import Asset, Transaction
 from stellar_sdk.keypair import Keypair
@@ -36,6 +37,15 @@ def fixture_usd_asset_factory():
             code="USD",
             issuer=USD_ISSUER_ACCOUNT,
             distribution_seed=USD_DISTRIBUTION_SEED,
+            distribution_account_signers=json.dumps(
+                {
+                    "key": Keypair.from_secret(USD_DISTRIBUTION_SEED).public_key,
+                    "weight": 1,
+                }
+            ),
+            distribution_account_thresholds=json.dumps(
+                {"low_threshold": 0, "med_threshold": 1, "high_threshold": 1}
+            ),
             significant_decimals=2,
             # Deposit Info
             deposit_enabled=True,
@@ -55,6 +65,7 @@ def fixture_usd_asset_factory():
             send_min_amount=0.1,
             send_max_amount=1000,
         )
+        usd_asset.update_distribution_account_data = Mock()
         for p in protocols:
             setattr(usd_asset, p + "_enabled", True)
         usd_asset.save()
@@ -62,6 +73,16 @@ def fixture_usd_asset_factory():
         return usd_asset
 
     return create_usd_asset
+
+
+@pytest.fixture(scope="session", autouse=True)
+def fixture_no_asset_distribution_account_updates():
+    from polaris import models
+
+    models.hidden_update_distribution_account_data = (
+        models.update_distribution_account_data
+    )
+    models.update_distribution_account_data = Mock()
 
 
 @pytest.fixture(scope="session", name="eth_asset_factory")
@@ -79,6 +100,15 @@ def fixture_eth_asset_factory():
             code="ETH",
             issuer=ETH_ISSUER_ACCOUNT,
             distribution_seed=ETH_DISTRIBUTION_SEED,
+            distribution_account_signers=json.dumps(
+                {
+                    "key": Keypair.from_secret(USD_DISTRIBUTION_SEED).public_key,
+                    "weight": 1,
+                }
+            ),
+            distribution_account_thresholds=json.dumps(
+                {"low_threshold": 0, "med_threshold": 1, "high_threshold": 1}
+            ),
             # Deposit Info
             deposit_enabled=True,
             deposit_fee_fixed=0.002,

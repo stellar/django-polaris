@@ -110,6 +110,10 @@ def test_deposit_stellar_success(acc1_usd_deposit_transaction_factory):
     """
     deposit = acc1_usd_deposit_transaction_factory()
     deposit.status = Transaction.STATUS.pending_anchor
+    deposit.asset.distribution_account_signers = mock_account.signers
+    deposit.asset.distribution_account_thresholds = mock_account.thresholds
+    deposit.asset.distribution_account_master_signer = mock_account.signers[0]
+    deposit.asset.save()
     deposit.save()
     assert create_stellar_deposit(deposit)
     assert Transaction.objects.get(id=deposit.id).status == Transaction.STATUS.completed
@@ -143,6 +147,10 @@ def test_deposit_stellar_no_trustline(acc1_usd_deposit_transaction_factory):
     """
     deposit = acc1_usd_deposit_transaction_factory()
     deposit.status = Transaction.STATUS.pending_anchor
+    deposit.asset.distribution_account_signers = mock_account.signers
+    deposit.asset.distribution_account_thresholds = mock_account.thresholds
+    deposit.asset.distribution_account_master_signer = mock_account.signers[0]
+    deposit.asset.save()
     deposit.save()
     assert not create_stellar_deposit(deposit)
     assert (

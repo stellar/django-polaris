@@ -26,4 +26,19 @@ class Migration(migrations.Migration):
             name="channel_seed",
             field=models.TextField(null=True),
         ),
+        migrations.AddField(
+            model_name="asset",
+            name="distribution_account_signers",
+            field=models.TextField(null=True),
+        ),
+        migrations.AddField(
+            model_name="asset",
+            name="distribution_account_thresholds",
+            field=models.TextField(null=True),
+        ),
+        migrations.AddField(
+            model_name="asset",
+            name="distribution_account_master_signer",
+            field=models.TextField(null=True),
+        ),
     ]

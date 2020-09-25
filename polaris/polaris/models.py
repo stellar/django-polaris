@@ -1,9 +1,10 @@
 """This module defines the models used by Polaris."""
+import sys
 import uuid
+import json
 import decimal
 import datetime
 import secrets
-from typing import Dict
 from base64 import urlsafe_b64encode as b64e, urlsafe_b64decode as b64d
 
 from cryptography.fernet import Fernet
@@ -25,11 +26,36 @@ from model_utils import Choices
 from stellar_sdk.keypair import Keypair
 from stellar_sdk.transaction_envelope import TransactionEnvelope
 from stellar_sdk.exceptions import SdkError
-from stellar_sdk.account import Thresholds
+
+
+# This dictionary acts as an in-memory indication of whether or not
+# the Asset object's distribution account fields have been updated
+# since this process started.
+ASSET_DISTRIBUTION_ACCOUNT_LOADED = {}
 
 
 def utc_now():
     return datetime.datetime.now(datetime.timezone.utc)
+
+
+def update_distribution_account_data(asset):
+    from polaris import settings
+
+    if not asset.distribution_seed:
+        return None
+    account_json = (
+        settings.HORIZON_SERVER.accounts()
+        .account_id(account_id=asset.distribution_account)
+        .call()
+    )
+    asset.distribution_account_signers = json.dumps(account_json["signers"])
+    asset.distribution_account_thresholds = json.dumps(account_json["thresholds"])
+    asset.distribution_account_master_signer = None
+    for s in asset.distribution_account_signers:
+        if s["key"] == asset.distribution_account:
+            asset.distribution_account_master_signer = s
+            break
+    asset.save()
 
 
 class PolarisChoices(Choices):
@@ -91,15 +117,17 @@ class EncryptedTextField(models.TextField):
 
 
 class Asset(TimeStampedModel):
-    """
-    .. _Info: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md#info
-
-    This defines an Asset, as described in the SEP-24 Info_ endpoint.
-    """
-
     def __init__(self, *args, **kwargs):
+        """
+        Does the usual __init__() actions and ensures the asset's distribution account
+        information is update to date if it hasn't been pulled from Horizon since
+        application starup.
+        """
         super().__init__(*args, **kwargs)
-        self.distribution_account_data = None
+        this = sys.modules[__name__]
+        if str(self) not in this.ASSET_DISTRIBUTION_ACCOUNT_LOADED:
+            update_distribution_account_data(self)
+            this.ASSET_DISTRIBUTION_ACCOUNT_LOADED[str(self)] = True
 
     code = models.TextField()
     """The asset code as defined on the Stellar network."""
@@ -233,6 +261,18 @@ class Asset(TimeStampedModel):
     symbol = models.TextField(default="$")
     """The symbol used in HTML pages when displaying amounts of this asset"""
 
+    distribution_account_signers = models.TextField(null=True)
+    """The JSON-serialized signers object returned from Horizon"""
+
+    distribution_account_thresholds = models.TextField(null=True)
+    """The JSON-serialized thresholds object returned from Horizon"""
+
+    distribution_account_master_signer = models.TextField(null=True)
+    """
+    The JSON-serialized object returned from Horizon for the object containing 
+    the account's public key, if present.
+    """
+
     objects = models.Manager()
 
     @property
@@ -240,27 +280,6 @@ class Asset(TimeStampedModel):
         if not self.distribution_seed:
             return None
         return Keypair.from_secret(str(self.distribution_seed)).public_key
-
-    def load_distribution_account_data(self):
-        from polaris import settings
-
-        if not self.distribution_seed:
-            return None
-        account = settings.HORIZON_SERVER.load_account(self.distribution_account)
-        account.load_ed25519_public_key_signers()
-        self.distribution_account_data = self.DistributionAccountData(
-            account.account_id, account.signers, account.thresholds
-        )
-
-    class DistributionAccountData:
-        def __init__(self, public_key: str, signers: Dict, thresholds: Thresholds):
-            self.signers = signers
-            self.thresholds = thresholds
-            self.master_signer = None
-            for s in signers:
-                if s["key"] == public_key:
-                    self.master_signer = s
-                    break
 
     class Meta:
         app_label = "polaris"
@@ -285,11 +304,6 @@ def deserialize(value):
 
 
 class Transaction(models.Model):
-    """
-    .. _Transactions: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md#transaction-history
-
-    This defines a Transaction, as described in the SEP-24 Transactions_ endpoint.
-    """
 
     KIND = PolarisChoices("deposit", "withdrawal", "send")
     """Choices object for ``deposit``, ``withdrawal``, or ``send``."""

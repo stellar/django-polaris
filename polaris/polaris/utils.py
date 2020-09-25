@@ -1,4 +1,5 @@
 """This module defines helpers for various endpoints."""
+import json
 import codecs
 import datetime
 import uuid
@@ -7,7 +8,6 @@ from typing import Optional, Tuple, Union
 from logging import getLogger as get_logger, LoggerAdapter
 
 from django.utils.translation import gettext
-from django.conf import settings as django_settings
 from rest_framework import status
 from rest_framework.response import Response
 from stellar_sdk import TransactionEnvelope
@@ -146,13 +146,11 @@ def create_stellar_deposit(
             # the account is pending_trust for the asset to be received
             return False
 
-    transaction.asset.load_distribution_account_data()
-    dist_acc_data = transaction.asset.distribution_account_data
     # if the distribution account's master signer's weight is great or equal to the its
     # medium threshold, verify the transaction is signed by it's channel account
     if (
-        not dist_acc_data.master_signer["weight"]
-        >= dist_acc_data.thresholds.med_threshold
+        not transaction.asset.distribution_account_master_signer["weight"]
+        >= transaction.asset.distribution_account_thresholds.med_threshold
     ):
         envelope = TransactionEnvelope.from_xdr(
             transaction.envelope, settings.STELLAR_NETWORK_PASSPHRASE
@@ -447,41 +445,3 @@ def extract_sep9_fields(args):
         if field in args:
             sep9_args[field] = args.get(field)
     return sep9_args
-
-
-def check_config():
-    from polaris.sep24.utils import check_sep24_config
-
-    if not hasattr(django_settings, "POLARIS_ACTIVE_SEPS"):
-        raise AttributeError(
-            "POLARIS_ACTIVE_SEPS must be defined in your django settings file."
-        )
-
-    check_middleware()
-    check_protocol()
-    if "sep-24" in django_settings.POLARIS_ACTIVE_SEPS:
-        check_sep24_config()
-
-
-def check_middleware():
-    err_msg = "{} is not installed in settings.MIDDLEWARE"
-    cors_middleware_path = "corsheaders.middleware.CorsMiddleware"
-    if cors_middleware_path not in django_settings.MIDDLEWARE:
-        raise ValueError(err_msg.format(cors_middleware_path))
-
-
-def check_protocol():
-    if settings.LOCAL_MODE:
-        logger.warning(
-            "Polaris is in local mode. This makes the SEP-24 interactive flow "
-            "insecure and should only be used for local development."
-        )
-    if not (settings.LOCAL_MODE or getattr(django_settings, "SECURE_SSL_REDIRECT")):
-        logger.warning(
-            "SECURE_SSL_REDIRECT is required to redirect HTTP traffic to HTTPS"
-        )
-    if getattr(django_settings, "SECURE_PROXY_SSL_HEADER"):
-        logger.warning(
-            "SECURE_PROXY_SSL_HEADER should only be set if Polaris is "
-            "running behind an HTTPS reverse proxy."
-        )
