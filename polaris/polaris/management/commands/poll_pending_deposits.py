@@ -162,16 +162,15 @@ class Command(BaseCommand):
             if not (
                 master_signer and master_signer["weight"] >= thresholds["med_threshold"]
             ):
-                # master account is not sufficient for
+                # master account is not sufficient
                 transaction.pending_signatures = True
                 transaction.status = Transaction.STATUS.pending_anchor
                 transaction.save()
                 if transaction.channel_account:
                     channel_kp = Keypair.from_secret(transaction.channel_seed)
                 else:
-                    channel_kp = rdi.channel_keypair_for_multisig_transaction(
-                        transaction
-                    )
+                    rdi.create_channel_account(transaction)
+                    channel_kp = Keypair.from_secret(transaction.channel_seed)
                 try:
                     channel_account = get_account_obj(channel_kp)
                 except RuntimeError as e:
@@ -184,7 +183,6 @@ class Command(BaseCommand):
                     # Create the initial envelope XDR with the channel signature
                     envelope = create_transaction_envelope(transaction, channel_account)
                     envelope.sign(channel_kp)
-                    transaction.channel_seed = channel_kp.secret
                     transaction.envelope = envelope.to_xdr()
                     transaction.save()
                 # Now Polaris waits for signatures to be collected by the anchor

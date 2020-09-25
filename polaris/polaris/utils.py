@@ -12,7 +12,7 @@ from rest_framework import status
 from rest_framework.response import Response
 from stellar_sdk import TransactionEnvelope
 from stellar_sdk.transaction_builder import TransactionBuilder
-from stellar_sdk.exceptions import BaseHorizonError, NotFoundError
+from stellar_sdk.exceptions import BaseHorizonError, NotFoundError, BadRequestError
 from stellar_sdk.xdr import StellarXDR_const as const
 from stellar_sdk.xdr.StellarXDR_type import TransactionResult
 from stellar_sdk import TextMemo, IdMemo, HashMemo
@@ -190,18 +190,24 @@ def submit_stellar_deposit(transaction) -> bool:
     )
     try:
         response = settings.HORIZON_SERVER.submit_transaction(envelope)
-    except BaseHorizonError as exception:
-        tx_result = TransactionResult.from_xdr(exception.result_xdr)
-        op_result = tx_result.result.results[0]
-        if op_result.tr.paymentResult.code != const.PAYMENT_NO_TRUST:
+    except BaseHorizonError as e:
+        tx_result = TransactionResult.from_xdr(e.result_xdr)
+        op_results = tx_result.result.results
+        if isinstance(e, BadRequestError):
+            transaction.status = Transaction.STATUS.error
+            transaction.status_message = (
+                f"tx failed with codes: {op_results}. Result XDR: {e.result_xdr}"
+            )
+        elif op_results[0].tr.paymentResult.code == const.PAYMENT_NO_TRUST:
+            transaction.status = Transaction.STATUS.pending_trust
+            transaction.status_message = (
+                "trustline error when submitting transaction to horizon"
+            )
+        else:
             raise RuntimeError(
                 "Unable to submit payment to horizon, "
-                f"non-trustline failure: {exception.message}"
+                f"non-trustline failure: {e.message}"
             )
-        transaction.status_message = (
-            "trustline error when submitting transaction to horizon"
-        )
-        transaction.status = Transaction.STATUS.pending_trust
         transaction.save()
         logger.error(transaction.status_message)
         return False
@@ -255,13 +261,14 @@ def get_or_create_transaction_destination_account(
     this function will return the account and True. On failure, a RuntimeError exception is raised.
 
     If the transacted asset's distribution account does require non-master signatures, the anchor
-    should provide a keypair for a pre-existing Stellar account to use as the channel account via
-    DepositIntegration.channel_keypair_for_multisig_transaction().
+    should save a keypair of a pre-existing Stellar account to use as the channel account via
+    DepositIntegration.create_channel_account().
 
-    This channel account must not be used by any service other than Polaris, and should not submit
-    any non-Polaris transactions. If it does, the transaction's signatures will be invalidated. This
-    account must also not require any non-master signatures, which may make the account-per-transaction
-    approach more secure.
+    This channel account must only be used as the source account for transactions related to the
+    ``Transaction`` object passed. It also must not be used to submit transactions by any service
+    other than Polaris. If it is, the outstanding transactions will be invalidated due to bad
+    sequence numbers. Finally, the channel accounts must have a master signer with a weight greater
+    than or equal to the medium threshold for the account.
 
     After the transaction for creating the destination account has been submitted to the stellar network
     and the transaction has been created, this function will return the account and True. If the
@@ -283,9 +290,8 @@ def get_or_create_transaction_destination_account(
         else:
             from polaris.integrations import registered_deposit_integration as rdi
 
-            source_account_kp = rdi.channel_keypair_for_multisig_transaction(
-                transaction
-            )
+            rdi.create_channel_account(transaction)
+            source_account_kp = Keypair.from_secret(transaction.channel_seed)
             source_account = get_account_obj(source_account_kp)
             transaction.save()
 

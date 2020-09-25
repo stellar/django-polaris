@@ -308,9 +308,7 @@ class DepositIntegration:
             "`process_sep6_request` must be implemented if SEP-6 is active"
         )
 
-    def channel_keypair_for_multisig_transaction(
-        self, transaction: Transaction
-    ) -> Keypair:
+    def create_channel_account(self, transaction: Transaction):
         pass
 
 

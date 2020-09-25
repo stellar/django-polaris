@@ -278,14 +278,17 @@ class MyDepositIntegration(DepositIntegration):
             },
         }
 
-    def channel_keypair_for_multisig_transaction(
-        self, transaction: Transaction
-    ) -> Keypair:
+    def create_channel_account(self, transaction: Transaction):
         kp = Keypair.random()
         settings.HORIZON_SERVER._client.get(
             f"https://friendbot.stellar.org/?addr={kp.public_key}"
         )
-        return kp
+        transaction.channel_seed = kp.secret
+        transaction.save()
+
+    def after_deposit(self, transaction: Transaction):
+        transaction.channel_seed = None
+        transaction.save()
 
 
 class MyWithdrawalIntegration(WithdrawalIntegration):
