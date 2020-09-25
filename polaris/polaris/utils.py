@@ -16,7 +16,7 @@ from stellar_sdk.exceptions import BaseHorizonError, NotFoundError, BadRequestEr
 from stellar_sdk.xdr import StellarXDR_const as const
 from stellar_sdk.xdr.StellarXDR_type import TransactionResult
 from stellar_sdk import TextMemo, IdMemo, HashMemo
-from stellar_sdk.account import Account
+from stellar_sdk.account import Account, Thresholds
 from stellar_sdk.sep.stellar_web_authentication import _verify_te_signed_by_account_id
 from stellar_sdk.sep.exceptions import InvalidSep10ChallengeError
 from stellar_sdk.keypair import Keypair
@@ -132,15 +132,20 @@ def create_stellar_deposit(
     # if we don't know if the destination account exists
     if not destination_exists:
         try:
-            _, created = get_or_create_transaction_destination_account(transaction)
+            _, created, pending_trust = get_or_create_transaction_destination_account(
+                transaction
+            )
         except RuntimeError as e:
             transaction.status = Transaction.STATUS.error
             transaction.status_message = str(e)
             transaction.save()
             logger.error(transaction.status_message)
             return False
-        if created:
+        if created or pending_trust:
             # the account is pending_trust for the asset to be received
+            if pending_trust and transaction.status != Transaction.STATUS.pending_trust:
+                transaction.status = Transaction.STATUS.pending_trust
+                transaction.save()
             return False
 
     # if the distribution account's master signer's weight is great or equal to the its
@@ -164,7 +169,7 @@ def create_stellar_deposit(
             return False
     # otherwise, create the envelope and sign it with the distribution account's secret
     else:
-        distribution_acc = get_account_obj(
+        distribution_acc, _ = get_account_obj(
             Keypair.from_public_key(transaction.asset.distribution_account)
         )
         envelope = create_transaction_envelope(transaction, distribution_acc)
@@ -233,19 +238,51 @@ def submit_stellar_deposit(transaction) -> bool:
     return True
 
 
+def load_account(resp):
+    sequence = int(resp["sequence"])
+    thresholds = Thresholds(
+        resp["thresholds"]["low_threshold"],
+        resp["thresholds"]["med_threshold"],
+        resp["thresholds"]["high_threshold"],
+    )
+    account = Account(account_id=resp["account_id"], sequence=sequence)
+    account.signers = resp["signers"]
+    account.thresholds = thresholds
+    return account
+
+
 def get_account_obj(kp):
     try:
-        account = settings.HORIZON_SERVER.load_account(kp.public_key)
+        json_resp = (
+            settings.HORIZON_SERVER.accounts()
+            .account_id(account_id=kp.public_key)
+            .call()
+        )
     except NotFoundError:
         raise RuntimeError(f"account {kp.public_key} does not exist")
     else:
-        account.load_ed25519_public_key_signers()
-        return account
+        return load_account(json_resp), json_resp
+
+
+def has_trustline(transaction, json_resp):
+    pending_trust = True
+    for balance in json_resp["balances"]:
+        if balance.get("asset_type") == "native":
+            continue
+        asset_code = balance["asset_code"]
+        asset_issuer = balance["asset_issuer"]
+        if (
+            transaction.asset.code == asset_code
+            and transaction.asset.issuer == asset_issuer
+        ):
+            pending_trust = False
+            break
+    return pending_trust
 
 
 def get_or_create_transaction_destination_account(
     transaction,
-) -> Tuple[Optional[Account], bool]:
+) -> Tuple[Optional[Account], bool, bool]:
     """
     Returns the stellar_sdk.account.Account for which this transaction's payment will be sent to as
     as well as whether or not the account was created as a result of calling this function.
@@ -275,9 +312,11 @@ def get_or_create_transaction_destination_account(
     transaction was not submitted successfully, a RuntimeError exception will be raised.
     """
     try:
-        account = get_account_obj(Keypair.from_public_key(transaction.stellar_account))
-        return account, False
-    except NotFoundError:
+        account, json_resp = get_account_obj(
+            Keypair.from_public_key(transaction.stellar_account)
+        )
+        return account, False, has_trustline(transaction, json_resp)
+    except RuntimeError:
         master_signer = None
         if transaction.asset.distribution_account_master_signer:
             master_signer = json.loads(
@@ -286,13 +325,13 @@ def get_or_create_transaction_destination_account(
         thresholds = json.loads(transaction.asset.distribution_account_thresholds)
         if master_signer and master_signer["weight"] >= thresholds["med_threshold"]:
             source_account_kp = Keypair.from_secret(transaction.asset.distribution_seed)
-            source_account = get_account_obj(source_account_kp)
+            source_account, _ = get_account_obj(source_account_kp)
         else:
             from polaris.integrations import registered_deposit_integration as rdi
 
             rdi.create_channel_account(transaction)
             source_account_kp = Keypair.from_secret(transaction.channel_seed)
-            source_account = get_account_obj(source_account_kp)
+            source_account, _ = get_account_obj(source_account_kp)
             transaction.save()
 
         base_fee = settings.HORIZON_SERVER.fetch_base_fee()
@@ -317,8 +356,13 @@ def get_or_create_transaction_destination_account(
 
         transaction.status = Transaction.STATUS.pending_trust
         transaction.save()
-        account = get_account_obj(Keypair.from_public_key(transaction.stellar_account))
-        return account, True
+        logger.info(
+            f"Transaction {transaction.id} is now pending_trust of destination account"
+        )
+        account, json_resp = get_account_obj(
+            Keypair.from_public_key(transaction.stellar_account)
+        )
+        return account, True, has_trustline(transaction, json_resp)
     except BaseHorizonError as e:
         raise RuntimeError(f"Horizon error when loading stellar account: {e.message}")
 

@@ -141,18 +141,34 @@ class Command(BaseCommand):
                     )
                 else:
                     transaction.amount_fee = Decimal(0)
+            logger.info("calling get_or_create_transaction_destination_account()")
             try:
-                _, created = get_or_create_transaction_destination_account(transaction)
+                (
+                    _,
+                    created,
+                    pending_trust,
+                ) = get_or_create_transaction_destination_account(transaction)
             except RuntimeError as e:
                 transaction.status = Transaction.STATUS.error
                 transaction.status_message = str(e)
                 transaction.save()
                 logger.error(transaction.status_message)
                 continue
-            if created:
-                # Transaction.status == pending_trust, wait for client
-                # to add trustline for asset to send
+
+            # Transaction.status == pending_trust, wait for client
+            # to add trustline for asset to send
+            if created or pending_trust:
+                logger.info(
+                    f"destination account is pending_trust for transaction {transaction.id}"
+                )
+                if (
+                    pending_trust
+                    and transaction.status != Transaction.STATUS.pending_trust
+                ):
+                    transaction.status = Transaction.STATUS.pending_trust
+                    transaction.save()
                 continue
+
             master_signer = None
             if transaction.asset.distribution_account_master_signer:
                 master_signer = json.loads(
@@ -172,7 +188,7 @@ class Command(BaseCommand):
                     rdi.create_channel_account(transaction)
                     channel_kp = Keypair.from_secret(transaction.channel_seed)
                 try:
-                    channel_account = get_account_obj(channel_kp)
+                    channel_account, _ = get_account_obj(channel_kp)
                 except RuntimeError as e:
                     # The anchor returned a bad channel keypair for the account
                     transaction.status = Transaction.STATUS.error

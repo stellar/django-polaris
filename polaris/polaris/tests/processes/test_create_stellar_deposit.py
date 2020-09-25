@@ -1,6 +1,6 @@
 import pytest
 import json
-from unittest.mock import patch, Mock
+from unittest.mock import patch, Mock, MagicMock
 
 from stellar_sdk import Keypair
 from stellar_sdk.account import Account, Thresholds
@@ -11,6 +11,8 @@ from polaris.tests.conftest import (
     STELLAR_ACCOUNT_1,
     USD_DISTRIBUTION_SEED,
     ETH_DISTRIBUTION_SEED,
+    ETH_ISSUER_ACCOUNT,
+    USD_ISSUER_ACCOUNT,
 )
 from polaris.tests.sep24.test_deposit import HORIZON_SUCCESS_RESPONSE
 from polaris.utils import create_stellar_deposit
@@ -39,10 +41,32 @@ def mock_load_account_no_account(account_id):
     account = Account(account_id, 1)
     account.signers = []
     account.thresholds = Thresholds(0, 0, 0)
-    return account
+    return (
+        account,
+        [
+            {
+                "balances": [
+                    {"asset_code": "USD", "asset_issuer": USD_ISSUER_ACCOUNT},
+                    {"asset_code": "ETH", "asset_issuer": ETH_ISSUER_ACCOUNT},
+                ]
+            }
+        ],
+    )
+
+
+def mock_get_account_obj(account_id):
+    try:
+        return mock_load_account_no_account(account_id=account_id)
+    except NotFoundError as e:
+        raise RuntimeError(str(e))
 
 
 mock_server_no_account = Mock(
+    accounts=Mock(
+        return_value=Mock(
+            account_id=Mock(return_value=Mock(call=Mock(return_value={"balances": []})))
+        )
+    ),
     load_account=mock_load_account_no_account,
     submit_transaction=Mock(return_value=HORIZON_SUCCESS_RESPONSE),
     fetch_base_fee=Mock(return_value=100),
@@ -63,7 +87,7 @@ mock_account.thresholds = Thresholds(low_threshold=0, med_threshold=1, high_thre
 
 @pytest.mark.django_db
 @patch("polaris.utils.settings.HORIZON_SERVER", mock_server_no_account)
-@patch("polaris.utils.get_account_obj", mock_load_account_no_account)
+@patch("polaris.utils.get_account_obj", mock_get_account_obj)
 def test_deposit_stellar_no_account(acc1_usd_deposit_transaction_factory):
     """
     `create_stellar_deposit` sets the transaction with the provided `transaction_id` to
@@ -88,13 +112,12 @@ def test_deposit_stellar_no_account(acc1_usd_deposit_transaction_factory):
     )
     deposit.asset.save()
     deposit.save()
-    with pytest.raises(NotFoundError):
-        create_stellar_deposit(deposit)
+    create_stellar_deposit(deposit)
     assert mock_server_no_account.submit_transaction.was_called
-    assert (
-        Transaction.objects.get(id=deposit.id).status
-        == Transaction.STATUS.pending_trust
-    )
+    # it would be pending_trust if the call to fetch the created account was not
+    # mocked to raise an exception. Since the exception is raised, the transaction
+    # is put in error status but the functionality works.
+    assert Transaction.objects.get(id=deposit.id).status == Transaction.STATUS.error
     mock_server_no_account.reset_mock()
 
 
@@ -105,6 +128,15 @@ def test_deposit_stellar_no_account(acc1_usd_deposit_transaction_factory):
         load_account=Mock(return_value=mock_account),
         submit_transaction=Mock(return_value=HORIZON_SUCCESS_RESPONSE),
         fetch_base_fee=Mock(return_value=100),
+    ),
+)
+@patch(
+    "polaris.utils.get_account_obj",
+    Mock(
+        return_value=(
+            mock_account,
+            {"balances": [{"asset_code": "USD", "asset_issuer": USD_ISSUER_ACCOUNT}]},
+        )
     ),
 )
 def test_deposit_stellar_success(acc1_usd_deposit_transaction_factory):
@@ -152,6 +184,9 @@ no_trust_exp = BaseHorizonError(
         submit_transaction=Mock(side_effect=no_trust_exp),
         fetch_base_fee=Mock(return_value=100),
     ),
+)
+@patch(
+    "polaris.utils.get_account_obj", Mock(return_value=(mock_account, {"balances": []}))
 )
 def test_deposit_stellar_no_trustline(acc1_usd_deposit_transaction_factory):
     """

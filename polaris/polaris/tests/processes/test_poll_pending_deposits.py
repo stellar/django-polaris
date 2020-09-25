@@ -13,7 +13,7 @@ test_module = "polaris.management.commands.poll_pending_deposits"
 @patch(f"{test_module}.create_stellar_deposit", Mock(return_value=True))
 @patch(
     f"{test_module}.get_or_create_transaction_destination_account",
-    Mock(return_value=(mock_account, False)),
+    Mock(return_value=(mock_account, False, False)),
 )
 def test_poll_pending_deposits_success(client, acc1_usd_deposit_transaction_factory):
     transaction = acc1_usd_deposit_transaction_factory()
@@ -43,7 +43,7 @@ def test_poll_pending_deposits_success(client, acc1_usd_deposit_transaction_fact
 @patch(f"{test_module}.create_stellar_deposit", Mock(return_value=True))
 @patch(
     f"{test_module}.get_or_create_transaction_destination_account",
-    Mock(return_value=(mock_account, False)),
+    Mock(return_value=(mock_account, False, False)),
 )
 def test_poll_pending_deposits_bad_integration(
     client,
