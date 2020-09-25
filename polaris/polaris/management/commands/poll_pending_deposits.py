@@ -49,6 +49,40 @@ def execute_deposit(transaction: Transaction) -> bool:
     return create_stellar_deposit(transaction, destination_exists=True)
 
 
+def check_for_multisig(transaction):
+    master_signer = None
+    if transaction.asset.distribution_account_master_signer:
+        master_signer = json.loads(transaction.asset.distribution_account_master_signer)
+    thresholds = json.loads(transaction.asset.distribution_account_thresholds)
+    if not (master_signer and master_signer["weight"] >= thresholds["med_threshold"]):
+        # master account is not sufficient
+        transaction.pending_signatures = True
+        transaction.status = Transaction.STATUS.pending_anchor
+        transaction.save()
+        if transaction.channel_account:
+            channel_kp = Keypair.from_secret(transaction.channel_seed)
+        else:
+            rdi.create_channel_account(transaction)
+            channel_kp = Keypair.from_secret(transaction.channel_seed)
+        try:
+            channel_account, _ = get_account_obj(channel_kp)
+        except RuntimeError as e:
+            # The anchor returned a bad channel keypair for the account
+            transaction.status = Transaction.STATUS.error
+            transaction.status_message = str(e)
+            transaction.save()
+            logger.error(transaction.status_message)
+        else:
+            # Create the initial envelope XDR with the channel signature
+            envelope = create_transaction_envelope(transaction, channel_account)
+            envelope.sign(channel_kp)
+            transaction.envelope = envelope.to_xdr()
+            transaction.save()
+        return True
+    else:
+        return False
+
+
 class Command(BaseCommand):
     """
     Polls the anchor's financial entity, gathers ready deposit transactions
@@ -169,38 +203,7 @@ class Command(BaseCommand):
                     transaction.save()
                 continue
 
-            master_signer = None
-            if transaction.asset.distribution_account_master_signer:
-                master_signer = json.loads(
-                    transaction.asset.distribution_account_master_signer
-                )
-            thresholds = json.loads(transaction.asset.distribution_account_thresholds)
-            if not (
-                master_signer and master_signer["weight"] >= thresholds["med_threshold"]
-            ):
-                # master account is not sufficient
-                transaction.pending_signatures = True
-                transaction.status = Transaction.STATUS.pending_anchor
-                transaction.save()
-                if transaction.channel_account:
-                    channel_kp = Keypair.from_secret(transaction.channel_seed)
-                else:
-                    rdi.create_channel_account(transaction)
-                    channel_kp = Keypair.from_secret(transaction.channel_seed)
-                try:
-                    channel_account, _ = get_account_obj(channel_kp)
-                except RuntimeError as e:
-                    # The anchor returned a bad channel keypair for the account
-                    transaction.status = Transaction.STATUS.error
-                    transaction.status_message = str(e)
-                    transaction.save()
-                    logger.error(transaction.status_message)
-                else:
-                    # Create the initial envelope XDR with the channel signature
-                    envelope = create_transaction_envelope(transaction, channel_account)
-                    envelope.sign(channel_kp)
-                    transaction.envelope = envelope.to_xdr()
-                    transaction.save()
+            if check_for_multisig(transaction):
                 # Now Polaris waits for signatures to be collected by the anchor
                 continue
 

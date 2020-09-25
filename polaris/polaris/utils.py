@@ -332,7 +332,6 @@ def get_or_create_transaction_destination_account(
             rdi.create_channel_account(transaction)
             source_account_kp = Keypair.from_secret(transaction.channel_seed)
             source_account, _ = get_account_obj(source_account_kp)
-            transaction.save()
 
         base_fee = settings.HORIZON_SERVER.fetch_base_fee()
         builder = TransactionBuilder(
