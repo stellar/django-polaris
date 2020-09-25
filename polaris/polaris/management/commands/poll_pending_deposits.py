@@ -10,7 +10,7 @@ from polaris.utils import (
     create_stellar_deposit,
     create_transaction_envelope,
     get_or_create_transaction_destination_account,
-    get_channel_account,
+    get_account_obj,
 )
 from polaris.integrations import (
     registered_deposit_integration as rdi,
@@ -113,11 +113,6 @@ class Command(BaseCommand):
         try:
             ready_transactions = rri.poll_pending_deposits(pending_deposits)
         except Exception:  # pragma: no cover
-            # We don't know if poll_pending_deposits() will raise an exception
-            # every time its called, but we're going to assume it was a special
-            # case and allow the process to continue running by returning instead
-            # of re-raising the error. The anchor should see the log messages and
-            # fix the issue if it is reoccurring.
             logger.exception("poll_pending_deposits() threw an unexpected exception")
             return
         if ready_transactions is None:
@@ -157,7 +152,7 @@ class Command(BaseCommand):
                 else:
                     transaction.amount_fee = Decimal(0)
             try:
-                na, created = get_or_create_transaction_destination_account(transaction)
+                _, created = get_or_create_transaction_destination_account(transaction)
             except RuntimeError as e:
                 transaction.status = Transaction.STATUS.error
                 transaction.status_message = str(e)
@@ -169,14 +164,11 @@ class Command(BaseCommand):
                 # to add trustline for asset to send
                 continue
             if transaction.pending_signatures:
-                transaction.is_multisig = True
                 transaction.status = Transaction.STATUS.pending_anchor
                 transaction.save()
                 channel_kp = rdi.channel_keypair_for_multisig_transaction(transaction)
                 try:
-                    channel_account = get_channel_account_for_transaction(
-                        channel_kp, transaction
-                    )
+                    channel_account = get_account_obj(channel_kp)
                 except RuntimeError as e:
                     # The anchor returned a bad channel keypair for the account
                     transaction.status = Transaction.STATUS.error

@@ -26,9 +26,4 @@ class Migration(migrations.Migration):
             name="channel_seed",
             field=models.TextField(null=True),
         ),
-        migrations.AddField(
-            model_name="transaction",
-            name="is_multisig",
-            field=models.BooleanField(default=False),
-        ),
     ]

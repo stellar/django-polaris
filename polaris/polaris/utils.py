@@ -6,7 +6,7 @@ from decimal import Decimal
 from typing import Optional, Tuple, Union
 from logging import getLogger as get_logger, LoggerAdapter
 
-from django.utils.translation import gettext as _
+from django.utils.translation import gettext
 from django.conf import settings as django_settings
 from rest_framework import status
 from rest_framework.response import Response
@@ -92,12 +92,12 @@ def verify_valid_asset_operation(
     max_amount = getattr(asset, f"{op_type}_max_amount")
     if not enabled:
         return render_error_response(
-            _("the specified operation is not available for '%s'") % asset.code,
+            gettext("the specified operation is not available for '%s'") % asset.code,
             content_type=content_type,
         )
     elif not (min_amount <= amount <= max_amount):
         return render_error_response(
-            _("Asset amount must be within bounds [%(min)s, %(max)s]")
+            gettext("Asset amount must be within bounds [%(min)s, %(max)s]")
             % {
                 "min": round(min_amount, asset.significant_decimals),
                 "max": round(max_amount, asset.significant_decimals),
@@ -132,9 +132,10 @@ def create_stellar_deposit(
         transaction.save()
         raise ValueError(transaction.status_message)
 
+    # if we don't know if the destination account exists
     if not destination_exists:
         try:
-            na, created = get_or_create_transaction_destination_account(transaction)
+            _, created = get_or_create_transaction_destination_account(transaction)
         except RuntimeError as e:
             transaction.status = Transaction.STATUS.error
             transaction.status_message = str(e)
@@ -145,7 +146,14 @@ def create_stellar_deposit(
             # the account is pending_trust for the asset to be received
             return False
 
-    if transaction.is_multisig:
+    transaction.asset.load_distribution_account_data()
+    dist_acc_data = transaction.asset.distribution_account_data
+    # if the distribution account's master signer's weight is great or equal to the its
+    # medium threshold, verify the transaction is signed by it's channel account
+    if (
+        not dist_acc_data.master_signer["weight"]
+        >= dist_acc_data.thresholds.med_threshold
+    ):
         envelope = TransactionEnvelope.from_xdr(
             transaction.envelope, settings.STELLAR_NETWORK_PASSPHRASE
         )
@@ -153,11 +161,12 @@ def create_stellar_deposit(
             _verify_te_signed_by_account_id(envelope, transaction.channel_account)
         except InvalidSep10ChallengeError:
             transaction.status = Transaction.STATUS.error
-            transaction.status_message = _(
+            transaction.status_message = gettext(
                 "Multisig transaction's envelope was not signed by channel account"
             )
             transaction.save()
             return False
+    # otherwise, create the envelope and sign it with the distribution account's secret
     else:
         distribution_acc = settings.HORIZON_SERVER.load_account(
             transaction.asset.distribution_account
@@ -222,18 +231,14 @@ def submit_stellar_deposit(transaction) -> bool:
     return True
 
 
-def get_channel_account(channel_kp):
+def get_account_obj(kp):
     try:
-        return settings.HORIZON_SERVER.load_account(channel_kp.public_key)
+        account = settings.HORIZON_SERVER.load_account(kp.public_key)
     except NotFoundError:
-        logger.error(
-            "channel_keypair_for_multisig_transaction() returned a "
-            "keypair for a non-existent account"
-        )
-        raise RuntimeError(
-            f"channel account {channel_kp.public_key} does not exist "
-            "for this multi-signature transaction"
-        )
+        raise RuntimeError(f"account {kp.public_key} does not exist")
+    else:
+        account.load_ed25519_public_key_signers()
+        return account
 
 
 def master_signer_meets_medium_threshold(public_key: str) -> bool:
@@ -301,7 +306,7 @@ def get_or_create_transaction_destination_account(
             source_account_kp = rdi.channel_keypair_for_multisig_transaction(
                 transaction
             )
-            source_account = get_channel_account(source_account_kp)
+            source_account = get_account_obj(source_account_kp)
             transaction.is_multisig = True
             transaction.save()
 

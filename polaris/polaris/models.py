@@ -3,6 +3,7 @@ import uuid
 import decimal
 import datetime
 import secrets
+from typing import Dict
 from base64 import urlsafe_b64encode as b64e, urlsafe_b64decode as b64d
 
 from cryptography.fernet import Fernet
@@ -24,6 +25,7 @@ from model_utils import Choices
 from stellar_sdk.keypair import Keypair
 from stellar_sdk.transaction_envelope import TransactionEnvelope
 from stellar_sdk.exceptions import SdkError
+from stellar_sdk.account import Thresholds
 
 
 def utc_now():
@@ -94,6 +96,10 @@ class Asset(TimeStampedModel):
 
     This defines an Asset, as described in the SEP-24 Info_ endpoint.
     """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.distribution_account_data = None
 
     code = models.TextField()
     """The asset code as defined on the Stellar network."""
@@ -234,6 +240,27 @@ class Asset(TimeStampedModel):
         if not self.distribution_seed:
             return None
         return Keypair.from_secret(str(self.distribution_seed)).public_key
+
+    def load_distribution_account_data(self):
+        from polaris import settings
+
+        if not self.distribution_seed:
+            return None
+        account = settings.HORIZON_SERVER.load_account(self.distribution_account)
+        account.load_ed25519_public_key_signers()
+        self.distribution_account_data = self.DistributionAccountData(
+            account.account_id, account.signers, account.thresholds
+        )
+
+    class DistributionAccountData:
+        def __init__(self, public_key: str, signers: Dict, thresholds: Thresholds):
+            self.signers = signers
+            self.thresholds = thresholds
+            self.master_signer = None
+            for s in signers:
+                if s["key"] == public_key:
+                    self.master_signer = s
+                    break
 
     class Meta:
         app_label = "polaris"
@@ -515,13 +542,6 @@ class Transaction(models.Model):
     transactions to Transaction.stellar_account, if present. 
     This is only used for transactions requiring signatures Polaris cannot
     add itself.
-    """
-
-    is_multisig = models.BooleanField(default=False)
-    """
-    A boolean column indicating if this transaction is a multisig transaction,
-    meaning more than one signature still needs to be added or already has 
-    already been added to Transaction.envelope before submitting.
     """
 
     objects = models.Manager()

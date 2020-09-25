@@ -55,7 +55,7 @@ channel_account.thresholds = Thresholds(0, 0, 0)
 @pytest.mark.django_db
 @patch("polaris.utils.settings.HORIZON_SERVER", mock_server_no_account)
 @patch(
-    "polaris.utils.get_channel_account", Mock(return_value=channel_account),
+    "polaris.utils.get_account_obj", Mock(return_value=channel_account),
 )
 @patch(
     "polaris.integrations.registered_deposit_integration",
@@ -86,7 +86,10 @@ def test_deposit_stellar_no_account(acc1_usd_deposit_transaction_factory):
 
 
 mock_account = Account(STELLAR_ACCOUNT_1, 1)
-mock_account.signers = []
+mock_account.signers = [
+    {"key": STELLAR_ACCOUNT_1, "weight": 1, "type": "ed25519_public_key"}
+]
+mock_account.thresholds = Thresholds(low_threshold=0, med_threshold=1, high_threshold=1)
 
 
 @pytest.mark.django_db
