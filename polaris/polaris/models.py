@@ -51,9 +51,9 @@ def update_distribution_account_data(asset):
     asset.distribution_account_signers = json.dumps(account_json["signers"])
     asset.distribution_account_thresholds = json.dumps(account_json["thresholds"])
     asset.distribution_account_master_signer = None
-    for s in asset.distribution_account_signers:
+    for s in account_json["signers"]:
         if s["key"] == asset.distribution_account:
-            asset.distribution_account_master_signer = s
+            asset.distribution_account_master_signer = json.dumps(s)
             break
     asset.save()
 
@@ -261,13 +261,13 @@ class Asset(TimeStampedModel):
     symbol = models.TextField(default="$")
     """The symbol used in HTML pages when displaying amounts of this asset"""
 
-    distribution_account_signers = models.TextField(null=True)
+    distribution_account_signers = models.TextField(null=True, blank=True)
     """The JSON-serialized signers object returned from Horizon"""
 
-    distribution_account_thresholds = models.TextField(null=True)
+    distribution_account_thresholds = models.TextField(null=True, blank=True)
     """The JSON-serialized thresholds object returned from Horizon"""
 
-    distribution_account_master_signer = models.TextField(null=True)
+    distribution_account_master_signer = models.TextField(null=True, blank=True)
     """
     The JSON-serialized object returned from Horizon for the object containing 
     the account's public key, if present.
@@ -544,13 +544,13 @@ class Transaction(models.Model):
     transaction's envelope.
     """
 
-    envelope = models.TextField(validators=[deserialize], null=True)
+    envelope = models.TextField(validators=[deserialize], null=True, blank=True)
     """
     The base64-encoded XDR blob that can be deserialized to inspect and sign 
     the encoded transaction.
     """
 
-    channel_seed = models.TextField(null=True)
+    channel_seed = models.TextField(null=True, blank=True)
     """
     A keypair of the account used when sending SEP-6 or SEP-24 deposit 
     transactions to Transaction.stellar_account, if present. 

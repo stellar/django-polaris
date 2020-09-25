@@ -1,9 +1,11 @@
+import json
 import sys
 import signal
 import time
 from decimal import Decimal
 
 from django.core.management import BaseCommand, CommandError
+from stellar_sdk import Keypair
 
 from polaris import settings
 from polaris.utils import (
@@ -120,18 +122,6 @@ class Command(BaseCommand):
                 "poll_pending_deposits() returned None. "
                 "Ensure is returns a list of transaction objects."
             )
-        # Add the transactions that the anchor has been collecting signatures for
-        # but are now ready to submit.
-        ready_transactions.extend(
-            list(
-                Transaction.objects.filter(
-                    kind=Transaction.KIND.deposit,
-                    status=Transaction.STATUS.pending_anchor,
-                    pending_signatures=False,
-                    envelope__isnull=False,
-                )
-            )
-        )
         for transaction in ready_transactions:
             if module.TERMINATE:
                 break
@@ -163,10 +153,25 @@ class Command(BaseCommand):
                 # Transaction.status == pending_trust, wait for client
                 # to add trustline for asset to send
                 continue
-            if transaction.pending_signatures:
+            master_signer = None
+            if transaction.asset.distribution_account_master_signer:
+                master_signer = json.loads(
+                    transaction.asset.distribution_account_master_signer
+                )
+            thresholds = json.loads(transaction.asset.distribution_account_thresholds)
+            if not (
+                master_signer and master_signer["weight"] >= thresholds["med_threshold"]
+            ):
+                # master account is not sufficient for
+                transaction.pending_signatures = True
                 transaction.status = Transaction.STATUS.pending_anchor
                 transaction.save()
-                channel_kp = rdi.channel_keypair_for_multisig_transaction(transaction)
+                if transaction.channel_account:
+                    channel_kp = Keypair.from_secret(transaction.channel_seed)
+                else:
+                    channel_kp = rdi.channel_keypair_for_multisig_transaction(
+                        transaction
+                    )
                 try:
                     channel_account = get_account_obj(channel_kp)
                 except RuntimeError as e:
@@ -176,8 +181,6 @@ class Command(BaseCommand):
                     transaction.save()
                     logger.error(transaction.status_message)
                 else:
-                    # Clear seed in case a channel was used to create destination account
-                    transaction.channel_seed = None
                     # Create the initial envelope XDR with the channel signature
                     envelope = create_transaction_envelope(transaction, channel_account)
                     envelope.sign(channel_kp)
@@ -186,18 +189,32 @@ class Command(BaseCommand):
                     transaction.save()
                 # Now Polaris waits for signatures to be collected by the anchor
                 continue
-            # Deposit transaction (which may be multisig) is ready to be submitted
+
+            cls.execute_deposit(transaction)
+
+        ready_multisig_transactions = Transaction.objects.filter(
+            kind=Transaction.KIND.deposit,
+            status=Transaction.STATUS.pending_anchor,
+            pending_signatures=False,
+            envelope__isnull=False,
+        )
+        for t in ready_multisig_transactions:
+            cls.execute_deposit(t)
+
+    @staticmethod
+    def execute_deposit(transaction):
+        # Deposit transaction (which may be multisig) is ready to be submitted
+        try:
+            success = execute_deposit(transaction)
+        except ValueError as e:
+            logger.error(str(e))
+            return
+        if success:
+            # Get updated status
+            transaction.refresh_from_db()
             try:
-                success = execute_deposit(transaction)
-            except ValueError as e:
-                logger.error(str(e))
-                continue
-            if success:
-                # Get updated status
-                transaction.refresh_from_db()
-                try:
-                    rdi.after_deposit(transaction)
-                except Exception:  # pragma: no cover
-                    # Same situation as poll_pending_deposits(), we should assume
-                    # this won't happen every time, so we don't stop the loop.
-                    logger.exception("after_deposit() threw an unexpected exception")
+                rdi.after_deposit(transaction)
+            except Exception:  # pragma: no cover
+                # Same situation as poll_pending_deposits(), we should assume
+                # this won't happen every time, so we don't stop the loop.
+                logger.exception("after_deposit() threw an unexpected exception")

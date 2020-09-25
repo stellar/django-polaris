@@ -13,7 +13,6 @@ class PolarisConfig(AppConfig):
         from polaris import cors  # loads CORS signals
 
         self.check_config()
-        self.load_asset_distribution_accounts()
 
     def check_config(self):
         from django.conf import settings as django_settings
@@ -59,8 +58,3 @@ class PolarisConfig(AppConfig):
                 "SECURE_PROXY_SSL_HEADER should only be set if Polaris is "
                 "running behind an HTTPS reverse proxy."
             )
-
-    def load_asset_distribution_accounts(self):
-        Asset = self.get_model("asset")
-        for asset in Asset.objects.filter(distribution_seed__isnull=False):
-            asset.update_distribution_account_data()

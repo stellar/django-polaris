@@ -14,7 +14,9 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="transaction",
             name="envelope",
-            field=models.TextField(null=True, validators=[polaris.models.deserialize]),
+            field=models.TextField(
+                null=True, validators=[polaris.models.deserialize], blank=True
+            ),
         ),
         migrations.AddField(
             model_name="transaction",
@@ -24,21 +26,21 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="transaction",
             name="channel_seed",
-            field=models.TextField(null=True),
+            field=models.TextField(null=True, blank=True),
         ),
         migrations.AddField(
             model_name="asset",
             name="distribution_account_signers",
-            field=models.TextField(null=True),
+            field=models.TextField(null=True, blank=True),
         ),
         migrations.AddField(
             model_name="asset",
             name="distribution_account_thresholds",
-            field=models.TextField(null=True),
+            field=models.TextField(null=True, blank=True),
         ),
         migrations.AddField(
             model_name="asset",
             name="distribution_account_master_signer",
-            field=models.TextField(null=True),
+            field=models.TextField(null=True, blank=True),
         ),
     ]

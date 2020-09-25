@@ -145,9 +145,11 @@ def create_stellar_deposit(
 
     # if the distribution account's master signer's weight is great or equal to the its
     # medium threshold, verify the transaction is signed by it's channel account
-    master_signer = json.loads(transaction.asset.distribution_account_master_signer)
+    master_signer = None
+    if transaction.asset.distribution_account_master_signer:
+        master_signer = json.loads(transaction.asset.distribution_account_master_signer)
     thresholds = json.loads(transaction.asset.distribution_account_thresholds)
-    if not master_signer["weight"] >= thresholds["med_threshold"]:
+    if not (master_signer and master_signer["weight"] >= thresholds["med_threshold"]):
         envelope = TransactionEnvelope.from_xdr(
             transaction.envelope, settings.STELLAR_NETWORK_PASSPHRASE
         )
@@ -269,9 +271,13 @@ def get_or_create_transaction_destination_account(
         account = get_account_obj(Keypair.from_public_key(transaction.stellar_account))
         return account, False
     except NotFoundError:
-        master_signer = json.loads(transaction.asset.distribution_account_master_signer)
+        master_signer = None
+        if transaction.asset.distribution_account_master_signer:
+            master_signer = json.loads(
+                transaction.asset.distribution_account_master_signer
+            )
         thresholds = json.loads(transaction.asset.distribution_account_thresholds)
-        if master_signer["weight"] >= thresholds["med_threshold"]:
+        if master_signer and master_signer["weight"] >= thresholds["med_threshold"]:
             source_account_kp = Keypair.from_secret(transaction.asset.distribution_seed)
             source_account = get_account_obj(source_account_kp)
         else:
@@ -327,6 +333,7 @@ def create_transaction_envelope(transaction, source_account) -> TransactionEnvel
         asset_code=transaction.asset.code,
         asset_issuer=transaction.asset.issuer,
         amount=str(payment_amount),
+        source=transaction.asset.distribution_account,
     )
     if memo:
         builder.add_memo(memo)
