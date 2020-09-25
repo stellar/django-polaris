@@ -17,10 +17,7 @@ from stellar_sdk.xdr import StellarXDR_const as const
 from stellar_sdk.xdr.StellarXDR_type import TransactionResult
 from stellar_sdk import TextMemo, IdMemo, HashMemo
 from stellar_sdk.account import Account
-from stellar_sdk.sep.stellar_web_authentication import (
-    _verify_transaction_signatures,
-    _verify_te_signed_by_account_id,
-)
+from stellar_sdk.sep.stellar_web_authentication import _verify_te_signed_by_account_id
 from stellar_sdk.sep.exceptions import InvalidSep10ChallengeError
 from stellar_sdk.keypair import Keypair
 
@@ -148,10 +145,9 @@ def create_stellar_deposit(
 
     # if the distribution account's master signer's weight is great or equal to the its
     # medium threshold, verify the transaction is signed by it's channel account
-    if (
-        not transaction.asset.distribution_account_master_signer["weight"]
-        >= transaction.asset.distribution_account_thresholds.med_threshold
-    ):
+    master_signer = json.loads(transaction.asset.distribution_account_master_signer)
+    thresholds = json.loads(transaction.asset.distribution_account_thresholds)
+    if not master_signer["weight"] >= thresholds["med_threshold"]:
         envelope = TransactionEnvelope.from_xdr(
             transaction.envelope, settings.STELLAR_NETWORK_PASSPHRASE
         )
@@ -166,8 +162,8 @@ def create_stellar_deposit(
             return False
     # otherwise, create the envelope and sign it with the distribution account's secret
     else:
-        distribution_acc = settings.HORIZON_SERVER.load_account(
-            transaction.asset.distribution_account
+        distribution_acc = get_account_obj(
+            Keypair.from_public_key(transaction.asset.distribution_account)
         )
         envelope = create_transaction_envelope(transaction, distribution_acc)
         envelope.sign(transaction.asset.distribution_seed)
@@ -239,25 +235,6 @@ def get_account_obj(kp):
         return account
 
 
-def master_signer_meets_medium_threshold(public_key: str) -> bool:
-    try:
-        account = settings.HORIZON_SERVER.load_account(public_key)
-    except NotFoundError:
-        raise RuntimeError("unable to fetch account")
-    account.load_ed25519_public_key_signers()
-    master_weight = None
-    for signer in account.signers:
-        if signer.key == public_key:
-            master_weight = signer.weight
-            break
-    return (master_weight or 0) >= account.thresholds.med_threshold
-
-
-def additional_signatures_needed(envelope, account):
-    found_signers = _verify_transaction_signatures(envelope, account.signers)
-    return sum(s.weight for s in found_signers) < account.thresholds.med_threshold
-
-
 def get_or_create_transaction_destination_account(
     transaction,
 ) -> Tuple[Optional[Account], bool]:
@@ -289,15 +266,14 @@ def get_or_create_transaction_destination_account(
     transaction was not submitted successfully, a RuntimeError exception will be raised.
     """
     try:
-        account = settings.HORIZON_SERVER.load_account(transaction.stellar_account)
-        account.load_ed25519_public_key_signers()
+        account = get_account_obj(Keypair.from_public_key(transaction.stellar_account))
         return account, False
     except NotFoundError:
-        if master_signer_meets_medium_threshold(transaction.asset.distribution_account):
+        master_signer = json.loads(transaction.asset.distribution_account_master_signer)
+        thresholds = json.loads(transaction.asset.distribution_account_thresholds)
+        if master_signer["weight"] >= thresholds["med_threshold"]:
             source_account_kp = Keypair.from_secret(transaction.asset.distribution_seed)
-            source_account = settings.HORIZON_SERVER.load_account(
-                source_account_kp.public_key
-            )
+            source_account = get_account_obj(source_account_kp)
         else:
             from polaris.integrations import registered_deposit_integration as rdi
 
@@ -305,11 +281,9 @@ def get_or_create_transaction_destination_account(
                 transaction
             )
             source_account = get_account_obj(source_account_kp)
-            transaction.is_multisig = True
             transaction.save()
 
         base_fee = settings.HORIZON_SERVER.fetch_base_fee()
-        source_account.load_ed25519_public_key_signers()
         builder = TransactionBuilder(
             source_account=source_account,
             network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
@@ -331,8 +305,7 @@ def get_or_create_transaction_destination_account(
 
         transaction.status = Transaction.STATUS.pending_trust
         transaction.save()
-        account = settings.HORIZON_SERVER.load_account(transaction.stellar_account)
-        account.load_ed25519_public_key_signers()
+        account = get_account_obj(Keypair.from_public_key(transaction.stellar_account))
         return account, True
     except BaseHorizonError as e:
         raise RuntimeError(f"Horizon error when loading stellar account: {e.message}")

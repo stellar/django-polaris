@@ -25,6 +25,8 @@ def test_bad_status(acc1_usd_deposit_transaction_factory):
 
 
 def mock_load_account_no_account(account_id):
+    if isinstance(account_id, Keypair):
+        account_id = account_id.public_key
     if account_id not in [
         Keypair.from_secret(v).public_key
         for v in [USD_DISTRIBUTION_SEED, ETH_DISTRIBUTION_SEED]
@@ -52,17 +54,16 @@ channel_account.signers = []
 channel_account.thresholds = Thresholds(0, 0, 0)
 
 
+mock_account = Account(STELLAR_ACCOUNT_1, 1)
+mock_account.signers = [
+    {"key": STELLAR_ACCOUNT_1, "weight": 1, "type": "ed25519_public_key"}
+]
+mock_account.thresholds = Thresholds(low_threshold=0, med_threshold=1, high_threshold=1)
+
+
 @pytest.mark.django_db
 @patch("polaris.utils.settings.HORIZON_SERVER", mock_server_no_account)
-@patch(
-    "polaris.utils.get_account_obj", Mock(return_value=channel_account),
-)
-@patch(
-    "polaris.integrations.registered_deposit_integration",
-    Mock(
-        channel_keypair_for_multisig_transaction=Mock(return_value=channel_account_kp)
-    ),
-)
+@patch("polaris.utils.get_account_obj", mock_load_account_no_account)
 def test_deposit_stellar_no_account(acc1_usd_deposit_transaction_factory):
     """
     `create_stellar_deposit` sets the transaction with the provided `transaction_id` to
@@ -74,6 +75,18 @@ def test_deposit_stellar_no_account(acc1_usd_deposit_transaction_factory):
     """
     deposit = acc1_usd_deposit_transaction_factory()
     deposit.status = Transaction.STATUS.pending_anchor
+    deposit.asset.distribution_account_signers = json.dumps(mock_account.signers)
+    deposit.asset.distribution_account_thresholds = json.dumps(
+        {
+            "low_threshold": mock_account.thresholds.low_threshold,
+            "med_threshold": mock_account.thresholds.med_threshold,
+            "high_threshold": mock_account.thresholds.high_threshold,
+        }
+    )
+    deposit.asset.distribution_account_master_signer = json.dumps(
+        mock_account.signers[0]
+    )
+    deposit.asset.save()
     deposit.save()
     with pytest.raises(NotFoundError):
         create_stellar_deposit(deposit)
@@ -83,13 +96,6 @@ def test_deposit_stellar_no_account(acc1_usd_deposit_transaction_factory):
         == Transaction.STATUS.pending_trust
     )
     mock_server_no_account.reset_mock()
-
-
-mock_account = Account(STELLAR_ACCOUNT_1, 1)
-mock_account.signers = [
-    {"key": STELLAR_ACCOUNT_1, "weight": 1, "type": "ed25519_public_key"}
-]
-mock_account.thresholds = Thresholds(low_threshold=0, med_threshold=1, high_threshold=1)
 
 
 @pytest.mark.django_db
@@ -110,9 +116,17 @@ def test_deposit_stellar_success(acc1_usd_deposit_transaction_factory):
     """
     deposit = acc1_usd_deposit_transaction_factory()
     deposit.status = Transaction.STATUS.pending_anchor
-    deposit.asset.distribution_account_signers = mock_account.signers
-    deposit.asset.distribution_account_thresholds = mock_account.thresholds
-    deposit.asset.distribution_account_master_signer = mock_account.signers[0]
+    deposit.asset.distribution_account_signers = json.dumps(mock_account.signers)
+    deposit.asset.distribution_account_thresholds = json.dumps(
+        {
+            "low_threshold": mock_account.thresholds.low_threshold,
+            "med_threshold": mock_account.thresholds.med_threshold,
+            "high_threshold": mock_account.thresholds.high_threshold,
+        }
+    )
+    deposit.asset.distribution_account_master_signer = json.dumps(
+        mock_account.signers[0]
+    )
     deposit.asset.save()
     deposit.save()
     assert create_stellar_deposit(deposit)
@@ -147,9 +161,17 @@ def test_deposit_stellar_no_trustline(acc1_usd_deposit_transaction_factory):
     """
     deposit = acc1_usd_deposit_transaction_factory()
     deposit.status = Transaction.STATUS.pending_anchor
-    deposit.asset.distribution_account_signers = mock_account.signers
-    deposit.asset.distribution_account_thresholds = mock_account.thresholds
-    deposit.asset.distribution_account_master_signer = mock_account.signers[0]
+    deposit.asset.distribution_account_signers = json.dumps(mock_account.signers)
+    deposit.asset.distribution_account_thresholds = json.dumps(
+        {
+            "low_threshold": mock_account.thresholds.low_threshold,
+            "med_threshold": mock_account.thresholds.med_threshold,
+            "high_threshold": mock_account.thresholds.high_threshold,
+        }
+    )
+    deposit.asset.distribution_account_master_signer = json.dumps(
+        mock_account.signers[0]
+    )
     deposit.asset.save()
     deposit.save()
     assert not create_stellar_deposit(deposit)

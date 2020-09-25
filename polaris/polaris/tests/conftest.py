@@ -41,6 +41,7 @@ def fixture_usd_asset_factory():
                 {
                     "key": Keypair.from_secret(USD_DISTRIBUTION_SEED).public_key,
                     "weight": 1,
+                    "type": "ed25519_public_key",
                 }
             ),
             distribution_account_thresholds=json.dumps(
@@ -65,7 +66,6 @@ def fixture_usd_asset_factory():
             send_min_amount=0.1,
             send_max_amount=1000,
         )
-        usd_asset.update_distribution_account_data = Mock()
         for p in protocols:
             setattr(usd_asset, p + "_enabled", True)
         usd_asset.save()
@@ -104,6 +104,7 @@ def fixture_eth_asset_factory():
                 {
                     "key": Keypair.from_secret(USD_DISTRIBUTION_SEED).public_key,
                     "weight": 1,
+                    "type": "ed25519_public_key",
                 }
             ),
             distribution_account_thresholds=json.dumps(
