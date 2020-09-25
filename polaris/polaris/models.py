@@ -120,7 +120,7 @@ class Asset(TimeStampedModel):
     def __init__(self, *args, **kwargs):
         """
         Does the usual __init__() actions and ensures the asset's distribution account
-        information is update to date if it hasn't been pulled from Horizon since
+        information is up-to-date if it hasn't been pulled from Horizon since
         application starup.
         """
         super().__init__(*args, **kwargs)
