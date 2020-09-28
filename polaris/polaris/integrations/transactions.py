@@ -309,6 +309,14 @@ class DepositIntegration:
         )
 
     def create_channel_account(self, transaction: Transaction):
+        """
+        Create (fund) a Stellar account
+        Currently, the transactions passed are transactions requiring multiple signatures
+
+        :param transaction: An object representing the transaction that requires a channel
+            account as it's source.
+        :return:
+        """
         pass
 
 
