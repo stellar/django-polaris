@@ -290,7 +290,7 @@ class Asset(TimeStampedModel):
 
 def deserialize(value):
     """
-    Validation function for Transaction.envelope
+    Validation function for Transaction.envelope_xdr
     """
     from polaris import settings
 
@@ -544,7 +544,7 @@ class Transaction(models.Model):
     transaction's envelope.
     """
 
-    envelope = models.TextField(validators=[deserialize], null=True, blank=True)
+    envelope_xdr = models.TextField(validators=[deserialize], null=True, blank=True)
     """
     The base64-encoded XDR blob that can be deserialized to inspect and sign 
     the encoded transaction.

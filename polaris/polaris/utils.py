@@ -156,7 +156,7 @@ def create_stellar_deposit(
     thresholds = json.loads(transaction.asset.distribution_account_thresholds)
     if not (master_signer and master_signer["weight"] >= thresholds["med_threshold"]):
         envelope = TransactionEnvelope.from_xdr(
-            transaction.envelope, settings.STELLAR_NETWORK_PASSPHRASE
+            transaction.envelope_xdr, settings.STELLAR_NETWORK_PASSPHRASE
         )
         try:
             _verify_te_signed_by_account_id(envelope, transaction.channel_account)
@@ -174,7 +174,7 @@ def create_stellar_deposit(
         )
         envelope = create_transaction_envelope(transaction, distribution_acc)
         envelope.sign(transaction.asset.distribution_seed)
-        transaction.envelope = envelope.to_xdr()
+        transaction.envelope_xdr = envelope.to_xdr()
 
     try:
         return submit_stellar_deposit(transaction)
@@ -191,7 +191,7 @@ def submit_stellar_deposit(transaction) -> bool:
     transaction.save()
     logger.info(f"Transaction {transaction.id} now pending_stellar")
     envelope = TransactionEnvelope.from_xdr(
-        transaction.envelope, settings.STELLAR_NETWORK_PASSPHRASE
+        transaction.envelope_xdr, settings.STELLAR_NETWORK_PASSPHRASE
     )
     try:
         response = settings.HORIZON_SERVER.submit_transaction(envelope)

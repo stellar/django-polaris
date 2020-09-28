@@ -76,7 +76,7 @@ def check_for_multisig(transaction):
             # Create the initial envelope XDR with the channel signature
             envelope = create_transaction_envelope(transaction, channel_account)
             envelope.sign(channel_kp)
-            transaction.envelope = envelope.to_xdr()
+            transaction.envelope_xdr = envelope.to_xdr()
             transaction.save()
         return True
     else:
@@ -213,7 +213,7 @@ class Command(BaseCommand):
             kind=Transaction.KIND.deposit,
             status=Transaction.STATUS.pending_anchor,
             pending_signatures=False,
-            envelope__isnull=False,
+            envelope_xdr__isnull=False,
         )
         for t in ready_multisig_transactions:
             cls.execute_deposit(t)

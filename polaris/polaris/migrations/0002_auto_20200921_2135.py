@@ -13,7 +13,7 @@ class Migration(migrations.Migration):
     operations = [
         migrations.AddField(
             model_name="transaction",
-            name="envelope",
+            name="envelope_xdr",
             field=models.TextField(
                 null=True, validators=[polaris.models.deserialize], blank=True
             ),
