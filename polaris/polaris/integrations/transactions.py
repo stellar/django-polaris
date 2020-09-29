@@ -333,7 +333,7 @@ class DepositIntegration:
         If ``transaction.stellar_account`` doesn't exist on Stellar and the transaction has a
         ``channel_account``, ``transaction.channel_account`` will also be used to create and
         fund the destination account for the deposit payment to the user. So the channel
-        account will be used one or _potentially_ two Stellar transactions.
+        account will be used one or `potentially` two Stellar transactions.
 
         Once the deposit payment has been made on Stellar, Polaris will call ``after_deposit()``,
         which is where the anchor should merge the funds within ``transaction.channel_account``
