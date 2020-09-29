@@ -12,7 +12,13 @@ from rest_framework import status
 from rest_framework.response import Response
 from stellar_sdk import TransactionEnvelope
 from stellar_sdk.transaction_builder import TransactionBuilder
-from stellar_sdk.exceptions import BaseHorizonError, NotFoundError, BadRequestError
+from stellar_sdk.exceptions import (
+    BaseHorizonError,
+    NotFoundError,
+    BadRequestError,
+    BadSignatureError,
+    SignatureExistError,
+)
 from stellar_sdk.xdr import StellarXDR_const as const
 from stellar_sdk.xdr.StellarXDR_type import TransactionResult
 from stellar_sdk import TextMemo, IdMemo, HashMemo
@@ -155,6 +161,7 @@ def create_stellar_deposit(
         master_signer = json.loads(transaction.asset.distribution_account_master_signer)
     thresholds = json.loads(transaction.asset.distribution_account_thresholds)
     if not (master_signer and master_signer["weight"] >= thresholds["med_threshold"]):
+        multisig = True
         envelope = TransactionEnvelope.from_xdr(
             transaction.envelope_xdr, settings.STELLAR_NETWORK_PASSPHRASE
         )
@@ -169,6 +176,7 @@ def create_stellar_deposit(
             return False
     # otherwise, create the envelope and sign it with the distribution account's secret
     else:
+        multisig = False
         distribution_acc, _ = get_account_obj(
             Keypair.from_public_key(transaction.asset.distribution_account)
         )
@@ -177,7 +185,7 @@ def create_stellar_deposit(
         transaction.envelope_xdr = envelope.to_xdr()
 
     try:
-        return submit_stellar_deposit(transaction)
+        return submit_stellar_deposit(transaction, multisig=multisig)
     except RuntimeError as e:
         transaction.status_message = str(e)
         transaction.status = Transaction.STATUS.error
@@ -186,7 +194,7 @@ def create_stellar_deposit(
         return False
 
 
-def submit_stellar_deposit(transaction) -> bool:
+def submit_stellar_deposit(transaction, multisig=False) -> bool:
     transaction.status = Transaction.STATUS.pending_stellar
     transaction.save()
     logger.info(f"Transaction {transaction.id} now pending_stellar")
@@ -195,6 +203,35 @@ def submit_stellar_deposit(transaction) -> bool:
     )
     try:
         response = settings.HORIZON_SERVER.submit_transaction(envelope)
+    except (BadSignatureError, SignatureExistError) as e:
+        err_msg = (
+            f"Horizon returned a {e.__class__.__name__} on transaction "
+            f"{transaction.id} submission."
+        )
+        logger.error(err_msg)
+        logger.error(
+            f"Transaction {transaction.id} envelope XDR: {transaction.envelope_xdr}"
+        )
+        logger.error(f"Transaction {transaction.id} result XDR: {e.result_xdr}")
+        if multisig:
+            logger.error(
+                f"Resetting the Transaction.envelope_xdr for {transaction.id}, "
+                "updating Transaction.pending_signatures to True"
+            )
+            channel_account, _ = get_account_obj(transaction.channel_account)
+            transaction.envelope_xdr = create_transaction_envelope(
+                transaction, channel_account
+            ).to_xdr()
+            transaction.pending_signatures = True
+            transaction.status = Transaction.STATUS.pending_anchor = True
+        else:
+            transaction.status = Transaction.STATUS.error
+            transaction.status_message = (
+                f"Horizon returned a {e.__class__.__name__} on transaction "
+                f"{transaction.id} submission"
+            )
+        transaction.save()
+        return False
     except BaseHorizonError as e:
         tx_result = TransactionResult.from_xdr(e.result_xdr)
         op_results = tx_result.result.results
