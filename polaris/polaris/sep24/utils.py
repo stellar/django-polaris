@@ -96,8 +96,13 @@ def authenticate_session_helper(r: Request):
                 return
         else:
             raise ValueError("Missing authentication token")
-    elif r.session.exists(r.session.session_key):
+    elif r.session.exists(r.session.session_key) and token in r.session.get("tokens"):
+        # The client opened an interactive flow with a specific token for the second time
         raise ValueError("Unexpected one-time auth token")
+    elif r.session.get("tokens"):
+        r.session["tokens"].add(token)
+    else:
+        r.session["tokens"] = {token}
 
     try:
         jwt_dict = jwt.decode(token, settings.SERVER_JWT_KEY, algorithms=["HS256"])
