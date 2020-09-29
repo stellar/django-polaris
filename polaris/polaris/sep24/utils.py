@@ -10,8 +10,8 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext as _
-from django.conf import settings as django_settings
 from django.urls import reverse
+from django.conf import settings as django_settings
 
 from polaris import settings
 from polaris.utils import getLogger

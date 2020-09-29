@@ -15,6 +15,8 @@ from django.urls import reverse
 from django.core.mail import send_mail
 from django.conf import settings as server_settings
 from django.template.loader import render_to_string
+from stellar_sdk.keypair import Keypair
+from stellar_sdk import TransactionBuilder
 
 from polaris.models import Transaction, Asset
 from polaris.templates import Template
@@ -275,6 +277,18 @@ class MyDepositIntegration(DepositIntegration):
                 )
             },
         }
+
+    def create_channel_account(self, transaction: Transaction):
+        kp = Keypair.random()
+        settings.HORIZON_SERVER._client.get(
+            f"https://friendbot.stellar.org/?addr={kp.public_key}"
+        )
+        transaction.channel_seed = kp.secret
+        transaction.save()
+
+    def after_deposit(self, transaction: Transaction):
+        transaction.channel_seed = None
+        transaction.save()
 
 
 class MyWithdrawalIntegration(WithdrawalIntegration):

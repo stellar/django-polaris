@@ -1,19 +1,31 @@
 """This module defines helpers for various endpoints."""
+import json
 import codecs
 import datetime
 import uuid
-from typing import Optional
+from decimal import Decimal
+from typing import Optional, Tuple, Union
 from logging import getLogger as get_logger, LoggerAdapter
 
-from django.utils.translation import gettext as _
-from django.conf import settings as django_settings
+from django.utils.translation import gettext
 from rest_framework import status
 from rest_framework.response import Response
+from stellar_sdk import TransactionEnvelope
 from stellar_sdk.transaction_builder import TransactionBuilder
-from stellar_sdk.exceptions import BaseHorizonError
+from stellar_sdk.exceptions import (
+    BaseHorizonError,
+    NotFoundError,
+    BadRequestError,
+    BadSignatureError,
+    SignatureExistError,
+)
 from stellar_sdk.xdr import StellarXDR_const as const
 from stellar_sdk.xdr.StellarXDR_type import TransactionResult
-from stellar_sdk import Memo, TextMemo, IdMemo, HashMemo
+from stellar_sdk import TextMemo, IdMemo, HashMemo
+from stellar_sdk.account import Account, Thresholds
+from stellar_sdk.sep.stellar_web_authentication import _verify_te_signed_by_account_id
+from stellar_sdk.sep.exceptions import InvalidSep10ChallengeError
+from stellar_sdk.keypair import Keypair
 
 from polaris import settings
 from polaris.models import Transaction
@@ -83,12 +95,12 @@ def verify_valid_asset_operation(
     max_amount = getattr(asset, f"{op_type}_max_amount")
     if not enabled:
         return render_error_response(
-            _("the specified operation is not available for '%s'") % asset.code,
+            gettext("the specified operation is not available for '%s'") % asset.code,
             content_type=content_type,
         )
     elif not (min_amount <= amount <= max_amount):
         return render_error_response(
-            _("Asset amount must be within bounds [%(min)s, %(max)s]")
+            gettext("Asset amount must be within bounds [%(min)s, %(max)s]")
             % {
                 "min": round(min_amount, asset.significant_decimals),
                 "max": round(max_amount, asset.significant_decimals),
@@ -97,23 +109,16 @@ def verify_valid_asset_operation(
         )
 
 
-def create_stellar_deposit(transaction_id: str) -> bool:
+def create_stellar_deposit(
+    transaction: Transaction, destination_exists: bool = False
+) -> bool:
     """
     Create and submit the Stellar transaction for the deposit.
 
-    :returns a boolean indicating whether or not the deposit was successfully
-        completed. One reason a transaction may not be completed is if a
-        trustline must be established. The transaction's status will be set as
-        ``pending_stellar`` and the status_message will be populated
-        with a description of the problem encountered.
-    :raises ValueError: the transaction has an unexpected status
+    The Transaction can be either `pending_anchor` if the task is called
+    from `poll_pending_deposits()` or `pending_trust` if called from the
+    `check_trustlines()`.
     """
-    transaction = Transaction.objects.get(id=transaction_id)
-
-    # We check the Transaction status to avoid double submission of a Stellar
-    # transaction. The Transaction can be either `pending_anchor` if the task
-    # is called from `poll_pending_deposits()` or `pending_trust` if called
-    # from the `check_trustlines()`.
     if transaction.status not in [
         Transaction.STATUS.pending_anchor,
         Transaction.STATUS.pending_trust,
@@ -129,132 +134,304 @@ def create_stellar_deposit(transaction_id: str) -> bool:
         )
         transaction.save()
         raise ValueError(transaction.status_message)
-    transaction.status = Transaction.STATUS.pending_stellar
-    transaction.save()
-    logger.info(f"Transaction {transaction_id} now pending_stellar")
 
-    # We can assume transaction has valid stellar_account, amount_in, and asset
-    # because this task is only called after those parameters are validated.
-    stellar_account = transaction.stellar_account
-    payment_amount = round(
-        transaction.amount_in - transaction.amount_fee,
-        transaction.asset.significant_decimals,
-    )
-    asset = transaction.asset
-    memo = make_memo(transaction.memo, transaction.memo_type)
-
-    # If the given Stellar account does not exist, create
-    # the account with at least enough XLM for the minimum
-    # reserve and a trust line (recommended 2.01 XLM), update
-    # the transaction in our internal database, and return.
-
-    server = settings.HORIZON_SERVER
-    starting_balance = settings.ACCOUNT_STARTING_BALANCE
-    server_account = server.load_account(asset.distribution_account)
-    base_fee = server.fetch_base_fee()
-    builder = TransactionBuilder(
-        source_account=server_account,
-        network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
-        base_fee=base_fee,
-    )
-    try:
-        server.load_account(stellar_account)
-    except BaseHorizonError as address_exc:
-        # 404 code corresponds to Resource Missing.
-        if address_exc.status != 404:  # pragma: no cover
-            msg = (
-                "Horizon error when loading stellar account: " f"{address_exc.message}"
-            )
-            logger.error(msg)
-            transaction.status_message = msg
-            transaction.status = Transaction.STATUS.error
-            transaction.save()
-            return False
-
-        logger.info(f"Stellar account {stellar_account} does not exist. Creating.")
-        transaction_envelope = builder.append_create_account_op(
-            destination=stellar_account,
-            starting_balance=starting_balance,
-            source=asset.distribution_account,
-        ).build()
-        transaction_envelope.sign(asset.distribution_seed)
+    # if we don't know if the destination account exists
+    if not destination_exists:
         try:
-            server.submit_transaction(transaction_envelope)
-        except BaseHorizonError as submit_exc:  # pragma: no cover
-            msg = (
-                "Horizon error when submitting create account to horizon: "
-                f"{submit_exc.message}"
+            _, created, pending_trust = get_or_create_transaction_destination_account(
+                transaction
             )
-            logger.error(msg)
-            transaction.status_message = msg
+        except RuntimeError as e:
             transaction.status = Transaction.STATUS.error
+            transaction.status_message = str(e)
             transaction.save()
+            logger.error(transaction.status_message)
+            return False
+        if created or pending_trust:
+            # the account is pending_trust for the asset to be received
+            if pending_trust and transaction.status != Transaction.STATUS.pending_trust:
+                transaction.status = Transaction.STATUS.pending_trust
+                transaction.save()
             return False
 
-        transaction.status = Transaction.STATUS.pending_trust
+    # if the distribution account's master signer's weight is great or equal to the its
+    # medium threshold, verify the transaction is signed by it's channel account
+    master_signer = None
+    if transaction.asset.distribution_account_master_signer:
+        master_signer = json.loads(transaction.asset.distribution_account_master_signer)
+    thresholds = json.loads(transaction.asset.distribution_account_thresholds)
+    if not (master_signer and master_signer["weight"] >= thresholds["med_threshold"]):
+        multisig = True
+        envelope = TransactionEnvelope.from_xdr(
+            transaction.envelope_xdr, settings.STELLAR_NETWORK_PASSPHRASE
+        )
+        try:
+            _verify_te_signed_by_account_id(envelope, transaction.channel_account)
+        except InvalidSep10ChallengeError:
+            transaction.status = Transaction.STATUS.error
+            transaction.status_message = gettext(
+                "Multisig transaction's envelope was not signed by channel account"
+            )
+            transaction.save()
+            return False
+    # otherwise, create the envelope and sign it with the distribution account's secret
+    else:
+        multisig = False
+        distribution_acc, _ = get_account_obj(
+            Keypair.from_public_key(transaction.asset.distribution_account)
+        )
+        envelope = create_transaction_envelope(transaction, distribution_acc)
+        envelope.sign(transaction.asset.distribution_seed)
+        transaction.envelope_xdr = envelope.to_xdr()
+
+    try:
+        return submit_stellar_deposit(transaction, multisig=multisig)
+    except RuntimeError as e:
+        transaction.status_message = str(e)
+        transaction.status = Transaction.STATUS.error
         transaction.save()
-        logger.info(f"Transaction for account {stellar_account} now pending_trust.")
+        logger.error(transaction.status_message)
         return False
 
-    # If the account does exist, deposit the desired amount of the given
-    # asset via a Stellar payment. If that payment succeeds, we update the
-    # transaction to completed at the current time. If it fails due to a
-    # trustline error, we update the database accordingly. Else, we do not update.
 
-    builder.append_payment_op(
-        destination=stellar_account,
-        asset_code=asset.code,
-        asset_issuer=asset.issuer,
-        amount=str(payment_amount),
+def handle_bad_signatures_error(e, transaction, multisig=False):
+    err_msg = (
+        f"Horizon returned a {e.__class__.__name__} on transaction "
+        f"{transaction.id} submission."
     )
-    if memo:
-        builder.add_memo(memo)
-    transaction_envelope = builder.build()
-    transaction_envelope.sign(asset.distribution_seed)
+    logger.error(err_msg)
+    logger.error(
+        f"Transaction {transaction.id} envelope XDR: {transaction.envelope_xdr}"
+    )
+    logger.error(f"Transaction {transaction.id} result XDR: {e.result_xdr}")
+    if multisig:
+        logger.error(
+            f"Resetting the Transaction.envelope_xdr for {transaction.id}, "
+            "updating Transaction.pending_signatures to True"
+        )
+        channel_account, _ = get_account_obj(
+            Keypair.from_public_key(transaction.channel_account)
+        )
+        transaction.envelope_xdr = create_transaction_envelope(
+            transaction, channel_account
+        ).to_xdr()
+        transaction.pending_signatures = True
+        transaction.status = Transaction.STATUS.pending_anchor = True
+    else:
+        transaction.status = Transaction.STATUS.error
+        transaction.status_message = (
+            f"Horizon returned a {e.__class__.__name__} on transaction "
+            f"{transaction.id} submission"
+        )
+    transaction.save()
+
+
+def submit_stellar_deposit(transaction, multisig=False) -> bool:
+    transaction.status = Transaction.STATUS.pending_stellar
+    transaction.save()
+    logger.info(f"Transaction {transaction.id} now pending_stellar")
+    envelope = TransactionEnvelope.from_xdr(
+        transaction.envelope_xdr, settings.STELLAR_NETWORK_PASSPHRASE
+    )
     try:
-        response = server.submit_transaction(transaction_envelope)
-    # Functional errors at this stage are Horizon errors.
-    except BaseHorizonError as exception:
-        tx_result = TransactionResult.from_xdr(exception.result_xdr)
-        op_result = tx_result.result.results[0]
-        if op_result.tr.paymentResult.code != const.PAYMENT_NO_TRUST:
-            msg = (
-                "Unable to submit payment to horizon, "
-                f"non-trustline failure: {exception.message}"
+        response = settings.HORIZON_SERVER.submit_transaction(envelope)
+    except BaseHorizonError as e:
+        logger.info(e.__class__.__name__)
+        tx_result = TransactionResult.from_xdr(e.result_xdr)
+        op_results = tx_result.result.results
+        if isinstance(e, BadRequestError):
+            if op_results[0].code == -1:  # Bad Auth
+                handle_bad_signatures_error(e, transaction, multisig=multisig)
+                return False  # handle_bad_signatures_error() saves transaction
+            else:
+                transaction.status = Transaction.STATUS.error
+                transaction.status_message = (
+                    f"tx failed with codes: {op_results}. Result XDR: {e.result_xdr}"
+                )
+        elif op_results[0].tr.paymentResult.code == const.PAYMENT_NO_TRUST:
+            transaction.status = Transaction.STATUS.pending_trust
+            transaction.status_message = (
+                "trustline error when submitting transaction to horizon"
             )
-            logger.error(msg)
-            transaction.status_message = msg
-            transaction.status = Transaction.STATUS.error
-            transaction.save()
-            return False
-        msg = "trustline error when submitting transaction to horizon"
-        logger.error(msg)
-        transaction.status_message = msg
-        transaction.status = Transaction.STATUS.pending_trust
+        else:
+            raise RuntimeError(
+                "Unable to submit payment to horizon, "
+                f"non-trustline failure: {e.message}"
+            )
         transaction.save()
+        logger.error(transaction.status_message)
         return False
 
     if not response.get("successful"):
         transaction_result = TransactionResult.from_xdr(response["result_xdr"])
-        msg = (
+        raise RuntimeError(
             "Stellar transaction failed when submitted to horizon: "
             f"{transaction_result.result.results}"
         )
-        logger.error(msg)
-        transaction.status_message = msg
-        transaction.status = Transaction.STATUS.error
-        transaction.save()
-        return False
 
     transaction.paging_token = response["paging_token"]
     transaction.stellar_transaction_id = response["id"]
     transaction.status = Transaction.STATUS.completed
     transaction.completed_at = datetime.datetime.now(datetime.timezone.utc)
-    transaction.status_eta = 0  # No more status change.
-    transaction.amount_out = payment_amount
+    transaction.status_eta = 0
+    transaction.amount_out = round(
+        Decimal(transaction.amount_in) - Decimal(transaction.amount_fee),
+        transaction.asset.significant_decimals,
+    )
     transaction.save()
     logger.info(f"Transaction {transaction.id} completed.")
     return True
+
+
+def load_account(resp):
+    sequence = int(resp["sequence"])
+    thresholds = Thresholds(
+        resp["thresholds"]["low_threshold"],
+        resp["thresholds"]["med_threshold"],
+        resp["thresholds"]["high_threshold"],
+    )
+    account = Account(account_id=resp["account_id"], sequence=sequence)
+    account.signers = resp["signers"]
+    account.thresholds = thresholds
+    return account
+
+
+def get_account_obj(kp):
+    try:
+        json_resp = (
+            settings.HORIZON_SERVER.accounts()
+            .account_id(account_id=kp.public_key)
+            .call()
+        )
+    except NotFoundError:
+        raise RuntimeError(f"account {kp.public_key} does not exist")
+    else:
+        return load_account(json_resp), json_resp
+
+
+def has_trustline(transaction, json_resp):
+    pending_trust = True
+    for balance in json_resp["balances"]:
+        if balance.get("asset_type") == "native":
+            continue
+        asset_code = balance["asset_code"]
+        asset_issuer = balance["asset_issuer"]
+        if (
+            transaction.asset.code == asset_code
+            and transaction.asset.issuer == asset_issuer
+        ):
+            pending_trust = False
+            break
+    return pending_trust
+
+
+def get_or_create_transaction_destination_account(
+    transaction,
+) -> Tuple[Optional[Account], bool, bool]:
+    """
+    Returns the stellar_sdk.account.Account for which this transaction's payment will be sent to as
+    as well as whether or not the account was created as a result of calling this function.
+
+    If the account exists, the function simply returns the account and False.
+
+    If the account doesn't exist, Polaris must create the account using an account provided by the
+    anchor. Polaris can use the distribution account of the anchored asset or a channel account if
+    the asset's distribution account requires non-master signatures.
+
+    If the transacted asset's distribution account does not require non-master signatures, Polaris
+    can create the destination account using the distribution account. On successful creation,
+    this function will return the account and True. On failure, a RuntimeError exception is raised.
+
+    If the transacted asset's distribution account does require non-master signatures, the anchor
+    should save a keypair of a pre-existing Stellar account to use as the channel account via
+    DepositIntegration.create_channel_account().
+
+    This channel account must only be used as the source account for transactions related to the
+    ``Transaction`` object passed. It also must not be used to submit transactions by any service
+    other than Polaris. If it is, the outstanding transactions will be invalidated due to bad
+    sequence numbers. Finally, the channel accounts must have a master signer with a weight greater
+    than or equal to the medium threshold for the account.
+
+    After the transaction for creating the destination account has been submitted to the stellar network
+    and the transaction has been created, this function will return the account and True. If the
+    transaction was not submitted successfully, a RuntimeError exception will be raised.
+    """
+    try:
+        account, json_resp = get_account_obj(
+            Keypair.from_public_key(transaction.stellar_account)
+        )
+        return account, False, has_trustline(transaction, json_resp)
+    except RuntimeError:
+        master_signer = None
+        if transaction.asset.distribution_account_master_signer:
+            master_signer = json.loads(
+                transaction.asset.distribution_account_master_signer
+            )
+        thresholds = json.loads(transaction.asset.distribution_account_thresholds)
+        if master_signer and master_signer["weight"] >= thresholds["med_threshold"]:
+            source_account_kp = Keypair.from_secret(transaction.asset.distribution_seed)
+            source_account, _ = get_account_obj(source_account_kp)
+        else:
+            from polaris.integrations import registered_deposit_integration as rdi
+
+            rdi.create_channel_account(transaction)
+            source_account_kp = Keypair.from_secret(transaction.channel_seed)
+            source_account, _ = get_account_obj(source_account_kp)
+
+        base_fee = settings.HORIZON_SERVER.fetch_base_fee()
+        builder = TransactionBuilder(
+            source_account=source_account,
+            network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
+            base_fee=base_fee,
+        )
+        transaction_envelope = builder.append_create_account_op(
+            destination=transaction.stellar_account,
+            starting_balance=settings.ACCOUNT_STARTING_BALANCE,
+        ).build()
+        transaction_envelope.sign(source_account_kp)
+
+        try:
+            settings.HORIZON_SERVER.submit_transaction(transaction_envelope)
+        except BaseHorizonError as submit_exc:  # pragma: no cover
+            raise RuntimeError(
+                "Horizon error when submitting create account to horizon: "
+                f"{submit_exc.message}"
+            )
+
+        transaction.status = Transaction.STATUS.pending_trust
+        transaction.save()
+        logger.info(
+            f"Transaction {transaction.id} is now pending_trust of destination account"
+        )
+        account, json_resp = get_account_obj(
+            Keypair.from_public_key(transaction.stellar_account)
+        )
+        return account, True, has_trustline(transaction, json_resp)
+    except BaseHorizonError as e:
+        raise RuntimeError(f"Horizon error when loading stellar account: {e.message}")
+
+
+def create_transaction_envelope(transaction, source_account) -> TransactionEnvelope:
+    payment_amount = round(
+        Decimal(transaction.amount_in) - Decimal(transaction.amount_fee),
+        transaction.asset.significant_decimals,
+    )
+    memo = make_memo(transaction.memo, transaction.memo_type)
+    base_fee = settings.HORIZON_SERVER.fetch_base_fee()
+    builder = TransactionBuilder(
+        source_account=source_account,
+        network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
+        base_fee=base_fee,
+    ).append_payment_op(
+        destination=transaction.stellar_account,
+        asset_code=transaction.asset.code,
+        asset_issuer=transaction.asset.issuer,
+        amount=str(payment_amount),
+        source=transaction.asset.distribution_account,
+    )
+    if memo:
+        builder.add_memo(memo)
+    return builder.build()
 
 
 def memo_str(memo: str, memo_type: str) -> Optional[str]:
@@ -269,7 +446,7 @@ def memo_str(memo: str, memo_type: str) -> Optional[str]:
         return memo.memo_text.decode()
 
 
-def make_memo(memo: str, memo_type: str) -> Optional[Memo]:
+def make_memo(memo: str, memo_type: str) -> Optional[Union[TextMemo, HashMemo, IdMemo]]:
     if not memo:
         return None
     if memo_type == Transaction.MEMO_TYPES.id:
@@ -342,41 +519,3 @@ def extract_sep9_fields(args):
         if field in args:
             sep9_args[field] = args.get(field)
     return sep9_args
-
-
-def check_config():
-    from polaris.sep24.utils import check_sep24_config
-
-    if not hasattr(django_settings, "POLARIS_ACTIVE_SEPS"):
-        raise AttributeError(
-            "POLARIS_ACTIVE_SEPS must be defined in your django settings file."
-        )
-
-    check_middleware()
-    check_protocol()
-    if "sep-24" in django_settings.POLARIS_ACTIVE_SEPS:
-        check_sep24_config()
-
-
-def check_middleware():
-    err_msg = "{} is not installed in settings.MIDDLEWARE"
-    cors_middleware_path = "corsheaders.middleware.CorsMiddleware"
-    if cors_middleware_path not in django_settings.MIDDLEWARE:
-        raise ValueError(err_msg.format(cors_middleware_path))
-
-
-def check_protocol():
-    if settings.LOCAL_MODE:
-        logger.warning(
-            "Polaris is in local mode. This makes the SEP-24 interactive flow "
-            "insecure and should only be used for local development."
-        )
-    if not (settings.LOCAL_MODE or getattr(django_settings, "SECURE_SSL_REDIRECT")):
-        logger.warning(
-            "SECURE_SSL_REDIRECT is required to redirect HTTP traffic to HTTPS"
-        )
-    if getattr(django_settings, "SECURE_PROXY_SSL_HEADER"):
-        logger.warning(
-            "SECURE_PROXY_SSL_HEADER should only be set if Polaris is "
-            "running behind an HTTPS reverse proxy."
-        )

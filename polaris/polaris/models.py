@@ -1,5 +1,7 @@
 """This module defines the models used by Polaris."""
+import sys
 import uuid
+import json
 import decimal
 import datetime
 import secrets
@@ -10,6 +12,7 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
+from django.core.exceptions import ValidationError
 from django.core.validators import (
     MinLengthValidator,
     MinValueValidator,
@@ -21,10 +24,38 @@ from django.db import models
 from model_utils.models import TimeStampedModel
 from model_utils import Choices
 from stellar_sdk.keypair import Keypair
+from stellar_sdk.transaction_envelope import TransactionEnvelope
+from stellar_sdk.exceptions import SdkError
+
+
+# This dictionary acts as an in-memory indication of whether or not
+# the Asset object's distribution account fields have been updated
+# since this process started.
+ASSET_DISTRIBUTION_ACCOUNT_LOADED = {}
 
 
 def utc_now():
     return datetime.datetime.now(datetime.timezone.utc)
+
+
+def update_distribution_account_data(asset):
+    from polaris import settings
+
+    if not asset.distribution_seed:
+        return None
+    account_json = (
+        settings.HORIZON_SERVER.accounts()
+        .account_id(account_id=asset.distribution_account)
+        .call()
+    )
+    asset.distribution_account_signers = json.dumps(account_json["signers"])
+    asset.distribution_account_thresholds = json.dumps(account_json["thresholds"])
+    asset.distribution_account_master_signer = None
+    for s in account_json["signers"]:
+        if s["key"] == asset.distribution_account:
+            asset.distribution_account_master_signer = json.dumps(s)
+            break
+    asset.save()
 
 
 class PolarisChoices(Choices):
@@ -86,11 +117,17 @@ class EncryptedTextField(models.TextField):
 
 
 class Asset(TimeStampedModel):
-    """
-    .. _Info: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md#info
-
-    This defines an Asset, as described in the SEP-24 Info_ endpoint.
-    """
+    def __init__(self, *args, **kwargs):
+        """
+        Does the usual __init__() actions and ensures the asset's distribution account
+        information is up-to-date if it hasn't been pulled from Horizon since
+        application starup.
+        """
+        super().__init__(*args, **kwargs)
+        this = sys.modules[__name__]
+        if str(self) not in this.ASSET_DISTRIBUTION_ACCOUNT_LOADED:
+            update_distribution_account_data(self)
+            this.ASSET_DISTRIBUTION_ACCOUNT_LOADED[str(self)] = True
 
     code = models.TextField()
     """The asset code as defined on the Stellar network."""
@@ -224,6 +261,18 @@ class Asset(TimeStampedModel):
     symbol = models.TextField(default="$")
     """The symbol used in HTML pages when displaying amounts of this asset"""
 
+    distribution_account_signers = models.TextField(null=True, blank=True)
+    """The JSON-serialized signers object returned from Horizon"""
+
+    distribution_account_thresholds = models.TextField(null=True, blank=True)
+    """The JSON-serialized thresholds object returned from Horizon"""
+
+    distribution_account_master_signer = models.TextField(null=True, blank=True)
+    """
+    The JSON-serialized object returned from Horizon for the object containing 
+    the account's public key, if present.
+    """
+
     objects = models.Manager()
 
     @property
@@ -239,12 +288,22 @@ class Asset(TimeStampedModel):
         return f"{self.code} - issuer({self.issuer})"
 
 
-class Transaction(models.Model):
+def deserialize(value):
     """
-    .. _Transactions: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md#transaction-history
+    Validation function for Transaction.envelope_xdr
+    """
+    from polaris import settings
 
-    This defines a Transaction, as described in the SEP-24 Transactions_ endpoint.
-    """
+    try:
+        TransactionEnvelope.from_xdr(value, settings.STELLAR_NETWORK_PASSPHRASE)
+    except SdkError as e:
+        raise ValidationError(
+            _("Cannot decode envelope XDR for transaction: %(error)s"),
+            params={"error": str(e)},
+        )
+
+
+class Transaction(models.Model):
 
     KIND = PolarisChoices("deposit", "withdrawal", "send")
     """Choices object for ``deposit``, ``withdrawal``, or ``send``."""
@@ -479,6 +538,26 @@ class Transaction(models.Model):
     protocol = models.CharField(choices=PROTOCOL, null=True, max_length=5)
     """Either 'sep6' or 'sep24'"""
 
+    pending_signatures = models.BooleanField(default=False)
+    """
+    Boolean for whether or not non-Polaris signatures are needed for this 
+    transaction's envelope.
+    """
+
+    envelope_xdr = models.TextField(validators=[deserialize], null=True, blank=True)
+    """
+    The base64-encoded XDR blob that can be deserialized to inspect and sign 
+    the encoded transaction.
+    """
+
+    channel_seed = models.TextField(null=True, blank=True)
+    """
+    A keypair of the account used when sending SEP-6 or SEP-24 deposit 
+    transactions to Transaction.stellar_account, if present. 
+    This is only used for transactions requiring signatures Polaris cannot
+    add itself.
+    """
+
     objects = models.Manager()
 
     @property
@@ -491,6 +570,12 @@ class Transaction(models.Model):
         Human readable explanation of transaction status
         """
         return self.status_to_message[str(self.status)]
+
+    @property
+    def channel_account(self):
+        if not self.channel_seed:
+            return None
+        return Keypair.from_secret(str(self.channel_seed)).public_key
 
     class Meta:
         ordering = ("-started_at",)

@@ -18,6 +18,7 @@ django-polaris documentation contents
     middleware/index
     internationalization/index
     CLI commands <deployment/index>
+    Multisignature Assets <multisignature_assets/index>
 
 
 Indices and tables
