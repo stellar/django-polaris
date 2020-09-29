@@ -56,6 +56,22 @@ Polaris uses channel accounts created by the anchor per-multisig-transaction as 
 Integrations
 ------------
 
+Payment Flow
+^^^^^^^^^^^^
+
+Using channel accounts, Polaris supports the following process for multisignature transactions:
+
+1. A client application makes a `POST /deposit` request and creates a transaction record
+2. The client application sends the funds to be deposited to the anchor's off-chain account
+3. The anchor detects the received funds
+4. Polaris detects that the transaction requires more than one signature
+5. Polaris calls ``DepositIntegration.create_channel_account()`` for the transaction record
+6. The anchor funds a Stellar account using another Stellar account that doesn't require multiple signatures
+6. Polaris uses the channel account as the transaction's source account when building and saving the envelope XDR
+7. The anchor collects signatures on the transaction and updates it as 'ready for submission'
+8. Polaris retrieves multisig transactions ready to be submitted in poll_pending_deposits and submits them
+9. Multisig transactions **succeed** assuming proper signatures on the account
+
 Currently, multisignature asset support is only relevant in the context of SEP-6 and 24 deposit transactions. Withdraw transaction flows don't involve the anchor making any Stellar transaction using an asset's distribution account, and SEP-31 outbound payments are not yet supported in Polaris.
 
 However, due to the optional nature and added complexity of configuring and handling multisignaure assets and transactions relative to the normal SEP-6 and SEP-24 flow, the integrations and related application logic is described separately in this section.
