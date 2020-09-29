@@ -317,7 +317,7 @@ class DepositIntegration:
     def create_channel_account(self, transaction: Transaction):
         """
         Create a temporary, per-deposit-transaction-object Stellar account using a different
-        Stellar account _that does not require multiple signatures_, and save the secret key
+        Stellar account `that does not require multiple signatures`, and save the secret key
         of the created account to ``transaction.channel_seed``.
 
         If this integration function is called, the deposit payment represented by ``transaction``
