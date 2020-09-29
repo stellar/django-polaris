@@ -773,6 +773,8 @@ class MyRailsIntegration(RailsIntegration):
 
 
 def toml_integration():
+    srt = Asset.objects.filter(code="SRT").first()
+    mult = Asset.objects.filter(code="MULT").first()
     return {
         "DOCUMENTATION": {
             "ORG_NAME": "Stellar Development Foundation",
@@ -784,14 +786,21 @@ def toml_integration():
         },
         "CURRENCIES": [
             {
-                "code": asset.code.upper(),
-                "issuer": asset.issuer,
+                "code": srt.code.upper(),
+                "issuer": srt.issuer,
                 "status": "test",
                 "is_asset_anchored": False,
                 "anchor_asset_type": "other",
                 "desc": "A fake anchored asset to use with this example anchor server.",
-            }
-            for asset in Asset.objects.all()
+            },
+            {
+                "code": mult.code.upper(),
+                "issuer": mult.issuer,
+                "status": "test",
+                "is_asset_anchored": False,
+                "anchor_asset_type": "other",
+                "desc": "A fake anchored asset that has a multsig distribution account as an example.",
+            },
         ],
         "PRINCIPALS": [
             {
