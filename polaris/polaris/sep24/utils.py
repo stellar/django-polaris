@@ -96,7 +96,9 @@ def authenticate_session_helper(r: Request):
                 return
         else:
             raise ValueError("Missing authentication token")
-    elif r.session.exists(r.session.session_key) and token in r.session.get("tokens"):
+    elif r.session.exists(r.session.session_key) and token in r.session.get(
+        "tokens", []
+    ):
         # The client opened an interactive flow with a specific token for the second time
         raise ValueError("Unexpected one-time auth token")
     elif r.session.get("tokens"):
