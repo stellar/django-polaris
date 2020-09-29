@@ -194,6 +194,38 @@ def create_stellar_deposit(
         return False
 
 
+def handle_bad_signatures_error(e, transaction, multisig=False):
+    err_msg = (
+        f"Horizon returned a {e.__class__.__name__} on transaction "
+        f"{transaction.id} submission."
+    )
+    logger.error(err_msg)
+    logger.error(
+        f"Transaction {transaction.id} envelope XDR: {transaction.envelope_xdr}"
+    )
+    logger.error(f"Transaction {transaction.id} result XDR: {e.result_xdr}")
+    if multisig:
+        logger.error(
+            f"Resetting the Transaction.envelope_xdr for {transaction.id}, "
+            "updating Transaction.pending_signatures to True"
+        )
+        channel_account, _ = get_account_obj(
+            Keypair.from_public_key(transaction.channel_account)
+        )
+        transaction.envelope_xdr = create_transaction_envelope(
+            transaction, channel_account
+        ).to_xdr()
+        transaction.pending_signatures = True
+        transaction.status = Transaction.STATUS.pending_anchor = True
+    else:
+        transaction.status = Transaction.STATUS.error
+        transaction.status_message = (
+            f"Horizon returned a {e.__class__.__name__} on transaction "
+            f"{transaction.id} submission"
+        )
+    transaction.save()
+
+
 def submit_stellar_deposit(transaction, multisig=False) -> bool:
     transaction.status = Transaction.STATUS.pending_stellar
     transaction.save()
@@ -203,43 +235,19 @@ def submit_stellar_deposit(transaction, multisig=False) -> bool:
     )
     try:
         response = settings.HORIZON_SERVER.submit_transaction(envelope)
-    except (BadSignatureError, SignatureExistError) as e:
-        err_msg = (
-            f"Horizon returned a {e.__class__.__name__} on transaction "
-            f"{transaction.id} submission."
-        )
-        logger.error(err_msg)
-        logger.error(
-            f"Transaction {transaction.id} envelope XDR: {transaction.envelope_xdr}"
-        )
-        logger.error(f"Transaction {transaction.id} result XDR: {e.result_xdr}")
-        if multisig:
-            logger.error(
-                f"Resetting the Transaction.envelope_xdr for {transaction.id}, "
-                "updating Transaction.pending_signatures to True"
-            )
-            channel_account, _ = get_account_obj(transaction.channel_account)
-            transaction.envelope_xdr = create_transaction_envelope(
-                transaction, channel_account
-            ).to_xdr()
-            transaction.pending_signatures = True
-            transaction.status = Transaction.STATUS.pending_anchor = True
-        else:
-            transaction.status = Transaction.STATUS.error
-            transaction.status_message = (
-                f"Horizon returned a {e.__class__.__name__} on transaction "
-                f"{transaction.id} submission"
-            )
-        transaction.save()
-        return False
     except BaseHorizonError as e:
+        logger.info(e.__class__.__name__)
         tx_result = TransactionResult.from_xdr(e.result_xdr)
         op_results = tx_result.result.results
         if isinstance(e, BadRequestError):
-            transaction.status = Transaction.STATUS.error
-            transaction.status_message = (
-                f"tx failed with codes: {op_results}. Result XDR: {e.result_xdr}"
-            )
+            if op_results[0].code == -1:  # Bad Auth
+                handle_bad_signatures_error(e, transaction, multisig=multisig)
+                return False  # handle_bad_signatures_error() saves transaction
+            else:
+                transaction.status = Transaction.STATUS.error
+                transaction.status_message = (
+                    f"tx failed with codes: {op_results}. Result XDR: {e.result_xdr}"
+                )
         elif op_results[0].tr.paymentResult.code == const.PAYMENT_NO_TRUST:
             transaction.status = Transaction.STATUS.pending_trust
             transaction.status_message = (
