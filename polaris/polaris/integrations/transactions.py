@@ -9,8 +9,6 @@ from polaris.models import Transaction, Asset
 from polaris.integrations.forms import TransactionForm
 from polaris.templates import Template
 
-from stellar_sdk.keypair import Keypair
-
 
 class DepositIntegration:
     """
@@ -23,10 +21,18 @@ class DepositIntegration:
     def after_deposit(self, transaction: Transaction):
         """
         Use this function to perform any post-processing of `transaction` after
-        its been executed on the Stellar network. This could include actions
-        such as updating other django models in your project or emailing
-        users about completed deposits. Overriding this function is not
-        required.
+        its been executed on the Stellar network. This could include actions such
+        as updating other django models in your project or emailing users about
+        completed deposits. Overriding this function is only required for anchors
+        with multi-signature distribution accounts.
+
+        If the transacted asset's distribution account requires multiple signatures,
+        ``transaction.channel_account`` was created on Stellar when Polaris made a call
+        to ``create_channel_account()`` and was used as the transaction-level source
+        account when submitting to Stellar. This temporary account holds a minimum a
+        XLM reserve balance that must be merged back to persistent account owned by
+        the anchor. Generally, the destination account for the merge operation will be
+        the same account that created and funded the channel account.
 
         :param transaction: a ``Transaction`` that was executed on the
             Stellar network
@@ -310,12 +316,32 @@ class DepositIntegration:
 
     def create_channel_account(self, transaction: Transaction):
         """
-        Create (fund) a Stellar account
-        Currently, the transactions passed are transactions requiring multiple signatures
+        Create a temporary, per-deposit-transaction-object Stellar account using a different
+        Stellar account _that does not require multiple signatures_, and save the secret key
+        of the created account to ``transaction.channel_seed``.
+
+        If this integration function is called, the deposit payment represented by ``transaction``
+        requires multiple signatures in order to be successfully submitted to the Stellar network.
+        The anchored asset's distribution account may or may not be in that set of signatures
+        required, depending on the configuration of the distribution account's signers.
+
+        Once the transaction's signatures have been collected and the updated XDR written to
+        ``transaction.envelope_xdr``, ``transaction.pending_signatures`` should be updated to
+        ``False``, which will cause the ``poll_pending_deposits`` process to submit it to the
+        network along with the other transactions deemed ready by the anchor.
+
+        If ``transaction.stellar_account`` doesn't exist on Stellar and the transaction has a
+        ``channel_account``, ``transaction.channel_account`` will also be used to create and
+        fund the destination account for the deposit payment to the user. So the channel
+        account will be used one or _potentially_ two Stellar transactions.
+
+        Once the deposit payment has been made on Stellar, Polaris will call ``after_deposit()``,
+        which is where the anchor should merge the funds within ``transaction.channel_account``
+        back to a persistent Stellar account owned by the anchor. See ``after_deposit()`` for
+        more information.
 
         :param transaction: An object representing the transaction that requires a channel
             account as it's source.
-        :return:
         """
         pass
 
