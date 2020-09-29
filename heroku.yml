@@ -26,6 +26,10 @@ run:
     image: reference-server
     command:
       - python manage.py poll_outgoing_transactions --loop
+  sign_multisig_transactions:
+    image: reference-server
+    command:
+      - python manage.py sign_multisig_transactions --loop
   web:
     image: reference-server
     command:

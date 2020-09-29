@@ -70,3 +70,13 @@ services:
     depends_on:
       - server
     command: watchmedo auto-restart --recursive --pattern="*.py" --directory="." python manage.py execute_outgoing_transactions -- --loop
+  sign_multisig_transactions:
+    container_name: sign_multisig_transactions
+    build: .
+    volumes:
+      - ./polaris/polaris:/code/polaris/polaris
+      - ./example/server:/code/server
+      - ./example/data:/code/data
+    depends_on:
+      - server
+    command: watchmedo auto-restart --recursive --pattern="*.py" --directory="." python manage.py sign_multisig_transactions -- --loop

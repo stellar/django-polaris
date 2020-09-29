@@ -17,6 +17,10 @@ if os.path.exists(env_file):
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = env("DJANGO_SECRET_KEY")
 
+MULT_ASSET_ADDITIONAL_SIGNING_SEED = env(
+    "MULT_ASSET_ADDITIONAL_SIGNING_SEED", default=None
+)
+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env.bool("DJANGO_DEBUG", False)
 

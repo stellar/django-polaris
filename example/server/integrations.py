@@ -775,6 +775,29 @@ class MyRailsIntegration(RailsIntegration):
 def toml_integration():
     srt = Asset.objects.filter(code="SRT").first()
     mult = Asset.objects.filter(code="MULT").first()
+    currencies = []
+    if srt:
+        currencies.append(
+            {
+                "code": srt.code.upper(),
+                "issuer": srt.issuer,
+                "status": "test",
+                "is_asset_anchored": False,
+                "anchor_asset_type": "other",
+                "desc": "A fake anchored asset to use with this example anchor server.",
+            }
+        )
+    if mult:
+        currencies.append(
+            {
+                "code": mult.code.upper(),
+                "issuer": mult.issuer,
+                "status": "test",
+                "is_asset_anchored": False,
+                "anchor_asset_type": "other",
+                "desc": "A fake anchored asset that has a multsig distribution account as an example.",
+            }
+        )
     return {
         "DOCUMENTATION": {
             "ORG_NAME": "Stellar Development Foundation",
@@ -784,24 +807,7 @@ def toml_integration():
             "ORG_TWITTER": "StellarOrg",
             "ORG_GITHUB": "stellar",
         },
-        "CURRENCIES": [
-            {
-                "code": srt.code.upper(),
-                "issuer": srt.issuer,
-                "status": "test",
-                "is_asset_anchored": False,
-                "anchor_asset_type": "other",
-                "desc": "A fake anchored asset to use with this example anchor server.",
-            },
-            {
-                "code": mult.code.upper(),
-                "issuer": mult.issuer,
-                "status": "test",
-                "is_asset_anchored": False,
-                "anchor_asset_type": "other",
-                "desc": "A fake anchored asset that has a multsig distribution account as an example.",
-            },
-        ],
+        "CURRENCIES": currencies,
         "PRINCIPALS": [
             {
                 "name": "Jacob Urban",

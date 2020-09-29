@@ -271,6 +271,10 @@ a signing account on Stellar's testnet and add it to your environment variables.
 
     STELLAR_NETWORK_PASSPHRASE="Test SDF Network ; September 2015"
 
+    # For multi-sig MULT asset anchored by the reference server
+    # Should be empty if not anchoring MULT
+    MULT_ASSET_ADDITIONAL_SIGNING_SEED=""
+
     HORIZON_URI="https://horizon-testnet.stellar.org/"
     SERVER_JWT_KEY="your jwt local secret"
     DJANGO_ALLOWED_HOSTS=localhost,0.0.0.0,127.0.0.1
