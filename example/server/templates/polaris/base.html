@@ -6,7 +6,7 @@
 
 <script src="https://www.googletagmanager.com/gtag/js?id=UA-53373928-6" async></script>
 <script src="{% static 'sep24_scripts/google_analytics.js' %}"></script>
-{% if not form and title is not ce %}
+{% if not form is not None and title != ce %}
 {# only passed to template if skipping confirmation #}
 <script src="{% static 'sep24_scripts/check_email_confirmation.js' %}"></script>
 <script src="{% static 'sep24_scripts/add_skip_confirmation_btn.js' %}"></script>
