@@ -193,6 +193,9 @@ class MyDepositIntegration(DepositIntegration):
             return {
                 "title": _("Polaris Transaction Information"),
                 "icon_label": _("Stellar Development Foundation"),
+                "memo": b64encode(str(hash(transaction)).encode())
+                .decode()[:10]
+                .upper(),
             }
 
     def after_form_validation(self, form: forms.Form, transaction: Transaction):

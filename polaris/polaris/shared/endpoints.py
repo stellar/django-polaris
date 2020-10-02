@@ -41,7 +41,7 @@ def more_info(request: Request, sep6: bool = False) -> Response:
         request_transaction, context={"request": request, "sep6": sep6}
     )
     tx_json = json.dumps({"transaction": serializer.data})
-    resp_data = {
+    context = {
         "tx_json": tx_json,
         "amount_in": serializer.data.get("amount_in"),
         "amount_out": serializer.data.get("amount_out"),
@@ -49,17 +49,14 @@ def more_info(request: Request, sep6: bool = False) -> Response:
         "transaction": request_transaction,
         "asset_code": request_transaction.asset.code,
     }
-    if request_transaction.kind == Transaction.KIND.deposit:
-        content = rdi.content_for_template(
-            Template.MORE_INFO, transaction=request_transaction
-        )
-        if request_transaction.status == Transaction.STATUS.pending_user_transfer_start:
-            resp_data["instructions"] = rdi.instructions_for_pending_deposit(
-                request_transaction
-            )
-    else:
-        content = rwi.content_for_template(
-            Template.MORE_INFO, transaction=request_transaction
+    content = rdi.content_for_template(
+        Template.MORE_INFO, transaction=request_transaction
+    )
+    if content:
+        context.update(content)
+    if request_transaction.status == Transaction.STATUS.pending_user_transfer_start:
+        context.update(
+            instructions=rdi.instructions_for_pending_deposit(request_transaction)
         )
 
     if registered_scripts_func != calculate_fee:
@@ -68,15 +65,13 @@ def more_info(request: Request, sep6: bool = False) -> Response:
             "removed in Polaris 2.0 in favor of rendering anchor-defined "
             "templates in the head and body sections of each page."
         )
-    resp_data["scripts"] = registered_scripts_func(content)
-    if content:
-        resp_data.update(content)
+    context["scripts"] = registered_scripts_func(content)
 
     callback = request.GET.get("callback")
     if callback:
-        resp_data["callback"] = callback
+        context["callback"] = callback
 
-    return Response(resp_data, template_name="polaris/more_info.html")
+    return Response(context, template_name="polaris/more_info.html")
 
 
 def transactions(request: Request, account: str, sep6: bool = False) -> Response:
