@@ -194,16 +194,17 @@ class DepositIntegration:
         """
         pass
 
-    def instructions_for_pending_deposit(self, transaction: Transaction):
+    def instructions_for_pending_deposit(self, transaction: Transaction) -> str:
         """
+        .. _`Template Extensions`:
+
         DEPRECATED: This function will be removed in Polaris version 2.0 in favor
-        of rendering an anchor-defined 'instructions' template within the more
-        info page. `transaction` will be passed to the template for context.
+        of allowing the anchor to override and extend Polaris' Django templates.
+        See the `Template Extensions`_ documentation for more information.
 
         For pending deposits, its common to show instructions to the user for how
-        to initiate the external transfer. Use this function to return text, HTML,
-        or a Django Template object containing instructions to be rendered in
-        response to `/transaction/more_info`.
+        to initiate the external transfer. Use this function to return text or HTML
+        instructions to be rendered in response to `/transaction/more_info`.
 
         :param transaction: the transaction database object to be serialized and
             rendered in the response.

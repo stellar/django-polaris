@@ -152,8 +152,9 @@ def post_interactive_deposit(request: Request) -> Response:
         if registered_scripts_func != calculate_fee:
             logger.warning(
                 "DEPRECATED: the `scripts` Polaris integration function will be "
-                "removed in Polaris 2.0 in favor of rendering anchor-defined "
-                "templates in the head and body sections of each page."
+                "removed in Polaris 2.0 in favor of allowing the anchor to override "
+                "and extend Polaris' Django templates. See the Template Extensions "
+                "documentation for more information."
             )
         scripts = registered_scripts_func({"form": form, **content})
 
@@ -265,8 +266,9 @@ def get_interactive_deposit(request: Request) -> Response:
     if registered_scripts_func != calculate_fee:
         logger.warning(
             "DEPRECATED: the `scripts` Polaris integration function will be "
-            "removed in Polaris 2.0 in favor of rendering anchor-defined "
-            "templates in the head and body sections of each page."
+            "removed in Polaris 2.0 in favor of allowing the anchor to override "
+            "and extend Polaris' Django templates. See the Template Extensions "
+            "documentation for more information."
         )
     if form:
         scripts = registered_scripts_func({"form": form, **content})
