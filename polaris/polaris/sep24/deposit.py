@@ -174,7 +174,7 @@ def post_interactive_deposit(request: Request) -> Response:
             asset=asset,
             use_fee_endpoint=registered_fee_func != calculate_fee,
         )
-        return Response(content, template_name="polaris/deposit/form.html", status=422)
+        return Response(content, template_name="polaris/deposit.html", status=422)
 
 
 @api_view(["GET"])
@@ -293,7 +293,7 @@ def get_interactive_deposit(request: Request) -> Response:
         org_logo_url=toml_data.get("DOCUMENTATION", {}).get("ORG_LOGO"),
     )
 
-    return Response(content, template_name="polaris/deposit/form.html")
+    return Response(content, template_name="polaris/deposit.html")
 
 
 @api_view(["POST"])

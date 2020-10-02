@@ -159,34 +159,6 @@ class SEP24KYC:
 
 
 class MyDepositIntegration(DepositIntegration):
-    def instructions_for_pending_deposit(self, transaction: Transaction):
-        """
-        DEPRECATED: This function will be removed in Polaris version 2.0 in favor
-        of rendering an anchor-defined 'instructions' template within the more
-        info page. `transaction` will be passed to the template for context.
-
-        This function provides a message to the user containing instructions for
-        how to initiate a bank deposit to the anchor's account.
-
-        This particular implementation generates and provides a unique memo to
-        match an incoming deposit to the user, but there are many ways of
-        accomplishing this. If you collect KYC information like the user's
-        bank account number, that could be used to match the deposit and user
-        as well.
-        """
-        # Generate a unique alphanumeric memo string to identify bank deposit
-        memo = b64encode(str(hash(transaction)).encode()).decode()[:10].upper()
-        return (
-            _(
-                "Include this code as the memo when making the deposit: "
-                "<strong>%s</strong>. We will use "
-                "this memo to identify you as the sender.\n(This deposit is "
-                "automatically confirmed for demonstration purposes. Please "
-                "wait.)"
-            )
-            % memo
-        )
-
     def form_for_transaction(
         self, transaction: Transaction, post_data=None, amount=None
     ) -> Optional[forms.Form]:

@@ -185,7 +185,7 @@ def post_interactive_withdraw(request: Request) -> Response:
             use_fee_endpoint=registered_fee_func != calculate_fee,
             org_logo_url=toml_data.get("DOCUMENTATION", {}).get("ORG_LOGO"),
         )
-        return Response(content, template_name="polaris/withdraw/form.html", status=422)
+        return Response(content, template_name="polaris/withdraw.html", status=422)
 
 
 @api_view(["GET"])
@@ -302,7 +302,7 @@ def get_interactive_withdraw(request: Request) -> Response:
         use_fee_endpoint=registered_fee_func != calculate_fee,
     )
 
-    return Response(content, template_name="polaris/withdraw/form.html")
+    return Response(content, template_name="polaris/withdraw.html")
 
 
 @api_view(["POST"])

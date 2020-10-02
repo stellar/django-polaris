@@ -76,7 +76,7 @@ def more_info(request: Request, sep6: bool = False) -> Response:
     if callback:
         resp_data["callback"] = callback
 
-    return Response(resp_data, template_name="polaris/transaction/more_info.html")
+    return Response(resp_data, template_name="polaris/more_info.html")
 
 
 def transactions(request: Request, account: str, sep6: bool = False) -> Response:
