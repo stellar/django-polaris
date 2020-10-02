@@ -1,10 +1,6 @@
 {% extends "polaris/more_info.html" %} {% load i18n %}
 
-{% trans "Include this code as the memo when making the deposit:" as memo_instruction %}
-{% trans "We will use this memo to identify you as the sender." as memo_reason %}
-{% trans "(This deposit is automatically confirmed for demonstration purposes. Please wait.)" as nevermind %}
-
-{% block "instructions_block" %}
+{% block "instructions" %}
     <div class="info-item">
         <div class="info-label">
             {% trans "instructions" %}

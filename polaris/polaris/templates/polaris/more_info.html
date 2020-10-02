@@ -7,6 +7,7 @@
 {% block "content" %}
 <section class="section receipt">
     {% if instructions is not none %}
+    {# instructions came from Polaris' instructions_for_pending_deposit() #}
     <div class="info-item">
         <div class="info-label">
             {% trans "instructions" %}
@@ -16,7 +17,8 @@
         </div>
     </div>
     {% else %}
-    {% block "instructions_block" %}
+    {# instructions, if present, came from the anchor's more_info extension #}
+    {% block "instructions" %}
     {% endblock %}
     {% endif %}
     <div class="info-item">
