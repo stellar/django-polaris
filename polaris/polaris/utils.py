@@ -60,7 +60,7 @@ def render_error_response(
     }
     if content_type == "text/html":
         resp_data["data"]["status_code"] = status_code
-        resp_data["template_name"] = "error.html"
+        resp_data["template_name"] = "polaris/error.html"
     return Response(**resp_data)
 
 

@@ -9,7 +9,7 @@ from django.utils.translation import gettext as _
 
 from polaris import settings as polaris_settings
 from polaris.templates import Template
-from polaris.utils import render_error_response
+from polaris.utils import render_error_response, getLogger
 from polaris.models import Transaction, Asset
 from polaris.integrations import registered_fee_func
 from polaris.sep24.utils import verify_valid_asset_operation
@@ -18,7 +18,11 @@ from polaris.integrations import (
     registered_deposit_integration as rdi,
     registered_withdrawal_integration as rwi,
     registered_scripts_func,
+    calculate_fee,
 )
+
+
+logger = getLogger(__name__)
 
 
 def more_info(request: Request, sep6: bool = False) -> Response:
@@ -58,6 +62,12 @@ def more_info(request: Request, sep6: bool = False) -> Response:
             Template.MORE_INFO, transaction=request_transaction
         )
 
+    if registered_scripts_func != calculate_fee:
+        logger.warning(
+            "DEPRECATED: the `scripts` Polaris integration function will be "
+            "removed in Polaris 2.0 in favor of rendering anchor-defined "
+            "templates in the head and body sections of each page."
+        )
     resp_data["scripts"] = registered_scripts_func(content)
     if content:
         resp_data.update(content)
@@ -66,7 +76,7 @@ def more_info(request: Request, sep6: bool = False) -> Response:
     if callback:
         resp_data["callback"] = callback
 
-    return Response(resp_data, template_name="transaction/more_info.html")
+    return Response(resp_data, template_name="polaris/transaction/more_info.html")
 
 
 def transactions(request: Request, account: str, sep6: bool = False) -> Response:

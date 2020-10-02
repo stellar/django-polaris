@@ -1,4 +1,4 @@
-{% extends "base.html" %} {% load i18n %}
+{% extends "../base.html" %} {% load i18n %}
 
 {% block "title" %}
 <title>{% trans "Transaction More Info" %}</title>
@@ -15,6 +15,9 @@
             {{ instructions|safe }}
         </div>
     </div>
+    {% else %}
+    {% block "instructions" %}
+    {% endblock %}
     {% endif %}
     <div class="info-item">
         <div class="info-label">

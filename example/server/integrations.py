@@ -161,6 +161,10 @@ class SEP24KYC:
 class MyDepositIntegration(DepositIntegration):
     def instructions_for_pending_deposit(self, transaction: Transaction):
         """
+        DEPRECATED: This function will be removed in Polaris version 2.0 in favor
+        of rendering an anchor-defined 'instructions' template within the more
+        info page. `transaction` will be passed to the template for context.
+
         This function provides a message to the user containing instructions for
         how to initiate a bank deposit to the anchor's account.
 

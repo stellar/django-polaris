@@ -158,6 +158,12 @@ def post_interactive_withdraw(request: Request) -> Response:
             )
             or {}
         )
+        if registered_scripts_func != calculate_fee:
+            logger.warning(
+                "DEPRECATED: the `scripts` Polaris integration function will be "
+                "removed in Polaris 2.0 in favor of rendering anchor-defined "
+                "templates in the head and body sections of each page."
+            )
         scripts = registered_scripts_func({"form": form, **content})
 
         url_args = {"transaction_id": transaction.id, "asset_code": asset.code}
@@ -179,7 +185,7 @@ def post_interactive_withdraw(request: Request) -> Response:
             use_fee_endpoint=registered_fee_func != calculate_fee,
             org_logo_url=toml_data.get("DOCUMENTATION", {}).get("ORG_LOGO"),
         )
-        return Response(content, template_name="withdraw/form.html", status=422)
+        return Response(content, template_name="polaris/withdraw/form.html", status=422)
 
 
 @api_view(["GET"])
@@ -267,6 +273,12 @@ def get_interactive_withdraw(request: Request) -> Response:
     elif content is None:
         content = {}
 
+    if registered_scripts_func != calculate_fee:
+        logger.warning(
+            "DEPRECATED: the `scripts` Polaris integration function will be "
+            "removed in Polaris 2.0 in favor of rendering anchor-defined "
+            "templates in the head and body sections of each page."
+        )
     if form:
         scripts = registered_scripts_func({"form": form, **content})
     else:
@@ -290,7 +302,7 @@ def get_interactive_withdraw(request: Request) -> Response:
         use_fee_endpoint=registered_fee_func != calculate_fee,
     )
 
-    return Response(content, template_name="withdraw/form.html")
+    return Response(content, template_name="polaris/withdraw/form.html")
 
 
 @api_view(["POST"])

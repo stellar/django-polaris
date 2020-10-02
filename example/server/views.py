@@ -22,7 +22,7 @@ def all_fields_form_view(request: Request) -> Response:
             "form": AllFieldsForm(),
             "guidance": _("This form contains every field type."),
         },
-        template_name="deposit/form.html",
+        template_name="polaris/deposit/form.html",
     )
 
 
