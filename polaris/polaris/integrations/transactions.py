@@ -198,7 +198,7 @@ class DepositIntegration:
         """
         .. _`Template Extensions`:
 
-        DEPRECATED: This function will be removed in Polaris version 2.0 in favor
+        **DEPRECATED**: This function will be removed in Polaris version 2.0 in favor
         of allowing the anchor to override and extend Polaris' Django templates.
         See the `Template Extensions`_ documentation for more information.
 

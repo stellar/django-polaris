@@ -2,6 +2,12 @@ from typing import List, Dict, Optional
 
 
 class TemplateScript:
+    """
+    **DEPRECATED**: `TemplateScript` objects will be removed in Polaris 2.0 in favor
+    of allowing the anchor to override and extend Polaris' Django templates.
+    See the Template Extensions documentation for more information.
+    """
+
     def __init__(self, path: str = None, url: str = None, is_async: bool = False):
         if path and url:
             raise AttributeError(
@@ -19,6 +25,11 @@ class TemplateScript:
 def scripts(page_content: Optional[Dict]) -> List[TemplateScript]:
     """
     .. _`example reference server`: https://github.com/stellar/django-polaris/tree/master/example
+    .. _`Template Extensions`:
+
+    **DEPRECATED**: `TemplateScript` objects will be removed in Polaris 2.0 in favor
+    of allowing the anchor to override and extend Polaris' Django templates.
+    See the `Template Extensions`_ documentation for more information.
 
     Replace this function with another by passing it to
     ``register_integrations()`` as described in
