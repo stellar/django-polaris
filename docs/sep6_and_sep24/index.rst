@@ -75,21 +75,6 @@ The last step is to collect the static files Polaris provides into your app:
 
     python manage.py collectstatic --no-input
 
-Replacing Polaris UI Assets
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-.. _here: https://github.com/stellar/django-polaris/tree/master/polaris/polaris/static/polaris
-
-Its also possible to replace the static assets from Polaris. This allows anchors
-to customize the UI's appearance. For example, you can replace Polaris' `base.css`
-file to give the interactive flow pages a different look. You can do this by adding
-your own `polaris/base.css` file to your app's static directory.
-
-In general, replacement asset files (.html, .css, etc.) must have the same path and
-name of the file its replacing. See the structure of Polaris' static assets
-directory here_.
-
-See the documentation on `serving static files`_ in Django for more information.
 
 SEP-24 Configuration
 --------------------
@@ -156,20 +141,62 @@ set of integration functions for anchors to implement themselves.
 
 .. _fee_integration:
 
-Fee Integration
-^^^^^^^^^^^^^^^
+
+Custom Fee Calculation
+^^^^^^^^^^^^^^^^^^^^^^
 
 .. autofunction:: polaris.integrations.calculate_fee
-
-Deposit Instructions
-^^^^^^^^^^^^^^^^^^^^
-
-.. autofunction:: polaris.integrations.DepositIntegration.instructions_for_pending_deposit
 
 Deposit Post-Processing
 ^^^^^^^^^^^^^^^^^^^^^^^
 
 .. autofunction:: polaris.integrations.DepositIntegration.after_deposit
+
+Template Extensions
+^^^^^^^^^^^^^^^^^^^
+
+Polaris uses Django's template system for defining the UI content rendered to users, and templates can be written in such a way to allow others to override and extend them. Specifically, Polaris' templates have the following inheritance and directory structure:
+
+- ``templates/polaris/base.html``
+    - ``templates/polaris/deposit.html``
+    - ``templates/polaris/withdraw.html``
+    - ``templates/polaris/more_info.html``
+    - ``templates/polaris/error.html``
+
+Polaris 1.2 introduced functionality that allows anchors to extend Polaris' Django Templates by rendering anchor-defined HTML content within each interactive web page displayed to users of a Polaris anchor. Anchors can do this by using the creating a template within their Django app's ``templates`` directory with a path matching the file for the Template they wish to extend or replace.
+
+For example, the SDF's reference server extends ``base.html`` by creating an HTML file within the app's ``templates/polaris`` directory. In the file, we declare the template we are extending, load any django-provided templates tools such as ``static``, and define an ``extra_body`` block:
+::
+
+    {% extends "polaris/base.html" %} {% load static %} {% load i18n %}
+
+    {% trans "Confirm Email" as ce %}
+
+    {% block extra_body %}
+
+        <script src="https://www.googletagmanager.com/gtag/js?id=UA-53373928-6" async></script>
+        <script src="{% static 'sep24_scripts/google_analytics.js' %}"></script>
+
+        {% if not form is not None and title != ce %}
+            <script src="{% static 'sep24_scripts/check_email_confirmation.js' %}"></script>
+        {% endif %}
+
+    {% endblock %}
+
+The ``extra_body`` block adds ``<script>`` tags for a Google Analytics and a local script within the app's ``static`` directory that requests the email confirmation status of the user on page focus, improving UX. If you're unfamiliar with the syntax of Django's templates, check out the documentation, specifically the block documentation. Polaris also offers an ``extra_head`` template block that is ideal for linking anchor-defined CSS files or other resources that must load before the page is displayed.
+
+Note that the content rendered within ``extra_body`` and ``extra_head`` is in addition to the content defined by Polaris' templates. If you wish to replace a template completely, create a file with the same relative path from the `templates` directory but do not use the ``extend`` keyword. Instead, simply write a Django template that does not extend one defined by Polaris.
+
+Static Asset Replacement
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. _here: https://github.com/stellar/django-polaris/tree/master/polaris/polaris/static/polaris
+
+Similar to Polaris' templates, Polaris' static assets can also be replaced by creating a file with a matching path relative to it's app's `static` directory. This allows anchors to customize the UI's appearance. For example, you can replace Polaris' `base.css` file to give the interactive flow pages a different look using your own `polaris/base.css` file.
+
+Note that if you would like to add CSS styling in addition to what Polaris provides, you should extend the Polaris template and define an ``extra_head`` block containing the associated ``link`` tags.
+
+In general, replacement asset files (.html, .css, etc.) must have the same path and name of the file its replacing. See the structure of Polaris' static assets directory here_.
 
 SEP-6 Integrations
 ------------------
@@ -244,12 +271,6 @@ parameter can also be included in the URL.
 .. autofunction:: polaris.integrations.DepositIntegration.interactive_url
 
 .. autofunction:: polaris.integrations.WithdrawalIntegration.interactive_url
-
-
-Javascript Integration
-^^^^^^^^^^^^^^^^^^^^^^
-
-.. autofunction:: polaris.integrations.scripts
 
 Running the Service
 ===================
