@@ -1,5 +1,5 @@
-Polaris Templates
-=================
+Templates
+=========
 
 .. _`Django's template system`: https://docs.djangoproject.com/en/3.1/ref/templates/
 

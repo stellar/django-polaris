@@ -15,6 +15,7 @@ django-polaris documentation contents
     register_integrations/index
     models/index
     forms/index
+    templates/index
     middleware/index
     internationalization/index
     CLI commands <deployment/index>
