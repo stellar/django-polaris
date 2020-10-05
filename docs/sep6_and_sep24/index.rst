@@ -144,7 +144,7 @@ set of integration functions for anchors to implement themselves.
 Template Extensions
 ^^^^^^^^^^^^^^^^^^^
 
-Polaris comes with a good looking interface out of the box, but it also allows anchors to override, extend, or replace Django Templates used to render web pages to the user. Check out the :doc:`Templates</templates/index> documentation for more info.
+Polaris comes with a good looking interface out of the box, but it also allows anchors to override, extend, or replace Django Templates used to render web pages to the user. Check out the :doc:`Templates</templates/index>` documentation for more info.
 
 Custom Fee Calculation
 ^^^^^^^^^^^^^^^^^^^^^^

@@ -122,10 +122,11 @@ class DepositIntegration:
 
         Polaris will pass one of the following ``polaris.templates.Template`` values:
 
-        * Template.DEPOSIT
+        ``Template.DEPOSIT``
 
             The template used for deposit flows
-        * Template.MORE_INFO
+
+        ``Template.MORE_INFO``
 
             The template used to show transaction details
 
@@ -400,10 +401,11 @@ class WithdrawalIntegration:
         Same as ``DepositIntegration.content_for_template``, except the ``Template``
         values passed will be one of:
 
-        * Template.WITHDRAW
+        ``Template.WITHDRAW``
 
             The template used for withdraw flows
-        * Template.MORE_INFO
+
+        ``Template.MORE_INFO``
 
             The template used to show transaction details
 
