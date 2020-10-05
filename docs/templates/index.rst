@@ -9,9 +9,8 @@ Polaris uses `Django's template system`_ for defining the UI content rendered to
     - ``templates/polaris/deposit.html``
     - ``templates/polaris/withdraw.html``
     - ``templates/polaris/more_info.html``
-    - ``templates/polaris/error.html``
 
-``base.html`` defines the top-level HTML tags like `html`, `body`, and `head`, while each of the four other templates extend the file and override the `content` block, among others. ``deposit.html`` and ``withdraw.html`` are very similar and are used for pages that display forms. ``more_info.html`` displays transaction details and ``error.html`` displays error codes and messages returned from the anchor.
+``base.html`` defines the top-level HTML tags like `html`, `body`, and `head`, while each of the four other templates extend the file and override the `content` block, among others. ``deposit.html`` and ``withdraw.html`` are very similar and are used for pages that display forms. ``more_info.html`` simply displays transaction details.
 
 Template Extensions
 -------------------
@@ -59,3 +58,38 @@ Whenever a template is rendered and displayed to the user, its rendered using a 
    :noindex:
 
 Using this function in conjunction with template extensions, you can define template blocks that use context variables passed from ``content_for_template()``. This gives anchors complete control of the interactive UX.
+
+Outlined below are the default key-value pairs passed as `context`_ objects to each template. In addition to the attributes listed in each ``Template`` section, Polaris also passes the key-value pairs returned from ``content_for_template()``.
+
+``Template.DEPOSIT``
+
+- `form`: The Django ``Form`` object return by ``form_for_transaction()``
+- `post_url`: The URL to use when making the POST request containing form data
+- `get_url`: The URL to use when making the GET request for the form
+- `scripts`: A list of ``TemplateScript`` objects (deprecated)
+- `operation`: The ``/fee?operation=`` value for the transaction
+- `asset`: The Polaris ``Asset`` object for the transaction requested
+- `use_fee_endpoint`: A boolean for whether the anchor requires the custom fee endpoint
+- `org_logo_url`: A URL to the organization's logo, to be used as the page center icon
+
+``Template.WITHDRAW``
+
+All attributes listed here have identical definitions to the above set of attributes:
+
+- `form`
+- `post_url`
+- `get_url`
+- `scripts`
+- `operation`
+- `asset`
+- `use_fee_endpoint`
+
+``Template.MORE_INFO``
+
+- `tx_json`: A JSON-serialized object matching the response body from ``/transactions``
+- `amount_in`: The amount sent to the anchor's off-chain account
+- `amount_out`: The amount send to the user's off-chain account
+- `amount_fee`: The amount charged by the anchor for facilitating the transaction
+- `transaction`: The ``Transaction`` Polaris database object
+- `asset_code`: The code string representing the asset
+
