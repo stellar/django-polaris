@@ -155,7 +155,7 @@ Deposit Post-Processing
 Template Extensions
 ^^^^^^^^^^^^^^^^^^^
 
-Polaris uses Django's template system for defining the UI content rendered to users, and templates can be written in such a way to allow others to override and extend them. Specifically, Polaris' templates have the following inheritance and directory structure:
+Polaris uses Django's template system for defining the UI content rendered to users, and these templates can be written in a way that allows others to override or extend them. Specifically, Polaris' templates have the following inheritance structure:
 
 - ``templates/polaris/base.html``
     - ``templates/polaris/deposit.html``
@@ -163,7 +163,7 @@ Polaris uses Django's template system for defining the UI content rendered to us
     - ``templates/polaris/more_info.html``
     - ``templates/polaris/error.html``
 
-Polaris 1.2 introduced functionality that allows anchors to extend Polaris' Django Templates by rendering anchor-defined HTML content within each interactive web page displayed to users of a Polaris anchor. Anchors can do this by using the creating a template within their Django app's ``templates`` directory with a path matching the file for the Template they wish to extend or replace.
+Each Polaris Template defines two empty ``blocks`` that can be overwritten by anchors who define templates with a matching file path relative to their app's ``templates`` directory. These two blocks are ``extra_head`` and ``extra_body``.
 
 For example, the SDF's reference server extends ``base.html`` by creating an HTML file within the app's ``templates/polaris`` directory. In the file, we declare the template we are extending, load any django-provided templates tools such as ``static``, and define an ``extra_body`` block:
 ::
@@ -183,7 +183,7 @@ For example, the SDF's reference server extends ``base.html`` by creating an HTM
 
     {% endblock %}
 
-The ``extra_body`` block adds ``<script>`` tags for a Google Analytics and a local script within the app's ``static`` directory that requests the email confirmation status of the user on page focus, improving UX. If you're unfamiliar with the syntax of Django's templates, check out the documentation, specifically the block documentation. Polaris also offers an ``extra_head`` template block that is ideal for linking anchor-defined CSS files or other resources that must load before the page is displayed.
+The ``extra_body`` block adds ``<script>`` tags for a Google Analytics and a local script within the app's ``static`` directory that requests the email confirmation status of the user on page focus, improving UX. If you're unfamiliar with the syntax of Django's templates, check out the documentation, specifically the ``block`` documentation. The ``extra_head`` template block is ideal for linking anchor-defined CSS files or other resources that must load before the page is displayed.
 
 Note that the content rendered within ``extra_body`` and ``extra_head`` is in addition to the content defined by Polaris' templates. If you wish to replace a template completely, create a file with the same relative path from the `templates` directory but do not use the ``extend`` keyword. Instead, simply write a Django template that does not extend one defined by Polaris.
 
