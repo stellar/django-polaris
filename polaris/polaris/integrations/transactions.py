@@ -139,8 +139,9 @@ class DepositIntegration:
         confirming their email. In this case, make sure to return an appropriate
         `guidance` message.
 
-        Using this function, anchors can change the page title, replace the company icon shown
-        on each page and its label, and give guidance to the user.
+        Using this function, anchors pass key-value pairs to the template being rendered.
+        Some of these key-value pairs are used by Polaris, but anchors are allowed and
+        encouraged to extend Polaris' templates and pass custom key-value pairs.
         ::
 
             def content_for_template(template_name, form=None, transaction=None):
@@ -149,7 +150,9 @@ class DepositIntegration:
                     "title": "Deposit Transaction Form",
                     "guidance": "Please enter the amount you would like to deposit.",
                     "icon_label": "Stellar Development Foundation",
-                    "icon_path": "images/company-icon.png"
+                    "icon_path": "images/company-icon.png",
+                    # custom field passed by the anchor
+                    "username": "John.Doe"
                 }
 
         `title` is the browser tab's title, and `guidance` is shown as plain text on the
