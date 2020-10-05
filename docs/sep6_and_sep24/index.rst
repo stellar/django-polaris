@@ -155,7 +155,11 @@ Deposit Post-Processing
 Template Extensions
 ^^^^^^^^^^^^^^^^^^^
 
-Polaris uses Django's template system for defining the UI content rendered to users, and these templates can be written in a way that allows others to override or extend them. Specifically, Polaris' templates have the following inheritance structure:
+.. _`Django's template system`: https://docs.djangoproject.com/en/3.1/ref/templates/
+.. _`template syntax documentation`: https://docs.djangoproject.com/en/3.1/ref/templates/language/#
+.. _`block documentation`: https://docs.djangoproject.com/en/3.1/ref/templates/language/#template-inheritance
+
+Polaris uses `Django's template system`_ for defining the UI content rendered to users, and these templates can be written in a way that allows others to override or extend them. Specifically, Polaris' templates have the following inheritance structure:
 
 - ``templates/polaris/base.html``
     - ``templates/polaris/deposit.html``
@@ -183,7 +187,7 @@ For example, the SDF's reference server extends ``base.html`` by creating an HTM
 
     {% endblock %}
 
-The ``extra_body`` block adds ``<script>`` tags for a Google Analytics and a local script within the app's ``static`` directory that requests the email confirmation status of the user on page focus, improving UX. If you're unfamiliar with the syntax of Django's templates, check out the documentation, specifically the ``block`` documentation. The ``extra_head`` template block is ideal for linking anchor-defined CSS files or other resources that must load before the page is displayed.
+The ``extra_body`` block adds ``<script>`` tags for a Google Analytics and a local script within the app's ``static`` directory that requests the email confirmation status of the user on page focus, improving UX. If you're unfamiliar with the syntax of Django's templates, check out the `Template Syntax documentation`_ and particularly the `block documentation`_. The ``extra_head`` template block is ideal for linking anchor-defined CSS files or other resources that must load before the page is displayed.
 
 Note that the content rendered within ``extra_body`` and ``extra_head`` is in addition to the content defined by Polaris' templates. If you wish to replace a template completely, create a file with the same relative path from the `templates` directory but do not use the ``extend`` keyword. Instead, simply write a Django template that does not extend one defined by Polaris.
 
