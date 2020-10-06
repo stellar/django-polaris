@@ -42,8 +42,9 @@ from polaris.integrations import (
     registered_deposit_integration as rdi,
     registered_scripts_func,
     registered_fee_func,
-    registered_toml_func,
     calculate_fee,
+    registered_toml_func,
+    scripts,
 )
 
 logger = getLogger(__name__)
@@ -149,7 +150,14 @@ def post_interactive_deposit(request: Request) -> Response:
             )
             or {}
         )
-        scripts = registered_scripts_func({"form": form, **content})
+        if registered_scripts_func is not scripts:
+            logger.warning(
+                "DEPRECATED: the `scripts` Polaris integration function will be "
+                "removed in Polaris 2.0 in favor of allowing the anchor to override "
+                "and extend Polaris' Django templates. See the Template Extensions "
+                "documentation for more information."
+            )
+        template_scripts = registered_scripts_func({"form": form, **content})
 
         url_args = {"transaction_id": transaction.id, "asset_code": asset.code}
         if callback:
@@ -163,12 +171,12 @@ def post_interactive_deposit(request: Request) -> Response:
             form=form,
             post_url=post_url,
             get_url=get_url,
-            scripts=scripts,
+            scripts=template_scripts,
             operation=settings.OPERATION_DEPOSIT,
             asset=asset,
             use_fee_endpoint=registered_fee_func != calculate_fee,
         )
-        return Response(content, template_name="deposit/form.html", status=422)
+        return Response(content, template_name="polaris/deposit.html", status=422)
 
 
 @api_view(["GET"])
@@ -256,10 +264,17 @@ def get_interactive_deposit(request: Request) -> Response:
     elif content is None:
         content = {}
 
+    if registered_scripts_func is not scripts:
+        logger.warning(
+            "DEPRECATED: the `scripts` Polaris integration function will be "
+            "removed in Polaris 2.0 in favor of allowing the anchor to override "
+            "and extend Polaris' Django templates. See the Template Extensions "
+            "documentation for more information."
+        )
     if form:
-        scripts = registered_scripts_func({"form": form, **content})
+        template_scripts = registered_scripts_func({"form": form, **content})
     else:
-        scripts = registered_scripts_func(content)
+        template_scripts = registered_scripts_func(content)
 
     url_args = {"transaction_id": transaction.id, "asset_code": asset.code}
     if callback:
@@ -274,14 +289,14 @@ def get_interactive_deposit(request: Request) -> Response:
         form=form,
         post_url=post_url,
         get_url=get_url,
-        scripts=scripts,
+        scripts=template_scripts,
         operation=settings.OPERATION_DEPOSIT,
         asset=asset,
         use_fee_endpoint=registered_fee_func != calculate_fee,
         org_logo_url=toml_data.get("DOCUMENTATION", {}).get("ORG_LOGO"),
     )
 
-    return Response(content, template_name="deposit/form.html")
+    return Response(content, template_name="polaris/deposit.html")
 
 
 @api_view(["POST"])

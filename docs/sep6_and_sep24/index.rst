@@ -75,21 +75,6 @@ The last step is to collect the static files Polaris provides into your app:
 
     python manage.py collectstatic --no-input
 
-Replacing Polaris UI Assets
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-.. _here: https://github.com/stellar/django-polaris/tree/master/polaris/polaris/static/polaris
-
-Its also possible to replace the static assets from Polaris. This allows anchors
-to customize the UI's appearance. For example, you can replace Polaris' `base.css`
-file to give the interactive flow pages a different look. You can do this by adding
-your own `polaris/base.css` file to your app's static directory.
-
-In general, replacement asset files (.html, .css, etc.) must have the same path and
-name of the file its replacing. See the structure of Polaris' static assets
-directory here_.
-
-See the documentation on `serving static files`_ in Django for more information.
 
 SEP-24 Configuration
 --------------------
@@ -156,20 +141,31 @@ set of integration functions for anchors to implement themselves.
 
 .. _fee_integration:
 
-Fee Integration
-^^^^^^^^^^^^^^^
+Template Extensions
+^^^^^^^^^^^^^^^^^^^
+
+Polaris comes with a good looking interface out of the box, but it also allows anchors to override, extend, or replace Django Templates used to render web pages to the user. Check out the :doc:`Templates</templates/index>` documentation for more info.
+
+Custom Fee Calculation
+^^^^^^^^^^^^^^^^^^^^^^
 
 .. autofunction:: polaris.integrations.calculate_fee
-
-Deposit Instructions
-^^^^^^^^^^^^^^^^^^^^
-
-.. autofunction:: polaris.integrations.DepositIntegration.instructions_for_pending_deposit
 
 Deposit Post-Processing
 ^^^^^^^^^^^^^^^^^^^^^^^
 
 .. autofunction:: polaris.integrations.DepositIntegration.after_deposit
+
+Static Asset Replacement
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. _here: https://github.com/stellar/django-polaris/tree/master/polaris/polaris/static/polaris
+
+Similar to Polaris' templates, Polaris' static assets can also be replaced by creating a file with a matching path relative to it's app's `static` directory. This allows anchors to customize the UI's appearance. For example, you can replace Polaris' `base.css` file to give the interactive flow pages a different look using your own `polaris/base.css` file.
+
+Note that if you would like to add CSS styling in addition to what Polaris provides, you should extend the Polaris template and define an ``extra_head`` block containing the associated ``link`` tags.
+
+In general, replacement asset files (.html, .css, etc.) must have the same path and name of the file its replacing. See the structure of Polaris' static assets directory here_.
 
 SEP-6 Integrations
 ------------------
@@ -244,12 +240,6 @@ parameter can also be included in the URL.
 .. autofunction:: polaris.integrations.DepositIntegration.interactive_url
 
 .. autofunction:: polaris.integrations.WithdrawalIntegration.interactive_url
-
-
-Javascript Integration
-^^^^^^^^^^^^^^^^^^^^^^
-
-.. autofunction:: polaris.integrations.scripts
 
 Running the Service
 ===================

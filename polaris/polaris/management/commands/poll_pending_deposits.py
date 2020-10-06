@@ -165,7 +165,7 @@ class Command(BaseCommand):
                     "amount_in field of a Transaction object returned"
                 )
             elif transaction.amount_fee is None:
-                if registered_fee_func == calculate_fee:
+                if registered_fee_func is calculate_fee:
                     transaction.amount_fee = calculate_fee(
                         {
                             "amount": transaction.amount_in,

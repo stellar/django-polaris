@@ -108,7 +108,7 @@ class Command(BaseCommand):
                 Transaction.STATUS.completed,
             ]:
                 if transaction.amount_fee is None:
-                    if registered_fee_func == calculate_fee:
+                    if registered_fee_func is calculate_fee:
                         op = {
                             Transaction.KIND.withdrawal: settings.OPERATION_WITHDRAWAL,
                             Transaction.KIND.send: Transaction.KIND.send,

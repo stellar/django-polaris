@@ -1,0 +1,23 @@
+{% extends "polaris/base.html" %} {% load static %} {% load i18n %}
+
+{% trans "Confirm Email" as ce %}
+
+{% block extra_body %}
+
+    <script src="https://www.googletagmanager.com/gtag/js?id=UA-53373928-6" async></script>
+    <script src="{% static 'sep24_scripts/google_analytics.js' %}"></script>
+
+    {% if form is None and title == ce %}
+
+        {# Refresh the confirm email page whenever the user brings the popup #}
+        {# back into focus. This is not strictly necessary since deposit.html #}
+        {# and withdraw.html have 'Refresh' buttons, but this is a better UX. #}
+        <script src="{% static 'sep24_scripts/check_email_confirmation.js' %}"></script>
+        {# Add a "Skip Confirmation" button that will make a GET request to the #}
+        {# skip confirmation endpoint and reload the page. The email confirmation #}
+        {# functionality is just for sake of demonstration anyway. #}
+        <script src="{% static 'sep24_scripts/add_skip_confirmation_btn.js' %}"></script>
+
+    {% endif %}
+
+{% endblock %}

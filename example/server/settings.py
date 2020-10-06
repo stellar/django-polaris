@@ -160,5 +160,6 @@ LOGGING = {
     "loggers": {
         "server": {"handlers": ["console"], "propogate": False, "level": "DEBUG"},
         "polaris": {"handlers": ["console"], "propogate": False, "level": "DEBUG"},
+        "django": {"handlers": ["console"], "propogate": False, "level": "INFO"},
     },
 }

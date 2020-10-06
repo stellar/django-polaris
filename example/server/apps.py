@@ -13,7 +13,6 @@ class AnchorConfig(AppConfig):
             MySEP31ReceiverIntegration,
             MyRailsIntegration,
             toml_integration,
-            scripts_integration,
             fee_integration,
             info_integration,
         )
@@ -22,7 +21,6 @@ class AnchorConfig(AppConfig):
             deposit=MyDepositIntegration(),
             withdrawal=MyWithdrawalIntegration(),
             toml=toml_integration,
-            scripts=scripts_integration,
             fee=fee_integration,
             sep6_info=info_integration,
             customer=MyCustomerIntegration(),

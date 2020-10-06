@@ -16,7 +16,6 @@ from django.core.mail import send_mail
 from django.conf import settings as server_settings
 from django.template.loader import render_to_string
 from stellar_sdk.keypair import Keypair
-from stellar_sdk import TransactionBuilder
 
 from polaris.models import Transaction, Asset
 from polaris.templates import Template
@@ -159,30 +158,6 @@ class SEP24KYC:
 
 
 class MyDepositIntegration(DepositIntegration):
-    def instructions_for_pending_deposit(self, transaction: Transaction):
-        """
-        This function provides a message to the user containing instructions for
-        how to initiate a bank deposit to the anchor's account.
-
-        This particular implementation generates and provides a unique memo to
-        match an incoming deposit to the user, but there are many ways of
-        accomplishing this. If you collect KYC information like the user's
-        bank account number, that could be used to match the deposit and user
-        as well.
-        """
-        # Generate a unique alphanumeric memo string to identify bank deposit
-        memo = b64encode(str(hash(transaction)).encode()).decode()[:10].upper()
-        return (
-            _(
-                "Include this code as the memo when making the deposit: "
-                "<strong>%s</strong>. We will use "
-                "this memo to identify you as the sender.\n(This deposit is "
-                "automatically confirmed for demonstration purposes. Please "
-                "wait.)"
-            )
-            % memo
-        )
-
     def form_for_transaction(
         self, transaction: Transaction, post_data=None, amount=None
     ) -> Optional[forms.Form]:
@@ -217,6 +192,9 @@ class MyDepositIntegration(DepositIntegration):
             return {
                 "title": _("Polaris Transaction Information"),
                 "icon_label": _("Stellar Development Foundation"),
+                "memo": b64encode(str(hash(transaction)).encode())
+                .decode()[:10]
+                .upper(),
             }
 
     def after_form_validation(self, form: forms.Form, transaction: Transaction):
@@ -817,37 +795,6 @@ def toml_integration():
             }
         ],
     }
-
-
-def scripts_integration(page_content: Optional[Dict]):
-
-    scripts = [
-        # Google Analytics
-        # <!-- Global site tag (gtag.js) - Google Analytics -->
-        TemplateScript(
-            url="https://www.googletagmanager.com/gtag/js?id=UA-53373928-6",
-            is_async=True,
-        ),
-        TemplateScript(path="sep24_scripts/google_analytics.js"),
-    ]
-
-    if (
-        page_content
-        and "form" not in page_content
-        and page_content.get("title") == CONFIRM_EMAIL_PAGE_TITLE
-    ):
-        # Refresh the confirm email page whenever the user brings the popup
-        # back into focus. This is not strictly necessary since deposit.html
-        # and withdraw.html have 'Refresh' buttons, but this is a better UX.
-        scripts.append(TemplateScript(path="sep24_scripts/check_email_confirmation.js"))
-        # Add a "Skip Confirmation" button that will make a GET request to the
-        # skip confirmation endpoint and reload the page. The email confirmation
-        # functionality is just for sake of demonstration anyway.
-        scripts.append(
-            TemplateScript(path="sep24_scripts/add_skip_confirmation_btn.js")
-        )
-
-    return scripts
 
 
 def fee_integration(fee_params: Dict) -> Decimal:

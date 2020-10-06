@@ -122,10 +122,11 @@ class DepositIntegration:
 
         Polaris will pass one of the following ``polaris.templates.Template`` values:
 
-        * Template.DEPOSIT
+        ``Template.DEPOSIT``
 
             The template used for deposit flows
-        * Template.MORE_INFO
+
+        ``Template.MORE_INFO``
 
             The template used to show transaction details
 
@@ -139,8 +140,9 @@ class DepositIntegration:
         confirming their email. In this case, make sure to return an appropriate
         `guidance` message.
 
-        Using this function, anchors can change the page title, replace the company icon shown
-        on each page and its label, and give guidance to the user.
+        Using this function, anchors pass key-value pairs to the template being rendered.
+        Some of these key-value pairs are used by Polaris, but anchors are allowed and
+        encouraged to extend Polaris' templates and pass custom key-value pairs.
         ::
 
             def content_for_template(template_name, form=None, transaction=None):
@@ -149,7 +151,9 @@ class DepositIntegration:
                     "title": "Deposit Transaction Form",
                     "guidance": "Please enter the amount you would like to deposit.",
                     "icon_label": "Stellar Development Foundation",
-                    "icon_path": "images/company-icon.png"
+                    "icon_path": "images/company-icon.png",
+                    # custom field passed by the anchor
+                    "username": "John.Doe"
                 }
 
         `title` is the browser tab's title, and `guidance` is shown as plain text on the
@@ -194,8 +198,14 @@ class DepositIntegration:
         """
         pass
 
-    def instructions_for_pending_deposit(self, transaction: Transaction):
+    def instructions_for_pending_deposit(self, transaction: Transaction) -> str:
         """
+        .. _`Template Extensions`:
+
+        **DEPRECATED**: This function will be removed in Polaris version 2.0 in favor
+        of allowing the anchor to override and extend Polaris' Django templates.
+        See the `Template Extensions`_ documentation for more information.
+
         For pending deposits, its common to show instructions to the user for how
         to initiate the external transfer. Use this function to return text or HTML
         instructions to be rendered in response to `/transaction/more_info`.
@@ -391,10 +401,11 @@ class WithdrawalIntegration:
         Same as ``DepositIntegration.content_for_template``, except the ``Template``
         values passed will be one of:
 
-        * Template.WITHDRAW
+        ``Template.WITHDRAW``
 
             The template used for withdraw flows
-        * Template.MORE_INFO
+
+        ``Template.MORE_INFO``
 
             The template used to show transaction details
 

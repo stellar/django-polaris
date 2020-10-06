@@ -9,16 +9,19 @@ from django.utils.translation import gettext as _
 
 from polaris import settings as polaris_settings
 from polaris.templates import Template
-from polaris.utils import render_error_response
+from polaris.utils import render_error_response, getLogger
 from polaris.models import Transaction, Asset
 from polaris.integrations import registered_fee_func
 from polaris.sep24.utils import verify_valid_asset_operation
 from polaris.shared.serializers import TransactionSerializer
 from polaris.integrations import (
     registered_deposit_integration as rdi,
-    registered_withdrawal_integration as rwi,
     registered_scripts_func,
+    scripts,
 )
+
+
+logger = getLogger(__name__)
 
 
 def more_info(request: Request, sep6: bool = False) -> Response:
@@ -37,7 +40,7 @@ def more_info(request: Request, sep6: bool = False) -> Response:
         request_transaction, context={"request": request, "sep6": sep6}
     )
     tx_json = json.dumps({"transaction": serializer.data})
-    resp_data = {
+    context = {
         "tx_json": tx_json,
         "amount_in": serializer.data.get("amount_in"),
         "amount_out": serializer.data.get("amount_out"),
@@ -45,28 +48,30 @@ def more_info(request: Request, sep6: bool = False) -> Response:
         "transaction": request_transaction,
         "asset_code": request_transaction.asset.code,
     }
-    if request_transaction.kind == Transaction.KIND.deposit:
-        content = rdi.content_for_template(
-            Template.MORE_INFO, transaction=request_transaction
-        )
-        if request_transaction.status == Transaction.STATUS.pending_user_transfer_start:
-            resp_data["instructions"] = rdi.instructions_for_pending_deposit(
-                request_transaction
-            )
-    else:
-        content = rwi.content_for_template(
-            Template.MORE_INFO, transaction=request_transaction
+    content = rdi.content_for_template(
+        Template.MORE_INFO, transaction=request_transaction
+    )
+    if content:
+        context.update(content)
+    if request_transaction.status == Transaction.STATUS.pending_user_transfer_start:
+        context.update(
+            instructions=rdi.instructions_for_pending_deposit(request_transaction)
         )
 
-    resp_data["scripts"] = registered_scripts_func(content)
-    if content:
-        resp_data.update(content)
+    if registered_scripts_func is not scripts:
+        logger.warning(
+            "DEPRECATED: the `scripts` Polaris integration function will be "
+            "removed in Polaris 2.0 in favor of allowing the anchor to override "
+            "and extend Polaris' Django templates. See the Template Extensions "
+            "documentation for more information."
+        )
+    context["scripts"] = registered_scripts_func(content)
 
     callback = request.GET.get("callback")
     if callback:
-        resp_data["callback"] = callback
+        context["callback"] = callback
 
-    return Response(resp_data, template_name="transaction/more_info.html")
+    return Response(context, template_name="polaris/more_info.html")
 
 
 def transactions(request: Request, account: str, sep6: bool = False) -> Response:

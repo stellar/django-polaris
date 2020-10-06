@@ -22,6 +22,9 @@
         background-position: right 1em top 50%, 0 0;
       }
     </style>
+
+    {% block 'extra_head' %}
+    {% endblock %}
   </head>
   <body>
     {% block "header" %}
@@ -229,6 +232,10 @@
       <script src="{{ script.url }}" {% if script.is_async %}async{% endif %}></script>
       {% endif %}
     {% endfor %}
+
+    {# Rendered via custom extra_body template #}
+    {% block 'extra_body' %}
+    {% endblock %}
 
   </body>
 </html>
