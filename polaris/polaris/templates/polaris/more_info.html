@@ -16,10 +16,16 @@
             {{ instructions|safe }}
         </div>
     </div>
-    {% else %}
-    {# instructions, if present, came from the anchor's more_info extension #}
+    {% if transaction.status in ["pending_user_transfer_start", "pending_user"] %}
+
+    {# Instructions, if present, came from the anchor's more_info extension #}
+    {# Note that the anchor's block must detect if instructions are necessary #}
+    {# Polaris will render this block only if in the above statuses, but the anchor #}
+    {# must determine the appropriate instructions (or none) from their own context #}
+
     {% block "instructions" %}
     {% endblock %}
+
     {% endif %}
     <div class="info-item">
         <div class="info-label">
