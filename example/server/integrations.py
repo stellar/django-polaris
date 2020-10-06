@@ -189,13 +189,18 @@ class MyDepositIntegration(DepositIntegration):
                 "icon_label": _("Stellar Development Foundation"),
             }
         elif template == Template.MORE_INFO:
-            return {
+            content = {
                 "title": _("Polaris Transaction Information"),
                 "icon_label": _("Stellar Development Foundation"),
-                "memo": b64encode(str(hash(transaction)).encode())
-                .decode()[:10]
-                .upper(),
             }
+            if transaction.status == Transaction.STATUS.pending_user_transfer_start:
+                # We're waiting on the user to send an off-chain payment
+                content.update(
+                    memo=b64encode(str(hash(transaction)).encode())
+                    .decode()[:10]
+                    .upper()
+                )
+            return content
 
     def after_form_validation(self, form: forms.Form, transaction: Transaction):
         try:
