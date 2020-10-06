@@ -87,9 +87,8 @@ All attributes listed here have identical definitions to the above set of attrib
 ``Template.MORE_INFO``
 
 - `tx_json`: A JSON-serialized object matching the response body from ``/transactions``
-- `amount_in`: The amount sent to the anchor's off-chain account
-- `amount_out`: The amount send to the user's off-chain account
+- `amount_in`: The amount sent to the anchor's account
+- `amount_out`: The amount send to the user's account
 - `amount_fee`: The amount charged by the anchor for facilitating the transaction
 - `transaction`: The ``Transaction`` Polaris database object
 - `asset_code`: The code string representing the asset
-
