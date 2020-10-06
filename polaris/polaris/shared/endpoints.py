@@ -58,7 +58,7 @@ def more_info(request: Request, sep6: bool = False) -> Response:
             instructions=rdi.instructions_for_pending_deposit(request_transaction)
         )
 
-    if registered_scripts_func != scripts:
+    if registered_scripts_func is not scripts:
         logger.warning(
             "DEPRECATED: the `scripts` Polaris integration function will be "
             "removed in Polaris 2.0 in favor of allowing the anchor to override "

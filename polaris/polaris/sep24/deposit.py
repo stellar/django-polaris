@@ -150,7 +150,7 @@ def post_interactive_deposit(request: Request) -> Response:
             )
             or {}
         )
-        if registered_scripts_func != scripts:
+        if registered_scripts_func is not scripts:
             logger.warning(
                 "DEPRECATED: the `scripts` Polaris integration function will be "
                 "removed in Polaris 2.0 in favor of allowing the anchor to override "
@@ -264,7 +264,7 @@ def get_interactive_deposit(request: Request) -> Response:
     elif content is None:
         content = {}
 
-    if registered_scripts_func != scripts:
+    if registered_scripts_func is not scripts:
         logger.warning(
             "DEPRECATED: the `scripts` Polaris integration function will be "
             "removed in Polaris 2.0 in favor of allowing the anchor to override "

@@ -21,7 +21,7 @@ def _get_asset_info(asset: Asset, op_type: str) -> Dict:
         "min_amount": getattr(asset, f"{op_type}_min_amount"),
         "max_amount": getattr(asset, f"{op_type}_max_amount"),
     }
-    if registered_fee_func == calculate_fee:
+    if registered_fee_func is calculate_fee:
         # the anchor has not replaced the default fee function
         # so `fee_fixed` and `fee_percent` are still relevant.
         asset_info.update(
