@@ -16,9 +16,8 @@ from polaris.sep24.utils import verify_valid_asset_operation
 from polaris.shared.serializers import TransactionSerializer
 from polaris.integrations import (
     registered_deposit_integration as rdi,
-    registered_withdrawal_integration as rwi,
     registered_scripts_func,
-    calculate_fee,
+    scripts,
 )
 
 
@@ -59,7 +58,7 @@ def more_info(request: Request, sep6: bool = False) -> Response:
             instructions=rdi.instructions_for_pending_deposit(request_transaction)
         )
 
-    if registered_scripts_func != calculate_fee:
+    if registered_scripts_func != scripts:
         logger.warning(
             "DEPRECATED: the `scripts` Polaris integration function will be "
             "removed in Polaris 2.0 in favor of allowing the anchor to override "
