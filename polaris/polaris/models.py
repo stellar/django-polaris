@@ -1,5 +1,4 @@
 """This module defines the models used by Polaris."""
-import sys
 import uuid
 import json
 import decimal
@@ -230,18 +229,6 @@ class Asset(TimeStampedModel):
     symbol = models.TextField(default="$")
     """The symbol used in HTML pages when displaying amounts of this asset"""
 
-    distribution_account_signers = models.TextField(null=True, blank=True)
-    """The JSON-serialized signers object returned from Horizon"""
-
-    distribution_account_thresholds = models.TextField(null=True, blank=True)
-    """The JSON-serialized thresholds object returned from Horizon"""
-
-    distribution_account_master_signer = models.TextField(null=True, blank=True)
-    """
-    The JSON-serialized object returned from Horizon for the object containing 
-    the account's public key, if present.
-    """
-
     updated_at = models.DateTimeField(default=utc_now)
     """
     Updated on every instance ``.save()`` call. Note that multi-object write
@@ -260,13 +247,49 @@ class Asset(TimeStampedModel):
             return None
         return Keypair.from_secret(str(self.distribution_seed)).public_key
 
-    def save(self, *args, **kwargs):
-        """
-        Writes any changes made to the model instance in memory to the
-        database. Explictly updates ``updated_at``.
-        """
-        self.updated_at = utc_now()
-        super().save(*args, **kwargs)
+    @property
+    def distribution_account_master_signer(self):
+        if self.distribution_account and not self._distribution_account_loaded():
+            self.load_distribution_account_data()
+        return self._distribution_account_master_signer
+
+    @property
+    def distribution_account_thresholds(self):
+        if self.distribution_account and not self._distribution_account_loaded():
+            self.load_distribution_account_data()
+        return self._distribution_account_thresholds
+
+    @property
+    def distribution_account_signers(self):
+        if self.distribution_account and not self._distribution_account_loaded():
+            self.load_distribution_account_data()
+        return self._distribution_account_signers
+
+    def _distribution_account_loaded(self):
+        return self.distribution_account and all(
+            f is not None
+            for f in [
+                self._distribution_account_master_signer,
+                self.distribution_account_signers,
+                self.distribution_account_thresholds,
+            ]
+        )
+
+    def load_distribution_account_data(self):
+        from polaris import settings
+
+        account_json = (
+            settings.HORIZON_SERVER.accounts()
+            .account_id(account_id=self.distribution_account)
+            .call()
+        )
+        self._distribution_account_signers = account_json["signers"]
+        self._distribution_account_thresholds = account_json["thresholds"]
+        self._distribution_account_master_signer = None
+        for s in account_json["signers"]:
+            if s["key"] == self.distribution_account:
+                self._distribution_account_master_signer = s
+                break
 
     class Meta:
         app_label = "polaris"

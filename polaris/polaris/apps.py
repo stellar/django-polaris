@@ -12,10 +12,9 @@ class PolarisConfig(AppConfig):
         Initialize the app
         """
         from django.conf import settings as django_settings
+        from polaris import settings  # loads internal settings
         from polaris import cors  # loads CORS signals
         from polaris.sep24.utils import check_sep24_config
-        from polaris.models import Asset, utc_now
-        from polaris import settings
 
         if not hasattr(django_settings, "POLARIS_ACTIVE_SEPS"):
             raise AttributeError(
@@ -24,16 +23,6 @@ class PolarisConfig(AppConfig):
 
         self.check_middleware()
         self.check_protocol()
-
-        # If configured, refreshes each Asset's distribution account signers and
-        # weights. Limits the refresh interval to once per minute to block Polaris'
-        # multiprocess architecture from making an API call and DB query for every
-        # process running.
-        if settings.REFRESH_ASSETS_ON_STARTUP:
-            for asset in Asset.objects.filter(distribution_seed__isnull=False):
-                if utc_now() - asset.updated_at > timedelta(minutes=1):
-                    self.refresh_distribution_account(asset)
-
         if "sep-24" in django_settings.POLARIS_ACTIVE_SEPS:
             check_sep24_config()
 
@@ -67,21 +56,3 @@ class PolarisConfig(AppConfig):
                 "SECURE_PROXY_SSL_HEADER should only be set if Polaris is "
                 "running behind an HTTPS reverse proxy."
             )
-
-    @staticmethod
-    def refresh_distribution_account(asset):
-        from polaris import settings
-
-        account_json = (
-            settings.HORIZON_SERVER.accounts()
-            .account_id(account_id=asset.distribution_account)
-            .call()
-        )
-        asset.distribution_account_signers = json.dumps(account_json["signers"])
-        asset.distribution_account_thresholds = json.dumps(account_json["thresholds"])
-        asset.distribution_account_master_signer = None
-        for s in account_json["signers"]:
-            if s["key"] == asset.distribution_account:
-                asset.distribution_account_master_signer = json.dumps(s)
-                break
-        asset.save()
