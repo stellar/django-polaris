@@ -1,4 +1,5 @@
 import json
+from datetime import timedelta
 from django.apps import AppConfig
 
 
@@ -10,18 +11,11 @@ class PolarisConfig(AppConfig):
         """
         Initialize the app
         """
-        from polaris import settings  # ensures internal settings are set
-        from polaris import cors  # loads CORS signals
-        from polaris.models import Asset, utc_now
-
-        self.check_config()
-        if settings.REFRESH_ASSETS_ON_STARTUP:
-            for asset in Asset.objects.filter(distribution_seed__isnull=False):
-                self.refresh_distribution_account(asset)
-
-    def check_config(self):
         from django.conf import settings as django_settings
+        from polaris import cors  # loads CORS signals
         from polaris.sep24.utils import check_sep24_config
+        from polaris.models import Asset, utc_now
+        from polaris import settings
 
         if not hasattr(django_settings, "POLARIS_ACTIVE_SEPS"):
             raise AttributeError(
@@ -30,6 +24,16 @@ class PolarisConfig(AppConfig):
 
         self.check_middleware()
         self.check_protocol()
+
+        # If configured, refreshes each Asset's distribution account signers and
+        # weights. Limits the refresh interval to once per minute to block Polaris'
+        # multiprocess architecture from making an API call and DB query for every
+        # process running.
+        if settings.REFRESH_ASSETS_ON_STARTUP:
+            for asset in Asset.objects.filter(distribution_seed__isnull=False):
+                if utc_now() - asset.updated_at > timedelta(minutes=1):
+                    self.refresh_distribution_account(asset)
+
         if "sep-24" in django_settings.POLARIS_ACTIVE_SEPS:
             check_sep24_config()
 

@@ -242,6 +242,13 @@ class Asset(TimeStampedModel):
     the account's public key, if present.
     """
 
+    updated_at = models.DateTimeField(default=utc_now)
+    """
+    Updated on every instance ``.save()`` call. Note that multi-object write
+    queries do not call ``.save()``, such as ``Asset.objects.update(...)``.
+    This means such queries must include the a value for ``update_at``.
+    """
+
     objects = models.Manager()
 
     @property
@@ -252,6 +259,14 @@ class Asset(TimeStampedModel):
         if not self.distribution_seed:
             return None
         return Keypair.from_secret(str(self.distribution_seed)).public_key
+
+    def save(self, *args, **kwargs):
+        """
+        Writes any changes made to the model instance in memory to the
+        database. Explictly updates ``updated_at``.
+        """
+        self.updated_at = utc_now()
+        super().save(*args, **kwargs)
 
     class Meta:
         app_label = "polaris"
