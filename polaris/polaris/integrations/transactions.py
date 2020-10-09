@@ -126,6 +126,10 @@ class DepositIntegration:
 
             The template used for deposit flows
 
+        ``Template.WITHDRAW``
+
+            The template used for withdrawal flows
+
         ``Template.MORE_INFO``
 
             The template used to show transaction details
