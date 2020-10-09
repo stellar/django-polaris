@@ -14,9 +14,6 @@ class Migration(migrations.Migration):
         ),
         migrations.RemoveField(model_name="asset", name="distribution_account_signers"),
         migrations.RemoveField(
-            model_name="asset", name="distribution_account_signer_weights"
-        ),
-        migrations.RemoveField(
             model_name="asset", name="distribution_account_thresholds"
         ),
     ]

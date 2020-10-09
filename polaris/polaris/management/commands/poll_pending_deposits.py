@@ -159,6 +159,10 @@ class Command(BaseCommand):
         for transaction in ready_transactions:
             if module.TERMINATE:
                 break
+            elif transaction.kind != Transaction.KIND.deposit:
+                raise CommandError(
+                    "A non-deposit Transaction was returned from poll_pending_deposits()"
+                )
             elif transaction.amount_in is None:
                 raise CommandError(
                     "poll_pending_deposits() did not assign a value to the "

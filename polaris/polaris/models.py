@@ -90,6 +90,17 @@ class EncryptedTextField(models.TextField):
 
 
 class Asset(TimeStampedModel):
+    def __init__(self, *args, **kwargs):
+        self._distribution_account_signers = kwargs.pop(
+            "distribution_account_signers", None
+        )
+        self._distribution_account_master_signer = kwargs.pop(
+            "distribution_account_master_signer", None
+        )
+        self._distribution_account_thresholds = kwargs.pop(
+            "distribution_account_thresholds", None
+        )
+        super().__init__(*args, **kwargs)
 
     code = models.TextField()
     """The asset code as defined on the Stellar network."""
@@ -257,8 +268,8 @@ class Asset(TimeStampedModel):
             f is not None
             for f in [
                 self._distribution_account_master_signer,
-                self.distribution_account_signers,
-                self.distribution_account_thresholds,
+                self._distribution_account_signers,
+                self._distribution_account_thresholds,
             ]
         )
 
@@ -270,12 +281,12 @@ class Asset(TimeStampedModel):
             .account_id(account_id=self.distribution_account)
             .call()
         )
-        self._distribution_account_signers = account_json["signers"]
-        self._distribution_account_thresholds = account_json["thresholds"]
+        self._distribution_account_signers = json.dumps(account_json["signers"])
+        self._distribution_account_thresholds = json.dumps(account_json["thresholds"])
         self._distribution_account_master_signer = None
         for s in account_json["signers"]:
             if s["key"] == self.distribution_account:
-                self._distribution_account_master_signer = s
+                self._distribution_account_master_signer = json.dumps(s)
                 break
 
     class Meta:

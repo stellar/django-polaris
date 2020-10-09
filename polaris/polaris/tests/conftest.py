@@ -31,22 +31,22 @@ def fixture_usd_asset_factory():
         Creates a test USD asset that composes the example /info response, according
         to https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md#response-2
         """
+        signer = {
+            "key": Keypair.from_secret(USD_DISTRIBUTION_SEED).public_key,
+            "weight": 1,
+            "type": "ed25519_public_key",
+        }
         if not protocols:
             protocols = [Transaction.PROTOCOL.sep24]
         usd_asset = Asset(
             code="USD",
             issuer=USD_ISSUER_ACCOUNT,
             distribution_seed=USD_DISTRIBUTION_SEED,
-            distribution_account_signers=json.dumps(
-                {
-                    "key": Keypair.from_secret(USD_DISTRIBUTION_SEED).public_key,
-                    "weight": 1,
-                    "type": "ed25519_public_key",
-                }
-            ),
+            distribution_account_signers=json.dumps([signer]),
             distribution_account_thresholds=json.dumps(
                 {"low_threshold": 0, "med_threshold": 1, "high_threshold": 1}
             ),
+            distribution_account_master_signer=json.dumps(signer),
             significant_decimals=2,
             # Deposit Info
             deposit_enabled=True,
@@ -75,6 +75,16 @@ def fixture_usd_asset_factory():
     return create_usd_asset
 
 
+@pytest.fixture(scope="session", autouse=True)
+def fixture_no_asset_distribution_account_updates():
+    from polaris import models
+
+    tmp = models.Asset.load_distribution_account_data
+    models.Asset.load_distribution_account_data = Mock()
+    yield  # run tests, then in cleanup:
+    models.Asset.load_distribution_account_data = tmp
+
+
 @pytest.fixture(scope="session", name="eth_asset_factory")
 def fixture_eth_asset_factory():
     """Factory method fixture to populate the test database with an ETH asset."""
@@ -84,22 +94,22 @@ def fixture_eth_asset_factory():
         Creates a test ETH asset that composes the example /info response, according
         to https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md#response-2
         """
+        signer = {
+            "key": Keypair.from_secret(ETH_DISTRIBUTION_SEED).public_key,
+            "weight": 1,
+            "type": "ed25519_public_key",
+        }
         if not protocols:
             protocols = [Transaction.PROTOCOL.sep24]
         eth_asset = Asset(
             code="ETH",
             issuer=ETH_ISSUER_ACCOUNT,
             distribution_seed=ETH_DISTRIBUTION_SEED,
-            distribution_account_signers=json.dumps(
-                {
-                    "key": Keypair.from_secret(USD_DISTRIBUTION_SEED).public_key,
-                    "weight": 1,
-                    "type": "ed25519_public_key",
-                }
-            ),
+            distribution_account_signers=json.dumps([signer]),
             distribution_account_thresholds=json.dumps(
                 {"low_threshold": 0, "med_threshold": 1, "high_threshold": 1}
             ),
+            distribution_account_master_signer=json.dumps(signer),
             # Deposit Info
             deposit_enabled=True,
             deposit_fee_fixed=0.002,
