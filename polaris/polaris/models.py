@@ -27,12 +27,6 @@ from stellar_sdk.transaction_envelope import TransactionEnvelope
 from stellar_sdk.exceptions import SdkError
 
 
-# This dictionary acts as an in-memory indication of whether or not
-# the Asset object's distribution account fields have been updated
-# since this process started.
-ASSET_DISTRIBUTION_ACCOUNT_LOADED = {}
-
-
 def utc_now():
     return datetime.datetime.now(datetime.timezone.utc)
 
