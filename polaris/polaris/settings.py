@@ -32,10 +32,6 @@ elif hasattr(settings, "POLARIS_ENV_PATH"):
             f"Could not find env file at {settings.POLARIS_ENV_PATH}"
         )
 
-REFRESH_ASSETS_ON_STARTUP = (
-    env_or_settings("REFRESH_ASSETS_ON_STARTUP", bool=True) or False
-)
-
 SIGNING_SEED, SIGNING_KEY = None, None
 if "sep-10" in settings.POLARIS_ACTIVE_SEPS:
     SIGNING_SEED = env_or_settings("SIGNING_SEED")
