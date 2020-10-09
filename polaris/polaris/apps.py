@@ -1,3 +1,4 @@
+import json
 from django.apps import AppConfig
 
 
@@ -11,8 +12,12 @@ class PolarisConfig(AppConfig):
         """
         from polaris import settings  # ensures internal settings are set
         from polaris import cors  # loads CORS signals
+        from polaris.models import Asset, utc_now
 
         self.check_config()
+        if settings.REFRESH_ASSETS_ON_STARTUP:
+            for asset in Asset.objects.filter(distribution_seed__isnull=False):
+                self.refresh_distribution_account(asset)
 
     def check_config(self):
         from django.conf import settings as django_settings
@@ -58,3 +63,21 @@ class PolarisConfig(AppConfig):
                 "SECURE_PROXY_SSL_HEADER should only be set if Polaris is "
                 "running behind an HTTPS reverse proxy."
             )
+
+    @staticmethod
+    def refresh_distribution_account(asset):
+        from polaris import settings
+
+        account_json = (
+            settings.HORIZON_SERVER.accounts()
+            .account_id(account_id=asset.distribution_account)
+            .call()
+        )
+        asset.distribution_account_signers = json.dumps(account_json["signers"])
+        asset.distribution_account_thresholds = json.dumps(account_json["thresholds"])
+        asset.distribution_account_master_signer = None
+        for s in account_json["signers"]:
+            if s["key"] == asset.distribution_account:
+                asset.distribution_account_master_signer = json.dumps(s)
+                break
+        asset.save()

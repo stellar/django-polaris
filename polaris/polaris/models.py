@@ -38,26 +38,6 @@ def utc_now():
     return datetime.datetime.now(datetime.timezone.utc)
 
 
-def update_distribution_account_data(asset):
-    from polaris import settings
-
-    if not asset.distribution_seed:
-        return None
-    account_json = (
-        settings.HORIZON_SERVER.accounts()
-        .account_id(account_id=asset.distribution_account)
-        .call()
-    )
-    asset.distribution_account_signers = json.dumps(account_json["signers"])
-    asset.distribution_account_thresholds = json.dumps(account_json["thresholds"])
-    asset.distribution_account_master_signer = None
-    for s in account_json["signers"]:
-        if s["key"] == asset.distribution_account:
-            asset.distribution_account_master_signer = json.dumps(s)
-            break
-    asset.save()
-
-
 class PolarisChoices(Choices):
     """A subclass to change the verbose default string representation"""
 
@@ -117,17 +97,6 @@ class EncryptedTextField(models.TextField):
 
 
 class Asset(TimeStampedModel):
-    def __init__(self, *args, **kwargs):
-        """
-        Does the usual __init__() actions and ensures the asset's distribution account
-        information is up-to-date if it hasn't been pulled from Horizon since
-        application starup.
-        """
-        super().__init__(*args, **kwargs)
-        this = sys.modules[__name__]
-        if str(self) not in this.ASSET_DISTRIBUTION_ACCOUNT_LOADED:
-            update_distribution_account_data(self)
-            this.ASSET_DISTRIBUTION_ACCOUNT_LOADED[str(self)] = True
 
     code = models.TextField()
     """The asset code as defined on the Stellar network."""
@@ -277,6 +246,9 @@ class Asset(TimeStampedModel):
 
     @property
     def distribution_account(self):
+        """
+        The Stellar public key derived from `Asset.distribution_seed`
+        """
         if not self.distribution_seed:
             return None
         return Keypair.from_secret(str(self.distribution_seed)).public_key
