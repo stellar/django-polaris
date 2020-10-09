@@ -223,13 +223,6 @@ class Asset(TimeStampedModel):
     symbol = models.TextField(default="$")
     """The symbol used in HTML pages when displaying amounts of this asset"""
 
-    updated_at = models.DateTimeField(default=utc_now)
-    """
-    Updated on every instance ``.save()`` call. Note that multi-object write
-    queries do not call ``.save()``, such as ``Asset.objects.update(...)``.
-    This means such queries must include the a value for ``update_at``.
-    """
-
     objects = models.Manager()
 
     @property

@@ -9,9 +9,14 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AddField(
-            model_name="asset",
-            name="updated_at",
-            field=models.DateTimeField(default=polaris.models.utc_now),
+        migrations.RemoveField(
+            model_name="asset", name="distribution_account_master_signer"
+        ),
+        migrations.RemoveField(model_name="asset", name="distribution_account_signers"),
+        migrations.RemoveField(
+            model_name="asset", name="distribution_account_signer_weights"
+        ),
+        migrations.RemoveField(
+            model_name="asset", name="distribution_account_thresholds"
         ),
     ]
