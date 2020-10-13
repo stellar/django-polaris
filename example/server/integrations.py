@@ -755,53 +755,6 @@ class MyRailsIntegration(RailsIntegration):
         transaction.save()
 
 
-def toml_integration():
-    srt = Asset.objects.filter(code="SRT").first()
-    mult = Asset.objects.filter(code="MULT").first()
-    currencies = []
-    if srt:
-        currencies.append(
-            {
-                "code": srt.code.upper(),
-                "issuer": srt.issuer,
-                "status": "test",
-                "is_asset_anchored": False,
-                "anchor_asset_type": "other",
-                "desc": "A fake anchored asset to use with this example anchor server.",
-            }
-        )
-    if mult:
-        currencies.append(
-            {
-                "code": mult.code.upper(),
-                "issuer": mult.issuer,
-                "status": "test",
-                "is_asset_anchored": False,
-                "anchor_asset_type": "other",
-                "desc": "A fake anchored asset that has a multsig distribution account as an example.",
-            }
-        )
-    return {
-        "DOCUMENTATION": {
-            "ORG_NAME": "Stellar Development Foundation",
-            "ORG_URL": "https://stellar.org",
-            "ORG_DESCRIPTION": "SEP 24 reference server.",
-            "ORG_KEYBASE": "stellar.public",
-            "ORG_TWITTER": "StellarOrg",
-            "ORG_GITHUB": "stellar",
-        },
-        "CURRENCIES": currencies,
-        "PRINCIPALS": [
-            {
-                "name": "Jacob Urban",
-                "email": "jake@stellar.org",
-                "keybase": "jakeurban",
-                "github": "https://www.github.com/JakeUrban",
-            }
-        ],
-    }
-
-
 def fee_integration(fee_params: Dict) -> Decimal:
     """
     This function replaces the default registered_fee_func for demonstration

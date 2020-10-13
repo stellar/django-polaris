@@ -9,15 +9,23 @@ def get_stellar_toml():
     Replace this function with another by passing it to ``register_integrations()``
     as described in :doc:`Registering Integrations</register_integrations/index>`.
 
-    Polaris passes the dictionary returned from this function to the
-    `polaris/stellar.toml` Django Template. This template is extendable and
-    overrideable using :doc:`Template Extensions </templates/index>`.
+    The dictionary returned will be merged with Polaris' default attributes and serialized
+    using the ``toml.dumps()`` function. The output will be rendered in the HTTP response.
 
-    Polaris' `stellar.toml` default template contains the following SEP-1
-    attributes:
+    The base attributes provided by Polaris are:
 
-    :return: a dictionary containing variables to be passed to the stellar.toml template.
-        Typically these are SEP-1_ fields.
+    - `ACCOUNTS`
+    - `VERSION`
+    - `SIGNING_KEY`
+    - `NETWORK_PASSPHRASE`
+    - `TRANSFER_SERVER`
+    - `TRANSFER_SERVER_0024`
+    - `KYC_SERVER`
+    - `DIRECT_PAYMENT_SERVER`
+
+    The contents of the dictionary returned will overwrite the default matching key values.
+
+    :return: a dictionary of SEP-1_ attributes
     """
     return {
         "CURRENCIES": [
