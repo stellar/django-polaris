@@ -135,6 +135,8 @@ def create_stellar_deposit(
         transaction.save()
         raise ValueError(transaction.status_message)
 
+    # initialize claimable balance bool
+    claim_flag = False
     # if we don't know if the destination account exists
     if not destination_exists:
         try:
@@ -151,8 +153,8 @@ def create_stellar_deposit(
             # the account is pending_trust for the asset to be received
             if pending_trust and transaction.status != Transaction.STATUS.pending_trust:
                 transaction.status = Transaction.STATUS.pending_trust
+                claim_flag = True
                 transaction.save()
-            return False
 
     # if the distribution account's master signer's weight is great or equal to the its
     # medium threshold, verify the transaction is signed by it's channel account
