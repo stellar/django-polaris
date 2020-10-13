@@ -5,7 +5,7 @@ class TemplateScript:
     """
     **DEPRECATED**: `TemplateScript` objects will be removed in Polaris 2.0 in favor
     of allowing the anchor to override and extend Polaris' Django templates.
-    See the Template Extensions documentation for more information.
+    See the :doc:`Template Extensions</templates/index>` documentation for more information.
     """
 
     def __init__(self, path: str = None, url: str = None, is_async: bool = False):
@@ -25,15 +25,13 @@ class TemplateScript:
 def scripts(page_content: Optional[Dict]) -> List[TemplateScript]:
     """
     .. _`example reference server`: https://github.com/stellar/django-polaris/tree/master/example
-    .. _`Template Extensions`:
 
-    **DEPRECATED**: `TemplateScript` objects will be removed in Polaris 2.0 in favor
-    of allowing the anchor to override and extend Polaris' Django templates.
-    See the `Template Extensions`_ documentation for more information.
+    **DEPRECATED**: `TemplateScript` objects will be removed in Polaris 2.0 in favor of
+    allowing the anchor to override and extend Polaris' Django templates. See the
+    :doc:`Template Extensions</templates/index>` documentation for more information.
 
-    Replace this function with another by passing it to
-    ``register_integrations()`` as described in
-    :doc:`Registering Integrations</register_integrations/index>`.
+    Replace this function with another by passing it to ``register_integrations()`` as
+    described in :doc:`Registering Integrations</register_integrations/index>`.
 
     Return a list of TemplateScript objects containing script source file locations to be added 
     to the bottom of the HTML body served for the current request. The scripts

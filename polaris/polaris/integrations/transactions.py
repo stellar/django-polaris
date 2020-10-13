@@ -200,11 +200,9 @@ class DepositIntegration:
 
     def instructions_for_pending_deposit(self, transaction: Transaction) -> str:
         """
-        .. _`Template Extensions`:
-
         **DEPRECATED**: This function will be removed in Polaris version 2.0 in favor
         of allowing the anchor to override and extend Polaris' Django templates.
-        See the `Template Extensions`_ documentation for more information.
+        See the :doc:`Template Extensions</templates/index>` documentation for more information.
 
         For pending deposits, its common to show instructions to the user for how
         to initiate the external transfer. Use this function to return text or HTML

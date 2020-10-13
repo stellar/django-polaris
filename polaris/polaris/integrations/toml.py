@@ -1,4 +1,3 @@
-from polaris import settings
 from polaris.models import Asset
 
 
@@ -7,21 +6,18 @@ def get_stellar_toml():
     .. _SEP-1: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0001.md
     .. _`Account Info`: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0001.md#account-information
 
-    Replace this function with another by passing it to
-    ``register_integrations()`` as described in
-    :doc:`Registering Integrations</register_integrations/index>`.
+    Replace this function with another by passing it to ``register_integrations()``
+    as described in :doc:`Registering Integrations</register_integrations/index>`.
 
-    The function you pass to the `toml` parameter should return a
-    dictionary containing any of the following top level keys:
-    ``DOCUMENTATION`` - ``CURRENCIES`` - ``PRINCIPALS`` - ``VALIDATORS``
+    Polaris passes the dictionary returned from this function to the
+    `polaris/stellar.toml` Django Template. This template is extendable and
+    overrideable using :doc:`Template Extensions </templates/index>`.
 
-    You can also pass other top-level keys defined in the `Account Info`_
-    section such as ``VERSION``, but many of these keys are pre-populated based on
-    the variables defined in your `.env` file, so this isn't strictly necessary.
+    Polaris' `stellar.toml` default template contains the following SEP-1
+    attributes:
 
-    See SEP-1_ for more information on the stellar.toml format.
-
-    :return: a dictionary containing the fields defined in SEP-1_
+    :return: a dictionary containing variables to be passed to the stellar.toml template.
+        Typically these are SEP-1_ fields.
     """
     return {
         "CURRENCIES": [

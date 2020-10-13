@@ -8,17 +8,32 @@ https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0001.md
 
 import os
 
-import toml
-from django.http.response import HttpResponse
+from django.template.loader import get_template
 from django.conf import settings as django_settings
+from django.utils.encoding import smart_text
+from rest_framework.request import Request
+from rest_framework.response import Response
+from rest_framework.renderers import BaseRenderer
+from rest_framework.decorators import api_view, renderer_classes
 
 from polaris import settings
 from polaris.integrations import registered_toml_func
 from polaris.models import Asset
 
 
-def generate_toml(request):
-    """Generate the TOML file."""
+class PolarisTOMLRenderer(BaseRenderer):
+    media_type = "text/plain"
+    format = "txt"
+
+    def render(self, data, media_type=None, renderer_context=None):
+        template = get_template("polaris/stellar.toml")
+        return smart_text(template.render(data))
+
+
+@api_view(["GET"])
+@renderer_classes([PolarisTOMLRenderer])
+def generate_toml(request: Request) -> Response:
+    """Generate a TOML-formatted string or use the polaris/stellar.toml Template"""
     toml_dict = {
         "ACCOUNTS": [
             asset.distribution_account
@@ -28,7 +43,6 @@ def generate_toml(request):
         "SIGNING_KEY": settings.SIGNING_KEY,
         "NETWORK_PASSPHRASE": settings.STELLAR_NETWORK_PASSPHRASE,
     }
-
     if "sep-24" in django_settings.POLARIS_ACTIVE_SEPS:
         toml_dict["TRANSFER_SERVER"] = os.path.join(settings.HOST_URL, "sep24")
         toml_dict["TRANSFER_SERVER_SEP0024"] = toml_dict["TRANSFER_SERVER"]
@@ -42,5 +56,4 @@ def generate_toml(request):
         toml_dict["DIRECT_PAYMENT_SERVER"] = os.path.join(settings.HOST_URL, "sep31")
 
     toml_dict.update(registered_toml_func())
-
-    return HttpResponse(toml.dumps(toml_dict), content_type="text/plain")
+    return Response(toml_dict, template_name="polaris/stellar.toml")
