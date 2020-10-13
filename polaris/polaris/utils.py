@@ -136,7 +136,7 @@ def create_stellar_deposit(
         raise ValueError(transaction.status_message)
 
     # initialize claimable balance bool
-    claim_flag = False
+    claimable = False
     # if we don't know if the destination account exists
     if not destination_exists:
         try:
@@ -153,7 +153,7 @@ def create_stellar_deposit(
             # the account is pending_trust for the asset to be received
             if pending_trust and transaction.status != Transaction.STATUS.pending_trust:
                 transaction.status = Transaction.STATUS.pending_trust
-                claim_flag = True
+                claimable = True
                 transaction.save()
 
     # if the distribution account's master signer's weight is great or equal to the its
@@ -187,7 +187,7 @@ def create_stellar_deposit(
         transaction.envelope_xdr = envelope.to_xdr()
 
     try:
-        return submit_stellar_deposit(transaction, multisig=multisig)
+        return submit_stellar_deposit(transaction, multisig=multisig, claimable=claimable)
     except RuntimeError as e:
         transaction.status_message = str(e)
         transaction.status = Transaction.STATUS.error
@@ -228,7 +228,7 @@ def handle_bad_signatures_error(e, transaction, multisig=False):
     transaction.save()
 
 
-def submit_stellar_deposit(transaction, multisig=False) -> bool:
+def submit_stellar_deposit(transaction, multisig=False, claimable=False) -> bool:
     transaction.status = Transaction.STATUS.pending_stellar
     transaction.save()
     logger.info(f"Transaction {transaction.id} now pending_stellar")
