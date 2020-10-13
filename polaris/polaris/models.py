@@ -27,6 +27,10 @@ from stellar_sdk.transaction_envelope import TransactionEnvelope
 from stellar_sdk.exceptions import SdkError
 
 
+# Used for loading the distribution signers data onto an Asset obj
+ASSET_DISTRIBUTION_ACCOUNT_DATA = {}
+
+
 def utc_now():
     return datetime.datetime.now(datetime.timezone.utc)
 
@@ -276,17 +280,20 @@ class Asset(TimeStampedModel):
     def load_distribution_account_data(self):
         from polaris import settings
 
-        account_json = (
-            settings.HORIZON_SERVER.accounts()
-            .account_id(account_id=self.distribution_account)
-            .call()
-        )
-        self._distribution_account_signers = json.dumps(account_json["signers"])
-        self._distribution_account_thresholds = json.dumps(account_json["thresholds"])
+        if self.code in ASSET_DISTRIBUTION_ACCOUNT_DATA:
+            account_json = ASSET_DISTRIBUTION_ACCOUNT_DATA[self.code]
+        else:
+            account_json = (
+                settings.HORIZON_SERVER.accounts()
+                .account_id(account_id=self.distribution_account)
+                .call()
+            )
+        self._distribution_account_signers = account_json["signers"]
+        self._distribution_account_thresholds = account_json["thresholds"]
         self._distribution_account_master_signer = None
         for s in account_json["signers"]:
             if s["key"] == self.distribution_account:
-                self._distribution_account_master_signer = json.dumps(s)
+                self._distribution_account_master_signer = s
                 break
 
     class Meta:

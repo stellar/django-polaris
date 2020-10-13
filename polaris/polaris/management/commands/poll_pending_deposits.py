@@ -52,8 +52,8 @@ def execute_deposit(transaction: Transaction) -> bool:
 def check_for_multisig(transaction):
     master_signer = None
     if transaction.asset.distribution_account_master_signer:
-        master_signer = json.loads(transaction.asset.distribution_account_master_signer)
-    thresholds = json.loads(transaction.asset.distribution_account_thresholds)
+        master_signer = transaction.asset.distribution_account_master_signer
+    thresholds = transaction.asset.distribution_account_thresholds
     if not (master_signer and master_signer["weight"] >= thresholds["med_threshold"]):
         # master account is not sufficient
         transaction.pending_signatures = True

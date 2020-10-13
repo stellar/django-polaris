@@ -42,11 +42,13 @@ def fixture_usd_asset_factory():
             code="USD",
             issuer=USD_ISSUER_ACCOUNT,
             distribution_seed=USD_DISTRIBUTION_SEED,
-            distribution_account_signers=json.dumps([signer]),
-            distribution_account_thresholds=json.dumps(
-                {"low_threshold": 0, "med_threshold": 1, "high_threshold": 1}
-            ),
-            distribution_account_master_signer=json.dumps(signer),
+            distribution_account_signers=[signer],
+            distribution_account_thresholds={
+                "low_threshold": 0,
+                "med_threshold": 1,
+                "high_threshold": 1,
+            },
+            distribution_account_master_signer=signer,
             significant_decimals=2,
             # Deposit Info
             deposit_enabled=True,
@@ -105,11 +107,13 @@ def fixture_eth_asset_factory():
             code="ETH",
             issuer=ETH_ISSUER_ACCOUNT,
             distribution_seed=ETH_DISTRIBUTION_SEED,
-            distribution_account_signers=json.dumps([signer]),
-            distribution_account_thresholds=json.dumps(
-                {"low_threshold": 0, "med_threshold": 1, "high_threshold": 1}
-            ),
-            distribution_account_master_signer=json.dumps(signer),
+            distribution_account_signers=[signer],
+            distribution_account_thresholds={
+                "low_threshold": 0,
+                "med_threshold": 1,
+                "high_threshold": 1,
+            },
+            distribution_account_master_signer=signer,
             # Deposit Info
             deposit_enabled=True,
             deposit_fee_fixed=0.002,
