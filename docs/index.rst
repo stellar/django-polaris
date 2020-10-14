@@ -309,11 +309,12 @@ When you make changes locally, the docker containers will restart with the updat
 
 Testing
 ^^^^^^^
-You can install the dependencies locally in a virtual environment:
+First, ``cd`` into the ``polaris`` directory and create an ``.env`` file just like you did for ``example``. However, do not include ``LOCAL_MODE`` and make sure all URLs use HTTPS. This is done because Polaris tests functionality that is only run when ``LOCAL_MODE`` is not ``True``. When not in local mode, Polaris expects it's URLs to be HTTPS.
+
+Once you've created your ``.env`` file, you can install the dependencies locally in a virtual environment:
 ::
 
     pip install pipenv
-    cd django-polaris
     pipenv install --dev
     pipenv run pytest -c polaris/pytest.ini
 
