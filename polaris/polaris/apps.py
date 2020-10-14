@@ -1,5 +1,3 @@
-import json
-from datetime import timedelta
 from django.apps import AppConfig
 
 

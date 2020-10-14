@@ -28,7 +28,7 @@ from stellar_sdk.exceptions import SdkError
 
 
 # Used for loading the distribution signers data onto an Asset obj
-ASSET_DISTRIBUTION_ACCOUNT_DATA = {}
+ASSET_DISTRIBUTION_ACCOUNT_MAP = {}
 
 
 def utc_now():
@@ -268,10 +268,15 @@ class Asset(TimeStampedModel):
         return self._distribution_account_signers
 
     def _distribution_account_loaded(self):
+        """
+        Returns a boolean indicating if `load_distribution_account_data()`
+        has been called for this model instance. Note that
+        _distribution_account_master_signer is not included in this check,
+        since accounts could remove the master signer and add others.
+        """
         return self.distribution_account and all(
             f is not None
             for f in [
-                self._distribution_account_master_signer,
                 self._distribution_account_signers,
                 self._distribution_account_thresholds,
             ]
@@ -280,14 +285,16 @@ class Asset(TimeStampedModel):
     def load_distribution_account_data(self):
         from polaris import settings
 
-        if self.code in ASSET_DISTRIBUTION_ACCOUNT_DATA:
-            account_json = ASSET_DISTRIBUTION_ACCOUNT_DATA[self.code]
+        if (self.code, self.issuer) in ASSET_DISTRIBUTION_ACCOUNT_MAP:
+            account_json = ASSET_DISTRIBUTION_ACCOUNT_MAP[(self.code, self.issuer)]
         else:
             account_json = (
                 settings.HORIZON_SERVER.accounts()
                 .account_id(account_id=self.distribution_account)
                 .call()
             )
+            ASSET_DISTRIBUTION_ACCOUNT_MAP[(self.code, self.issuer)] = account_json
+
         self._distribution_account_signers = account_json["signers"]
         self._distribution_account_thresholds = account_json["thresholds"]
         self._distribution_account_master_signer = None
