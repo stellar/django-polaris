@@ -47,7 +47,8 @@ def calculate_fee(fee_params: Dict) -> Decimal:
         raise ValueError("invalid 'operation'")
 
     return round(
-        fee_fixed + (fee_percent / Decimal("100") * amount), asset.significant_decimals,
+        fee_fixed + (fee_percent / Decimal("100") * Decimal(amount)),
+        asset.significant_decimals,
     )
 
 
