@@ -98,7 +98,7 @@ def test_deposit_stellar_no_account(acc1_usd_deposit_transaction_factory):
     as it relies on network calls to Horizon.
     """
     deposit = acc1_usd_deposit_transaction_factory()
-    deposit.status = Transaction.STATUS.pending_anchor
+    deposit.status = Transaction.STATUS.pending_trust
     deposit.asset.distribution_account_signers = json.dumps(mock_account.signers)
     deposit.asset.distribution_account_thresholds = json.dumps(
         {
