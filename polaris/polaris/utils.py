@@ -158,8 +158,8 @@ def create_stellar_deposit(
     # medium threshold, verify the transaction is signed by it's channel account
     master_signer = None
     if transaction.asset.distribution_account_master_signer:
-        master_signer = json.loads(transaction.asset.distribution_account_master_signer)
-    thresholds = json.loads(transaction.asset.distribution_account_thresholds)
+        master_signer = transaction.asset.distribution_account_master_signer
+    thresholds = transaction.asset.distribution_account_thresholds
     if not (master_signer and master_signer["weight"] >= thresholds["med_threshold"]):
         multisig = True
         envelope = TransactionEnvelope.from_xdr(
@@ -364,10 +364,8 @@ def get_or_create_transaction_destination_account(
     except RuntimeError:
         master_signer = None
         if transaction.asset.distribution_account_master_signer:
-            master_signer = json.loads(
-                transaction.asset.distribution_account_master_signer
-            )
-        thresholds = json.loads(transaction.asset.distribution_account_thresholds)
+            master_signer = transaction.asset.distribution_account_master_signer
+        thresholds = transaction.asset.distribution_account_thresholds
         if master_signer and master_signer["weight"] >= thresholds["med_threshold"]:
             source_account_kp = Keypair.from_secret(transaction.asset.distribution_seed)
             source_account, _ = get_account_obj(source_account_kp)

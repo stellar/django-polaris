@@ -9,13 +9,9 @@ class PolarisConfig(AppConfig):
         """
         Initialize the app
         """
-        from polaris import settings  # ensures internal settings are set
-        from polaris import cors  # loads CORS signals
-
-        self.check_config()
-
-    def check_config(self):
         from django.conf import settings as django_settings
+        from polaris import settings  # loads internal settings
+        from polaris import cors  # loads CORS signals
         from polaris.sep24.utils import check_sep24_config
 
         if not hasattr(django_settings, "POLARIS_ACTIVE_SEPS"):

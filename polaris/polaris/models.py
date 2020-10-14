@@ -1,5 +1,4 @@
 """This module defines the models used by Polaris."""
-import sys
 import uuid
 import json
 import decimal
@@ -28,34 +27,12 @@ from stellar_sdk.transaction_envelope import TransactionEnvelope
 from stellar_sdk.exceptions import SdkError
 
 
-# This dictionary acts as an in-memory indication of whether or not
-# the Asset object's distribution account fields have been updated
-# since this process started.
-ASSET_DISTRIBUTION_ACCOUNT_LOADED = {}
+# Used for loading the distribution signers data onto an Asset obj
+ASSET_DISTRIBUTION_ACCOUNT_MAP = {}
 
 
 def utc_now():
     return datetime.datetime.now(datetime.timezone.utc)
-
-
-def update_distribution_account_data(asset):
-    from polaris import settings
-
-    if not asset.distribution_seed:
-        return None
-    account_json = (
-        settings.HORIZON_SERVER.accounts()
-        .account_id(account_id=asset.distribution_account)
-        .call()
-    )
-    asset.distribution_account_signers = json.dumps(account_json["signers"])
-    asset.distribution_account_thresholds = json.dumps(account_json["thresholds"])
-    asset.distribution_account_master_signer = None
-    for s in account_json["signers"]:
-        if s["key"] == asset.distribution_account:
-            asset.distribution_account_master_signer = json.dumps(s)
-            break
-    asset.save()
 
 
 class PolarisChoices(Choices):
@@ -118,16 +95,16 @@ class EncryptedTextField(models.TextField):
 
 class Asset(TimeStampedModel):
     def __init__(self, *args, **kwargs):
-        """
-        Does the usual __init__() actions and ensures the asset's distribution account
-        information is up-to-date if it hasn't been pulled from Horizon since
-        application starup.
-        """
+        self._distribution_account_signers = kwargs.pop(
+            "distribution_account_signers", None
+        )
+        self._distribution_account_master_signer = kwargs.pop(
+            "distribution_account_master_signer", None
+        )
+        self._distribution_account_thresholds = kwargs.pop(
+            "distribution_account_thresholds", None
+        )
         super().__init__(*args, **kwargs)
-        this = sys.modules[__name__]
-        if str(self) not in this.ASSET_DISTRIBUTION_ACCOUNT_LOADED:
-            update_distribution_account_data(self)
-            this.ASSET_DISTRIBUTION_ACCOUNT_LOADED[str(self)] = True
 
     code = models.TextField()
     """The asset code as defined on the Stellar network."""
@@ -261,25 +238,70 @@ class Asset(TimeStampedModel):
     symbol = models.TextField(default="$")
     """The symbol used in HTML pages when displaying amounts of this asset"""
 
-    distribution_account_signers = models.TextField(null=True, blank=True)
-    """The JSON-serialized signers object returned from Horizon"""
-
-    distribution_account_thresholds = models.TextField(null=True, blank=True)
-    """The JSON-serialized thresholds object returned from Horizon"""
-
-    distribution_account_master_signer = models.TextField(null=True, blank=True)
-    """
-    The JSON-serialized object returned from Horizon for the object containing 
-    the account's public key, if present.
-    """
-
     objects = models.Manager()
 
     @property
     def distribution_account(self):
+        """
+        The Stellar public key derived from `Asset.distribution_seed`
+        """
         if not self.distribution_seed:
             return None
         return Keypair.from_secret(str(self.distribution_seed)).public_key
+
+    @property
+    def distribution_account_master_signer(self):
+        if self.distribution_account and not self._distribution_account_loaded():
+            self.load_distribution_account_data()
+        return self._distribution_account_master_signer
+
+    @property
+    def distribution_account_thresholds(self):
+        if self.distribution_account and not self._distribution_account_loaded():
+            self.load_distribution_account_data()
+        return self._distribution_account_thresholds
+
+    @property
+    def distribution_account_signers(self):
+        if self.distribution_account and not self._distribution_account_loaded():
+            self.load_distribution_account_data()
+        return self._distribution_account_signers
+
+    def _distribution_account_loaded(self):
+        """
+        Returns a boolean indicating if `load_distribution_account_data()`
+        has been called for this model instance. Note that
+        _distribution_account_master_signer is not included in this check,
+        since accounts could remove the master signer and add others.
+        """
+        return self.distribution_account and all(
+            f is not None
+            for f in [
+                self._distribution_account_signers,
+                self._distribution_account_thresholds,
+            ]
+        )
+
+    def load_distribution_account_data(self):
+        from polaris import settings
+
+        if (self.code, self.issuer) in ASSET_DISTRIBUTION_ACCOUNT_MAP:
+            account_json = ASSET_DISTRIBUTION_ACCOUNT_MAP[(self.code, self.issuer)]
+        else:
+            account_json = (
+                settings.HORIZON_SERVER.accounts()
+                .account_id(account_id=self.distribution_account)
+                .call()
+            )
+            ASSET_DISTRIBUTION_ACCOUNT_MAP[(self.code, self.issuer)] = account_json
+
+        self._distribution_account_signers = account_json["signers"]
+        self._distribution_account_thresholds = account_json["thresholds"]
+        self._distribution_account_master_signer = None
+        for s in account_json["signers"]:
+            if s["key"] == self.distribution_account:
+                self._distribution_account_master_signer = s
+                break
 
     class Meta:
         app_label = "polaris"

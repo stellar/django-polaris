@@ -99,18 +99,6 @@ def test_deposit_stellar_no_account(acc1_usd_deposit_transaction_factory):
     """
     deposit = acc1_usd_deposit_transaction_factory()
     deposit.status = Transaction.STATUS.pending_anchor
-    deposit.asset.distribution_account_signers = json.dumps(mock_account.signers)
-    deposit.asset.distribution_account_thresholds = json.dumps(
-        {
-            "low_threshold": mock_account.thresholds.low_threshold,
-            "med_threshold": mock_account.thresholds.med_threshold,
-            "high_threshold": mock_account.thresholds.high_threshold,
-        }
-    )
-    deposit.asset.distribution_account_master_signer = json.dumps(
-        mock_account.signers[0]
-    )
-    deposit.asset.save()
     deposit.save()
     create_stellar_deposit(deposit)
     assert mock_server_no_account.submit_transaction.was_called
@@ -148,18 +136,6 @@ def test_deposit_stellar_success(acc1_usd_deposit_transaction_factory):
     """
     deposit = acc1_usd_deposit_transaction_factory()
     deposit.status = Transaction.STATUS.pending_anchor
-    deposit.asset.distribution_account_signers = json.dumps(mock_account.signers)
-    deposit.asset.distribution_account_thresholds = json.dumps(
-        {
-            "low_threshold": mock_account.thresholds.low_threshold,
-            "med_threshold": mock_account.thresholds.med_threshold,
-            "high_threshold": mock_account.thresholds.high_threshold,
-        }
-    )
-    deposit.asset.distribution_account_master_signer = json.dumps(
-        mock_account.signers[0]
-    )
-    deposit.asset.save()
     deposit.save()
     assert create_stellar_deposit(deposit)
     assert Transaction.objects.get(id=deposit.id).status == Transaction.STATUS.completed
@@ -196,18 +172,6 @@ def test_deposit_stellar_no_trustline(acc1_usd_deposit_transaction_factory):
     """
     deposit = acc1_usd_deposit_transaction_factory()
     deposit.status = Transaction.STATUS.pending_anchor
-    deposit.asset.distribution_account_signers = json.dumps(mock_account.signers)
-    deposit.asset.distribution_account_thresholds = json.dumps(
-        {
-            "low_threshold": mock_account.thresholds.low_threshold,
-            "med_threshold": mock_account.thresholds.med_threshold,
-            "high_threshold": mock_account.thresholds.high_threshold,
-        }
-    )
-    deposit.asset.distribution_account_master_signer = json.dumps(
-        mock_account.signers[0]
-    )
-    deposit.asset.save()
     deposit.save()
     assert not create_stellar_deposit(deposit)
     assert (

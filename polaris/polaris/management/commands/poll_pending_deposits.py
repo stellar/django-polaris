@@ -52,8 +52,8 @@ def execute_deposit(transaction: Transaction) -> bool:
 def check_for_multisig(transaction):
     master_signer = None
     if transaction.asset.distribution_account_master_signer:
-        master_signer = json.loads(transaction.asset.distribution_account_master_signer)
-    thresholds = json.loads(transaction.asset.distribution_account_thresholds)
+        master_signer = transaction.asset.distribution_account_master_signer
+    thresholds = transaction.asset.distribution_account_thresholds
     if not (master_signer and master_signer["weight"] >= thresholds["med_threshold"]):
         # master account is not sufficient
         transaction.pending_signatures = True
@@ -159,6 +159,10 @@ class Command(BaseCommand):
         for transaction in ready_transactions:
             if module.TERMINATE:
                 break
+            elif transaction.kind != Transaction.KIND.deposit:
+                raise CommandError(
+                    "A non-deposit Transaction was returned from poll_pending_deposits()"
+                )
             elif transaction.amount_in is None:
                 raise CommandError(
                     "poll_pending_deposits() did not assign a value to the "
