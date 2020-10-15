@@ -417,17 +417,32 @@ def create_transaction_envelope(transaction, source_account, claimable=False) ->
     )
     memo = make_memo(transaction.memo, transaction.memo_type)
     base_fee = settings.HORIZON_SERVER.fetch_base_fee()
-    builder = TransactionBuilder(
-        source_account=source_account,
-        network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
-        base_fee=base_fee,
-    ).append_payment_op(
-        destination=transaction.stellar_account,
-        asset_code=transaction.asset.code,
-        asset_issuer=transaction.asset.issuer,
-        amount=str(payment_amount),
-        source=transaction.asset.distribution_account,
-    )
+    if claimable:
+        claimant = Claimant(destination=transaction.stellar_account)
+        asset = Asset(code=transaction.asset.code,
+                      issuer=transaction.asset.issuer)
+        builder = TransactionBuilder(
+            source_account=source_account,
+            network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
+            base_fee=base_fee,
+        ).append_create_claimable_balance_op(
+            claimants=[claimant],
+            asset=asset,
+            amount=str(payment_amount),
+            source=transaction.asset.distribution_account,
+        )
+    else:
+        builder = TransactionBuilder(
+            source_account=source_account,
+            network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
+            base_fee=base_fee,
+        ).append_payment_op(
+            destination=transaction.stellar_account,
+            asset_code=transaction.asset.code,
+            asset_issuer=transaction.asset.issuer,
+            amount=str(payment_amount),
+            source=transaction.asset.distribution_account,
+        )
     if memo:
         builder.add_memo(memo)
     return builder.build()
