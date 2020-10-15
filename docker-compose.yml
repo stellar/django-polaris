@@ -30,16 +30,6 @@ services:
     depends_on:
       - server
     command: watchmedo auto-restart --recursive --pattern="*.py" --directory="." python manage.py watch_transactions
-  check_trustlines:
-    container_name: check_trustlines
-    build: .
-    volumes:
-      - ./polaris/polaris:/code/polaris/polaris
-      - ./example/server:/code/server
-      - ./example/data:/code/data
-    depends_on:
-      - server
-    command: watchmedo auto-restart --recursive --pattern="*.py" --directory="." python manage.py check_trustlines -- --loop
   poll_pending_deposits:
     container_name: poll_pending_deposits
     build: .
