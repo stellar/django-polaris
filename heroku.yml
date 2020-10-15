@@ -10,10 +10,6 @@ run:
     image: reference-server
     command:
       - python manage.py watch_transactions
-  check_trustlines:
-    image: reference-server
-    command:
-      - python manage.py check_trustlines --loop
   poll_pending_deposits:
     image: reference-server
     command:
