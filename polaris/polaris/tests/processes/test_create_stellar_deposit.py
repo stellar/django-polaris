@@ -169,7 +169,7 @@ no_trust_exp = BaseHorizonError(
     "polaris.utils.settings.HORIZON_SERVER",
     Mock(
         load_account=Mock(return_value=mock_account),
-        submit_transaction=Mock(side_effect=no_trust_exp),
+        submit_transaction=Mock(return_value=HORIZON_SUCCESS_RESPONSE),
         fetch_base_fee=Mock(return_value=100),
     ),
 )
@@ -185,8 +185,5 @@ def test_deposit_stellar_no_trustline(acc1_usd_deposit_transaction_factory):
     deposit = acc1_usd_deposit_transaction_factory()
     deposit.status = Transaction.STATUS.pending_anchor
     deposit.save()
-    assert not create_stellar_deposit(deposit)
-    assert (
-        Transaction.objects.get(id=deposit.id).status
-        == Transaction.STATUS.pending_trust
-    )
+    assert create_stellar_deposit(deposit)
+    assert Transaction.objects.get(id=deposit.id).status == Transaction.STATUS.completed
