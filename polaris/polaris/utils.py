@@ -10,7 +10,7 @@ from logging import getLogger as get_logger, LoggerAdapter
 from django.utils.translation import gettext
 from rest_framework import status
 from rest_framework.response import Response
-from stellar_sdk import TransactionEnvelope
+from stellar_sdk import TransactionEnvelope, TextMemo, IdMemo, HashMemo, Asset, Claimant
 from stellar_sdk.transaction_builder import TransactionBuilder
 from stellar_sdk.exceptions import (
     BaseHorizonError,
@@ -21,7 +21,6 @@ from stellar_sdk.exceptions import (
 )
 from stellar_sdk.xdr import StellarXDR_const as const
 from stellar_sdk.xdr.StellarXDR_type import TransactionResult
-from stellar_sdk import TextMemo, IdMemo, HashMemo
 from stellar_sdk.account import Account, Thresholds
 from stellar_sdk.sep.stellar_web_authentication import _verify_te_signed_by_account_id
 from stellar_sdk.sep.exceptions import InvalidSep10ChallengeError
