@@ -31,13 +31,6 @@ poll_pending_deposits
 
 Polaris periodically queries for transactions in ``pending_user_transfer_start`` and ``pending_sender`` and passes them to the ``RailsIntegration.poll_pending_deposits`` integration function. The anchor is expected to update the transactions' status depending on the if the funds have become available in the anchor's off-chain account.
 
-check_trustlines
-^^^^^^^^^^^^^^^^
-
-And finally, Polaris periodically checks for transactions whose accounts don't have trustlines for the asset the account is requesting using the ``pending_trust`` status. Polaris will update ``Transaction.status`` for each transaction that has a trustline to the relevant asset.
-
-If you choose to deploy Polaris using this strategy, ensure the processes are managed and kept persistent using a process-control system like ``supervisorctl``.
-
 Testnet Resets
 --------------
 
