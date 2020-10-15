@@ -181,7 +181,7 @@ def create_stellar_deposit(
         distribution_acc, _ = get_account_obj(
             Keypair.from_public_key(transaction.asset.distribution_account)
         )
-        envelope = create_transaction_envelope(transaction, distribution_acc)
+        envelope = create_transaction_envelope(transaction, distribution_acc, claimable)
         envelope.sign(transaction.asset.distribution_seed)
         transaction.envelope_xdr = envelope.to_xdr()
 
@@ -410,7 +410,7 @@ def get_or_create_transaction_destination_account(
         raise RuntimeError(f"Horizon error when loading stellar account: {e.message}")
 
 
-def create_transaction_envelope(transaction, source_account) -> TransactionEnvelope:
+def create_transaction_envelope(transaction, source_account, claimable=False) -> TransactionEnvelope:
     payment_amount = round(
         Decimal(transaction.amount_in) - Decimal(transaction.amount_fee),
         transaction.asset.significant_decimals,
