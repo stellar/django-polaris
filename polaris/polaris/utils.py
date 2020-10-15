@@ -115,8 +115,7 @@ def create_stellar_deposit(
     Create and submit the Stellar transaction for the deposit.
 
     The Transaction can be either `pending_anchor` if the task is called
-    from `poll_pending_deposits()` or `pending_trust` if called from the
-    `check_trustlines()`.
+    from `poll_pending_deposits()`.
     """
     if transaction.status not in [
         Transaction.STATUS.pending_anchor,

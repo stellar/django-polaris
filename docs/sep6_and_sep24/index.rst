@@ -315,21 +315,3 @@ Run the process like so:
 ::
 
     python manage.py poll_outgoing_transactions --loop --interval 60
-
-Checking Trustlines
--------------------
-
-Sometimes, a user will initiate a deposit to an account that does not exist yet,
-or the user's account won't have a trustline to the asset's issuer account. In
-these cases, the transaction database object gets assigned the ``pending_trust``
-status.
-
-``check_trustlines`` is a command line tool that periodically checks if the
-transactions with this status now have a trustline to the relevant asset. If one
-does, Polaris will submit the transaction to the stellar network and call the
-``after_deposit`` integration function once its completed.
-
-``check_trustlines`` has the same arguments as ``poll_pending_deposits``:
-::
-
-    python manage.py check_trustlines --loop --interval 60
