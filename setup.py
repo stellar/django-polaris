@@ -65,7 +65,7 @@ setup(
         "six==1.15.0",
         "sqlparse==0.4.1",
         "stellar-base-sseclient==0.0.21",
-        "stellar-sdk==2.8.0",
+        "stellar-sdk==2.8.1",
         "toml==0.10.1",
         "typing-extensions==3.7.4.3; python_version < '3.8'",
         "urllib3==1.25.10",
