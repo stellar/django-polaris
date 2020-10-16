@@ -185,7 +185,7 @@ def create_stellar_deposit(
         transaction.envelope_xdr = envelope.to_xdr()
 
     try:
-        return submit_stellar_deposit(transaction, multisig=multisig, claimable=claimable)
+        return submit_stellar_deposit(transaction, multisig=multisig)
     except RuntimeError as e:
         transaction.status_message = str(e)
         transaction.status = Transaction.STATUS.error
@@ -226,7 +226,7 @@ def handle_bad_signatures_error(e, transaction, multisig=False):
     transaction.save()
 
 
-def submit_stellar_deposit(transaction, multisig=False, claimable=False) -> bool:
+def submit_stellar_deposit(transaction, multisig=False) -> bool:
     transaction.status = Transaction.STATUS.pending_stellar
     transaction.save()
     logger.info(f"Transaction {transaction.id} now pending_stellar")
