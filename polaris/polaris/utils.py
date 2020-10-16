@@ -133,9 +133,9 @@ def create_stellar_deposit(
         transaction.save()
         raise ValueError(transaction.status_message)
 
-    # initialize claimable balance bool
-    claimable = False
-    # if we don't know if the destination account exists
+    # if the destination account doesn't exists
+    # or if the destination_exists param is not specified in the function
+    # call
     if not destination_exists:
         try:
             _, created, pending_trust = get_or_create_transaction_destination_account(
@@ -151,7 +151,6 @@ def create_stellar_deposit(
             # the account is pending_trust for the asset to be received
             if pending_trust and transaction.status != Transaction.STATUS.pending_trust:
                 transaction.status = Transaction.STATUS.pending_trust
-                claimable = True
                 transaction.save()
 
     # if the distribution account's master signer's weight is great or equal to the its
