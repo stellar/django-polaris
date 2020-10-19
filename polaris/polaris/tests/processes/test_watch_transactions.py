@@ -26,6 +26,7 @@ mock_envelope = Mock(
                 amount=50,
                 destination=Keypair.from_secret(USD_DISTRIBUTION_SEED).public_key,
                 type_code=Mock(return_value=1),
+                source="GCUZ6YLL5RQBTYLTTQLPCM73C5XAIUGK2TIMWQH7HPSGWVS2KJ2F3CHS",
             )
         ],
         source=Keypair.from_public_key(
