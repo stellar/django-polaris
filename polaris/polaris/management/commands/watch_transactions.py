@@ -174,15 +174,11 @@ class Command(BaseCommand):
         :param horizon_tx: the decoded Transaction object contained in the Horizon response
         :param transaction: a database model object representing the transaction
         """
-        if horizon_tx.source.public_key != transaction.stellar_account:
-            # transaction wasn't created by sender of payment
-            return
-
         matching_payment_op = None
         for operation in horizon_tx.operations:
             if cls._check_payment_op(operation, transaction.asset):
                 transaction.stellar_transaction_id = response["id"]
-                transaction.from_address = horizon_tx.source.public_key
+                transaction.from_address = operation.source
                 transaction.paging_token = response["paging_token"]
                 transaction.status_eta = 0
                 transaction.save()
