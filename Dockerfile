@@ -6,7 +6,7 @@ ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 
 # Install system dependencies
-RUN apk update && apk add build-base postgresql-dev libffi-dev gettext-dev curl
+RUN apk update && apk add build-base postgresql-dev libffi-dev gettext-dev curl postgresql-client
 
 # Copy files to working directory
 RUN mkdir /code /code/polaris /code/data
