@@ -549,6 +549,14 @@ class Transaction(models.Model):
     transaction, one of text, id or hash.
     """
 
+    claimable_balance_id = models.TextField(null=True, blank=True)
+    """
+    (optional) ClaimableBalanceID is a union with one possible type
+    (CLAIMABLE_BALANCE_ID_TYPE_V0).
+    It contains a SHA-256 hash of the OperationID for Claimable Balances
+    A required parameter when claiming a Claimable Balance operation
+    """
+
     receiving_anchor_account = models.TextField(null=True, blank=True)
     """
     Stellar account to send payment or withdrawal funds to
