@@ -174,4 +174,5 @@ def test_deposit_stellar_no_trustline(acc1_usd_deposit_transaction_factory):
     deposit.status = Transaction.STATUS.pending_anchor
     deposit.save()
     assert create_stellar_deposit(deposit)
+    assert Transaction.objects.get(id=deposit.id).claimable_balance_id
     assert Transaction.objects.get(id=deposit.id).status == Transaction.STATUS.completed
