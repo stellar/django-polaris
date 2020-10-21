@@ -3,6 +3,7 @@ import json
 import codecs
 import datetime
 import uuid
+import base64
 from decimal import Decimal
 from typing import Optional, Tuple, Union
 from logging import getLogger as get_logger, LoggerAdapter
