@@ -24,6 +24,12 @@ HORIZON_SUCCESS_RESPONSE = {
     "id": "test_stellar_id",
     "paging_token": "123456789",
 }
+HORIZON_SUCCESS_RESPONSE_CLAIM = {
+    "successful": True,
+    "id": "test_stellar_id",
+    "paging_token": "123456789",
+    "result_xdr": "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAAOAAAAAAAAAACk5JrayJXHnb4/iD4MXZUz9fPHgNHZijCyYFAih1H+QwAAAAA="
+}
 # Test client account and seed
 client_address = "GDKFNRUATPH4BSZGVFDRBIGZ5QAFILVFRIRYNSQ4UO7V2ZQAPRNL73RI"
 client_seed = "SDKWSBERDHP3SXW5A3LXSI7FWMMO5H7HG33KNYBKWH2HYOXJG2DXQHQY"

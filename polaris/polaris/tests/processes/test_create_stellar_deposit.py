@@ -14,7 +14,7 @@ from polaris.tests.conftest import (
     ETH_ISSUER_ACCOUNT,
     USD_ISSUER_ACCOUNT,
 )
-from polaris.tests.sep24.test_deposit import HORIZON_SUCCESS_RESPONSE
+from polaris.tests.sep24.test_deposit import HORIZON_SUCCESS_RESPONSE, HORIZON_SUCCESS_RESPONSE_CLAIM
 from polaris.utils import create_stellar_deposit
 from polaris.models import Transaction
 
@@ -157,7 +157,7 @@ no_trust_exp = BaseHorizonError(
     "polaris.utils.settings.HORIZON_SERVER",
     Mock(
         load_account=Mock(return_value=mock_account),
-        submit_transaction=Mock(return_value=HORIZON_SUCCESS_RESPONSE),
+        submit_transaction=Mock(return_value=HORIZON_SUCCESS_RESPONSE_CLAIM),
         fetch_base_fee=Mock(return_value=100),
     ),
 )
