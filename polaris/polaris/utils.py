@@ -448,9 +448,11 @@ def create_transaction_envelope(transaction, source_account) -> TransactionEnvel
 def get_balanceid(response):
     claimable_balance_res = response['result_xdr']
     tr_xdr = TransactionResult.from_xdr(claimable_balance_res)
-    cbr_xdr = base64.b64decode(
-        tr_xdr.result.results[0].tr.createClaimableBalanceResult.balanceID.to_xdr())
-    return cbr_xdr.hex()
+    for tr in tr_xdr.result.results:
+        if hasattr(tr.tr, 'createClaimableBalanceResult'):
+            cbr_xdr = base64.b64decode(
+                tr.tr.createClaimableBalanceResult.balanceID.to_xdr())
+            return cbr_xdr.hex()
 
 
 def memo_str(memo: str, memo_type: str) -> Optional[str]:
