@@ -269,7 +269,7 @@ def submit_stellar_deposit(transaction, multisig=False) -> bool:
             "Stellar transaction failed when submitted to horizon: "
             f"{transaction_result.result.results}"
         )
-    transaction.claimable_balance_id = get_balanceid(response) if claimable else ""
+    transaction.claimable_balance_id = get_balanceid(response) if claimable else None
     transaction.paging_token = response["paging_token"]
     transaction.stellar_transaction_id = response["id"]
     transaction.status = Transaction.STATUS.completed
