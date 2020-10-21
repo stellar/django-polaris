@@ -68,7 +68,7 @@ mock_server_no_account = Mock(
         )
     ),
     load_account=mock_load_account_no_account,
-    submit_transaction=Mock(return_value=HORIZON_SUCCESS_RESPONSE),
+    submit_transaction=Mock(return_value=HORIZON_SUCCESS_RESPONSE_CLAIM),
     fetch_base_fee=Mock(return_value=100),
 )
 
@@ -87,25 +87,38 @@ mock_account.thresholds = Thresholds(low_threshold=0, med_threshold=1, high_thre
 
 @pytest.mark.django_db
 @patch("polaris.utils.settings.HORIZON_SERVER", mock_server_no_account)
-@patch("polaris.utils.get_account_obj", mock_get_account_obj)
+@patch(
+    "polaris.utils.get_or_create_transaction_destination_account",
+    Mock(
+        return_value=(
+            mock_account,
+            True,
+            True
+        )
+    ),
+)
+@patch(
+    "polaris.utils.get_account_obj", Mock(return_value=(mock_account, {"balances": []}))
+)
 def test_deposit_stellar_no_account(acc1_usd_deposit_transaction_factory):
     """
     `create_stellar_deposit` sets the transaction with the provided `transaction_id` to
-    status `pending_trust` if the provided transaction's `stellar_account` does not
-    exist yet. This condition is mocked by throwing an error when attempting to load
-    information for the provided account.
-    Normally, this function creates the account. We have mocked out that functionality,
-    as it relies on network calls to Horizon.
+    status `pending_anchor` if the provided transaction's `stellar_account` does not
+    exist yet.
+    This is status is appropriate due to the anchor's responsibility to create said account.
+    We mocked get_or_create_transaction_destination_account by returning the
+    mock_account and stating that its "created" and it doesn't have a trustline
+    established
+
+    We check the same conditions that in test_deposit_stellar_no_trustline.
     """
     deposit = acc1_usd_deposit_transaction_factory()
-    deposit.status = Transaction.STATUS.pending_trust
+    deposit.status = Transaction.STATUS.pending_anchor
     deposit.save()
     create_stellar_deposit(deposit)
     assert mock_server_no_account.submit_transaction.was_called
-    # it would be pending_trust if the call to fetch the created account was not
-    # mocked to raise an exception. Since the exception is raised, the transaction
-    # is put in error status but the functionality works.
-    assert Transaction.objects.get(id=deposit.id).status == Transaction.STATUS.error
+    assert Transaction.objects.get(id=deposit.id).claimable_balance_id
+    assert Transaction.objects.get(id=deposit.id).status == Transaction.STATUS.completed
     mock_server_no_account.reset_mock()
 
 
