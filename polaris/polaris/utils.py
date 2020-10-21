@@ -110,18 +110,13 @@ def verify_valid_asset_operation(
 
 
 def create_stellar_deposit(
-    transaction: Transaction, destination_exists: bool = False
+    transaction: Transaction
 ) -> bool:
     """
     Create and submit the Stellar transaction for the deposit.
-
-    The Transaction can be either `pending_anchor` or `pending_trust`
-    if the task is called from `poll_pending_deposits()`.
+    The Transaction `pending_anchor` when the task is called from `poll_pending_deposits()`.
     """
-    if transaction.status not in [
-        Transaction.STATUS.pending_anchor,
-        Transaction.STATUS.pending_trust,
-    ]:
+    if transaction.status != Transaction.STATUS.pending_anchor:
         raise ValueError(
             f"unexpected transaction status {transaction.status} for "
             "create_stellar_deposit",
@@ -134,25 +129,21 @@ def create_stellar_deposit(
         transaction.save()
         raise ValueError(transaction.status_message)
 
-    # if the destination account doesn't exists
-    # or if the destination_exists param is not specified in the function
-    # call
-    if not destination_exists:
-        try:
-            _, created, pending_trust = get_or_create_transaction_destination_account(
-                transaction
-            )
-        except RuntimeError as e:
-            transaction.status = Transaction.STATUS.error
-            transaction.status_message = str(e)
+    try:
+        _, created, pending_trust = get_or_create_transaction_destination_account(
+            transaction
+        )
+    except RuntimeError as e:
+        transaction.status = Transaction.STATUS.error
+        transaction.status_message = str(e)
+        transaction.save()
+        logger.error(transaction.status_message)
+        return False
+    if created or pending_trust:
+        # the account is pending_trust for the asset to be received
+        if pending_trust and transaction.status != Transaction.STATUS.pending_trust:
+            transaction.status = Transaction.STATUS.pending_trust
             transaction.save()
-            logger.error(transaction.status_message)
-            return False
-        if created or pending_trust:
-            # the account is pending_trust for the asset to be received
-            if pending_trust and transaction.status != Transaction.STATUS.pending_trust:
-                transaction.status = Transaction.STATUS.pending_trust
-                transaction.save()
 
     # if the distribution account's master signer's weight is great or equal to the its
     # medium threshold, verify the transaction is signed by it's channel account
