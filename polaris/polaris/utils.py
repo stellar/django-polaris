@@ -109,9 +109,7 @@ def verify_valid_asset_operation(
         )
 
 
-def create_stellar_deposit(
-    transaction: Transaction
-) -> bool:
+def create_stellar_deposit(transaction: Transaction) -> bool:
     """
     Create and submit the Stellar transaction for the deposit.
     The Transaction `pending_anchor` when the task is called from `poll_pending_deposits()`.
@@ -218,7 +216,9 @@ def handle_bad_signatures_error(e, transaction, multisig=False):
 
 
 def submit_stellar_deposit(transaction, multisig=False) -> bool:
-    claimable = True if transaction.status == Transaction.STATUS.pending_trust else False
+    claimable = (
+        True if transaction.status == Transaction.STATUS.pending_trust else False
+    )
     transaction.status = Transaction.STATUS.pending_stellar
     transaction.save()
     logger.info(f"Transaction {transaction.id} now pending_stellar")
@@ -415,8 +415,7 @@ def create_transaction_envelope(transaction, source_account) -> TransactionEnvel
     )
     if transaction.status == Transaction.STATUS.pending_trust:
         claimant = Claimant(destination=transaction.stellar_account)
-        asset = Asset(code=transaction.asset.code,
-                      issuer=transaction.asset.issuer)
+        asset = Asset(code=transaction.asset.code, issuer=transaction.asset.issuer)
         builder.append_create_claimable_balance_op(
             claimants=[claimant],
             asset=asset,
@@ -437,12 +436,13 @@ def create_transaction_envelope(transaction, source_account) -> TransactionEnvel
 
 
 def get_balanceid(response):
-    claimable_balance_res = response['result_xdr']
+    claimable_balance_res = response["result_xdr"]
     tr_xdr = TransactionResult.from_xdr(claimable_balance_res)
     for tr in tr_xdr.result.results:
-        if hasattr(tr.tr, 'createClaimableBalanceResult'):
+        if hasattr(tr.tr, "createClaimableBalanceResult"):
             cbr_xdr = base64.b64decode(
-                tr.tr.createClaimableBalanceResult.balanceID.to_xdr())
+                tr.tr.createClaimableBalanceResult.balanceID.to_xdr()
+            )
             return cbr_xdr.hex()
 
 

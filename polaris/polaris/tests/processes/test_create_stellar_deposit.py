@@ -14,7 +14,10 @@ from polaris.tests.conftest import (
     ETH_ISSUER_ACCOUNT,
     USD_ISSUER_ACCOUNT,
 )
-from polaris.tests.sep24.test_deposit import HORIZON_SUCCESS_RESPONSE, HORIZON_SUCCESS_RESPONSE_CLAIM
+from polaris.tests.sep24.test_deposit import (
+    HORIZON_SUCCESS_RESPONSE,
+    HORIZON_SUCCESS_RESPONSE_CLAIM,
+)
 from polaris.utils import create_stellar_deposit
 from polaris.models import Transaction
 
@@ -89,13 +92,7 @@ mock_account.thresholds = Thresholds(low_threshold=0, med_threshold=1, high_thre
 @patch("polaris.utils.settings.HORIZON_SERVER", mock_server_no_account)
 @patch(
     "polaris.utils.get_or_create_transaction_destination_account",
-    Mock(
-        return_value=(
-            mock_account,
-            True,
-            True
-        )
-    ),
+    Mock(return_value=(mock_account, True, True)),
 )
 @patch(
     "polaris.utils.get_account_obj", Mock(return_value=(mock_account, {"balances": []}))
