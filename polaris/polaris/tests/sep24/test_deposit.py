@@ -36,8 +36,7 @@ def test_deposit_success(client, acc1_usd_deposit_transaction_factory):
     """`POST /transactions/deposit/interactive` succeeds with no optional arguments."""
     deposit = acc1_usd_deposit_transaction_factory()
     response = client.post(
-        DEPOSIT_PATH,
-        {"asset_code": "USD", "account": deposit.stellar_account},
+        DEPOSIT_PATH, {"asset_code": "USD", "account": deposit.stellar_account},
     )
     content = json.loads(response.content)
     assert content["type"] == "interactive_customer_info_needed"
