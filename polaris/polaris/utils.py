@@ -463,6 +463,7 @@ def get_balance_id(response):
                 tr.tr.createClaimableBalanceResult.balanceID.to_xdr()
             )
             return cbr_xdr.hex()
+    return None
 
 
 def memo_str(memo: str, memo_type: str) -> Optional[str]:
