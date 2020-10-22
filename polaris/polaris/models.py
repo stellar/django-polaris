@@ -125,8 +125,8 @@ class Asset(TimeStampedModel):
         default=0, blank=True, max_digits=30, decimal_places=7
     )
     """
-    Optional fixed (base) fee for deposit. In units of the deposited asset. 
-    This is in addition to any ``fee_percent``. Omit if there is no fee or the fee 
+    Optional fixed (base) fee for deposit. In units of the deposited asset.
+    This is in addition to any ``fee_percent``. Omit if there is no fee or the fee
     schedule is complex.
     """
 
@@ -138,7 +138,7 @@ class Asset(TimeStampedModel):
         validators=[MinValueValidator(0), MaxValueValidator(100)],
     )
     """
-    Optional percentage fee for deposit. In percentage points. This is in 
+    Optional percentage fee for deposit. In percentage points. This is in
     addition to any ``fee_fixed``. Omit if there is no fee or the fee schedule
     is complex.
     """
@@ -161,7 +161,7 @@ class Asset(TimeStampedModel):
         default=0, blank=True, max_digits=30, decimal_places=7
     )
     """
-    Optional fixed (base) fee for withdraw. In units of the withdrawn asset. 
+    Optional fixed (base) fee for withdraw. In units of the withdrawn asset.
     This is in addition to any ``fee_percent``.
     """
 
@@ -173,7 +173,7 @@ class Asset(TimeStampedModel):
         validators=[MinValueValidator(0), MaxValueValidator(100)],
     )
     """
-    Optional percentage fee for withdraw in percentage points. This is in 
+    Optional percentage fee for withdraw in percentage points. This is in
     addition to any ``fee_fixed``.
     """
 
@@ -191,7 +191,7 @@ class Asset(TimeStampedModel):
         default=0, blank=True, max_digits=30, decimal_places=7
     )
     """
-    Optional fixed (base) fee for sending this asset in units of this asset. 
+    Optional fixed (base) fee for sending this asset in units of this asset.
     This is in addition to any ``send_fee_percent``. If null, ``fee_fixed`` will not
     be displayed in SEP31 /info response.
     """
@@ -204,7 +204,7 @@ class Asset(TimeStampedModel):
         validators=[MinValueValidator(0), MaxValueValidator(100)],
     )
     """
-    Optional percentage fee for sending this asset in percentage points. This is in 
+    Optional percentage fee for sending this asset in percentage points. This is in
     addition to any ``send_fee_fixed``. If null, ``fee_percent`` will not be displayed
     in SEP31 /info response.
     """
@@ -384,79 +384,79 @@ class Transaction(models.Model):
     )
     """
     Choices field for processing status of deposit, withdrawal, & send.
-    
+
     SEP-6 & SEP-24 Statuses:
 
     * **completed**
-        
+
         deposit/withdrawal fully completed
     * **pending_external**
-    
-        deposit/withdrawal has been submitted to external 
-        network, but is not yet confirmed. This is the status when waiting on 
-        Bitcoin or other external crypto network to complete a transaction, or 
+
+        deposit/withdrawal has been submitted to external
+        network, but is not yet confirmed. This is the status when waiting on
+        Bitcoin or other external crypto network to complete a transaction, or
         when waiting on a bank transfer.
     * **pending_anchor**
-    
+
         deposit/withdrawal is being processed internally by anchor.
     * **pending_stellar**
-    
-        deposit/withdrawal operation has been submitted to Stellar network, but 
+
+        deposit/withdrawal operation has been submitted to Stellar network, but
         is not yet confirmed.
     * **pending_trust**
-    
+
         the user must add a trust-line for the asset for the deposit to complete.
     * **pending_user**
-    
-        the user must take additional action before the deposit / withdrawal can 
+
+        the user must take additional action before the deposit / withdrawal can
         complete.
     * **pending_user_transfer_start**
-    
-        the user has not yet initiated their transfer to the anchor. This is the 
+
+        the user has not yet initiated their transfer to the anchor. This is the
         necessary first step in any deposit or withdrawal flow.
     * **incomplete**
-    
-        there is not yet enough information for this transaction to be initiated. 
+
+        there is not yet enough information for this transaction to be initiated.
         Perhaps the user has not yet entered necessary info in an interactive flow.
     * **no_market**
-    
-        could not complete deposit because no satisfactory asset/XLM market 
+
+        could not complete deposit because no satisfactory asset/XLM market
         was available to create the account.
     * **too_small**
-    
+
         deposit/withdrawal size less than min_amount.
     * **too_large**
-    
+
         deposit/withdrawal size exceeded max_amount.
     * **error**
-    
+
         catch-all for any error not enumerated above.
-        
+
     SEP-31 Statuses:
-    
+
     * **pending_sender**
-    
+
         awaiting payment to be initiated by sending anchor.
     * **pending_stellar**
-    
+
         transaction has been submitted to Stellar network, but is not yet confirmed.
     * **pending_transaction_info_update**
-    
+
         transaction details must be updated to successfully execute transaction off-chain
     * **pending_customer_info_update**
-    
+
         customer (SEP-12) information must be updated to facilitate transactions
     * **pending_receiver**
-    
+
         payment is being processed by the receiving anchor.
     * **pending_external**
-    
+
         payment has been submitted to external network, but is not yet confirmed.
     * **completed**
-    
+
         deposit/withdrawal fully completed.
     * **error**
-    
+
         catch-all for any error not enumerated above.
     """
 
@@ -474,7 +474,7 @@ class Transaction(models.Model):
 
     external_transaction_id = models.TextField(null=True, blank=True)
     """
-    (optional) ID of transaction on external network that either started 
+    (optional) ID of transaction on external network that either started
     the deposit or completed the withdrawal.
     """
 
@@ -482,8 +482,8 @@ class Transaction(models.Model):
         null=True, blank=True, max_digits=30, decimal_places=7
     )
     """
-    Amount received by anchor at start of transaction as a string with up 
-    to 7 decimals. Excludes any fees charged before the anchor received the 
+    Amount received by anchor at start of transaction as a string with up
+    to 7 decimals. Excludes any fees charged before the anchor received the
     funds.
     """
 
@@ -492,7 +492,7 @@ class Transaction(models.Model):
     )
     """
     Amount sent by anchor to user at end of transaction as a string with up to
-    7 decimals. Excludes amount converted to XLM to fund account and any 
+    7 decimals. Excludes amount converted to XLM to fund account and any
     external fees.
     """
 
@@ -506,7 +506,7 @@ class Transaction(models.Model):
 
     completed_at = models.DateTimeField(null=True)
     """
-    Completion date and time of transaction. Assigned null for in-progress 
+    Completion date and time of transaction. Assigned null for in-progress
     transactions.
     """
 
@@ -519,19 +519,19 @@ class Transaction(models.Model):
         null=True, blank=True
     )  # Using to_address for naming consistency
     """
-    Sent to address (perhaps BTC, IBAN, or bank account in the case of a 
+    Sent to address (perhaps BTC, IBAN, or bank account in the case of a
     withdrawal or send, Stellar address in the case of a deposit).
     """
 
     required_info_updates = models.TextField(null=True, blank=True)
     """
-    (SEP31) (optional) A set of fields that require an update from the sender, 
+    (SEP31) (optional) A set of fields that require an update from the sender,
     in the same format as described in /info.
     """
 
     required_info_message = models.TextField(null=True, blank=True)
     """
-    (SEP31) (optional) A human readable message indicating any errors that 
+    (SEP31) (optional) A human readable message indicating any errors that
     require updated information from the sender
     """
 
@@ -545,16 +545,14 @@ class Transaction(models.Model):
         choices=MEMO_TYPES, default=MEMO_TYPES.text, max_length=10
     )
     """
-    (optional) Type of memo that anchor should attach to the Stellar payment 
+    (optional) Type of memo that anchor should attach to the Stellar payment
     transaction, one of text, id or hash.
     """
 
     claimable_balance_id = models.TextField(null=True, blank=True)
     """
-    (optional) ClaimableBalanceID is a union with one possible type
-    (CLAIMABLE_BALANCE_ID_TYPE_V0).
-    It contains a SHA-256 hash of the OperationID for Claimable Balances
-    A required parameter when claiming a Claimable Balance operation
+    ClaimableBalanceID is a required parameter when
+    claiming a Claimable Balance operation.
     """
 
     receiving_anchor_account = models.TextField(null=True, blank=True)
@@ -570,20 +568,20 @@ class Transaction(models.Model):
 
     pending_signatures = models.BooleanField(default=False)
     """
-    Boolean for whether or not non-Polaris signatures are needed for this 
+    Boolean for whether or not non-Polaris signatures are needed for this
     transaction's envelope.
     """
 
     envelope_xdr = models.TextField(validators=[deserialize], null=True, blank=True)
     """
-    The base64-encoded XDR blob that can be deserialized to inspect and sign 
+    The base64-encoded XDR blob that can be deserialized to inspect and sign
     the encoded transaction.
     """
 
     channel_seed = models.TextField(null=True, blank=True)
     """
-    A keypair of the account used when sending SEP-6 or SEP-24 deposit 
-    transactions to Transaction.stellar_account, if present. 
+    A keypair of the account used when sending SEP-6 or SEP-24 deposit
+    transactions to Transaction.stellar_account, if present.
     This is only used for transactions requiring signatures Polaris cannot
     add itself.
     """
