@@ -455,6 +455,8 @@ def get_balance_id(response):
         or
         None (if no createClaimableBalanceResult operation is found)
     """
+    result_xdr = response["result_xdr"]
+    tr_xdr = TransactionResult.from_xdr(result_xdr)
     for tr in tr_xdr.result.results:
         if hasattr(tr.tr, "createClaimableBalanceResult"):
             cbr_xdr = base64.b64decode(
