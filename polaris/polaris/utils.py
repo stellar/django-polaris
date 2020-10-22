@@ -436,8 +436,25 @@ def create_transaction_envelope(transaction, source_account) -> TransactionEnvel
 
 
 def get_balance_id(response):
-    claimable_balance_res = response["result_xdr"]
-    tr_xdr = TransactionResult.from_xdr(claimable_balance_res)
+    """
+    Pulls claimable balance ID from horizon responses.
+
+    When called we decode and read the result_xdr from the horizon response.
+    If any of the operations is a createClaimableBalanceResult we
+    decode the Base64 representation of the balanceID xdr.
+    After the fact we encode the result to hex.
+
+    The hex representation of the balanceID is important because its the
+    representation required to query and claim claimableBalances.
+
+    :param
+        response: the response from horizon
+
+    :return:
+        hex representation of the balanceID
+        or
+        None (if no createClaimableBalanceResult operation is found)
+    """
     for tr in tr_xdr.result.results:
         if hasattr(tr.tr, "createClaimableBalanceResult"):
             cbr_xdr = base64.b64decode(
