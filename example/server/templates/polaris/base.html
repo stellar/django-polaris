@@ -1,13 +1,11 @@
-{% extends "polaris/base.html" %} {% load static %} {% load i18n %}
-
-{% trans "Confirm Email" as ce %}
+{% extends "polaris/base.html" %} {% load static %}
 
 {% block 'extra_body' %}
 
     <script src="https://www.googletagmanager.com/gtag/js?id=UA-53373928-6" async></script>
     <script src="{% static 'sep24_scripts/google_analytics.js' %}"></script>
 
-    {% if not form and title == ce %}
+    {% if not form %}
 
         {# Refresh the confirm email page whenever the user brings the popup #}
         {# back into focus. This is not strictly necessary since deposit.html #}
