@@ -113,7 +113,7 @@ def parse_request_args(request: Request) -> Dict:
     if not request.GET.get("dest"):
         return {"error": render_error_response(_("'dest' is required"))}
 
-    return {
+    args = {
         "asset": asset,
         "memo_type": memo_type,
         "memo": memo,
@@ -123,6 +123,13 @@ def parse_request_args(request: Request) -> Dict:
         "dest_extra": request.GET.get("dest_extra"),
         **extract_sep9_fields(request.GET),
     }
+
+    # add remaining extra params, it's on the anchor to validate them
+    for param, value in request.GET.items():
+        if param not in args:
+            args[param] = value
+
+    return args
 
 
 def validate_response(
