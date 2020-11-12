@@ -49,7 +49,7 @@
 
     <div class="info-item">
         <div class="info-label">
-            {% if transaction.status == "pending_user_transfer_start" %}
+            {% if transaction.status in ["incomplete", "pending_user_transfer_start"] %}
               {% trans "amount to be received" %}
             {% else %}
               {% trans "amount received" %}
