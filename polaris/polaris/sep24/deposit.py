@@ -313,6 +313,7 @@ def deposit(account: str, request: Request) -> Response:
     stellar_account = request.POST.get("account")
     lang = request.POST.get("lang")
     sep9_fields = extract_sep9_fields(request.POST)
+    claimable_balance_supported = request.POST.get("claimable_balance_supported")
     if lang:
         err_resp = validate_language(lang)
         if err_resp:
@@ -368,6 +369,7 @@ def deposit(account: str, request: Request) -> Response:
         status=Transaction.STATUS.incomplete,
         to_address=account,
         protocol=Transaction.PROTOCOL.sep24,
+        claimable_balance_supported=claimable_balance_supported,
         memo=memo,
         memo_type=request.POST.get("memo_type") or Transaction.MEMO_TYPES.hash,
     )
