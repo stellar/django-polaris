@@ -78,7 +78,7 @@ class SEP10Auth(APIView):
         return build_challenge_transaction(
             server_secret=settings.SIGNING_SEED,
             client_account_id=client_account,
-            domain_name=DOMAIN_NAME,
+            home_domain=DOMAIN_NAME,
             network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
             timeout=900,
         )
@@ -111,13 +111,13 @@ class SEP10Auth(APIView):
         sufficient because newly created accounts have their own keypair as signer
         with a weight greater than the default thresholds.
         """
-        server_key = settings.SIGNING_KEY
-        net = settings.STELLAR_NETWORK_PASSPHRASE
-
         logger.info("Validating challenge transaction")
         try:
-            tx_envelope, account_id = read_challenge_transaction(
-                envelope_xdr, server_key, DOMAIN_NAME, net
+            tx_envelope, account_id, _ = read_challenge_transaction(
+                challenge_transaction=envelope_xdr,
+                server_account_id=settings.SIGNING_KEY,
+                home_domains=DOMAIN_NAME,
+                network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
             )
         except InvalidSep10ChallengeError as e:
             err_msg = f"Error while validating challenge: {str(e)}"
@@ -132,7 +132,10 @@ class SEP10Auth(APIView):
             )
             try:
                 verify_challenge_transaction_signed_by_client_master_key(
-                    envelope_xdr, server_key, DOMAIN_NAME, net
+                    challenge_transaction=envelope_xdr,
+                    server_account_id=settings.SIGNING_KEY,
+                    home_domains=DOMAIN_NAME,
+                    network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
                 )
                 if len(tx_envelope.signatures) != 2:
                     raise InvalidSep10ChallengeError(
@@ -152,7 +155,12 @@ class SEP10Auth(APIView):
         threshold = account.thresholds.med_threshold
         try:
             signers_found = verify_challenge_transaction_threshold(
-                envelope_xdr, server_key, DOMAIN_NAME, net, threshold, signers
+                challenge_transaction=envelope_xdr,
+                server_account_id=settings.SIGNING_KEY,
+                home_domains=DOMAIN_NAME,
+                network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
+                threshold=threshold,
+                signers=signers,
             )
         except InvalidSep10ChallengeError as e:
             logger.info(str(e))
@@ -168,11 +176,11 @@ class SEP10Auth(APIView):
         See: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.md#token
         """
         issued_at = time.time()
-        transaction_envelope, source_account = read_challenge_transaction(
-            envelope_xdr,
-            settings.SIGNING_KEY,
-            DOMAIN_NAME,
-            settings.STELLAR_NETWORK_PASSPHRASE,
+        transaction_envelope, source_account, _ = read_challenge_transaction(
+            challenge_transaction=envelope_xdr,
+            server_account_id=settings.SIGNING_KEY,
+            home_domains=DOMAIN_NAME,
+            network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
         )
         logger.info(
             f"Challenge verified, generating SEP-10 token for account {source_account}"
