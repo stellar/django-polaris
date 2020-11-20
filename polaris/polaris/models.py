@@ -579,6 +579,15 @@ class Transaction(models.Model):
     This is only used for transactions requiring signatures Polaris cannot
     add itself.
     """
+    claimable_balance_supported = models.BooleanField(default=False)
+    """
+    claimable_balance_supported is a boolean to indicate if the wallet supports the SEP24
+    requirements for handeling claimable balance deposits.
+    """
+    claimable_balance_id = models.TextField(null=True, blank=True)
+    """
+    ClaimableBalanceID is a required parameter when claiming a Claimable Balance operation
+    """
 
     objects = models.Manager()
 
