@@ -190,7 +190,7 @@ class Command(BaseCommand):
     @staticmethod
     def _check_payment_op(operation: Operation, want_asset: Asset) -> bool:
         return (
-            operation.type_code() == Xdr.const.PAYMENT
+            operation.TYPE_CODE == Xdr.const.PAYMENT
             and str(operation.destination) == want_asset.distribution_account
             and str(operation.asset.code) == want_asset.code
             and str(operation.asset.issuer) == want_asset.issuer
