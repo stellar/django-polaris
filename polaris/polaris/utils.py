@@ -1,5 +1,4 @@
 """This module defines helpers for various endpoints."""
-import json
 import codecs
 import datetime
 import uuid
@@ -16,11 +15,8 @@ from stellar_sdk.exceptions import (
     BaseHorizonError,
     NotFoundError,
     BadRequestError,
-    BadSignatureError,
-    SignatureExistError,
 )
-from stellar_sdk.xdr import StellarXDR_const as const
-from stellar_sdk.xdr.StellarXDR_type import TransactionResult
+from stellar_sdk.xdr import TransactionResult, PaymentResultCode
 from stellar_sdk import TextMemo, IdMemo, HashMemo
 from stellar_sdk.account import Account, Thresholds
 from stellar_sdk.sep.stellar_web_authentication import _verify_te_signed_by_account_id
@@ -248,7 +244,7 @@ def submit_stellar_deposit(transaction, multisig=False) -> bool:
                 transaction.status_message = (
                     f"tx failed with codes: {op_results}. Result XDR: {e.result_xdr}"
                 )
-        elif op_results[0].tr.paymentResult.code == const.PAYMENT_NO_TRUST:
+        elif op_results[0].tr.paymentResult.code == PaymentResultCode.PAYMENT_NO_TRUST:
             transaction.status = Transaction.STATUS.pending_trust
             transaction.status_message = (
                 "trustline error when submitting transaction to horizon"
