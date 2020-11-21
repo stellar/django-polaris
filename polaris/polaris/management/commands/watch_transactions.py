@@ -1,6 +1,6 @@
 """This module defines custom management commands for the app admin."""
 import asyncio
-from typing import Dict, Optional, Union
+from typing import Dict, Optional, Union, Tuple
 from decimal import Decimal
 
 from django.core.management.base import BaseCommand
@@ -8,12 +8,7 @@ from django.db.models import Q
 from stellar_sdk.exceptions import NotFoundError
 from stellar_sdk.transaction_envelope import TransactionEnvelope
 from stellar_sdk.transaction import Transaction as HorizonTransaction
-from stellar_sdk.xdr import (
-    OperationType,
-    PaymentOp,
-    PathPaymentStrictReceiveOp,
-    PathPaymentStrictSendOp,
-)
+from stellar_sdk.xdr import OperationType, PaymentOp
 from stellar_sdk.operation import Operation
 from stellar_sdk.asset import Asset
 from stellar_sdk.server import Server
@@ -26,6 +21,7 @@ from polaris.utils import getLogger
 logger = getLogger(__name__)
 
 
+# TODO: Add support for path payments, this is necessary for SEP-31 receivers
 class Command(BaseCommand):
     """
     Streams transactions for the distribution account of each Asset in the DB.
@@ -133,9 +129,7 @@ class Command(BaseCommand):
             logger.error(f"multiple Transaction objects returned for memo: {memo}")
             transaction = transactions[0]
 
-        payment_op = cls._cast_operation(
-            cls.find_matching_payment_op(response, horizon_tx, transaction)
-        )
+        payment_op = cls.find_matching_payment_op(response, horizon_tx, transaction)
         if not payment_op:
             logger.warning(f"Transaction matching memo {memo} has no payment operation")
             return
@@ -169,7 +163,7 @@ class Command(BaseCommand):
     @classmethod
     def find_matching_payment_op(
         cls, response: Dict, horizon_tx: HorizonTransaction, transaction: Transaction
-    ) -> Optional[Operation]:
+    ) -> Optional[PaymentOp]:
         """
         Determines whether or not the given ``response`` represents the given
         ``transaction``. Polaris does this by checking the 'memo' field in the horizon
@@ -191,36 +185,23 @@ class Command(BaseCommand):
                 matching_payment_op = operation
                 break
 
-        return matching_payment_op
+        return PaymentOp.from_xdr(matching_payment_op.to_xdr_object().to_xdr())
 
     @classmethod
     def _check_payment_op(cls, generic_operation: Operation, want_asset: Asset) -> bool:
-        if generic_operation.TYPE not in [
-            OperationType.PAYMENT,
-            OperationType.PATH_PAYMENT_STRICT_RECEIVE,
-            OperationType.PATH_PAYMENT_STRICT_SEND,
-        ]:
+        if generic_operation.TYPE != OperationType.PAYMENT:
             return False
-        operation = cls._cast_operation(generic_operation)
-        asset = operation.dest_asset.alpha_num4 or operation.dest_asset.alpha_num12
-        asset_code = asset.asset_code.asset_code4 or asset.asset_code.asset_code12
-        return (
-            str(operation.destination) == want_asset.distribution_account
-            and asset_code == want_asset.code
-            and asset.issuer == want_asset.issuer
+        payment_operation = PaymentOp.from_xdr(
+            generic_operation.to_xdr_object().to_xdr()
         )
-
-    @staticmethod
-    def _cast_operation(
-        operation,
-    ) -> Union[PaymentOp, PathPaymentStrictReceiveOp, PathPaymentStrictSendOp]:
-        op_xdr = operation.to_xdr_object().to_xdr()
-        if operation.TYPE == OperationType.PAYMENT:
-            operation = PaymentOp.from_xdr(op_xdr)
-        elif operation.TYPE == OperationType.PATH_PAYMENT_STRICT_RECEIVE:
-            operation = PathPaymentStrictReceiveOp.from_xdr(op_xdr)
-        elif operation.TYPE == OperationType.PATH_PAYMENT_STRICT_SEND:
-            operation = PathPaymentStrictSendOp.from_xdr(op_xdr)
-        else:
-            raise ValueError("Unrecognized operation type")
-        return operation
+        asset_num_x = (
+            payment_operation.asset.alpha_num4 or payment_operation.asset.alpha_num12
+        )
+        asset_code = (
+            asset_num_x.asset_code.asset_code4 or asset_num_x.asset_code.asset_code12
+        ).decode()
+        return (
+            str(payment_operation.destination) == want_asset.distribution_account
+            and asset_code == want_asset.code
+            and asset_num_x.issuer == want_asset.issuer
+        )
