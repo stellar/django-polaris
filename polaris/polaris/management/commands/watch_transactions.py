@@ -203,10 +203,11 @@ class Command(BaseCommand):
             return False
         operation = cls._cast_operation(generic_operation)
         asset = operation.dest_asset.alpha_num4 or operation.dest_asset.alpha_num12
+        asset_code = asset.asset_code.asset_code4 or asset.asset_code.asset_code12
         return (
             str(operation.destination) == want_asset.distribution_account
-            and str(asset.asset_code) == want_asset.code
-            and str(asset.issuer) == want_asset.issuer
+            and asset_code == want_asset.code
+            and asset.issuer == want_asset.issuer
         )
 
     @staticmethod
