@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 
 from stellar_sdk.keypair import Keypair
 from stellar_sdk.transaction_envelope import TransactionEnvelope
-from stellar_sdk.xdr import Xdr
+from stellar_sdk.xdr import OperationType
 
 from polaris import settings
 from polaris.tests.conftest import STELLAR_ACCOUNT_1
@@ -42,7 +42,7 @@ def test_auth_get_account(client):
     assert len(transaction_object.operations) == 1
 
     manage_data_op = transaction_object.operations[0]
-    assert manage_data_op.type_code() == Xdr.const.MANAGE_DATA
+    assert manage_data_op.TYPE == OperationType.MANAGE_DATA
     assert manage_data_op.data_name == f"{urlparse(settings.HOST_URL).hostname} auth"
     assert len(manage_data_op.data_value) <= 64
     assert len(base64.b64decode(manage_data_op.data_value)) == 48
@@ -53,7 +53,7 @@ def test_auth_get_account(client):
 
     tx_hash = envelope_object.hash()
     server_public_key = Keypair.from_public_key(settings.SIGNING_KEY)
-    server_public_key.verify(tx_hash, server_signature.signature)
+    server_public_key.verify(tx_hash, server_signature.signature.to_xdr_bytes())
 
 
 auth_str = "Bearer {}"

@@ -1,17 +1,21 @@
 """This module defines custom management commands for the app admin."""
 import asyncio
-from typing import Dict, Optional
+from typing import Dict, Optional, Union
 from decimal import Decimal
 
 from django.core.management.base import BaseCommand
 from django.db.models import Q
 from stellar_sdk.exceptions import NotFoundError
-from stellar_sdk.transaction_envelope import (
-    TransactionEnvelope,
-    Transaction as HorizonTransaction,
+from stellar_sdk.transaction_envelope import TransactionEnvelope
+from stellar_sdk.transaction import Transaction as HorizonTransaction
+from stellar_sdk.xdr import (
+    OperationType,
+    PaymentOp,
+    PathPaymentStrictReceiveOp,
+    PathPaymentStrictSendOp,
 )
-from stellar_sdk.xdr import Xdr
 from stellar_sdk.operation import Operation
+from stellar_sdk.asset import Asset
 from stellar_sdk.server import Server
 from stellar_sdk.client.aiohttp_client import AiohttpClient
 
@@ -95,7 +99,7 @@ class Command(BaseCommand):
             return
 
         try:
-            stellar_transaction_id = response["id"]
+            _ = response["id"]
             envelope_xdr = response["envelope_xdr"]
             memo = response["memo"]
         except KeyError:
@@ -129,7 +133,9 @@ class Command(BaseCommand):
             logger.error(f"multiple Transaction objects returned for memo: {memo}")
             transaction = transactions[0]
 
-        payment_op = cls.find_matching_payment_op(response, horizon_tx, transaction)
+        payment_op = cls._cast_operation(
+            cls.find_matching_payment_op(response, horizon_tx, transaction)
+        )
         if not payment_op:
             logger.warning(f"Transaction matching memo {memo} has no payment operation")
             return
@@ -138,7 +144,7 @@ class Command(BaseCommand):
         # transaction. This allows anchors to validate the actual amount sent in
         # execute_outgoing_transactions() and handle invalid amounts appropriately.
         transaction.amount_in = round(
-            Decimal(payment_op.amount), transaction.asset.significant_decimals,
+            Decimal(payment_op.amount.int64), transaction.asset.significant_decimals,
         )
 
         # The stellar transaction has been matched with an existing record in the DB.
@@ -187,11 +193,33 @@ class Command(BaseCommand):
 
         return matching_payment_op
 
-    @staticmethod
-    def _check_payment_op(operation: Operation, want_asset: Asset) -> bool:
+    @classmethod
+    def _check_payment_op(cls, generic_operation: Operation, want_asset: Asset) -> bool:
+        if generic_operation.TYPE not in [
+            OperationType.PAYMENT,
+            OperationType.PATH_PAYMENT_STRICT_RECEIVE,
+            OperationType.PATH_PAYMENT_STRICT_SEND,
+        ]:
+            return False
+        operation = cls._cast_operation(generic_operation)
+        asset = operation.dest_asset.alpha_num4 or operation.dest_asset.alpha_num12
         return (
-            operation.TYPE_CODE == Xdr.const.PAYMENT
-            and str(operation.destination) == want_asset.distribution_account
-            and str(operation.asset.code) == want_asset.code
-            and str(operation.asset.issuer) == want_asset.issuer
+            str(operation.destination) == want_asset.distribution_account
+            and str(asset.asset_code) == want_asset.code
+            and str(asset.issuer) == want_asset.issuer
         )
+
+    @staticmethod
+    def _cast_operation(
+        operation,
+    ) -> Union[PaymentOp, PathPaymentStrictReceiveOp, PathPaymentStrictSendOp]:
+        op_xdr = operation.to_xdr_object().to_xdr()
+        if operation.TYPE == OperationType.PAYMENT:
+            operation = PaymentOp.from_xdr(op_xdr)
+        elif operation.TYPE == OperationType.PATH_PAYMENT_STRICT_RECEIVE:
+            operation = PathPaymentStrictReceiveOp.from_xdr(op_xdr)
+        elif operation.TYPE == OperationType.PATH_PAYMENT_STRICT_SEND:
+            operation = PathPaymentStrictSendOp.from_xdr(op_xdr)
+        else:
+            raise ValueError("Unrecognized operation type")
+        return operation
