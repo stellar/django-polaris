@@ -9,7 +9,6 @@ import os
 import binascii
 import time
 import jwt
-from urllib.parse import urlparse
 
 from django.utils.translation import gettext as _
 from rest_framework import status
@@ -31,7 +30,6 @@ from polaris.utils import getLogger
 from polaris.utils import render_error_response
 
 MIME_URLENCODE, MIME_JSON = "application/x-www-form-urlencoded", "application/json"
-DOMAIN_NAME = urlparse(settings.HOST_URL).hostname
 logger = getLogger(__name__)
 
 
@@ -78,7 +76,7 @@ class SEP10Auth(APIView):
         return build_challenge_transaction(
             server_secret=settings.SIGNING_SEED,
             client_account_id=client_account,
-            home_domain=DOMAIN_NAME,
+            home_domain=settings.SEP10_HOME_DOMAINS[0],
             network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
             timeout=900,
         )
@@ -116,7 +114,7 @@ class SEP10Auth(APIView):
             tx_envelope, account_id, _ = read_challenge_transaction(
                 challenge_transaction=envelope_xdr,
                 server_account_id=settings.SIGNING_KEY,
-                home_domains=DOMAIN_NAME,
+                home_domains=settings.SEP10_HOME_DOMAINS,
                 network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
             )
         except InvalidSep10ChallengeError as e:
@@ -134,7 +132,7 @@ class SEP10Auth(APIView):
                 verify_challenge_transaction_signed_by_client_master_key(
                     challenge_transaction=envelope_xdr,
                     server_account_id=settings.SIGNING_KEY,
-                    home_domains=DOMAIN_NAME,
+                    home_domains=settings.SEP10_HOME_DOMAINS,
                     network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
                 )
                 if len(tx_envelope.signatures) != 2:
@@ -157,7 +155,7 @@ class SEP10Auth(APIView):
             signers_found = verify_challenge_transaction_threshold(
                 challenge_transaction=envelope_xdr,
                 server_account_id=settings.SIGNING_KEY,
-                home_domains=DOMAIN_NAME,
+                home_domains=settings.SEP10_HOME_DOMAINS,
                 network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
                 threshold=threshold,
                 signers=signers,
@@ -179,7 +177,7 @@ class SEP10Auth(APIView):
         transaction_envelope, source_account, _ = read_challenge_transaction(
             challenge_transaction=envelope_xdr,
             server_account_id=settings.SIGNING_KEY,
-            home_domains=DOMAIN_NAME,
+            home_domains=settings.SEP10_HOME_DOMAINS,
             network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
         )
         logger.info(

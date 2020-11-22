@@ -4,16 +4,22 @@ Polaris-specific settings. This is not django.conf.settings.
 # pylint: disable=invalid-name
 import os
 import environ
+from urllib.parse import urlparse
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from stellar_sdk.server import Server
 from stellar_sdk.keypair import Keypair
 
 
-def env_or_settings(variable, bool=False):
+def env_or_settings(variable, bool=False, list=False):
     try:
-        return env.bool(variable) if bool else env(variable)
-    except ImproperlyConfigured as e:
+        if bool:
+            return env.bool(variable)
+        elif list:
+            return env.list(variable)
+        else:
+            return env(variable)
+    except ImproperlyConfigured:
         if hasattr(settings, "POLARIS_" + variable):
             return getattr(settings, "POLARIS_" + variable)
         else:
@@ -47,6 +53,9 @@ STELLAR_NETWORK_PASSPHRASE = (
 HORIZON_URI = env_or_settings("HORIZON_URI") or "https://horizon-testnet.stellar.org/"
 HORIZON_SERVER = Server(horizon_url=HORIZON_URI)
 HOST_URL = env_or_settings("HOST_URL")
+SEP10_HOME_DOMAINS = env_or_settings("SEP10_HOME_DOMAINS", list=True) or [
+    urlparse(HOST_URL).hostname
+]
 
 LOCAL_MODE = env_or_settings("LOCAL_MODE", bool=True) or False
 
