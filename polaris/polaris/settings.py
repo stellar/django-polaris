@@ -50,7 +50,7 @@ if any(sep in settings.POLARIS_ACTIVE_SEPS for sep in ["sep-10", "sep-24"]):
 STELLAR_NETWORK_PASSPHRASE = (
     env_or_settings("STELLAR_NETWORK_PASSPHRASE") or "Test SDF Network ; September 2015"
 )
-HORIZON_URI = env_or_settings("HORIZON_URI") or "https://horizon-testnet.stellar.org/"
+HORIZON_URI = env_or_settings("HORIZON_URI") or "https://horizon-testnet.stellar.org"
 HORIZON_SERVER = Server(horizon_url=HORIZON_URI)
 HOST_URL = env_or_settings("HOST_URL")
 SEP10_HOME_DOMAINS = env_or_settings("SEP10_HOME_DOMAINS", list=True) or [
