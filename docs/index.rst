@@ -71,7 +71,7 @@ other middleware that can return responses such as ``CommonMiddleware``.
         ...
     ]
 
-Polaris will now accept requests from all origins to its endpoints. It does this
+Polaris will accept requests from all origins to its endpoints. It does this
 by adding `corsheaders signal`_ that checks the request URI. However this
 does not change the CORS policy for any other endpoint on the server. You can change
 this functionality using the settings listed in the `corsheaders documentation`_.
@@ -121,21 +121,49 @@ You may want to configure the ``LEVEL`` of the Polaris logger differently depend
 Environment Variables
 ^^^^^^^^^^^^^^^^^^^^^
 
-Polaris uses environment variables that should be defined in the environment or included in ``BASE_DIR/.env`` or ``POLARIS_ENV_PATH``.
-::
+Polaris uses environment variables that should be defined in the environment or included in ``BASE_DIR/.env`` or ``POLARIS_ENV_PATH``. Below are the definitions for each variable used by Polaris.
 
-    STELLAR_NETWORK_PASSPHRASE="Test SDF Network ; September 2015"
-    HORIZON_URI="https://horizon-testnet.stellar.org/"
-    HOST_URL="https://example.com"
+LOCAL_MODE
+    A boolean value indicating if Polaris is in a local environment. Defaults to ``False``.
+    The value will be read from the environment using ``environ.Env.bool()``.
+    Ex. ``LOCAL_MODE=True``, ``LOCAL_MODE=1``
 
-Polaris also supports specifying your environment variables in your project's ``settings.py``. However, any variable Polaris expects in the environment must be prepended with ``POLARIS_`` if declared in `settings.py``. For example,
+HORIZON_URI
+    A URL (protocol + hostname) for the Horizon instance Polaris should connect to.
+    Defaults to ``https://horizon-testnet.stellar.org``.
+    Ex. ``HORIZON_URI=https://horizon.stellar.org``
+
+HOST_URL : Required
+    The URL (protocol + hostname) that this Polaris instance will run on.
+    Ex. ``HOST_URL=https://testanchor.stellar.org``, ``HOST_URL=http://localhost:8000``
+
+SEP10_HOME_DOMAINS
+    A list of home domains (no protocol, only hostname) that Polaris should consider valid when verifying SEP-10 challenge transactions sent by clients. The first domain will be used to build SEP-10 challenge transactions if the client request does not contain a ``home_domain`` parameter. Polaris will reject client requests that contain a ``home_domain`` value not included in this list.
+    The value will be read from the environment using ``environ.Env.list()``.
+    Defaults to a list containing the hostname of ``HOST_URL`` defined above if not specified.
+    Ex. ``SEP10_HOME_DOMAINS=testanchor.stellar.org,example.com``
+
+SERVER_JWT_KEY : Required
+    A secret string used to sign the encoded SEP-10 JWT contents. This should not be checked into version control.
+    Ex. ``SERVER_JWT_KEY=supersecretstellarjwtsecret``
+
+SIGNING_SEED : Required
+    A Stellar secret key used to sign challenge transactions before returning them to clients. This should not be checked into version control.
+    Ex. ``SIGNING_SEED=SAEJXYFZOQT6TYDAGXFH32KV6GLSMLCX2E2IOI3DXY7TO2O63WFCI5JD``
+
+STELLAR_NETWORK_PASSHRASE
+    The string identifying the Stellar network to use.
+    Defaults to ``Test SDF Network ; September 2015``.
+    Ex. ``STELLAR_NETWORK_PASSPHRASE="Public Global Stellar Network ; September 2015"``
+
+Polaris also supports specifying your environment variables in your project's settings file. However, any variable Polaris expects in the environment must be prepended with ``POLARIS_`` if declared in ``settings.py``. For example,
 ::
 
     POLARIS_STELLAR_NETWORK_PASSPHRASE = "Test SDF Network ; September 2015"
-    POLARIS_HORIZON_URI = "https://horizon-testnet.stellar.org/"
     POLARIS_HOST_URL = "https://example.com"
+    POLARIS_SEP10_HOME_DOMAINS = ["testanchor.stellar.org", "example.com"]
 
-If a variable cannot be found in the environment, Polaris will look in the ``settings.py`` file, or more generally, ``django.conf.settings``. Be careful not to check in secrets like your ``SERVER_JWT_KEY`` into your version control history, especially if your repository is not private.
+If a variable cannot be found in the environment, Polaris will check ``django.conf.settings``. By default, the variables defined in ``settings.py`` are added to ``django.conf.settings``.
 
 Endpoints
 ^^^^^^^^^
@@ -264,25 +292,20 @@ Then, add a ``.env`` file in the ``example`` directory. You'll need to create
 a signing account on Stellar's testnet and add it to your environment variables.
 ::
 
-    DJANGO_SECRET_KEY="supersecretdjangokey"
+    DJANGO_SECRET_KEY=supersecretdjangokey
     DJANGO_DEBUG=True
-
     SIGNING_SEED=<your signing account seed>
-
     STELLAR_NETWORK_PASSPHRASE="Test SDF Network ; September 2015"
-
-    # For multi-sig MULT asset anchored by the reference server
-    # Should be empty if not anchoring MULT
-    MULT_ASSET_ADDITIONAL_SIGNING_SEED=""
-
     HORIZON_URI="https://horizon-testnet.stellar.org/"
-    SERVER_JWT_KEY="your jwt local secret"
+    SERVER_JWT_KEY=yourjwtencryptionsecret
     DJANGO_ALLOWED_HOSTS=localhost,0.0.0.0,127.0.0.1
     HOST_URL="http://localhost:8000"
     LOCAL_MODE=True
+    SEP10_HOME_DOMAINS=localhost:8000
 
 Next, you'll need to create an asset on the Stellar test network and setup a distribution account.
-See `this tool`_ for creating assets on testnet.
+Polaris offers a CLI command that allows developers to issue assets on testnet.
+See the :ref:`CLI Commands <testnet>` documentation for more information.
 
 Now you're ready to add your asset to Polaris. Run the following commands:
 ::

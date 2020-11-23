@@ -9,7 +9,6 @@ import os
 import binascii
 import time
 import jwt
-from urllib.parse import urlparse
 
 from django.utils.translation import gettext as _
 from rest_framework import status
@@ -31,7 +30,6 @@ from polaris.utils import getLogger
 from polaris.utils import render_error_response
 
 MIME_URLENCODE, MIME_JSON = "application/x-www-form-urlencoded", "application/json"
-DOMAIN_NAME = urlparse(settings.HOST_URL).hostname
 logger = getLogger(__name__)
 
 
@@ -55,8 +53,19 @@ class SEP10Auth(APIView):
                 {"error": "no 'account' provided"}, status=status.HTTP_400_BAD_REQUEST
             )
 
+        home_domain = request.GET.get("home_domain")
+        if home_domain and home_domain not in settings.SEP10_HOME_DOMAINS:
+            return Response(
+                {
+                    "error": f"invalid 'home_domain' value. Accepted values: {settings.SEP10_HOME_DOMAINS}"
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        elif not home_domain:
+            home_domain = settings.SEP10_HOME_DOMAINS[0]
+
         try:
-            transaction = self._challenge_transaction(account)
+            transaction = self._challenge_transaction(account, home_domain)
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -69,7 +78,7 @@ class SEP10Auth(APIView):
         )
 
     @staticmethod
-    def _challenge_transaction(client_account):
+    def _challenge_transaction(client_account, home_domain):
         """
         Generate the challenge transaction for a client account.
         This is used in `GET <auth>`, as per SEP 10.
@@ -78,7 +87,7 @@ class SEP10Auth(APIView):
         return build_challenge_transaction(
             server_secret=settings.SIGNING_SEED,
             client_account_id=client_account,
-            domain_name=DOMAIN_NAME,
+            home_domain=home_domain,
             network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
             timeout=900,
         )
@@ -111,13 +120,13 @@ class SEP10Auth(APIView):
         sufficient because newly created accounts have their own keypair as signer
         with a weight greater than the default thresholds.
         """
-        server_key = settings.SIGNING_KEY
-        net = settings.STELLAR_NETWORK_PASSPHRASE
-
         logger.info("Validating challenge transaction")
         try:
-            tx_envelope, account_id = read_challenge_transaction(
-                envelope_xdr, server_key, DOMAIN_NAME, net
+            tx_envelope, account_id, _ = read_challenge_transaction(
+                challenge_transaction=envelope_xdr,
+                server_account_id=settings.SIGNING_KEY,
+                home_domains=settings.SEP10_HOME_DOMAINS,
+                network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
             )
         except InvalidSep10ChallengeError as e:
             err_msg = f"Error while validating challenge: {str(e)}"
@@ -132,7 +141,10 @@ class SEP10Auth(APIView):
             )
             try:
                 verify_challenge_transaction_signed_by_client_master_key(
-                    envelope_xdr, server_key, DOMAIN_NAME, net
+                    challenge_transaction=envelope_xdr,
+                    server_account_id=settings.SIGNING_KEY,
+                    home_domains=settings.SEP10_HOME_DOMAINS,
+                    network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
                 )
                 if len(tx_envelope.signatures) != 2:
                     raise InvalidSep10ChallengeError(
@@ -152,7 +164,12 @@ class SEP10Auth(APIView):
         threshold = account.thresholds.med_threshold
         try:
             signers_found = verify_challenge_transaction_threshold(
-                envelope_xdr, server_key, DOMAIN_NAME, net, threshold, signers
+                challenge_transaction=envelope_xdr,
+                server_account_id=settings.SIGNING_KEY,
+                home_domains=settings.SEP10_HOME_DOMAINS,
+                network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
+                threshold=threshold,
+                signers=signers,
             )
         except InvalidSep10ChallengeError as e:
             logger.info(str(e))
@@ -168,11 +185,11 @@ class SEP10Auth(APIView):
         See: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.md#token
         """
         issued_at = time.time()
-        transaction_envelope, source_account = read_challenge_transaction(
-            envelope_xdr,
-            settings.SIGNING_KEY,
-            DOMAIN_NAME,
-            settings.STELLAR_NETWORK_PASSPHRASE,
+        transaction_envelope, source_account, _ = read_challenge_transaction(
+            challenge_transaction=envelope_xdr,
+            server_account_id=settings.SIGNING_KEY,
+            home_domains=settings.SEP10_HOME_DOMAINS,
+            network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
         )
         logger.info(
             f"Challenge verified, generating SEP-10 token for account {source_account}"

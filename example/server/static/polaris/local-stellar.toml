@@ -1,0 +1,40 @@
+ACCOUNTS = [ "GCSGSR6KQQ5BP2FXVPWRL6SWPUSFWLVONLIBJZUKTVQB5FYJFVL6XOXE", "GDRND2IUXVMHZ4XTB2RZ4AJ3AOLON3WTAOC23XEASB56NHDFW3ED57TW" ]
+VERSION = "0.1.0"
+SIGNING_KEY = "GCUZ6YLL5RQBTYLTTQLPCM73C5XAIUGK2TIMWQH7HPSGWVS2KJ2F3CHS"
+NETWORK_PASSPHRASE = "Test SDF Network ; September 2015"
+
+TRANSFER_SERVER = "http://localhost:8000/sep6"
+TRANSFER_SERVER_SEP0024 = "http://localhost:8000/sep24"
+WEB_AUTH_ENDPOINT = "http://localhost:8000/auth"
+KYC_SERVER = "http://localhost:8000/kyc"
+DIRECT_PAYMENT_SERVER = "http://localhost:8000/sep31"
+
+[[CURRENCIES]]
+code = "SRT"
+issuer = "GCDNJUBQSX7AJWLJACMJ7I4BC3Z47BQUTMHEICZLE6MU4KQBRYG5JY6B"
+status = "test"
+is_asset_anchored = false
+anchor_asset_type = "other"
+desc = "A fake anchored asset to use with this example anchor server."
+
+[[CURRENCIES]]
+code = "MULT"
+issuer = "GDLD3SOLYJTBEAK5IU4LDS44UMBND262IXPJB3LDHXOZ3S2QQRD5FSMM"
+status = "test"
+is_asset_anchored = false
+anchor_asset_type = "other"
+desc = "A fake anchored asset that has a multsig distribution account as an example."
+
+[[PRINCIPALS]]
+name = "Jacob Urban"
+email = "jake@stellar.org"
+keybase = "jakeurban"
+github = "https://www.github.com/JakeUrban"
+
+[DOCUMENTATION]
+ORG_NAME = "Stellar Development Foundation"
+ORG_URL = "https://stellar.org"
+ORG_DESCRIPTION = "SEP 24 reference server."
+ORG_KEYBASE = "stellar.public"
+ORG_TWITTER = "StellarOrg"
+ORG_GITHUB = "stellar"
