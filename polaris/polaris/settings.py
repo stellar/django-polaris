@@ -58,7 +58,6 @@ if not HORIZON_URI.startswith("http"):
     raise ImproperlyConfigured("HORIZON_URI must include a protocol (http or https)")
 HORIZON_SERVER = Server(horizon_url=HORIZON_URI)
 
-
 HOST_URL = env_or_settings("HOST_URL")
 if not HOST_URL.startswith("http"):
     raise ImproperlyConfigured("HOST_URL must include a protocol (http or https)")
