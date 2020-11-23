@@ -292,25 +292,20 @@ Then, add a ``.env`` file in the ``example`` directory. You'll need to create
 a signing account on Stellar's testnet and add it to your environment variables.
 ::
 
-    DJANGO_SECRET_KEY="supersecretdjangokey"
+    DJANGO_SECRET_KEY=supersecretdjangokey
     DJANGO_DEBUG=True
-
     SIGNING_SEED=<your signing account seed>
-
     STELLAR_NETWORK_PASSPHRASE="Test SDF Network ; September 2015"
-
-    # For multi-sig MULT asset anchored by the reference server
-    # Should be empty if not anchoring MULT
-    MULT_ASSET_ADDITIONAL_SIGNING_SEED=""
-
     HORIZON_URI="https://horizon-testnet.stellar.org/"
-    SERVER_JWT_KEY="your jwt local secret"
+    SERVER_JWT_KEY=yourjwtencryptionsecret
     DJANGO_ALLOWED_HOSTS=localhost,0.0.0.0,127.0.0.1
     HOST_URL="http://localhost:8000"
     LOCAL_MODE=True
+    SEP10_HOME_DOMAINS=localhost:8000
 
 Next, you'll need to create an asset on the Stellar test network and setup a distribution account.
-See `this tool`_ for creating assets on testnet.
+Polaris offers a CLI command that allows developers to issue assets on testnet.
+See the :ref:`CLI Commands <testnet>` documentation for more information.
 
 Now you're ready to add your asset to Polaris. Run the following commands:
 ::
