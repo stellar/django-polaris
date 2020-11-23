@@ -55,9 +55,7 @@ The ``testnet`` command comes with two subcommands, ``issue`` and ``reset``.
 ``reset`` calls the functionality invoked with ``issue`` for each asset in the anchor's database. Since the database does not store the issuing account's secret key, the user must input each key as requested by the Polaris command. It also performs a couple other functions necessary to ensure your Polaris instance runs successfully after a testnet reset:
 
 Moves all ``pending_trust`` transactions to ``error``
-
     This is done because all accounts have been cleared from the network. While its possible an account that required a trustline could be recreated and a trustline could be established, its unlikely. Polaris assumes a testnet reset makes in-progress transactions unrecoverable.
 
 Updates the ``paging_token`` of latest transaction streamed for each anchored asset
-
     ``watch_transactions`` streams transactions to and from each anchored asset's distribution account. Specifically, it streams transactions starting with the most recently completed transaction's ``paging_token`` on startup. When the testnet resets, the ``paging_token`` used for transactions prior to the reset are no longer valid. To fix this, Polaris updates the ``paging_token`` of the most recently completed transaction for each anchored asset to ``"now"``.
