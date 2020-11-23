@@ -63,7 +63,7 @@ if not HOST_URL.startswith("http"):
     raise ImproperlyConfigured("HOST_URL must include a protocol (http or https)")
 
 SEP10_HOME_DOMAINS = env_or_settings("SEP10_HOME_DOMAINS", list=True) or [
-    urlparse(HOST_URL).hostname
+    urlparse(HOST_URL).netloc
 ]
 if any(d.startswith("http") for d in SEP10_HOME_DOMAINS):
     raise ImproperlyConfigured("SEP10_HOME_DOMAINS must only be hostnames")
