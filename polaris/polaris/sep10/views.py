@@ -53,8 +53,19 @@ class SEP10Auth(APIView):
                 {"error": "no 'account' provided"}, status=status.HTTP_400_BAD_REQUEST
             )
 
+        home_domain = request.GET.get("home_domain")
+        if home_domain and home_domain not in settings.SEP10_HOME_DOMAINS:
+            return Response(
+                {
+                    "error": f"invalid 'home_domain' value. Accepted values: {settings.SEP10_HOME_DOMAINS}"
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        elif not home_domain:
+            home_domain = settings.SEP10_HOME_DOMAINS[0]
+
         try:
-            transaction = self._challenge_transaction(account)
+            transaction = self._challenge_transaction(account, home_domain)
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -67,7 +78,7 @@ class SEP10Auth(APIView):
         )
 
     @staticmethod
-    def _challenge_transaction(client_account):
+    def _challenge_transaction(client_account, home_domain):
         """
         Generate the challenge transaction for a client account.
         This is used in `GET <auth>`, as per SEP 10.
@@ -76,7 +87,7 @@ class SEP10Auth(APIView):
         return build_challenge_transaction(
             server_secret=settings.SIGNING_SEED,
             client_account_id=client_account,
-            home_domain=settings.SEP10_HOME_DOMAINS[0],
+            home_domain=home_domain,
             network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
             timeout=900,
         )
