@@ -113,11 +113,28 @@ def create_stellar_deposit(transaction: Transaction) -> bool:
     """
     Create and submit the Stellar transaction for the deposit.
     The Transaction `pending_anchor` when the task is called from `poll_pending_deposits()`.
-    TODO: Correct this docstring
+    The Transaction `pending_trust` when the task is called from `check_trustlines()`.
+    The Transaction `pending_anchor_claimable_start` when the task is called from `poll_pending_deposits()`
+        and the Transaction is marked as pending_anchor_claimable_start.
+
+    If a wallet supports claimable balances and a wallet user deposits offchain value for an asset they do not
+    yet trust then the following steps occur
+
+    - Polaris will parse the POST req body for the "claimable_balance_supported"
+    field and populate the Transaction object's "claimable_balance_supported" column (i.e attribute) True.
+    False otherwise. (polaris/polaris/sep24/deposit.py 316,5:)
+    - Then `poll_pending_deposits()` will do the following
+        - Parse the deposit Transactions that are pending_user_transfer_start
+        - Call get_or_create_transaction_destination_account and discover it is "pending_trust"
+        - Set the Transaction status to pending_trust
+        - Set the Transaction status to pending_anchor_claimable_start; since transaction.claimable_balance_supported is True
+        - "Finally" call `create_stellar_deposit` where we then craft and submit
+            a claimable balance in for the user to claim in their own time.
     """
     if transaction.status not in [
         Transaction.STATUS.pending_anchor,
         Transaction.STATUS.pending_trust,
+        Transaction.STATUS.pending_anchor_claimable_start,
     ]:
         raise ValueError(
             f"unexpected transaction status {transaction.status} for "
@@ -311,11 +328,7 @@ def create_transaction_envelope(transaction, source_account) -> TransactionEnvel
         network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
         base_fee=base_fee,
     )
-    if (
-        transaction.status == Transaction.STATUS.pending_trust
-        and transaction.claimable_balance_supported
-    ):
-        logger.debug("create_transaction_envelope For claimable_balance_supported")
+    if transaction.status == Transaction.STATUS.pending_anchor_claimable_start:
         claimant = Claimant(destination=transaction.stellar_account)
         asset = Asset(code=transaction.asset.code, issuer=transaction.asset.issuer)
         builder.append_create_claimable_balance_op(

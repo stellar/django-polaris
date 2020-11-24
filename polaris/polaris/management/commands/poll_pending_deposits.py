@@ -36,6 +36,7 @@ def execute_deposit(transaction: Transaction) -> bool:
     valid_statuses = [
         Transaction.STATUS.pending_user_transfer_start,
         Transaction.STATUS.pending_anchor,
+        Transaction.STATUS.pending_anchor_claimable_start,
     ]
     if transaction.kind != transaction.KIND.deposit:
         raise ValueError("Transaction not a deposit")
@@ -44,7 +45,10 @@ def execute_deposit(transaction: Transaction) -> bool:
             f"Unexpected transaction status: {transaction.status}, expecting "
             f"{' or '.join(valid_statuses)}."
         )
-    if transaction.status != Transaction.STATUS.pending_anchor:
+    if (
+        transaction.status != Transaction.STATUS.pending_anchor
+        and transaction.status != Transaction.STATUS.pending_anchor_claimable_start
+    ):
         transaction.status = Transaction.STATUS.pending_anchor
     transaction.status_eta = 5  # Ledger close time.
     transaction.save()
@@ -273,7 +277,6 @@ class Command(BaseCommand):
                     )
                 else:
                     transaction.amount_fee = Decimal(0)
-            logger.info("calling get_or_create_transaction_destination_account()")
             try:
                 (
                     _,
@@ -299,6 +302,14 @@ class Command(BaseCommand):
                 ):
                     transaction.status = Transaction.STATUS.pending_trust
                     transaction.save()
+                if transaction.claimable_balance_supported:
+                    transaction.status = (
+                        Transaction.STATUS.pending_anchor_claimable_start
+                    )
+                    logger.info(
+                        f"destination account is pending_anchor_claimable_start for transaction {transaction.id}"
+                    )
+                    transaction.save()
                 continue
 
             if check_for_multisig(transaction):
@@ -314,6 +325,14 @@ class Command(BaseCommand):
             envelope_xdr__isnull=False,
         )
         for t in ready_multisig_transactions:
+            cls.execute_deposit(t)
+
+        ready_claimable_transactions = Transaction.objects.filter(
+            kind=Transaction.KIND.deposit,
+            status=Transaction.STATUS.pending_anchor_claimable_start,
+        )
+        for t in ready_claimable_transactions:
+            logger.info(t.id)
             cls.execute_deposit(t)
 
     @staticmethod
