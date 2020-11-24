@@ -316,12 +316,6 @@ def deposit(account: str, request: Request) -> Response:
     claimable_balance_supported = bool(
         request.POST.get("claimable_balance_supported") == "true"
     )
-    # Debugging
-    logger.debug(f"request = {request.POST}")
-    logger.debug(f"claimable_balance_supported = {claimable_balance_supported}")
-    logger.debug(
-        f"claimable_balance_supported type {type(claimable_balance_supported)}"
-    )
     if lang:
         err_resp = validate_language(lang)
         if err_resp:
