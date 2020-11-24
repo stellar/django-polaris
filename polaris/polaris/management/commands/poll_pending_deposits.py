@@ -136,14 +136,12 @@ class Command(BaseCommand):
 
     @classmethod
     def execute_deposits(cls):
-        """
-        Right now, execute_deposits assumes all pending deposits are SEP-6 or 24
-        transactions. This may change in the future if Polaris adds support for
-        another SEP that checks for incoming deposits.
-        """
         module = sys.modules[__name__]
         pending_deposits = Transaction.objects.filter(
-            status=Transaction.STATUS.pending_user_transfer_start,
+            status__in=[
+                Transaction.STATUS.pending_user_transfer_start,
+                Transaction.STATUS.pending_external,
+            ],
             kind=Transaction.KIND.deposit,
         )
         try:
