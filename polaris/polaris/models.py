@@ -417,6 +417,10 @@ class Transaction(models.Model):
     
         the user has not yet initiated their transfer to the anchor. This is the 
         necessary first step in any deposit or withdrawal flow.
+    * **pending_anchor_claimable_start**
+
+        the user hasn't added a trust-line for the asset for the deposit transaction.
+        Such that, a claimable balance is being processed internally by anchor.
     * **incomplete**
     
         there is not yet enough information for this transaction to be initiated. 
