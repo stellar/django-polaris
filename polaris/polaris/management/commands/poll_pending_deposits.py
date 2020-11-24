@@ -54,7 +54,7 @@ def check_for_multisig(transaction):
     if transaction.asset.distribution_account_master_signer:
         master_signer = transaction.asset.distribution_account_master_signer
     thresholds = transaction.asset.distribution_account_thresholds
-    if not (master_signer and master_signer["weight"] >= thresholds["med_threshold"]):
+    if not master_signer or master_signer["weight"] < thresholds["med_threshold"]:
         # master account is not sufficient
         transaction.pending_signatures = True
         transaction.status = Transaction.STATUS.pending_anchor
