@@ -43,6 +43,8 @@ Testnet Resets
 
 If you're running your anchor service on testnet, you'll need to reset Polaris' state every time the network resets. Polaris comes with a command that automates this process.
 
+.. _testnet:
+
 testnet
 ^^^^^^^
 
