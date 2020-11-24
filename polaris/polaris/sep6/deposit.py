@@ -6,6 +6,7 @@ from rest_framework.decorators import api_view, renderer_classes
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.renderers import JSONRenderer
+from rest_framework.exceptions import APIException
 from stellar_sdk.exceptions import MemoInvalidException
 
 from polaris.models import Asset, Transaction
@@ -54,6 +55,8 @@ def deposit(account: str, request: Request) -> Response:
         integration_response = rdi.process_sep6_request(args, transaction)
     except ValueError as e:
         return render_error_response(str(e))
+    except APIException as e:
+        return render_error_response(str(e), status_code=e.status_code)
 
     try:
         response, status_code = validate_response(
