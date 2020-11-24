@@ -336,6 +336,9 @@ class Transaction(models.Model):
         "pending_trust": _("waiting for a trustline to be established"),
         "pending_user": _("waiting on user action"),
         "pending_user_transfer_start": _("waiting on the user to transfer funds"),
+        "pending_anchor_claimable_start": _(
+            "No trustline, Processing claimable balance"
+        ),
         "incomplete": _("incomplete"),
         "no_market": _("no market for the asset"),
         "too_small": _("the transaction amount is too small"),
