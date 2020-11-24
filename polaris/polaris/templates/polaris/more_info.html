@@ -49,7 +49,11 @@
 
     <div class="info-item">
         <div class="info-label">
-            {% trans "amount received" %}
+            {% if transaction.status == "incomplete" or transaction.status == "pending_user_transfer_start" %}
+              {% trans "amount to be received" %}
+            {% else %}
+              {% trans "amount received" %}
+            {% endif %}
         </div>
         <div class="field-value">
             {{ amount_in }}
@@ -68,9 +72,9 @@
     <div class="info-item">
         <div class="info-label">
             {% if transaction.kind == "deposit" %}
-            {% trans "amount deposited" %}
+                {% trans "amount deposited" %}
             {% else %}
-            {% trans "amount withdrawn" %}
+                {% trans "amount withdrawn" %}
             {% endif %}
         </div>
         <div class="field-value">
