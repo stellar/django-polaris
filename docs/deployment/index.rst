@@ -29,7 +29,7 @@ Polaris periodically queries for transactions in ``pending_external`` and passes
 poll_pending_deposits
 ^^^^^^^^^^^^^^^^^^^^^
 
-Polaris periodically queries for transactions in ``pending_user_transfer_start`` and ``pending_external`` and passes them to the ``RailsIntegration.poll_pending_deposits`` integration function. The anchor is expected to update the transactions' status depending on the if the funds have become available in the anchor's off-chain account or if the funds have been sent but not received. See the ``poll_pending_deposits()`` integration function for more details.
+Polaris periodically queries for transactions in ``pending_user_transfer_start`` and ``pending_external`` and passes them to the ``RailsIntegration.poll_pending_deposits`` integration function. ``Transaction`` objects that represent funds that have been received off-chain should be returned so Polaris can submit them to the Stellar network. See the ``poll_pending_deposits()`` integration function for more details.
 
 check_trustlines
 ^^^^^^^^^^^^^^^^
