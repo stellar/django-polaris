@@ -68,7 +68,6 @@ def test_process_response_success(client):
     assert transaction.paging_token
     assert transaction.status == Transaction.STATUS.pending_anchor
     assert transaction.amount_in == 10000
-    assert False
 
 
 @pytest.mark.django_db
