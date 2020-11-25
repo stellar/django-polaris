@@ -126,3 +126,77 @@ no_trust_exp = BaseHorizonError(
         )
     )
 )
+
+
+@pytest.mark.django_db
+@patch(
+    "polaris.utils.settings.HORIZON_SERVER",
+    Mock(
+        load_account=Mock(return_value=mock_account),
+        submit_transaction=Mock(side_effect=no_trust_exp),
+        fetch_base_fee=Mock(return_value=100),
+    ),
+)
+@patch(
+    "polaris.utils.get_account_obj", Mock(return_value=(mock_account, {"balances": []}))
+)
+def test_deposit_stellar_no_trustline(acc1_usd_deposit_transaction_factory):
+    """
+    `create_stellar_deposit` sets the transaction with the provided `transaction_id` to
+    status `pending_trust` if the provided transaction's Stellar account has no trustline
+    for its asset. (We assume the asset's issuer is the server Stellar account.)
+
+    This is the flow when a wallet/client submits a deposit without the sending
+    "claimable_balance_supported=True" in their POST request body.
+    Such that the deposit transaction is blocked
+    until the Wallet user creates a trustline to that asset
+    """
+    deposit = acc1_usd_deposit_transaction_factory()
+    deposit.status = Transaction.STATUS.pending_anchor
+    deposit.save()
+    assert not create_stellar_deposit(deposit)
+    assert (
+        Transaction.objects.get(id=deposit.id).status
+        == Transaction.STATUS.pending_trust
+    )
+
+
+mock_server_no_trust_account = Mock(
+    accounts=Mock(
+        return_value=Mock(
+            account_id=Mock(return_value=Mock(call=Mock(return_value={"balances": []})))
+        )
+    ),
+    load_account=mock_account,
+    submit_transaction=Mock(return_value=HORIZON_SUCCESS_RESPONSE),
+    fetch_base_fee=Mock(return_value=100),
+)
+
+
+@pytest.mark.django_db
+@patch(
+    "polaris.utils.get_account_obj", Mock(return_value=(mock_account, {"balances": []}))
+)
+@patch("polaris.utils.settings.HORIZON_SERVER", mock_server_no_account)
+def test_deposit_stellar_no_trustline_with_claimable_bal(
+    acc1_usd_deposit_transaction_factory,
+):
+    """
+    This is the flow when a wallet/client submits a deposit and the sends
+    "claimable_balance_supported=True" in their POST request body.
+    Such that the deposit transaction is can continue as a
+    claimable balance operation rather than a payment operation
+
+    `execute_deposits` from `poll_pending_deposits.py` sets the transaction.status of the given transaction
+    pulled from the db to `pending_anchor_claimable_start`
+    if the provided transaction's Stellar account has no trustline
+    and sees claimable_balance_supported set to True.
+    Then it will create_stellar_deposit() where it wil complete the deposit flow as a claimable balance
+    """
+    deposit = acc1_usd_deposit_transaction_factory()
+    deposit.status = Transaction.STATUS.pending_anchor_claimable_start
+    deposit.claimable_balance_supported = True
+    deposit.save()
+    assert create_stellar_deposit(deposit)
+    assert Transaction.objects.get(id=deposit.id).claimable_balance_id
+    assert Transaction.objects.get(id=deposit.id).status == Transaction.STATUS.completed
