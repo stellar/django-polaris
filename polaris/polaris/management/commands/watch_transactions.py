@@ -271,7 +271,9 @@ class Command(BaseCommand):
             # this method of fetching amounts gives the "raw" amount, so
             # we need to divide by Operation._ONE: 10000000
             # (Stellar uses 7 decimals places of precision)
-            values["amount"] = str(op_result.success.last.amount / Operation._ONE)
+            values["amount"] = str(
+                Decimal(op_result.success.last.amount) / Operation._ONE
+            )
             values["code"] = operation.dest_asset.code
             values["issuer"] = operation.dest_asset.issuer
         elif isinstance(operation, PathPaymentStrictReceive):
