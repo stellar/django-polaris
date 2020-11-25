@@ -85,13 +85,13 @@ class RailsIntegration:
         externally completed, meaning the off-chain funds are available in the
         anchor's account.
 
-        Per SEP-24, make sure to save the transaction's ``from_address`` field with
+        Make sure to save the transaction's ``from_address`` field with
         the account the funds originated from.
 
         Also ensure the amount deposited to the anchor's account matches each
         transaction's ``amount_in`` field. Client applications may send an amount
-        that differs from the amount originally specified in a SEP-24 API call,
-        or in the case of SEP-6 transactions, ``amount_in`` will be ``None``.
+        that differs from the amount originally specified prior.
+
         If ``amount_in`` differs from the amount deposited, assign the amount
         deposited to ``amount_in`` and update ``amount_fee`` to appropriately.
 
@@ -111,8 +111,22 @@ class RailsIntegration:
 
             Transactions.object.filter(
                 kind=Transaction.KIND.deposit,
-                status=Transaction.STATUS.pending_user_transfer_start
+                status=[
+                    Transaction.STATUS.pending_user_transfer_start,
+                    Transaction.STATUS.pending_external
+                ]
             )
+
+        ``pending_user_transfer_start`` is the proper status for a
+        transaction when the user must take some action to proceed. In this
+        case, that action is sending the deposit funds.
+
+        ``pending_external`` is the proper status for a transaction when
+        the deposit funds have been sent but have not arrived in the anchor's
+        off-chain account. If the anchor cannot detect when deposit funds
+        are sent but not received, it is perfectly acceptable to keep the
+        transaction in ``pending_user_transfer_start`` until the funds have
+        arrived.
 
         If you have many pending deposits, you may way want to batch
         the retrieval of these objects to improve query performance and
