@@ -1,7 +1,8 @@
 """This module defines custom management commands for the app admin."""
 import asyncio
-from typing import Dict, Optional, Union, List
+from typing import Dict, Optional, Union, List, Tuple
 from decimal import Decimal
+from base64 import b64decode
 
 from django.core.management.base import BaseCommand
 from django.db.models import Q
@@ -134,9 +135,11 @@ class Command(BaseCommand):
             logger.error(f"multiple Transaction objects returned for memo: {memo}")
             transaction = transactions[0]
 
-        op_results = Xdr.StellarXDRUnpacker.unpack_TransactionResult(
-            result_xdr
-        ).result.results
+        op_results = (
+            Xdr.StellarXDRUnpacker(b64decode(result_xdr))
+            .unpack_TransactionResult()
+            .result.results
+        )
         operations = TransactionEnvelope.from_xdr(
             envelope_xdr, network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
         ).transaction.operations
@@ -177,10 +180,9 @@ class Command(BaseCommand):
     ) -> Optional[Dict]:
         matching_payment_data = None
         for idx, op_result in enumerate(result_ops):
-            op_result = cls._cast_operation_result(op_result)
+            op, op_result = cls._cast_operation_and_result(operations[idx], op_result)
             if not op_result:  # not a payment op
                 continue
-            op = cls._cast_operation(operations[idx])
             maybe_payment_data = cls._check_for_payment_match(
                 op, op_result, transaction.asset
             )
@@ -207,7 +209,14 @@ class Command(BaseCommand):
     def _check_for_payment_match(
         cls, operation: PaymentOp, op_result: PaymentOpResult, want_asset: Asset
     ) -> Optional[Dict]:
+        print(operation, op_result)
         payment_data = cls._get_payment_values(operation, op_result)
+        print(
+            payment_data,
+            want_asset.distribution_account,
+            want_asset.code,
+            want_asset.issuer,
+        )
         if (
             payment_data["destination"] == want_asset.distribution_account
             and payment_data["code"] == want_asset.code
@@ -218,30 +227,28 @@ class Command(BaseCommand):
             return None
 
     @classmethod
-    def _cast_operation(cls, operation: Operation) -> Optional[PaymentOp]:
+    def _cast_operation_and_result(
+        cls, operation: Operation, op_result: Xdr.types.OperationResult
+    ) -> Tuple[Optional[PaymentOp], Optional[PaymentOpResult]]:
         code = operation.type_code()
         op_xdr_obj = operation.to_xdr_object()
         if code == Xdr.const.PAYMENT:
-            return Payment.from_xdr_object(op_xdr_obj)
+            return (
+                Payment.from_xdr_object(op_xdr_obj),
+                Xdr.types.PaymentResult.from_xdr(op_result.to_xdr()),
+            )
         elif code == Xdr.const.PATH_PAYMENT_STRICT_SEND:
-            return PathPaymentStrictSend.from_xdr_object(op_xdr_obj)
+            return (
+                PathPaymentStrictSend.from_xdr_object(op_xdr_obj),
+                Xdr.types.PathPaymentStrictSendResult.from_xdr(op_result.to_xdr()),
+            )
         elif code == Xdr.const.PATH_PAYMENT_STRICT_RECEIVE:
-            return PathPaymentStrictReceive.from_xdr_object(op_xdr_obj)
+            return (
+                PathPaymentStrictReceive.from_xdr_object(op_xdr_obj),
+                Xdr.types.PathPaymentStrictReceiveResult.from_xdr(op_result.to_xdr()),
+            )
         else:
-            return None
-
-    @classmethod
-    def _cast_operation_result(
-        cls, op_result: Xdr.types.OperationResult
-    ) -> Optional[PaymentOpResult]:
-        if op_result.code == Xdr.const.PAYMENT:
-            return Xdr.types.PaymentResult.from_xdr(op_result.to_xdr())
-        elif op_result.code == Xdr.const.PATH_PAYMENT_STRICT_SEND:
-            return Xdr.types.PathPaymentStrictSendResult.from_xdr(op_result.to_xdr())
-        elif op_result.code == Xdr.const.PATH_PAYMENT_STRICT_RECEIVE:
-            return Xdr.types.PathPaymentStrictReceiveResult.from_xdr(op_result.to_xdr())
-        else:
-            return None
+            return None, None
 
     @classmethod
     def _get_payment_values(
