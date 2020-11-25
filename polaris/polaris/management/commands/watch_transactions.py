@@ -7,7 +7,10 @@ from base64 import b64decode
 from django.core.management.base import BaseCommand
 from django.db.models import Q
 from stellar_sdk.exceptions import NotFoundError
-from stellar_sdk.transaction_envelope import TransactionEnvelope
+from stellar_sdk.transaction_envelope import (
+    TransactionEnvelope,
+    Transaction as HorizonTransaction,
+)
 from stellar_sdk.xdr import Xdr
 from stellar_sdk.operation import (
     Operation,
@@ -140,12 +143,12 @@ class Command(BaseCommand):
             .unpack_TransactionResult()
             .result.results
         )
-        operations = TransactionEnvelope.from_xdr(
+        horion_tx = TransactionEnvelope.from_xdr(
             envelope_xdr, network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
-        ).transaction.operations
+        ).transaction
 
-        payment_data = cls.find_matching_payment_data(
-            response, operations, op_results, transaction
+        payment_data = cls._find_matching_payment_data(
+            response, horion_tx, op_results, transaction
         )
         if not payment_data:
             logger.warning(f"Transaction matching memo {memo} has no payment operation")
@@ -171,16 +174,17 @@ class Command(BaseCommand):
         return
 
     @classmethod
-    def find_matching_payment_data(
+    def _find_matching_payment_data(
         cls,
         response: Dict,
-        operations: List[Operation],
+        horizon_tx: HorizonTransaction,
         result_ops: List[Xdr.types.OperationResult],
         transaction: Transaction,
     ) -> Optional[Dict]:
         matching_payment_data = None
+        ops = horizon_tx.operations
         for idx, op_result in enumerate(result_ops):
-            op, op_result = cls._cast_operation_and_result(operations[idx], op_result)
+            op, op_result = cls._cast_operation_and_result(ops[idx], op_result)
             if not op_result:  # not a payment op
                 continue
             maybe_payment_data = cls._check_for_payment_match(
@@ -188,7 +192,10 @@ class Command(BaseCommand):
             )
             if maybe_payment_data:
                 cls._update_transaction_info(
-                    transaction, response, operations[idx].source
+                    transaction,
+                    response["id"],
+                    response["paging_token"],
+                    ops[idx].source or horizon_tx.source,
                 )
                 matching_payment_data = maybe_payment_data
                 break
@@ -197,11 +204,11 @@ class Command(BaseCommand):
 
     @classmethod
     def _update_transaction_info(
-        cls, transaction: Transaction, response: Dict, source: str
+        cls, transaction: Transaction, stellar_txid: str, paging_token: str, source: str
     ):
-        transaction.stellar_transaction_id = response["id"]
+        transaction.stellar_transaction_id = stellar_txid
         transaction.from_address = source
-        transaction.paging_token = response["paging_token"]
+        transaction.paging_token = paging_token
         transaction.status_eta = 0
         transaction.save()
 
@@ -209,14 +216,7 @@ class Command(BaseCommand):
     def _check_for_payment_match(
         cls, operation: PaymentOp, op_result: PaymentOpResult, want_asset: Asset
     ) -> Optional[Dict]:
-        print(operation, op_result)
         payment_data = cls._get_payment_values(operation, op_result)
-        print(
-            payment_data,
-            want_asset.distribution_account,
-            want_asset.code,
-            want_asset.issuer,
-        )
         if (
             payment_data["destination"] == want_asset.distribution_account
             and payment_data["code"] == want_asset.code
@@ -235,17 +235,17 @@ class Command(BaseCommand):
         if code == Xdr.const.PAYMENT:
             return (
                 Payment.from_xdr_object(op_xdr_obj),
-                Xdr.types.PaymentResult.from_xdr(op_result.to_xdr()),
+                op_result.tr.paymentResult,
             )
         elif code == Xdr.const.PATH_PAYMENT_STRICT_SEND:
             return (
                 PathPaymentStrictSend.from_xdr_object(op_xdr_obj),
-                Xdr.types.PathPaymentStrictSendResult.from_xdr(op_result.to_xdr()),
+                op_result.tr.pathPaymentStrictSendResult,
             )
         elif code == Xdr.const.PATH_PAYMENT_STRICT_RECEIVE:
             return (
                 PathPaymentStrictReceive.from_xdr_object(op_xdr_obj),
-                Xdr.types.PathPaymentStrictReceiveResult.from_xdr(op_result.to_xdr()),
+                op_result.tr.pathPaymentStrictReceiveResult,
             )
         else:
             return None, None

@@ -1,11 +1,8 @@
 import pytest
 from copy import deepcopy
-from uuid import uuid4
 
 from stellar_sdk.keypair import Keypair
-from stellar_sdk.transaction_envelope import TransactionEnvelope
 
-from polaris import settings
 from polaris.models import Transaction, Asset
 from polaris.management.commands.watch_transactions import Command
 
@@ -17,16 +14,18 @@ SUCCESS_PAYMENT_TRANSACTION_JSON = {
     "result_xdr": "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA=",
     "memo": "AAAAAAAAAAAAAAAAAAAAAIDqc+oB00EajZzqIpme754=",
     "memo_type": "hash",
-    "source": "GBS3BTGSJJYD6OHHRRJXDREG67225BLTJC56Y3HX3DDJH2N5D7B3A23V",
+    "source": "GC6Z5AIAP2IGNXB2QO4P34MQNP776H6LNIFBIP6C3IRGBHU5RQVSQ7XM",
     "paging_token": "2007270145658880",
 }
-FAILURE_PAYMENT_TRANSACTION_JSON = {
-    "id": "",
-    "successful": False,
-    "memo": "AAAAAAAAAAAAAAAAAAAAAIDqc+oB00EajZzqIpme754=",
-    "memo_type": "hash",
-    "source": "GBS3BTGSJJYD6OHHRRJXDREG67225BLTJC56Y3HX3DDJH2N5D7B3A23V",
-    "paging_token": "",
+SUCCESS_STRICT_SEND_PAYMENT = {
+    "id": "00768d12b1753414316c9760993f3998868583121b5560b52a3bcf7dacf3dfc2",
+    "successful": True,
+    "envelope_xdr": "AAAAAgAAAAC9noEAfpBm3DqDuP3xkGv//x/LagoUP8LaImCenYwrKAAAAGQAByFhAAAABAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAh0ZXh0bWVtbwAAAAEAAAAAAAAADQAAAAFURVNUAAAAAL2egQB+kGbcOoO4/fGQa///H8tqChQ/wtoiYJ6djCsoAAAAAlSkeoAAAAAA0QNr+3v9HSAqKJT6bfuS/r+OXa68V5uK9x/kvH0HX54AAAABVEVTVAAAAAC9noEAfpBm3DqDuP3xkGv//x/LagoUP8LaImCenYwrKAAAAAJUC+QAAAAAAAAAAAAAAAABnYwrKAAAAECbS2lOWDZmOxHu4e5z+Ema+71wLtsktlxBnB20SZrteur8hu9cRls/sWR2Klg2Q2jhgL/wslYPzvbBg4La8nUM",
+    "result_xdr": "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAANAAAAAAAAAAAAAAAA0QNr+3v9HSAqKJT6bfuS/r+OXa68V5uK9x/kvH0HX54AAAABVEVTVAAAAAC9noEAfpBm3DqDuP3xkGv//x/LagoUP8LaImCenYwrKAAAAAJUpHqAAAAAAA==",
+    "memo": "textmemo",
+    "memo_type": "text",
+    "source": "GC6Z5AIAP2IGNXB2QO4P34MQNP776H6LNIFBIP6C3IRGBHU5RQVSQ7XM",
+    "paging_token": "2009348909830144",
 }
 TEST_ASSET_ISSUER_SEED = "SADPW3NKRUNSNKXZ3UCNKF5QKXFS3IBNDLIEDV4PEDLIXBXJOGSOQW6J"
 TEST_ASSET_ISSUER_PUBLIC_KEY = Keypair.from_secret(TEST_ASSET_ISSUER_SEED).public_key
@@ -70,44 +69,41 @@ def test_process_response_success(client):
     assert transaction.status == Transaction.STATUS.pending_anchor
 
 
-"""@pytest.mark.django_db
-def test_process_response_unsuccessful(
-    client, acc1_usd_withdrawal_transaction_factory
-):
-    envelope = TransactionEnvelope.from_xdr(TRANSACTION_JSON["envelope_xdr"], settings.STELLAR_NETWORK_PASSPHRASE)
-    mock_source_account = envelope.transaction.source.public_key
-    transaction = acc1_usd_withdrawal_transaction_factory(mock_source_account)
-    json = deepcopy(TRANSACTION_JSON)
-    json["successful"] = False
-    json["id"] = transaction.id
-    json["memo"] = transaction.memo
-
-    Command.process_response(json, None)
-
-    transaction.refresh_from_db()
-    # the response from horizon should be skipped if unsuccessful
-    assert transaction.status == Transaction.STATUS.pending_user_transfer_start
-
-
 @pytest.mark.django_db
-@patch(f"{test_module}.TransactionEnvelope.from_xdr", return_value=mock_envelope)
-def test_match_with_no_amount(
-    mock_xdr, client, acc1_usd_withdrawal_transaction_factory
-):
-    del mock_xdr
+def test_process_response_strict_send_success(client):
+    """
+    Tests successful processing of the SUCCESS_PAYMENT_TRANSACTION_JSON
+    """
+    asset = Asset.objects.create(
+        code="TEST",
+        issuer=TEST_ASSET_ISSUER_PUBLIC_KEY,
+        distribution_seed=TEST_ASSET_DISTRIBUTION_SEED,
+    )
+    transaction = Transaction.objects.create(
+        asset=asset,
+        stellar_account=Keypair.random().public_key,
+        amount_in=1001,
+        kind=Transaction.KIND.send,
+        status=Transaction.STATUS.pending_sender,
+        memo=SUCCESS_STRICT_SEND_PAYMENT["memo"],
+        protocol=Transaction.PROTOCOL.sep31,
+        receiving_anchor_account=TEST_ASSET_DISTRIBUTION_PUBLIC_KEY,
+    )
+    json = deepcopy(SUCCESS_STRICT_SEND_PAYMENT)
 
-    mock_source_account = mock_envelope.transaction.source.public_key
-    transaction = acc1_usd_withdrawal_transaction_factory(mock_source_account)
-    transaction.protocol = Transaction.PROTOCOL.sep6
-    transaction.amount_in = None
-    transaction.save()
-    json = deepcopy(TRANSACTION_JSON)
-    json["successful"] = True
-    json["id"] = transaction.id
-    json["memo"] = transaction.memo
-
-    Command.process_response(json, None)
+    Command.process_response(json, TEST_ASSET_DISTRIBUTION_PUBLIC_KEY)
 
     transaction.refresh_from_db()
-    assert transaction.status == Transaction.STATUS.pending_anchor
-    assert transaction.amount_in == 50"""
+    assert transaction.from_address
+    assert transaction.stellar_transaction_id
+    assert transaction.status_eta == 0
+    assert transaction.paging_token
+    assert transaction.status == Transaction.STATUS.pending_receiver
+
+
+def test_process_response_unsuccessful(client, acc1_usd_withdrawal_transaction_factory):
+    json = {"successful": False}
+    try:
+        Command.process_response(json, None)
+    except KeyError:
+        assert False, "process_response() did not return for unsuccessful transaction"
