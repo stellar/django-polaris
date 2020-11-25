@@ -209,9 +209,9 @@ class Command(BaseCommand):
     ) -> Optional[Dict]:
         payment_data = cls._get_payment_values(operation, op_result)
         if (
-            str(payment_data["destination"]) == want_asset.distribution_account
-            and str(payment_data["code"]) == want_asset.code
-            and str(payment_data["issuer"]) == want_asset.issuer
+            payment_data["destination"] == want_asset.distribution_account
+            and payment_data["code"] == want_asset.code
+            and payment_data["issuer"] == want_asset.issuer
         ):
             return payment_data
         else:
