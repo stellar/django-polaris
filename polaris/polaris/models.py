@@ -82,12 +82,12 @@ class EncryptedTextField(models.TextField):
         encrypted_value = b64d(Fernet(key).encrypt(value.encode()))
         return b64e(b"%b%b" % (salt, encrypted_value)).decode()
 
-    def from_db_value(self, value, *args):
+    def from_db_value(self, value, *_args):
         if value is None:
             return value
         return self.decrypt(value)
 
-    def get_db_prep_value(self, value, *args, **kwargs):
+    def get_db_prep_value(self, value, *_args, **_kwargs):
         if value is None:
             return value
         return self.encrypt(value)

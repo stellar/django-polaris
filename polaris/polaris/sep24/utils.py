@@ -28,7 +28,7 @@ def check_authentication(content_type: str = "text/html") -> Callable:
     """
 
     def decorator(view) -> Callable:
-        def wrapper(request: Request, *args, **kwargs) -> Response:
+        def wrapper(request: Request, *_args, **_kwargs) -> Response:
             try:
                 check_authentication_helper(request)
             except ValueError as e:
@@ -49,7 +49,7 @@ def authenticate_session(content_type: str = "text/html") -> Callable:
     """
 
     def decorator(view) -> Callable:
-        def wrapper(request: Request, *args, **kwargs) -> Response:
+        def wrapper(request: Request, *_args, **_kwargs) -> Response:
             try:
                 authenticate_session_helper(request)
             except ValueError as e:

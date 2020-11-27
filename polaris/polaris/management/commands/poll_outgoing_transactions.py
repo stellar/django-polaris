@@ -51,7 +51,7 @@ class Command(BaseCommand):
             ),
         )
 
-    def handle(self, *args, **options):
+    def handle(self, *_args, **options):
         module = sys.modules[__name__]
         if options.get("loop"):
             while True:

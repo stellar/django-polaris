@@ -46,7 +46,7 @@ class SEP10Auth(APIView):
     ###############
     # GET functions
     ###############
-    def get(self, request, *args, **kwargs) -> Response:
+    def get(self, request, *_args, **_kwargs) -> Response:
         account = request.GET.get("account")
         if not account:
             return Response(
@@ -95,7 +95,7 @@ class SEP10Auth(APIView):
     ################
     # POST functions
     ################
-    def post(self, request: Request, *args, **kwargs) -> Response:
+    def post(self, request: Request, *_args, **_kwargs) -> Response:
         envelope_xdr = request.data.get("transaction")
         if not envelope_xdr:
             return render_error_response(_("'transaction' is required"))
@@ -104,7 +104,7 @@ class SEP10Auth(APIView):
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         else:
-            return Response({"token": self._generate_jwt(request, envelope_xdr)})
+            return Response({"token": self._generate_jwt(envelope_xdr)})
 
     @staticmethod
     def _validate_challenge_xdr(envelope_xdr: str):
@@ -178,7 +178,7 @@ class SEP10Auth(APIView):
         logger.info(f"Challenge verified using account signers: {signers_found}")
 
     @staticmethod
-    def _generate_jwt(request: Request, envelope_xdr: str) -> str:
+    def _generate_jwt(envelope_xdr: str) -> str:
         """
         Generates the JSON web token from the challenge transaction XDR.
 

@@ -1,7 +1,7 @@
 from corsheaders.signals import check_request_enabled
 
 
-def cors_allow_origins_for_polaris_requests(sender, request, **kwargs):
+def cors_allow_origins_for_polaris_requests(sender, request, **_kwargs):
     return (
         request.path.startswith("/sep24")
         or request.path.startswith("/sep6")

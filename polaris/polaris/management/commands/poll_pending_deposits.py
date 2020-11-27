@@ -123,7 +123,7 @@ class Command(BaseCommand):
             "Defaults to {}.".format(DEFAULT_INTERVAL),
         )
 
-    def handle(self, *args, **options):  # pragma: no cover
+    def handle(self, *_args, **options):  # pragma: no cover
         module = sys.modules[__name__]
         if options.get("loop"):
             while True:

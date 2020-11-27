@@ -57,7 +57,7 @@ class Command(BaseCommand):
             help="the amount sent to client account. Also the limit for the trustline.",
         )
 
-    def handle(self, *args, **options):
+    def handle(self, *_args, **options):
         if options.get("subcommands") == "reset":
             self.reset(**options)
         elif options.get("subcommands") == "issue":

@@ -35,7 +35,7 @@ class Command(BaseCommand):
     the payment or withdrawal.
     """
 
-    def handle(self, *args, **options):  # pragma: no cover
+    def handle(self, *_args, **_options):  # pragma: no cover
         try:
             asyncio.run(self.watch_transactions())
         except Exception as e:
