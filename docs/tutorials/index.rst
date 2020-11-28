@@ -2,9 +2,9 @@
 Build a minimal SEP-24 Polaris Anchor
 =====================================
 
-.. _Youtube: https://www.youtube.com/watch?v=Mrgdvk1oRoA&t=2265s
+.. _Youtube: https://www.youtube.com/watch?v=Mrgdvk1oRoA
 
-This tutorial walks through each step of installing and configuring Polaris as well as implementing the necessary integrations to run a minimal SEP-24 anchor server on testnet. A live walk-through of the steps outlined below can also be found on the SDF's `Youtube`_.
+This tutorial walks through each step of installing and configuring Polaris as well as implementing the necessary integrations to run a minimal SEP-24 anchor server on testnet. A live walk-through of the steps outlined below can also be found on the SDF's `Youtube`_. Note that the tutorial video uses Polaris version ``0.12``, while this page has been updated for the current version.
 
 Much of the content presented here can be found on other pages of the documentation, but its helpful to provide step-by-step instructions for a common use case.
 
@@ -47,16 +47,21 @@ Add the following to your ``MIDDLEWARE`` list. Make sure ``WhiteNoiseMiddleware`
         ...
     ]
 
-:doc:`PolarisSameSiteMiddleware </middleware/index>` can also be used if your anchor service should support wallets that use iframes to open interactive URL's. Popups are the recommend strategy per SEP-24.
+:doc:`PolarisSameSiteMiddleware </middleware/index>` can also be used if your anchor service should support wallets that use iframes to open interactive URL's. Popups are the recommend strategy per SEP-24, but wallet application may still use iframes, so it can't hurt to add it.
 
-Ensure ``BASE_DIR`` is defined. Django adds this setting automatically, and Polaris expects a ``.env`` file to be present in this directory. If this setting isn't present, or if the ``.env`` isn't found there, Polaris will try to use the ``ENV_PATH`` setting. You can also use the `environ` package installed with Polaris to configure your settings.py variables with values stored in your environment.
+Polaris allows developers to specify their environment variables in a ``.env`` file or through the Django settings file. By default Polaris looks in the same directory as your ``BASE_DIR`` setting, but will use the ``POLARIS_ENV_PATH`` if ``.env`` cannot be found using ``BASE_DIR``. Alternatively, you may specify all environment variables directly in your settings file, but all Polaris-specific settings must be prepended with ``POLARIS_``. You can also use the `environ` package installed with Polaris to configure your settings.py variables with values stored in your environment.
 ::
 
     import os
     import environ
 
+    # Django defines BASE_DIR by default
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    # Optionally:
+    # POLARIS_ENV_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
 
+    # You can read your own settings from the environment
+    # This is useful when you don't want to check secrets into version control
     env = environ.Env()
     env_file = os.path.join(BASE_DIR, ".env")
     if os.path.exists(env_file):
@@ -67,7 +72,7 @@ Ensure ``BASE_DIR`` is defined. Django adds this setting automatically, and Pola
 Add the SEPs we're going to support in this server:
 ::
 
-    ACTIVE_SEPS = ["sep-1", "sep-10", "sep-24"]
+    POLARIS_ACTIVE_SEPS = ["sep-1", "sep-10", "sep-24"]
 
 And configure your static files. You should already have the ``staticfiles`` app listed in ``INSTALLED_APPS``.
 ::
@@ -99,17 +104,17 @@ Add Polaris' endpoints to ``urls.py`` in the ``app`` inner directory:
 Specify environment variables
 -----------------------------
 
-Within the ``BASE_DIR`` directory, write the following variables to a ``.env`` file.
+Write the following variables to a ``.env`` file. If you'd rather define them in your settings file, you must prepend these settings with ``POLARIS_``.
 ::
 
     STELLAR_NETWORK_PASSPHRASE="Test SDF Network ; September 2015"
     HORIZON_URI="https://horizon-testnet.stellar.org/"
     HOST_URL="http://localhost:8000"
     LOCAL_MODE=1
-    SERVER_JWT_KEY="supersecretjwtencodingstring"
-    SIGNING_SEED=
+    SERVER_JWT_KEY=<your secret string for encrypting JWTs>
+    SIGNING_SEED=<your Stellar secret key for signing SEP-10 challenges>
 
-Many of these are self-explanatory, but ``LOCAL_MODE`` ensures Polaris runs properly using HTTP. In production Polaris should run under HTTPS. ``SERVER_JWT_KEY`` is a secret string used to encode the client's authenticated session as a token. Finally, ``SIGNING_SEED`` should be the secret key for the keypair you intend to use for signing SEP-10 challenge transactions.
+Many of these are self-explanatory, but ``LOCAL_MODE`` ensures Polaris runs properly using HTTP. In production Polaris should run under HTTPS.
 
 There is one more variable that must be added to ``.env``, but we're going to wait until we issue the asset we intend to anchor.
 
@@ -147,8 +152,8 @@ Then, get into the python shell and create an ``Asset`` object.
 
     Asset.objects.create(
         code="TEST",
-        issuer=,
-        distribution_seed=,
+        issuer=<issuer public key>,
+        distribution_seed=<distribution account secret key>,
         sep24_enabled=True
     )
 

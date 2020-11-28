@@ -58,17 +58,21 @@ if not HORIZON_URI.startswith("http"):
     raise ImproperlyConfigured("HORIZON_URI must include a protocol (http or https)")
 HORIZON_SERVER = Server(horizon_url=HORIZON_URI)
 
+LOCAL_MODE = env_or_settings("LOCAL_MODE", bool=True) or False
+
 HOST_URL = env_or_settings("HOST_URL")
 if not HOST_URL.startswith("http"):
     raise ImproperlyConfigured("HOST_URL must include a protocol (http or https)")
+elif LOCAL_MODE and HOST_URL.startswith("https"):
+    raise ImproperlyConfigured("HOST_URL uses HTTPS but LOCAL_MODE only supports HTTP")
+elif not LOCAL_MODE and not HOST_URL.startswith("https"):
+    raise ImproperlyConfigured("HOST_URL uses HTTP but LOCAL_MODE is off")
 
 SEP10_HOME_DOMAINS = env_or_settings("SEP10_HOME_DOMAINS", list=True) or [
     urlparse(HOST_URL).netloc
 ]
 if any(d.startswith("http") for d in SEP10_HOME_DOMAINS):
     raise ImproperlyConfigured("SEP10_HOME_DOMAINS must only be hostnames")
-
-LOCAL_MODE = env_or_settings("LOCAL_MODE", bool=True) or False
 
 # Constants
 OPERATION_DEPOSIT = "deposit"
