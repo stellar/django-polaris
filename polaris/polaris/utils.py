@@ -112,10 +112,8 @@ def verify_valid_asset_operation(
 def create_stellar_deposit(transaction: Transaction) -> bool:
     """
     Create and submit the Stellar transaction for the deposit.
-    The Transaction `pending_anchor` when the task is called from `poll_pending_deposits()`.
+    The Transaction `pending_anchor` or `pending_trust` when the task is called from `poll_pending_deposits()`.
     The Transaction `pending_trust` when the task is called from `check_trustlines()`.
-    The Transaction `pending_anchor_claimable_start` when the task is called from `poll_pending_deposits()`
-        and the Transaction is marked as pending_anchor_claimable_start.
 
     If a wallet supports claimable balances and a wallet user deposits offchain value for an asset they do not
     yet trust then the following steps occur
@@ -127,9 +125,11 @@ def create_stellar_deposit(transaction: Transaction) -> bool:
         - Parse the deposit Transactions that are pending_user_transfer_start
         - Call get_or_create_transaction_destination_account and discover it is "pending_trust"
         - Set the Transaction status to pending_trust
-        - Set the Transaction status to pending_anchor_claimable_start; since transaction.claimable_balance_supported is True
-        - "Finally" call `create_stellar_deposit` where we then craft and submit
-            a claimable balance in for the user to claim in their own time.
+        - Since transaction.claimable_balance_supported is True
+            call `create_stellar_deposit` from 236,5:def execute_deposit(transaction):
+            where we then craft and submit a claimable balance
+            for the user to claim to their balance in their own time
+            (When they establish a trust line).
     """
     if transaction.status not in [
         Transaction.STATUS.pending_anchor,
