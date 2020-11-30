@@ -23,6 +23,11 @@ HORIZON_SUCCESS_RESPONSE = {
     "successful": True,
     "id": "test_stellar_id",
     "paging_token": "123456789",
+}
+HORIZON_SUCCESS_RESPONSE_CLAIM = {
+    "successful": True,
+    "id": "test_stellar_id",
+    "paging_token": "123456789",
     "result_xdr": "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAAOAAAAAAAAAAAyBzvi/vP0Bih6bAqRNkiutMVUkW1S+WtuITJAA2LOjgAAAAA=",
 }
 # Test client account and seed
@@ -36,8 +41,7 @@ def test_deposit_success(client, acc1_usd_deposit_transaction_factory):
     """`POST /transactions/deposit/interactive` succeeds with no optional arguments."""
     deposit = acc1_usd_deposit_transaction_factory()
     response = client.post(
-        DEPOSIT_PATH,
-        {"asset_code": "USD", "account": deposit.stellar_account},
+        DEPOSIT_PATH, {"asset_code": "USD", "account": deposit.stellar_account},
     )
     content = json.loads(response.content)
     assert content["type"] == "interactive_customer_info_needed"
