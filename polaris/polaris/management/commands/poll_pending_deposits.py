@@ -36,7 +36,7 @@ def execute_deposit(transaction: Transaction) -> bool:
     valid_statuses = [
         Transaction.STATUS.pending_user_transfer_start,
         Transaction.STATUS.pending_anchor,
-        Transaction.STATUS.pending_anchor_claimable_start,
+        Transaction.STATUS.pending_trust,
     ]
     if transaction.kind != transaction.KIND.deposit:
         raise ValueError("Transaction not a deposit")
@@ -47,12 +47,18 @@ def execute_deposit(transaction: Transaction) -> bool:
         )
     if (
         transaction.status != Transaction.STATUS.pending_anchor
-        and transaction.status != Transaction.STATUS.pending_anchor_claimable_start
+        and transaction.status != Transaction.STATUS.pending_trust
     ):
         transaction.status = Transaction.STATUS.pending_anchor
+        logger.info(
+            f"Transaction {transaction.id} now pending_anchor, initiating deposit"
+        )
+    else:
+        logger.info(
+            f"Transaction {transaction.id} now pending_trust, initiating deposit as claimable balance"
+        )
     transaction.status_eta = 5  # Ledger close time.
     transaction.save()
-    logger.info(f"Transaction {transaction.id} now pending_anchor, initiating deposit")
     # launch the deposit Stellar transaction.
     return create_stellar_deposit(transaction)
 
@@ -302,15 +308,10 @@ class Command(BaseCommand):
                 ):
                     transaction.status = Transaction.STATUS.pending_trust
                     transaction.save()
-                if transaction.claimable_balance_supported:
-                    transaction.status = (
-                        Transaction.STATUS.pending_anchor_claimable_start
-                    )
-                    logger.info(
-                        f"destination account is pending_anchor_claimable_start for transaction {transaction.id}"
-                    )
-                    transaction.save()
-                continue
+                if not transaction.claimable_balance_supported:
+                    # Polaris will not execute_deposit if the transaction is pending trust
+                    # and doesn't support claimable balances
+                    continue
 
             if check_for_multisig(transaction):
                 # Now Polaris waits for signatures to be collected by the anchor
@@ -325,14 +326,6 @@ class Command(BaseCommand):
             envelope_xdr__isnull=False,
         )
         for t in ready_multisig_transactions:
-            cls.execute_deposit(t)
-
-        ready_claimable_transactions = Transaction.objects.filter(
-            kind=Transaction.KIND.deposit,
-            status=Transaction.STATUS.pending_anchor_claimable_start,
-        )
-        for t in ready_claimable_transactions:
-            logger.info(t.id)
             cls.execute_deposit(t)
 
     @staticmethod
