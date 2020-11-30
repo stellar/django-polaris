@@ -9,7 +9,7 @@ Implementing SEP 6, 24, or 31 requires more than a web server. Anchors must also
 
 To support these requirements, Polaris deployments must also include additional services to run alongside the web server. The SDF currently deploys Polaris using its CLI commands. Each command either periodically checks external state or constantly streams events from an external data source.
 
-With the exception of ``watch_transactions``, every CLI command can be run once or repeatedly on some interval using the ``--loop`` and ``--interval <seconds>`` arguments. These commands should either be run by a job scheduler like Jenkins and CircleCI or run with the ``--loop`` argument.
+With the exception of ``watch_transactions`` and ``testnet``, every CLI command can be run once or repeatedly on some interval using the ``--loop`` and ``--interval <seconds>`` arguments. These commands should either be run by a job scheduler like Jenkins and CircleCI or run with the ``--loop`` argument.
 
 watch_transactions
 ^^^^^^^^^^^^^^^^^^
@@ -19,7 +19,7 @@ This process streams transactions to and from each anchored asset's distribution
 execute_outgoing_transactions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-This process periodically queries for transactions that are ready to be executed off-chain and calls Polaris' ``RailsIntegration.execute_outgoing_transaction`` integration function for each one. "Ready" transactions are those in ``pending_receiver`` or ``pending_anchor`` statuses, among other conditions. Anchor are expected to update the ``Transaction.status`` to ``completed`` or ``pending_external`` if initiating the transfer was successful.
+This process periodically queries for transactions that are ready to be executed off-chain and calls Polaris' ``RailsIntegration.execute_outgoing_transaction`` integration function for each one. "Ready" transactions are those in ``pending_receiver`` or ``pending_anchor`` statuses, among other conditions. Anchors are expected to update the ``Transaction.status`` to ``completed`` or ``pending_external`` if initiating the transfer was successful.
 
 poll_outgoing_transactions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^

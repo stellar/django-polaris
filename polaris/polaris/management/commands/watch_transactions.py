@@ -1,7 +1,8 @@
 """This module defines custom management commands for the app admin."""
 import asyncio
-from typing import Dict, Optional
+from typing import Dict, Optional, Union, List, Tuple
 from decimal import Decimal
+from base64 import b64decode
 
 from django.core.management.base import BaseCommand
 from django.db.models import Q
@@ -11,7 +12,12 @@ from stellar_sdk.transaction_envelope import (
     Transaction as HorizonTransaction,
 )
 from stellar_sdk.xdr import Xdr
-from stellar_sdk.operation import Operation
+from stellar_sdk.operation import (
+    Operation,
+    Payment,
+    PathPaymentStrictReceive,
+    PathPaymentStrictSend,
+)
 from stellar_sdk.server import Server
 from stellar_sdk.client.aiohttp_client import AiohttpClient
 
@@ -20,6 +26,12 @@ from polaris.models import Asset, Transaction
 from polaris.utils import getLogger
 
 logger = getLogger(__name__)
+PaymentOpResult = Union[
+    Xdr.types.PaymentResult,
+    Xdr.types.PathPaymentStrictSendResult,
+    Xdr.types.PathPaymentStrictReceiveResult,
+]
+PaymentOp = Union[Payment, PathPaymentStrictReceive, PathPaymentStrictSend]
 
 
 class Command(BaseCommand):
@@ -95,15 +107,12 @@ class Command(BaseCommand):
             return
 
         try:
-            stellar_transaction_id = response["id"]
+            _ = response["id"]
             envelope_xdr = response["envelope_xdr"]
             memo = response["memo"]
+            result_xdr = response["result_xdr"]
         except KeyError:
             return
-
-        horizon_tx = TransactionEnvelope.from_xdr(
-            envelope_xdr, network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
-        ).transaction
 
         # Query filters for SEP6 and 24
         withdraw_filters = Q(
@@ -129,8 +138,19 @@ class Command(BaseCommand):
             logger.error(f"multiple Transaction objects returned for memo: {memo}")
             transaction = transactions[0]
 
-        payment_op = cls.find_matching_payment_op(response, horizon_tx, transaction)
-        if not payment_op:
+        op_results = (
+            Xdr.StellarXDRUnpacker(b64decode(result_xdr))
+            .unpack_TransactionResult()
+            .result.results
+        )
+        horion_tx = TransactionEnvelope.from_xdr(
+            envelope_xdr, network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
+        ).transaction
+
+        payment_data = cls._find_matching_payment_data(
+            response, horion_tx, op_results, transaction
+        )
+        if not payment_data:
             logger.warning(f"Transaction matching memo {memo} has no payment operation")
             return
 
@@ -138,18 +158,11 @@ class Command(BaseCommand):
         # transaction. This allows anchors to validate the actual amount sent in
         # execute_outgoing_transactions() and handle invalid amounts appropriately.
         transaction.amount_in = round(
-            Decimal(payment_op.amount), transaction.asset.significant_decimals,
+            Decimal(payment_data["amount"]), transaction.asset.significant_decimals,
         )
 
         # The stellar transaction has been matched with an existing record in the DB.
         # Now the anchor needs to initiate the off-chain transfer of the asset.
-        #
-        # Prior to the 0.12 release, Polaris' SEP-6 and 24 integrations didn't not
-        # provide an interface that allowed anchors to check on the state of
-        # transactions on an external network. Now, ``poll_outgoing_transactions()``
-        # allows anchors to check on transactions that have been submitted to a
-        # non-stellar payment network but have not completed, and expects anchors to
-        # update them when they have.
         if transaction.protocol == Transaction.PROTOCOL.sep31:
             # SEP-31 uses 'pending_receiver' status
             transaction.status = Transaction.STATUS.pending_receiver
@@ -161,37 +174,112 @@ class Command(BaseCommand):
         return
 
     @classmethod
-    def find_matching_payment_op(
-        cls, response: Dict, horizon_tx: HorizonTransaction, transaction: Transaction
-    ) -> Optional[Operation]:
-        """
-        Determines whether or not the given ``response`` represents the given
-        ``transaction``. Polaris does this by checking the 'memo' field in the horizon
-        response matches the `transaction.memo`, as well as ensuring the
-        transaction includes a payment operation of the anchored asset.
-
-        :param response: the JSON response from horizon for the transaction
-        :param horizon_tx: the decoded Transaction object contained in the Horizon response
-        :param transaction: a database model object representing the transaction
-        """
-        matching_payment_op = None
-        for operation in horizon_tx.operations:
-            if cls._check_payment_op(operation, transaction.asset):
-                transaction.stellar_transaction_id = response["id"]
-                transaction.from_address = operation.source
-                transaction.paging_token = response["paging_token"]
-                transaction.status_eta = 0
-                transaction.save()
-                matching_payment_op = operation
+    def _find_matching_payment_data(
+        cls,
+        response: Dict,
+        horizon_tx: HorizonTransaction,
+        result_ops: List[Xdr.types.OperationResult],
+        transaction: Transaction,
+    ) -> Optional[Dict]:
+        matching_payment_data = None
+        ops = horizon_tx.operations
+        for idx, op_result in enumerate(result_ops):
+            op, op_result = cls._cast_operation_and_result(ops[idx], op_result)
+            if not op_result:  # not a payment op
+                continue
+            maybe_payment_data = cls._check_for_payment_match(
+                op, op_result, transaction.asset
+            )
+            if maybe_payment_data:
+                cls._update_transaction_info(
+                    transaction,
+                    response["id"],
+                    response["paging_token"],
+                    ops[idx].source or horizon_tx.source,
+                )
+                matching_payment_data = maybe_payment_data
                 break
 
-        return matching_payment_op
+        return matching_payment_data
 
-    @staticmethod
-    def _check_payment_op(operation: Operation, want_asset: Asset) -> bool:
-        return (
-            operation.type_code() == Xdr.const.PAYMENT
-            and str(operation.destination) == want_asset.distribution_account
-            and str(operation.asset.code) == want_asset.code
-            and str(operation.asset.issuer) == want_asset.issuer
-        )
+    @classmethod
+    def _update_transaction_info(
+        cls, transaction: Transaction, stellar_txid: str, paging_token: str, source: str
+    ):
+        transaction.stellar_transaction_id = stellar_txid
+        transaction.from_address = source
+        transaction.paging_token = paging_token
+        transaction.status_eta = 0
+        transaction.save()
+
+    @classmethod
+    def _check_for_payment_match(
+        cls, operation: PaymentOp, op_result: PaymentOpResult, want_asset: Asset
+    ) -> Optional[Dict]:
+        payment_data = cls._get_payment_values(operation, op_result)
+        if (
+            payment_data["destination"] == want_asset.distribution_account
+            and payment_data["code"] == want_asset.code
+            and payment_data["issuer"] == want_asset.issuer
+        ):
+            return payment_data
+        else:
+            return None
+
+    @classmethod
+    def _cast_operation_and_result(
+        cls, operation: Operation, op_result: Xdr.types.OperationResult
+    ) -> Tuple[Optional[PaymentOp], Optional[PaymentOpResult]]:
+        code = operation.type_code()
+        op_xdr_obj = operation.to_xdr_object()
+        if code == Xdr.const.PAYMENT:
+            return (
+                Payment.from_xdr_object(op_xdr_obj),
+                op_result.tr.paymentResult,
+            )
+        elif code == Xdr.const.PATH_PAYMENT_STRICT_SEND:
+            return (
+                PathPaymentStrictSend.from_xdr_object(op_xdr_obj),
+                op_result.tr.pathPaymentStrictSendResult,
+            )
+        elif code == Xdr.const.PATH_PAYMENT_STRICT_RECEIVE:
+            return (
+                PathPaymentStrictReceive.from_xdr_object(op_xdr_obj),
+                op_result.tr.pathPaymentStrictReceiveResult,
+            )
+        else:
+            return None, None
+
+    @classmethod
+    def _get_payment_values(
+        cls, operation: PaymentOp, op_result: PaymentOpResult
+    ) -> Dict:
+        values = {
+            "destination": operation.destination,
+            "amount": None,
+            "code": None,
+            "issuer": None,
+        }
+        if isinstance(operation, Payment):
+            values["amount"] = str(operation.amount)
+            values["code"] = operation.asset.code
+            values["issuer"] = operation.asset.issuer
+        elif isinstance(operation, PathPaymentStrictSend):
+            # since the dest amount is not specified in a strict-send op,
+            # we need to get the dest amount from the operation's result
+            #
+            # this method of fetching amounts gives the "raw" amount, so
+            # we need to divide by Operation._ONE: 10000000
+            # (Stellar uses 7 decimals places of precision)
+            values["amount"] = str(
+                Decimal(op_result.success.last.amount) / Operation._ONE
+            )
+            values["code"] = operation.dest_asset.code
+            values["issuer"] = operation.dest_asset.issuer
+        elif isinstance(operation, PathPaymentStrictReceive):
+            values["amount"] = str(operation.dest_amount)
+            values["code"] = operation.dest_asset.code
+            values["issuer"] = operation.dest_asset.issuer
+        else:
+            raise ValueError("Unexpected operation, expected payment or path payment")
+        return values
