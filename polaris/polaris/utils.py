@@ -188,7 +188,9 @@ def create_stellar_deposit(transaction: Transaction) -> bool:
         distribution_acc, _ = get_account_obj(
             Keypair.from_public_key(transaction.asset.distribution_account)
         )
-        envelope = create_transaction_envelope(transaction, distribution_acc)
+        envelope = create_transaction_envelope(
+            transaction, distribution_acc, pending_trust
+        )
         envelope.sign(transaction.asset.distribution_seed)
         transaction.envelope_xdr = envelope.to_xdr()
 
@@ -342,14 +344,9 @@ def create_transaction_envelope(transaction, source_account) -> TransactionEnvel
         network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
         base_fee=base_fee,
     )
-    if (
-        transaction.claimable_balance_supported
-        and transaction.status == Transaction.STATUS.pending_trust
-    ):
-        transaction.status = Transaction.STATUS.pending_anchor
-        transaction.save()
-        logger.info(
-            f"Transaction {transaction.id} is {transaction.status}, crafting claimable balance operation"
+    if transaction.claimable_balance_supported and pending_trust:
+        logger.debug(
+            f"Crafting claimable balance operation for Transaction {transaction.id}"
         )
         claimant = Claimant(destination=transaction.stellar_account)
         asset = Asset(code=transaction.asset.code, issuer=transaction.asset.issuer)

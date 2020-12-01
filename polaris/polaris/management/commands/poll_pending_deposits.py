@@ -36,7 +36,6 @@ def execute_deposit(transaction: Transaction) -> bool:
     valid_statuses = [
         Transaction.STATUS.pending_user_transfer_start,
         Transaction.STATUS.pending_anchor,
-        Transaction.STATUS.pending_trust,
     ]
     if transaction.kind != transaction.KIND.deposit:
         raise ValueError("Transaction not a deposit")
@@ -45,17 +44,10 @@ def execute_deposit(transaction: Transaction) -> bool:
             f"Unexpected transaction status: {transaction.status}, expecting "
             f"{' or '.join(valid_statuses)}."
         )
-    if (
-        transaction.status != Transaction.STATUS.pending_anchor
-        and transaction.status != Transaction.STATUS.pending_trust
-    ):
+    if transaction.status != Transaction.STATUS.pending_anchor:
         transaction.status = Transaction.STATUS.pending_anchor
-        logger.info(
+        logger.debug(
             f"Transaction {transaction.id} now pending_anchor, initiating deposit"
-        )
-    else:
-        logger.info(
-            f"Transaction {transaction.id} now pending_trust, initiating deposit as claimable balance"
         )
     transaction.status_eta = 5  # Ledger close time.
     transaction.save()
@@ -305,12 +297,10 @@ class Command(BaseCommand):
                 if (
                     pending_trust
                     and transaction.status != Transaction.STATUS.pending_trust
+                    and not transaction.claimable_balance_supported
                 ):
                     transaction.status = Transaction.STATUS.pending_trust
                     transaction.save()
-                if not transaction.claimable_balance_supported:
-                    # Polaris will not execute_deposit if the transaction is pending trust
-                    # and doesn't support claimable balances
                     continue
 
             if check_for_multisig(transaction):
