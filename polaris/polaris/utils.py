@@ -273,9 +273,8 @@ def submit_stellar_deposit(transaction, multisig=False) -> bool:
             "Stellar transaction failed when submitted to horizon: "
             f"{transaction_result.result.results}"
         )
-    transaction.claimable_balance_id = (
-        get_balance_id(response) if transaction.claimable_balance_supported else None
-    )
+    if transaction.claimable_balance_supported:
+        transaction.claimable_balance_id = get_balance_id(response)
     transaction.paging_token = response["paging_token"]
     transaction.stellar_transaction_id = response["id"]
     transaction.status = Transaction.STATUS.completed
@@ -369,7 +368,7 @@ def create_transaction_envelope(transaction, source_account) -> TransactionEnvel
     return builder.build()
 
 
-def get_balance_id(response):
+def get_balance_id(response: dict) -> Optional[str]:
     """
     Pulls claimable balance ID from horizon responses.
 
