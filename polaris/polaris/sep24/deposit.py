@@ -314,7 +314,7 @@ def deposit(account: str, request: Request) -> Response:
     lang = request.POST.get("lang")
     sep9_fields = extract_sep9_fields(request.POST)
     claimable_balance_supported = bool(
-        request.POST.get("claimable_balance_supported") == "true"
+        request.POST.get("claimable_balance_supported").lower == "true"
     )
     if lang:
         err_resp = validate_language(lang)
