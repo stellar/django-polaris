@@ -112,11 +112,26 @@ def verify_valid_asset_operation(
 def create_stellar_deposit(transaction: Transaction) -> bool:
     """
     Create and submit the Stellar transaction for the deposit.
-    The Transaction `pending_anchor` or `pending_trust` when the task is called from `poll_pending_deposits()`.
-    The Transaction `pending_trust` when the task is called from `check_trustlines()`.
 
-    If a wallet supports claimable balances and a wallet user deposits offchain value for an asset they do not
-    yet trust then the following steps occur
+    *The Transaction `pending_trust` when the task is called from `check_trustlines()`.*
+
+    If called from check_trustlines() this means the following flow occurred
+    - The deposit transaction was blocked from sending a payment since the account
+      didn't have a trustline
+      - The account also issued a deposit from a Wallet that did not provide a
+        "claimable_balance_supported" value POST req body (or stated it as False).
+    - The Transaction was in pending_trust limbo until the account set up a trustline
+    - Trustline is established for the asset and create_stellar_deposit is called from
+      check_trustlines.py 127,1: if create_stellar_deposit(transaction):
+    - When crafting the transaction (create_transaction_envelope)
+      the transaction will be pending_trust however
+      since claimable_balance_supported==False we'll create a standard payment operation.
+
+    *The Transaction `pending_anchor` or `pending_trust` when the task is called from `poll_pending_deposits()`.*
+
+    If a wallet supports claimable balances (claimable_balance_supported==True)
+    and a wallet user deposits offchain value for an asset they do not
+    yet trust (transaction obj is pending_trust) then the following steps occur
 
     - Polaris will parse the POST req body for the "claimable_balance_supported"
     field and populate the Transaction object's "claimable_balance_supported" column (i.e attribute) True.
