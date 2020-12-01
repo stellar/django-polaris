@@ -394,10 +394,10 @@ def get_balance_id(response):
     """
     result_xdr = response["result_xdr"]
     tr_xdr = TransactionResult.from_xdr(result_xdr)
-    for tr in tr_xdr.result.results:
-        if hasattr(tr.tr, "createClaimableBalanceResult"):
+    for op_result in tr_xdr.result.results:
+        if hasattr(op_result.tr, "createClaimableBalanceResult"):
             cbr_xdr = base64.b64decode(
-                tr.tr.createClaimableBalanceResult.balanceID.to_xdr()
+                op_result.tr.createClaimableBalanceResult.balanceID.to_xdr()
             )
             return cbr_xdr.hex()
     return None
