@@ -156,7 +156,7 @@ def test_deposit_stellar_no_trustline(acc1_usd_deposit_transaction_factory):
     until the Wallet user creates a trustline to that asset
     """
     deposit = acc1_usd_deposit_transaction_factory()
-    deposit.status = Transaction.STATUS.pending_trust
+    deposit.status = Transaction.STATUS.pending_anchor
     deposit.save()
     assert not create_stellar_deposit(deposit)
     assert (
