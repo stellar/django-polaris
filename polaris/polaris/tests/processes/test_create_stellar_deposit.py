@@ -156,7 +156,7 @@ def test_deposit_stellar_no_trustline(acc1_usd_deposit_transaction_factory):
     until the Wallet user creates a trustline to that asset
     """
     deposit = acc1_usd_deposit_transaction_factory()
-    deposit.status = Transaction.STATUS.pending_anchor
+    deposit.status = Transaction.STATUS.pending_trust
     deposit.save()
     assert not create_stellar_deposit(deposit)
     assert (
@@ -165,7 +165,7 @@ def test_deposit_stellar_no_trustline(acc1_usd_deposit_transaction_factory):
     )
 
 
-mock_server_no_trust_account = Mock(
+mock_server_no_trust_account_claim = Mock(
     accounts=Mock(
         return_value=Mock(
             account_id=Mock(return_value=Mock(call=Mock(return_value={"balances": []})))
@@ -181,7 +181,7 @@ mock_server_no_trust_account = Mock(
 @patch(
     "polaris.utils.get_account_obj", Mock(return_value=(mock_account, {"balances": []}))
 )
-@patch("polaris.utils.settings.HORIZON_SERVER", mock_server_no_trust_account)
+@patch("polaris.utils.settings.HORIZON_SERVER", mock_server_no_trust_account_claim)
 def test_deposit_stellar_no_trustline_with_claimable_bal(
     acc1_usd_deposit_transaction_factory,
 ):
