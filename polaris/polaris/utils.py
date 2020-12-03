@@ -122,7 +122,7 @@ def create_stellar_deposit(transaction: Transaction) -> bool:
         "claimable_balance_supported" value POST req body (or stated it as False).
     - The Transaction was in pending_trust limbo until the account set up a trustline
     - Trustline is established for the asset and create_stellar_deposit is called from
-      check_trustlines.py 127,1: if create_stellar_deposit(transaction):
+      check_trustlines()
     - When crafting the transaction (create_transaction_envelope)
       the transaction will be pending_trust however
       since claimable_balance_supported==False we'll create a standard payment operation.
@@ -135,13 +135,13 @@ def create_stellar_deposit(transaction: Transaction) -> bool:
 
     - Polaris will parse the POST req body for the "claimable_balance_supported"
     field and populate the Transaction object's "claimable_balance_supported" column (i.e attribute) True.
-    False otherwise. (polaris/polaris/sep24/deposit.py 316,5:)
+    False otherwise. (sep24/deposit.py)
     - Then `poll_pending_deposits()` will do the following
         - Parse the deposit Transactions that are pending_user_transfer_start
         - Call get_or_create_transaction_destination_account and discover it is "pending_trust"
         - Set the Transaction status to pending_trust
         - Since transaction.claimable_balance_supported is True
-            call `create_stellar_deposit` from 236,5:def execute_deposit(transaction):
+            call `create_stellar_deposit` from execute_deposit():
             where we then craft and submit a claimable balance
             for the user to claim to their balance in their own time
             (When they establish a trust line).
