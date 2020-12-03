@@ -587,7 +587,7 @@ class Transaction(models.Model):
     """
     claimable_balance_id = models.TextField(null=True, blank=True)
     """
-    ClaimableBalanceID is a required parameter when claiming a Claimable Balance operation
+    The ID of the claimable balance used to send funds to the user. This column will be ``None`` if ``claimable_balance_supported`` is ``False`` or if the transaction has not yet been submitted to the Stellar network.
     """
 
     objects = models.Manager()
