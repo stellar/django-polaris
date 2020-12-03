@@ -168,7 +168,7 @@ def create_stellar_deposit(transaction: Transaction) -> bool:
     if transaction.asset.distribution_account_master_signer:
         master_signer = transaction.asset.distribution_account_master_signer
     thresholds = transaction.asset.distribution_account_thresholds
-    if not (master_signer and master_signer["weight"] >= thresholds["med_threshold"]):
+    if not master_signer or master_signer["weight"] < thresholds["med_threshold"]:
         multisig = True
         envelope = TransactionEnvelope.from_xdr(
             transaction.envelope_xdr, settings.STELLAR_NETWORK_PASSPHRASE
@@ -226,7 +226,7 @@ def handle_bad_signatures_error(e, transaction, multisig=False):
             transaction, channel_account
         ).to_xdr()
         transaction.pending_signatures = True
-        transaction.status = Transaction.STATUS.pending_anchor = True
+        transaction.status = Transaction.STATUS.pending_anchor
     else:
         transaction.status = Transaction.STATUS.error
         transaction.status_message = (
