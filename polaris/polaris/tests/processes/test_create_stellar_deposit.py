@@ -198,7 +198,7 @@ def test_deposit_stellar_no_trustline_with_claimable_bal(
     where it wil complete the deposit flow as a claimable balance
     """
     deposit = acc1_usd_deposit_transaction_factory()
-    deposit.status = Transaction.STATUS.pending_trust
+    deposit.status = Transaction.STATUS.pending_anchor
     deposit.claimable_balance_supported = True
     deposit.save()
     assert create_stellar_deposit(deposit)
