@@ -291,7 +291,6 @@ class Command(BaseCommand):
                 # we still need to check the distribution account's signer setup
                 # before trying to create a claimable balance
                 check_for_multisig(transaction)
-                continue
             elif created or pending_trust:
                 # after checking/creating the account, we discovered the transaction
                 # doesn't have a trustline. Transaction.status is definitely not
@@ -305,11 +304,11 @@ class Command(BaseCommand):
                 transaction.status = Transaction.STATUS.pending_trust
                 transaction.save()
                 continue
-            elif check_for_multisig(transaction):
+            else:
                 # if claimable balances aren't supported and the account is no longer
                 # pending trust, we still have to check if it requires additional
                 # signatures
-                continue
+                check_for_multisig(transaction)
 
             cls.execute_deposit(transaction)
 
