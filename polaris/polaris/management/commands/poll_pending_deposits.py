@@ -3,16 +3,20 @@ import sys
 import signal
 import time
 from decimal import Decimal
+from typing import Optional, Tuple
 
 from django.core.management import BaseCommand, CommandError
 from stellar_sdk import Keypair
+from stellar_sdk.account import Account
+from stellar_sdk.exceptions import BaseHorizonError
+from stellar_sdk.transaction_builder import TransactionBuilder
 
 from polaris import settings
 from polaris.utils import (
     create_stellar_deposit,
     create_transaction_envelope,
-    get_or_create_transaction_destination_account,
     get_account_obj,
+    has_trustline,
 )
 from polaris.integrations import (
     registered_deposit_integration as rdi,
@@ -81,6 +85,90 @@ def check_for_multisig(transaction):
         return True
     else:
         return False
+
+
+def get_or_create_transaction_destination_account(
+    transaction,
+) -> Tuple[Optional[Account], bool, bool]:
+    """
+    Returns the stellar_sdk.account.Account for which this transaction's payment will be sent to as
+    as well as whether or not the account was created as a result of calling this function.
+
+    If the account exists, the function simply returns the account and False.
+
+    If the account doesn't exist, Polaris must create the account using an account provided by the
+    anchor. Polaris can use the distribution account of the anchored asset or a channel account if
+    the asset's distribution account requires non-master signatures.
+
+    If the transacted asset's distribution account does not require non-master signatures, Polaris
+    can create the destination account using the distribution account. On successful creation,
+    this function will return the account and True. On failure, a RuntimeError exception is raised.
+
+    If the transacted asset's distribution account does require non-master signatures, the anchor
+    should save a keypair of a pre-existing Stellar account to use as the channel account via
+    DepositIntegration.create_channel_account().
+
+    This channel account must only be used as the source account for transactions related to the
+    ``Transaction`` object passed. It also must not be used to submit transactions by any service
+    other than Polaris. If it is, the outstanding transactions will be invalidated due to bad
+    sequence numbers. Finally, the channel accounts must have a master signer with a weight greater
+    than or equal to the medium threshold for the account.
+
+    After the transaction for creating the destination account has been submitted to the stellar network
+    and the transaction has been created, this function will return the account and True. If the
+    transaction was not submitted successfully, a RuntimeError exception will be raised.
+    """
+    try:
+        account, json_resp = get_account_obj(
+            Keypair.from_public_key(transaction.stellar_account)
+        )
+        return account, False, has_trustline(transaction, json_resp)
+    except RuntimeError:
+        master_signer = None
+        if transaction.asset.distribution_account_master_signer:
+            master_signer = transaction.asset.distribution_account_master_signer
+        thresholds = transaction.asset.distribution_account_thresholds
+        if master_signer and master_signer["weight"] >= thresholds["med_threshold"]:
+            source_account_kp = Keypair.from_secret(transaction.asset.distribution_seed)
+            source_account, _ = get_account_obj(source_account_kp)
+        else:
+            from polaris.integrations import registered_deposit_integration as rdi
+
+            rdi.create_channel_account(transaction)
+            source_account_kp = Keypair.from_secret(transaction.channel_seed)
+            source_account, _ = get_account_obj(source_account_kp)
+
+        base_fee = settings.HORIZON_SERVER.fetch_base_fee()
+        builder = TransactionBuilder(
+            source_account=source_account,
+            network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
+            base_fee=base_fee,
+        )
+        transaction_envelope = builder.append_create_account_op(
+            destination=transaction.stellar_account,
+            starting_balance=settings.ACCOUNT_STARTING_BALANCE,
+        ).build()
+        transaction_envelope.sign(source_account_kp)
+
+        try:
+            settings.HORIZON_SERVER.submit_transaction(transaction_envelope)
+        except BaseHorizonError as submit_exc:  # pragma: no cover
+            raise RuntimeError(
+                "Horizon error when submitting create account to horizon: "
+                f"{submit_exc.message}"
+            )
+
+        transaction.status = Transaction.STATUS.pending_trust
+        transaction.save()
+        logger.info(
+            f"Transaction {transaction.id} is now pending_trust of destination account"
+        )
+        account, json_resp = get_account_obj(
+            Keypair.from_public_key(transaction.stellar_account)
+        )
+        return account, True, has_trustline(transaction, json_resp)
+    except BaseHorizonError as e:
+        raise RuntimeError(f"Horizon error when loading stellar account: {e.message}")
 
 
 class Command(BaseCommand):
