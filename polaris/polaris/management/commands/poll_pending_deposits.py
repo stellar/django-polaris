@@ -46,7 +46,7 @@ def execute_deposit(transaction: Transaction) -> bool:
     transaction.save()
     logger.info(f"Transaction {transaction.id} now pending_anchor, initiating deposit")
     # launch the deposit Stellar transaction.
-    return create_stellar_deposit(transaction, destination_exists=True)
+    return create_stellar_deposit(transaction)
 
 
 def check_for_multisig(transaction):

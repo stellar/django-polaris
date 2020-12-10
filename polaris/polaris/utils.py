@@ -109,9 +109,7 @@ def verify_valid_asset_operation(
         )
 
 
-def create_stellar_deposit(
-    transaction: Transaction, destination_exists: bool = False
-) -> bool:
+def create_stellar_deposit(transaction: Transaction) -> bool:
     """
     Create and submit the Stellar transaction for the deposit.
 
