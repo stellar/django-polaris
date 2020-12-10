@@ -135,24 +135,23 @@ def create_stellar_deposit(
         transaction.save()
         raise ValueError(transaction.status_message)
 
-    # if we don't know if the destination account exists
-    if not destination_exists:
-        try:
-            _, created, pending_trust = get_or_create_transaction_destination_account(
-                transaction
-            )
-        except RuntimeError as e:
-            transaction.status = Transaction.STATUS.error
-            transaction.status_message = str(e)
+    # check if the account is doesn't trust  the asset to be received
+    try:
+        _, json_resp = get_account_obj(
+            Keypair.from_public_key(transaction.stellar_account)
+        )
+    except RuntimeError as e:
+        transaction.status = Transaction.STATUS.error
+        transaction.status_message = str(e)
+        transaction.save()
+        logger.error(transaction.status_message)
+        return False
+    if has_trustline(transaction, json_resp):
+        # the account is doesn't trust the asset to be received
+        if transaction.status != Transaction.STATUS.pending_trust:
+            transaction.status = Transaction.STATUS.pending_trust
             transaction.save()
-            logger.error(transaction.status_message)
-            return False
-        if created or pending_trust:
-            # the account is pending_trust for the asset to be received
-            if pending_trust and transaction.status != Transaction.STATUS.pending_trust:
-                transaction.status = Transaction.STATUS.pending_trust
-                transaction.save()
-            return False
+        return False
 
     # if the distribution account's master signer's weight is great or equal to the its
     # medium threshold, verify the transaction is signed by it's channel account
