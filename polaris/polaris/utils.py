@@ -109,9 +109,7 @@ def verify_valid_asset_operation(
         )
 
 
-def create_stellar_deposit(
-    transaction: Transaction, destination_exists: bool = False
-) -> bool:
+def create_stellar_deposit(transaction: Transaction) -> bool:
     """
     Create and submit the Stellar transaction for the deposit.
 
@@ -134,25 +132,6 @@ def create_stellar_deposit(
         )
         transaction.save()
         raise ValueError(transaction.status_message)
-
-    # if we don't know if the destination account exists
-    if not destination_exists:
-        try:
-            _, created, pending_trust = get_or_create_transaction_destination_account(
-                transaction
-            )
-        except RuntimeError as e:
-            transaction.status = Transaction.STATUS.error
-            transaction.status_message = str(e)
-            transaction.save()
-            logger.error(transaction.status_message)
-            return False
-        if created or pending_trust:
-            # the account is pending_trust for the asset to be received
-            if pending_trust and transaction.status != Transaction.STATUS.pending_trust:
-                transaction.status = Transaction.STATUS.pending_trust
-                transaction.save()
-            return False
 
     # if the distribution account's master signer's weight is great or equal to the its
     # medium threshold, verify the transaction is signed by it's channel account
@@ -248,11 +227,6 @@ def submit_stellar_deposit(transaction, multisig=False) -> bool:
                 transaction.status_message = (
                     f"tx failed with codes: {op_results}. Result XDR: {e.result_xdr}"
                 )
-        elif op_results[0].tr.paymentResult.code == const.PAYMENT_NO_TRUST:
-            transaction.status = Transaction.STATUS.pending_trust
-            transaction.status_message = (
-                "trustline error when submitting transaction to horizon"
-            )
         else:
             raise RuntimeError(
                 "Unable to submit payment to horizon, "
@@ -323,90 +297,6 @@ def has_trustline(transaction, json_resp):
             pending_trust = False
             break
     return pending_trust
-
-
-def get_or_create_transaction_destination_account(
-    transaction,
-) -> Tuple[Optional[Account], bool, bool]:
-    """
-    Returns the stellar_sdk.account.Account for which this transaction's payment will be sent to as
-    as well as whether or not the account was created as a result of calling this function.
-
-    If the account exists, the function simply returns the account and False.
-
-    If the account doesn't exist, Polaris must create the account using an account provided by the
-    anchor. Polaris can use the distribution account of the anchored asset or a channel account if
-    the asset's distribution account requires non-master signatures.
-
-    If the transacted asset's distribution account does not require non-master signatures, Polaris
-    can create the destination account using the distribution account. On successful creation,
-    this function will return the account and True. On failure, a RuntimeError exception is raised.
-
-    If the transacted asset's distribution account does require non-master signatures, the anchor
-    should save a keypair of a pre-existing Stellar account to use as the channel account via
-    DepositIntegration.create_channel_account().
-
-    This channel account must only be used as the source account for transactions related to the
-    ``Transaction`` object passed. It also must not be used to submit transactions by any service
-    other than Polaris. If it is, the outstanding transactions will be invalidated due to bad
-    sequence numbers. Finally, the channel accounts must have a master signer with a weight greater
-    than or equal to the medium threshold for the account.
-
-    After the transaction for creating the destination account has been submitted to the stellar network
-    and the transaction has been created, this function will return the account and True. If the
-    transaction was not submitted successfully, a RuntimeError exception will be raised.
-    """
-    try:
-        account, json_resp = get_account_obj(
-            Keypair.from_public_key(transaction.stellar_account)
-        )
-        return account, False, has_trustline(transaction, json_resp)
-    except RuntimeError:
-        master_signer = None
-        if transaction.asset.distribution_account_master_signer:
-            master_signer = transaction.asset.distribution_account_master_signer
-        thresholds = transaction.asset.distribution_account_thresholds
-        if master_signer and master_signer["weight"] >= thresholds["med_threshold"]:
-            source_account_kp = Keypair.from_secret(transaction.asset.distribution_seed)
-            source_account, _ = get_account_obj(source_account_kp)
-        else:
-            from polaris.integrations import registered_deposit_integration as rdi
-
-            rdi.create_channel_account(transaction)
-            source_account_kp = Keypair.from_secret(transaction.channel_seed)
-            source_account, _ = get_account_obj(source_account_kp)
-
-        base_fee = settings.HORIZON_SERVER.fetch_base_fee()
-        builder = TransactionBuilder(
-            source_account=source_account,
-            network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
-            base_fee=base_fee,
-        )
-        transaction_envelope = builder.append_create_account_op(
-            destination=transaction.stellar_account,
-            starting_balance=settings.ACCOUNT_STARTING_BALANCE,
-        ).build()
-        transaction_envelope.sign(source_account_kp)
-
-        try:
-            settings.HORIZON_SERVER.submit_transaction(transaction_envelope)
-        except BaseHorizonError as submit_exc:  # pragma: no cover
-            raise RuntimeError(
-                "Horizon error when submitting create account to horizon: "
-                f"{submit_exc.message}"
-            )
-
-        transaction.status = Transaction.STATUS.pending_trust
-        transaction.save()
-        logger.info(
-            f"Transaction {transaction.id} is now pending_trust of destination account"
-        )
-        account, json_resp = get_account_obj(
-            Keypair.from_public_key(transaction.stellar_account)
-        )
-        return account, True, has_trustline(transaction, json_resp)
-    except BaseHorizonError as e:
-        raise RuntimeError(f"Horizon error when loading stellar account: {e.message}")
 
 
 def create_transaction_envelope(transaction, source_account) -> TransactionEnvelope:
