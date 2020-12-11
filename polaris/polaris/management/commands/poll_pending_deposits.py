@@ -88,11 +88,19 @@ def check_for_multisig(transaction):
 
 
 def get_or_create_transaction_destination_account(
-    transaction,
+    transaction: Transaction,
 ) -> Tuple[Optional[Account], bool, bool]:
     """
     Returns the stellar_sdk.account.Account for which this transaction's payment will be sent to as
     as well as whether or not the account was created as a result of calling this function.
+
+    Args:
+        transaction (Transaction): Deposit Transaction
+
+    Returns:
+        Tuple[Optional[Account]: The account(s) found or created for the Transaction
+        bool: boolean to indicate if created. True if created, False otherwise.
+        bool: boolean to indicate if there isn't a trustline. True if trustline doesn't exist, False otherwise.
 
     If the account exists, the function simply returns the account and False.
 
@@ -163,10 +171,10 @@ def get_or_create_transaction_destination_account(
         logger.info(
             f"Transaction {transaction.id} is now pending_trust of destination account"
         )
-        account, json_resp = get_account_obj(
+        account, _ = get_account_obj(
             Keypair.from_public_key(transaction.stellar_account)
         )
-        return account, True, has_trustline(transaction, json_resp)
+        return account, True, True
     except BaseHorizonError as e:
         raise RuntimeError(f"Horizon error when loading stellar account: {e.message}")
 
