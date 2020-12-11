@@ -133,24 +133,6 @@ def create_stellar_deposit(transaction: Transaction) -> bool:
         transaction.save()
         raise ValueError(transaction.status_message)
 
-    # check if the account is doesn't trust  the asset to be received
-    try:
-        _, json_resp = get_account_obj(
-            Keypair.from_public_key(transaction.stellar_account)
-        )
-    except RuntimeError as e:
-        transaction.status = Transaction.STATUS.error
-        transaction.status_message = str(e)
-        transaction.save()
-        logger.error(transaction.status_message)
-        return False
-    if has_trustline(transaction, json_resp):
-        # the account is doesn't trust the asset to be received
-        if transaction.status != Transaction.STATUS.pending_trust:
-            transaction.status = Transaction.STATUS.pending_trust
-            transaction.save()
-        return False
-
     # if the distribution account's master signer's weight is great or equal to the its
     # medium threshold, verify the transaction is signed by it's channel account
     master_signer = None

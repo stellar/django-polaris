@@ -86,30 +86,6 @@ mock_account.thresholds = Thresholds(low_threshold=0, med_threshold=1, high_thre
 
 
 @pytest.mark.django_db
-@patch("polaris.utils.settings.HORIZON_SERVER", mock_server_no_account)
-@patch("polaris.utils.get_account_obj", mock_get_account_obj)
-def test_deposit_stellar_no_account(acc1_usd_deposit_transaction_factory):
-    """
-    `create_stellar_deposit` sets the transaction with the provided `transaction_id` to
-    status `pending_trust` if the provided transaction's `stellar_account` does not
-    exist yet. This condition is mocked by throwing an error when attempting to load
-    information for the provided account.
-    Normally, this function creates the account. We have mocked out that functionality,
-    as it relies on network calls to Horizon.
-    """
-    deposit = acc1_usd_deposit_transaction_factory()
-    deposit.status = Transaction.STATUS.pending_anchor
-    deposit.save()
-    create_stellar_deposit(deposit)
-    assert mock_server_no_account.submit_transaction.was_called
-    # it would be pending_trust if the call to fetch the created account was not
-    # mocked to raise an exception. Since the exception is raised, the transaction
-    # is put in error status but the functionality works.
-    assert Transaction.objects.get(id=deposit.id).status == Transaction.STATUS.error
-    mock_server_no_account.reset_mock()
-
-
-@pytest.mark.django_db
 @patch(
     "polaris.utils.settings.HORIZON_SERVER",
     Mock(
