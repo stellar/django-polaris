@@ -126,31 +126,3 @@ no_trust_exp = BaseHorizonError(
         )
     )
 )
-
-
-@pytest.mark.django_db
-@patch(
-    "polaris.utils.settings.HORIZON_SERVER",
-    Mock(
-        load_account=Mock(return_value=mock_account),
-        submit_transaction=Mock(side_effect=no_trust_exp),
-        fetch_base_fee=Mock(return_value=100),
-    ),
-)
-@patch(
-    "polaris.utils.get_account_obj", Mock(return_value=(mock_account, {"balances": []}))
-)
-def test_deposit_stellar_no_trustline(acc1_usd_deposit_transaction_factory):
-    """
-    `create_stellar_deposit` sets the transaction with the provided `transaction_id` to
-    status `pending_trust` if the provided transaction's Stellar account has no trustline
-    for its asset. (We assume the asset's issuer is the server Stellar account.)
-    """
-    deposit = acc1_usd_deposit_transaction_factory()
-    deposit.status = Transaction.STATUS.pending_anchor
-    deposit.save()
-    assert not create_stellar_deposit(deposit)
-    assert (
-        Transaction.objects.get(id=deposit.id).status
-        == Transaction.STATUS.pending_trust
-    )

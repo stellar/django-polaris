@@ -227,11 +227,6 @@ def submit_stellar_deposit(transaction, multisig=False) -> bool:
                 transaction.status_message = (
                     f"tx failed with codes: {op_results}. Result XDR: {e.result_xdr}"
                 )
-        elif op_results[0].tr.paymentResult.code == const.PAYMENT_NO_TRUST:
-            transaction.status = Transaction.STATUS.pending_trust
-            transaction.status_message = (
-                "trustline error when submitting transaction to horizon"
-            )
         else:
             raise RuntimeError(
                 "Unable to submit payment to horizon, "
