@@ -286,14 +286,13 @@ class Command(BaseCommand):
                 logger.error(transaction.status_message)
                 continue
 
-            if transaction.claimable_balance_supported:
-                # there is no need to mark the transaction as pending_trust, but we
-                # we still need to check the distribution account's signer setup
-                # before trying to create a claimable balance
-                check_for_multisig(transaction)
-            elif created or pending_trust:
+            if (
+                created or pending_trust
+            ) and not transaction.claimable_balance_supported:
                 # after checking/creating the account, we discovered the transaction
-                # doesn't have a trustline. Transaction.status is definitely not
+                # doesn't have a trustline.
+                # And the transaction is does not support claimable balances
+                # Transaction.status is definitely not
                 # pending_trust yet because only the transactions with these statuses
                 # are queried:
                 # - Transaction.STATUS.pending_user_transfer_start
@@ -304,12 +303,11 @@ class Command(BaseCommand):
                 transaction.status = Transaction.STATUS.pending_trust
                 transaction.save()
                 continue
-            else:
-                # if claimable balances aren't supported and the account is no longer
-                # pending trust, we still have to check if it requires additional
-                # signatures
-                check_for_multisig(transaction)
-
+            elif check_for_multisig(transaction):
+                # We still have to check if the transaction requires additional
+                # signatures.
+                # If so we want to skip current transaction's execute_deposit call
+                continue
             cls.execute_deposit(transaction)
 
         ready_multisig_transactions = Transaction.objects.filter(
