@@ -127,24 +127,25 @@ def create_stellar_deposit(transaction: Transaction) -> bool:
       the transaction will be pending_trust however
       since claimable_balance_supported==False we'll create a standard payment operation.
 
-    *The Transaction `pending_anchor` or `pending_trust` when the task is called from `poll_pending_deposits()`.*
+    *The Transaction `pending_anchor` when the task is called from `poll_pending_deposits()`.*
 
     If a wallet supports claimable balances (claimable_balance_supported==True)
     and a wallet user deposits offchain value for an asset they do not
     yet trust (transaction obj is pending_trust) then the following steps occur
 
     - Polaris will parse the POST req body for the "claimable_balance_supported"
-    field and populate the Transaction object's "claimable_balance_supported" column (i.e attribute) True.
+    field and populate the Transaction object's
+    "claimable_balance_supported" column (i.e attribute) True.
     False otherwise. (sep24/deposit.py)
     - Then `poll_pending_deposits()` will do the following
         - Parse the deposit Transactions that are pending_user_transfer_start
-        - Call get_or_create_transaction_destination_account and discover it is "pending_trust"
-        - Set the Transaction status to pending_trust
         - Since transaction.claimable_balance_supported is True
-            call `create_stellar_deposit` from execute_deposit():
-            where we then craft and submit a claimable balance
-            for the user to claim to their balance in their own time
-            (When they establish a trust line).
+            call `create_stellar_deposit` from `execute_deposit`
+            where we then craft and submit the transaction as a claimable balance
+        - In `create_transaction_envelope`
+            if claimable_balance_supported and `has_trustline` then
+        deposit is claimablebalance op
+            else deposit is payment op
     """
     if transaction.status not in [
         Transaction.STATUS.pending_anchor,
