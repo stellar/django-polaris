@@ -341,9 +341,7 @@ def create_transaction_envelope(transaction, source_account) -> TransactionEnvel
         network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
         base_fee=base_fee,
     )
-    _, json_resp = get_account_obj(
-        Keypair.from_public_key(transaction.stellar_account)
-    )
+    _, json_resp = get_account_obj(Keypair.from_public_key(transaction.stellar_account))
     if transaction.claimable_balance_supported and has_trustline(
         transaction, json_resp
     ):
