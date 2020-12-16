@@ -175,6 +175,40 @@ def acc1_usd_deposit_transaction_factory(usd_asset_factory):
 
 
 @pytest.fixture(scope="session")
+def acc2_eth_CB_deposit_transaction_factory(eth_asset_factory):
+    """
+    Factory method fixture to populate the test database with an ETH Claimable Balance deposit transaction.
+    """
+
+    def create_deposit_transaction(
+        stellar_account: str = STELLAR_ACCOUNT_2,
+        protocol: str = Transaction.PROTOCOL.sep24,
+    ):
+        eth_asset = eth_asset_factory(protocols=protocol)
+        return Transaction.objects.create(
+            stellar_account=stellar_account,
+            asset=eth_asset,
+            kind=Transaction.KIND.deposit,
+            status=Transaction.STATUS.completed,
+            amount_in=200.0,
+            amount_out=195.0,
+            amount_fee=5.0,
+            external_transaction_id=(
+                "fab370bc424ff5ce3b386dbfaae9990b66a2a37b4fbe51547e8794962a3f9fdf"
+            ),
+            memo="86dbfaae9990b66a2a37b4",
+            memo_type=Transaction.MEMO_TYPES.hash,
+            protocol=protocol,
+            claimable_balance_supported=True,
+            claimable_balance_id=(
+                "00000000f823a3c34cbd4355203834ec977777c0ce380f6ce5c6cfdbe5478cf304b307bf"
+            ),
+        )
+
+    return create_deposit_transaction
+
+
+@pytest.fixture(scope="session")
 def acc1_usd_withdrawal_transaction_factory(usd_asset_factory):
     """Factory method fixture to populate the test database with a USD withdrawal transaction."""
 

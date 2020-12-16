@@ -48,7 +48,7 @@ def execute_deposit(transaction: Transaction) -> bool:
         transaction.status = Transaction.STATUS.pending_anchor
     transaction.status_eta = 5  # Ledger close time.
     transaction.save()
-    logger.info(f"Transaction {transaction.id} now pending_anchor, initiating deposit")
+    logger.info(f"Initiating Stellar deposit for {transaction.id}")
     # launch the deposit Stellar transaction.
     return create_stellar_deposit(transaction)
 
@@ -273,7 +273,6 @@ class Command(BaseCommand):
                     )
                 else:
                     transaction.amount_fee = Decimal(0)
-            logger.info("calling get_or_create_transaction_destination_account()")
             try:
                 (
                     _,
@@ -287,24 +286,28 @@ class Command(BaseCommand):
                 logger.error(transaction.status_message)
                 continue
 
-            # Transaction.status == pending_trust, wait for client
-            # to add trustline for asset to send
-            if created or pending_trust:
+            if (
+                created or pending_trust
+            ) and not transaction.claimable_balance_supported:
+                # after checking/creating the account, we discovered the transaction
+                # doesn't have a trustline.
+                # And the transaction is does not support claimable balances
+                # Transaction.status is definitely not
+                # pending_trust yet because only the transactions with these statuses
+                # are queried:
+                # - Transaction.STATUS.pending_user_transfer_start
+                # - Transaction.STATUS.pending_external
                 logger.info(
                     f"destination account is pending_trust for transaction {transaction.id}"
                 )
-                if (
-                    pending_trust
-                    and transaction.status != Transaction.STATUS.pending_trust
-                ):
-                    transaction.status = Transaction.STATUS.pending_trust
-                    transaction.save()
+                transaction.status = Transaction.STATUS.pending_trust
+                transaction.save()
                 continue
-
-            if check_for_multisig(transaction):
-                # Now Polaris waits for signatures to be collected by the anchor
+            elif check_for_multisig(transaction):
+                # We still have to check if the transaction requires additional
+                # signatures.
+                # If so we want to skip current transaction's execute_deposit call
                 continue
-
             cls.execute_deposit(transaction)
 
         ready_multisig_transactions = Transaction.objects.filter(

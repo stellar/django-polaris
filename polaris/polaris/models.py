@@ -414,6 +414,7 @@ class Transaction(models.Model):
     
         the user has not yet initiated their transfer to the anchor. This is the 
         necessary first step in any deposit or withdrawal flow.
+
     * **incomplete**
     
         there is not yet enough information for this transaction to be initiated. 
@@ -578,6 +579,15 @@ class Transaction(models.Model):
     transactions to Transaction.stellar_account, if present. 
     This is only used for transactions requiring signatures Polaris cannot
     add itself.
+    """
+    claimable_balance_supported = models.BooleanField(default=False)
+    """
+    claimable_balance_supported is a boolean to indicate if the wallet supports the SEP24
+    requirements for handeling claimable balance deposits.
+    """
+    claimable_balance_id = models.TextField(null=True, blank=True)
+    """
+    The ID of the claimable balance used to send funds to the user. This column will be ``None`` if ``claimable_balance_supported`` is ``False`` or if the transaction has not yet been submitted to the Stellar network.
     """
 
     objects = models.Manager()
