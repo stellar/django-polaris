@@ -29,8 +29,8 @@ django_apps = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
 ]
-
-third_party_apps = ["rest_framework", "corsheaders", "sass_processor"]
+# add "sass_processor" when you need to run $ python manage.py compilescss
+third_party_apps = ["rest_framework", "corsheaders"]
 if os.path.exists(BASE_DIR + "/server"):
     # The server app is present, add it to installed apps.
     #
