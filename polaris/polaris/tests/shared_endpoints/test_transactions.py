@@ -170,6 +170,7 @@ def test_transactions_content(
     )
     assert withdrawal_transaction["withdraw_memo"] == withdrawal.memo
     assert withdrawal_transaction["withdraw_memo_type"] == withdrawal.memo_type
+    assert "claimable_balance_id" not in withdrawal_transaction
 
     # Verifying the deposit transaction data:
     assert deposit_transaction["id"] == str(deposit.id)
@@ -196,7 +197,7 @@ def test_transactions_content(
     assert deposit_transaction["to"] is None
     assert deposit_transaction["deposit_memo"] == deposit.memo
     assert deposit_transaction["deposit_memo_type"] == deposit.memo_type
-
+    assert "claimable_balance_id" in deposit_transaction
     # stellar_account and asset should not be exposed:
     with pytest.raises(KeyError):
         assert withdrawal_transaction["stellar_account"]

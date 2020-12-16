@@ -76,6 +76,7 @@ class TransactionSerializer(serializers.ModelSerializer):
             data["withdraw_memo_type"] = data["memo_type"]
             data["withdraw_memo"] = data["memo"]
             data["withdraw_anchor_account"] = data["receiving_anchor_account"]
+            del data["claimable_balance_id"]
         del data["memo_type"]
         del data["memo"]
         del data["receiving_anchor_account"]
@@ -103,4 +104,5 @@ class TransactionSerializer(serializers.ModelSerializer):
             "more_info_url",
             "refunded",
             "message",
+            "claimable_balance_id",
         ]

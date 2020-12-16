@@ -214,6 +214,35 @@ def test_transaction_filtering_no_result(
 
 
 @pytest.mark.django_db
+def test_transaction_claimable_balance_id_result(
+    client, acc2_eth_CB_deposit_transaction_factory,
+):
+    """Succeeds with expected response if claimable_balance_id provided."""
+    deposit = acc2_eth_CB_deposit_transaction_factory(client_address)
+
+    encoded_jwt = sep10(client, client_address, client_seed)
+    # For testing, we make the key `HTTP_AUTHORIZATION`. This is the value that
+    # we expect due to the middleware.
+    header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
+
+    response = client.get((f"{endpoint}?id={deposit.id}"), follow=True, **header,)
+    content = json.loads(response.content)
+
+    assert response.status_code == 200
+
+    deposit_claimable_balance_transaction = content.get("transaction")
+
+    # Verifying the deposit claimable balance transaction data:
+    assert deposit.claimable_balance_supported
+    assert isinstance(deposit_claimable_balance_transaction["id"], str)
+    assert deposit_claimable_balance_transaction["kind"] == "deposit"
+    assert (
+        deposit_claimable_balance_transaction["status"] == Transaction.STATUS.completed
+    )
+    assert deposit_claimable_balance_transaction["claimable_balance_id"]
+
+
+@pytest.mark.django_db
 def test_transaction_authenticated_success(
     client,
     acc1_usd_deposit_transaction_factory,
