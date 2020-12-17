@@ -242,11 +242,11 @@ def create_transaction_envelope(transaction, source_account) -> TransactionEnvel
         transaction.asset.significant_decimals,
     )
     memo = make_memo(transaction.memo, transaction.memo_type)
-    base_fee = settings.HORIZON_SERVER.fetch_base_fee()
     builder = TransactionBuilder(
         source_account=source_account,
         network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
-        base_fee=base_fee,
+        # only one operation, so base_fee will be multipled by 1
+        base_fee=settings.MAX_TRANSACTION_FEE_STROOPS,
     )
     _, json_resp = get_account_obj(Keypair.from_public_key(transaction.stellar_account))
     if transaction.claimable_balance_supported and is_pending_trust(
