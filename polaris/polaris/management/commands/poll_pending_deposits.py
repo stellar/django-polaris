@@ -1,4 +1,3 @@
-import json
 import sys
 import signal
 import time
@@ -16,7 +15,7 @@ from polaris.utils import (
     create_stellar_deposit,
     create_transaction_envelope,
     get_account_obj,
-    has_trustline,
+    is_pending_trust,
 )
 from polaris.integrations import (
     registered_deposit_integration as rdi,
@@ -130,7 +129,7 @@ def get_or_create_transaction_destination_account(
         account, json_resp = get_account_obj(
             Keypair.from_public_key(transaction.stellar_account)
         )
-        return account, False, has_trustline(transaction, json_resp)
+        return account, False, is_pending_trust(transaction, json_resp)
     except RuntimeError:
         master_signer = None
         if transaction.asset.distribution_account_master_signer:

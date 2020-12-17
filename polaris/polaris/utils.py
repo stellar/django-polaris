@@ -1,11 +1,10 @@
 """This module defines helpers for various endpoints."""
-import json
 import codecs
 import datetime
 import uuid
 import base64
 from decimal import Decimal
-from typing import Optional, Tuple, Union
+from typing import Optional, Union
 from logging import getLogger as get_logger, LoggerAdapter
 
 from django.utils.translation import gettext
@@ -16,11 +15,7 @@ from stellar_sdk.transaction_builder import TransactionBuilder
 from stellar_sdk.exceptions import (
     BaseHorizonError,
     NotFoundError,
-    BadRequestError,
-    BadSignatureError,
-    SignatureExistError,
 )
-from stellar_sdk.xdr import StellarXDR_const as const
 from stellar_sdk.xdr.StellarXDR_type import TransactionResult
 from stellar_sdk.account import Account, Thresholds
 from stellar_sdk.sep.stellar_web_authentication import _verify_te_signed_by_account_id
@@ -111,41 +106,10 @@ def verify_valid_asset_operation(
 
 def create_stellar_deposit(transaction: Transaction) -> bool:
     """
-    Create and submit the Stellar transaction for the deposit.
-
-    *The Transaction `pending_trust` when the task is called from `check_trustlines()`.*
-
-    If called from check_trustlines() this means the following flow occurred
-    - The deposit transaction was blocked from sending a payment since the account
-      didn't have a trustline
-      - The account also issued a deposit from a Wallet that did not provide a
-        "claimable_balance_supported" value POST req body (or stated it as False).
-    - The Transaction was in pending_trust limbo until the account set up a trustline
-    - Trustline is established for the asset and create_stellar_deposit is called from
-      check_trustlines()
-    - When crafting the transaction (create_transaction_envelope)
-      the transaction will be pending_trust however
-      since claimable_balance_supported==False we'll create a standard payment operation.
-
-    *The Transaction `pending_anchor` when the task is called from `poll_pending_deposits()`.*
-
-    If a wallet supports claimable balances (claimable_balance_supported==True)
-    and a wallet user deposits offchain value for an asset they do not
-    yet trust (transaction obj is pending_trust) then the following steps occur
-
-    - Polaris will parse the POST req body for the "claimable_balance_supported"
-    field and populate the Transaction object's
-    "claimable_balance_supported" column (i.e attribute) True.
-    False otherwise. (sep24/deposit.py)
-    - Then `poll_pending_deposits()` will do the following
-        - Parse the deposit Transactions that are pending_user_transfer_start
-        - Since transaction.claimable_balance_supported is True
-            call `create_stellar_deposit` from `execute_deposit`
-            where we then craft and submit the transaction as a claimable balance
-        - In `create_transaction_envelope`
-            if claimable_balance_supported and `has_trustline` then
-        deposit is claimablebalance op
-            else deposit is payment op
+    Performs final status and signature checks before calling submit_stellar_deposit().
+    Returns true on successful submission, false otherwise. `transaction` will be placed
+    in the error status if submission fails or if it is a multisig transaction and is not
+    signed by the channel account.
     """
     if transaction.status not in [
         Transaction.STATUS.pending_anchor,
@@ -170,7 +134,6 @@ def create_stellar_deposit(transaction: Transaction) -> bool:
         master_signer = transaction.asset.distribution_account_master_signer
     thresholds = transaction.asset.distribution_account_thresholds
     if not master_signer or master_signer["weight"] < thresholds["med_threshold"]:
-        multisig = True
         envelope = TransactionEnvelope.from_xdr(
             transaction.envelope_xdr, settings.STELLAR_NETWORK_PASSPHRASE
         )
@@ -185,95 +148,39 @@ def create_stellar_deposit(transaction: Transaction) -> bool:
             return False
     # otherwise, create the envelope and sign it with the distribution account's secret
     else:
-        multisig = False
         distribution_acc, _ = get_account_obj(
             Keypair.from_public_key(transaction.asset.distribution_account)
         )
         envelope = create_transaction_envelope(transaction, distribution_acc)
         envelope.sign(transaction.asset.distribution_seed)
-        transaction.envelope_xdr = envelope.to_xdr()
 
     try:
-        return submit_stellar_deposit(transaction, multisig=multisig)
-    except RuntimeError as e:
-        transaction.status_message = str(e)
+        submit_stellar_deposit(transaction, envelope)
+    except (RuntimeError, BaseHorizonError) as e:
+        transaction.status_message = f"{e.__class__.__name__}: {e.message}"
         transaction.status = Transaction.STATUS.error
         transaction.save()
         logger.error(transaction.status_message)
         return False
-
-
-def handle_bad_signatures_error(e, transaction, multisig=False):
-    err_msg = (
-        f"Horizon returned a {e.__class__.__name__} on transaction "
-        f"{transaction.id} submission."
-    )
-    logger.error(err_msg)
-    logger.error(
-        f"Transaction {transaction.id} envelope XDR: {transaction.envelope_xdr}"
-    )
-    logger.error(f"Transaction {transaction.id} result XDR: {e.result_xdr}")
-    if multisig:
-        logger.error(
-            f"Resetting the Transaction.envelope_xdr for {transaction.id}, "
-            "updating Transaction.pending_signatures to True"
-        )
-        channel_account, _ = get_account_obj(
-            Keypair.from_public_key(transaction.channel_account)
-        )
-        transaction.envelope_xdr = create_transaction_envelope(
-            transaction, channel_account
-        ).to_xdr()
-        transaction.pending_signatures = True
-        transaction.status = Transaction.STATUS.pending_anchor
     else:
-        transaction.status = Transaction.STATUS.error
-        transaction.status_message = (
-            f"Horizon returned a {e.__class__.__name__} on transaction "
-            f"{transaction.id} submission"
-        )
-    transaction.save()
+        return True
 
 
-def submit_stellar_deposit(transaction, multisig=False) -> bool:
+def submit_stellar_deposit(transaction, envelope):
     transaction.status = Transaction.STATUS.pending_stellar
     transaction.save()
     logger.info(f"Transaction {transaction.id} now pending_stellar")
-    envelope = TransactionEnvelope.from_xdr(
-        transaction.envelope_xdr, settings.STELLAR_NETWORK_PASSPHRASE
-    )
-    try:
-        response = settings.HORIZON_SERVER.submit_transaction(envelope)
-    except BaseHorizonError as e:
-        logger.info(e.__class__.__name__)
-        tx_result = TransactionResult.from_xdr(e.result_xdr)
-        op_results = tx_result.result.results
-        if isinstance(e, BadRequestError):
-            if op_results[0].code == -1:  # Bad Auth
-                handle_bad_signatures_error(e, transaction, multisig=multisig)
-                return False  # handle_bad_signatures_error() saves transaction
-            else:
-                transaction.status = Transaction.STATUS.error
-                transaction.status_message = (
-                    f"tx failed with codes: {op_results}. Result XDR: {e.result_xdr}"
-                )
-        else:
-            raise RuntimeError(
-                "Unable to submit payment to horizon, "
-                f"non-trustline failure: {e.message}"
-            )
-        transaction.save()
-        logger.error(transaction.status_message)
-        return False
+
+    response = settings.HORIZON_SERVER.submit_transaction(envelope)
 
     if not response.get("successful"):
-        transaction_result = TransactionResult.from_xdr(response["result_xdr"])
         raise RuntimeError(
-            "Stellar transaction failed when submitted to horizon: "
-            f"{transaction_result.result.results}"
+            f"Stellar transaction failed when submitted to horizon: {response['result_xdr']}"
         )
-    if transaction.claimable_balance_supported:
+    elif transaction.claimable_balance_supported:
         transaction.claimable_balance_id = get_balance_id(response)
+
+    transaction.envelope_xdr = response["envelope_xdr"]
     transaction.paging_token = response["paging_token"]
     transaction.stellar_transaction_id = response["id"]
     transaction.status = Transaction.STATUS.completed
@@ -285,7 +192,6 @@ def submit_stellar_deposit(transaction, multisig=False) -> bool:
     )
     transaction.save()
     logger.info(f"Transaction {transaction.id} completed.")
-    return True
 
 
 def load_account(resp):
@@ -314,7 +220,7 @@ def get_account_obj(kp):
         return load_account(json_resp), json_resp
 
 
-def has_trustline(transaction, json_resp):
+def is_pending_trust(transaction, json_resp):
     pending_trust = True
     for balance in json_resp["balances"]:
         if balance.get("asset_type") == "native":
@@ -343,7 +249,7 @@ def create_transaction_envelope(transaction, source_account) -> TransactionEnvel
         base_fee=base_fee,
     )
     _, json_resp = get_account_obj(Keypair.from_public_key(transaction.stellar_account))
-    if transaction.claimable_balance_supported and has_trustline(
+    if transaction.claimable_balance_supported and is_pending_trust(
         transaction, json_resp
     ):
         logger.debug(
