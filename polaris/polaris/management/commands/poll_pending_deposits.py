@@ -90,40 +90,23 @@ def get_or_create_transaction_destination_account(
     transaction: Transaction,
 ) -> Tuple[Optional[Account], bool, bool]:
     """
-    Returns the stellar_sdk.account.Account for which this transaction's payment will be sent to as
-    as well as whether or not the account was created as a result of calling this function.
-
-    Args:
-        transaction (Transaction): Deposit Transaction
-
     Returns:
         Tuple[Optional[Account]: The account(s) found or created for the Transaction
-        bool: boolean to indicate if created. True if created, False otherwise.
-        bool: boolean to indicate if there isn't a trustline. True if trustline doesn't exist, False otherwise.
-
-    If the account exists, the function simply returns the account and False.
+        bool: boolean, True if created, False otherwise.
+        bool: boolean, True if trustline doesn't exist, False otherwise.
 
     If the account doesn't exist, Polaris must create the account using an account provided by the
     anchor. Polaris can use the distribution account of the anchored asset or a channel account if
     the asset's distribution account requires non-master signatures.
 
     If the transacted asset's distribution account does not require non-master signatures, Polaris
-    can create the destination account using the distribution account. On successful creation,
-    this function will return the account and True. On failure, a RuntimeError exception is raised.
+    can create the destination account using the distribution account.
 
     If the transacted asset's distribution account does require non-master signatures, the anchor
     should save a keypair of a pre-existing Stellar account to use as the channel account via
-    DepositIntegration.create_channel_account().
+    DepositIntegration.create_channel_account(). See the function docstring for more info.
 
-    This channel account must only be used as the source account for transactions related to the
-    ``Transaction`` object passed. It also must not be used to submit transactions by any service
-    other than Polaris. If it is, the outstanding transactions will be invalidated due to bad
-    sequence numbers. Finally, the channel accounts must have a master signer with a weight greater
-    than or equal to the medium threshold for the account.
-
-    After the transaction for creating the destination account has been submitted to the stellar network
-    and the transaction has been created, this function will return the account and True. If the
-    transaction was not submitted successfully, a RuntimeError exception will be raised.
+    On failure to create the destination account, a RuntimeError exception is raised.
     """
     try:
         account, json_resp = get_account_obj(
