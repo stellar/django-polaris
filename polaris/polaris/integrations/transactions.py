@@ -333,6 +333,11 @@ class DepositIntegration:
         Stellar account `that does not require multiple signatures`, and save the secret key
         of the created account to ``transaction.channel_seed``.
 
+        This channel account must only be used as the source account for transactions related to the
+        ``Transaction`` object passed. It also must not be used to submit transactions by any service
+        other than Polaris. If it is, the outstanding transactions will be invalidated due to bad
+        sequence numbers.
+
         If this integration function is called, the deposit payment represented by ``transaction``
         requires multiple signatures in order to be successfully submitted to the Stellar network.
         The anchored asset's distribution account may or may not be in that set of signatures
