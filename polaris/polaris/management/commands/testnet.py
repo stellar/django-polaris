@@ -1,5 +1,4 @@
 import urllib3
-from math import ceil
 from decimal import Decimal
 from typing import Optional
 from logging import getLogger
