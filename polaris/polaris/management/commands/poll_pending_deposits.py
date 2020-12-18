@@ -132,7 +132,8 @@ def get_or_create_transaction_destination_account(
             source_account=source_account,
             network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
             # this transaction contains one operation so base_fee will be multiplied by 1
-            base_fee=settings.MAX_TRANSACTION_FEE_STROOPS,
+            base_fee=settings.MAX_TRANSACTION_FEE_STROOPS
+            or settings.HORIZON_SERVER.fetch_base_fee(),
         )
         transaction_envelope = builder.append_create_account_op(
             destination=transaction.stellar_account,

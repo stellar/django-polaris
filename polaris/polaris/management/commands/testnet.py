@@ -180,14 +180,16 @@ class Command(BaseCommand):
     def add_balance(self, code, amount, accounts, dest, src, issuer):
         tb = TransactionBuilder(
             self.account_from_json(accounts[src.public_key]),
-            # there may be 2 operations in this transaction, so we'll halve the base_fee
-            # before calling build() if thats the case
-            base_fee=settings.MAX_TRANSACTION_FEE_STROOPS,
+            base_fee=settings.MAX_TRANSACTION_FEE_STROOPS
+            or settings.HORIZON_SERVER.fetch_base_fee(),
             network_passphrase="Test SDF Network ; September 2015",
         )
         balance = self.get_balance(code, accounts[dest.public_key])
         if not balance:
             print(f"\nCreating {code} trustline for {dest.public_key}")
+            if settings.MAX_TRANSACTION_FEE_STROOPS:
+                # halve the base_fee because there are 2 operations
+                tb.base_fee = tb.base_fee // 2
             tb.append_change_trust_op(
                 asset_code=code, asset_issuer=issuer.public_key, source=dest.public_key
             )
@@ -210,8 +212,6 @@ class Command(BaseCommand):
             asset_issuer=issuer.public_key,
             source=src.public_key,
         )
-        if len(tb.operations) == 2:
-            tb.base_fee = tb.base_fee // 2
         envelope = tb.set_timeout(30).build()
         if len(tb.operations) == 2:
             # add destination's signature if we're adding a trustline
