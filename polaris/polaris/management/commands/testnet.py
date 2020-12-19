@@ -13,6 +13,7 @@ from stellar_sdk.exceptions import (
     Ed25519SecretSeedInvalidError,
 )
 
+from polaris import settings
 from polaris.models import Transaction, Asset
 
 logger = getLogger(__name__)
@@ -178,15 +179,19 @@ class Command(BaseCommand):
     def add_balance(self, code, amount, accounts, dest, src, issuer):
         tb = TransactionBuilder(
             self.account_from_json(accounts[src.public_key]),
-            base_fee=500,
+            base_fee=settings.MAX_TRANSACTION_FEE_STROOPS
+            or settings.HORIZON_SERVER.fetch_base_fee(),
             network_passphrase="Test SDF Network ; September 2015",
         )
-        payment_amount = None
         balance = self.get_balance(code, accounts[dest.public_key])
         if not balance:
             print(f"\nCreating {code} trustline for {dest.public_key}")
-            limit = amount if src == issuer else None
-            tb.append_change_trust_op(code, issuer.public_key, limit, dest.public_key)
+            if settings.MAX_TRANSACTION_FEE_STROOPS:
+                # halve the base_fee because there are 2 operations
+                tb.base_fee = tb.base_fee // 2
+            tb.append_change_trust_op(
+                asset_code=code, asset_issuer=issuer.public_key, source=dest.public_key
+            )
             payment_amount = amount
         elif Decimal(balance) < amount:
             print(f"\nReplenishing {code} balance to {amount} for {dest.public_key}")
@@ -200,14 +205,17 @@ class Command(BaseCommand):
 
         print(f"Sending {code} payment of {payment_amount} to {dest.public_key}")
         tb.append_payment_op(
-            dest.public_key, payment_amount, code, issuer.public_key, src.public_key
+            destination=dest.public_key,
+            amount=payment_amount,
+            asset_code=code,
+            asset_issuer=issuer.public_key,
+            source=src.public_key,
         )
         envelope = tb.set_timeout(30).build()
-        envelope.sign(src)
         if len(tb.operations) == 2:
-            # We only need the destination's signature if we're adding a trustline
-            # to the account
+            # add destination's signature if we're adding a trustline
             envelope.sign(dest)
+        envelope.sign(src)
         try:
             self.server.submit_transaction(envelope)
         except BaseHorizonError as e:

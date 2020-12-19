@@ -10,12 +10,14 @@ from stellar_sdk.server import Server
 from stellar_sdk.keypair import Keypair
 
 
-def env_or_settings(variable, bool=False, list=False):
+def env_or_settings(variable, bool=False, list=False, int=False):
     try:
         if bool:
             return env.bool(variable)
         elif list:
             return env.list(variable)
+        elif int:
+            return env.int(variable)
         else:
             return env(variable)
     except ImproperlyConfigured:
@@ -73,6 +75,8 @@ SEP10_HOME_DOMAINS = env_or_settings("SEP10_HOME_DOMAINS", list=True) or [
 ]
 if any(d.startswith("http") for d in SEP10_HOME_DOMAINS):
     raise ImproperlyConfigured("SEP10_HOME_DOMAINS must only be hostnames")
+
+MAX_TRANSACTION_FEE_STROOPS = env_or_settings("BASE_FEE_MULTIPLIER", int=True)
 
 # Constants
 OPERATION_DEPOSIT = "deposit"
