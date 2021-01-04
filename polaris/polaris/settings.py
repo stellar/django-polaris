@@ -76,7 +76,7 @@ SEP10_HOME_DOMAINS = env_or_settings("SEP10_HOME_DOMAINS", list=True) or [
 if any(d.startswith("http") for d in SEP10_HOME_DOMAINS):
     raise ImproperlyConfigured("SEP10_HOME_DOMAINS must only be hostnames")
 
-MAX_TRANSACTION_FEE_STROOPS = env_or_settings("BASE_FEE_MULTIPLIER", int=True)
+MAX_TRANSACTION_FEE_STROOPS = env_or_settings("MAX_TRANSACTION_FEE_STROOPS", int=True)
 
 # Constants
 OPERATION_DEPOSIT = "deposit"
