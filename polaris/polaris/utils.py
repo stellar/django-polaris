@@ -16,7 +16,7 @@ from stellar_sdk.exceptions import (
     BaseHorizonError,
     NotFoundError,
 )
-from stellar_sdk.xdr.StellarXDR_type import TransactionResult
+from stellar_sdk.xdr import TransactionResult, OperationType
 from stellar_sdk.account import Account, Thresholds
 from stellar_sdk.sep.stellar_web_authentication import _verify_te_signed_by_account_id
 from stellar_sdk.sep.exceptions import InvalidSep10ChallengeError
@@ -300,9 +300,9 @@ def get_balance_id(response: dict) -> Optional[str]:
     result_xdr = response["result_xdr"]
     tr_xdr = TransactionResult.from_xdr(result_xdr)
     for op_result in tr_xdr.result.results:
-        if hasattr(op_result.tr, "createClaimableBalanceResult"):
+        if op_result.tr.type == OperationType.CREATE_CLAIMABLE_BALANCE:
             cbr_xdr = base64.b64decode(
-                op_result.tr.createClaimableBalanceResult.balanceID.to_xdr()
+                op_result.tr.create_claimable_balance_result.balance_id.to_xdr()
             )
             return cbr_xdr.hex()
     return None
