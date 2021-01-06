@@ -301,7 +301,9 @@ def get_balance_id(response: dict) -> Optional[str]:
     tr_xdr = TransactionResult.from_xdr(result_xdr)
     for op_result in tr_xdr.result.results:
         if op_result.tr.type == OperationType.CREATE_CLAIMABLE_BALANCE:
-            cbr_xdr = op_result.tr.create_claimable_balance_result.balance_id.to_xdr_bytes()
+            cbr_xdr = (
+                op_result.tr.create_claimable_balance_result.balance_id.to_xdr_bytes()
+            )
             return cbr_xdr.hex()
     return None
 

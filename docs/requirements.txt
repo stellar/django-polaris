@@ -18,6 +18,6 @@ django<3.0
 djangorestframework
 psycopg2-binary
 pyjwt
-stellar-sdk~=2.10.0
+stellar-sdk~=3.0
 toml
 whitenoise
