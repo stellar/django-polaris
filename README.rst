@@ -4,8 +4,11 @@ Welcome to Polaris
 
 .. _readthedocs: https://django-polaris.readthedocs.io/
 .. _tutorial: https://django-polaris.readthedocs.io/en/stable/tutorials/index.html
+.. _`email list`: https://groups.google.com/g/stellar-polaris
 
 To get a SEP-24 anchor server running quickly, see the tutorial_.
+
+For important updates on Polaris' development and releases please join the `email list`_.
 
 The documentation below outlines the common set up needed for any Polaris deployment, but
 each SEP implementation has its own configuration and integration requirements. These

@@ -2,7 +2,11 @@
 Welcome to Polaris
 ==================
 
+.. _`email list`: https://groups.google.com/g/stellar-polaris
+
 To get a SEP-24 anchor server running quickly, see the :doc:`tutorial </tutorials/index>`.
+
+For important updates on Polaris' development and releases please join the `email list`_.
 
 The documentation below outlines the common set up needed for any Polaris deployment, but
 each SEP implementation has its own configuration and integration requirements. These
