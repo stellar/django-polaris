@@ -352,6 +352,7 @@ SEP_9_FIELDS = {
     "bank_account_number",
     "bank_number",
     "bank_phone_number",
+    "bank_branch_number",
     "tax_id",
     "tax_id_name",
     "occupation",
