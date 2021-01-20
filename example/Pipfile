@@ -4,19 +4,10 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [dev-packages]
-pytest = "*"
-pytest-django = "*"
-pytest-cov = "*"
-codecov = "*"
 watchdog = "<0.10"
 
 [packages]
-django = "<3.0"
-django-environ = "*"
 gunicorn = "*"
-whitenoise = "*"
-psycopg2-binary = "*"
-django-cors-headers = "*"
 django-polaris = {path = "/code", editable = true}
 
 [requires]
