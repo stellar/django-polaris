@@ -2,13 +2,13 @@
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
 #
-# oon arfiandwi <oon.arfiandwi@gmail.com>, 2020.
+# oon arfiandwi <oon.arfiandwi@gmail.com>, 2020, 2021.
 msgid ""
 msgstr ""
 "Project-Id-Version: 1.0\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2021-01-20 03:36+0000\n"
-"PO-Revision-Date: 2020-08-27 09:36+0800\n"
+"PO-Revision-Date: 2021-01-20 23:06+0800\n"
 "Last-Translator: oon arfiandwi <oon.arfiandwi@gmail.com>\n"
 "Language-Team: Indonesian <>\n"
 "Language: id\n"
@@ -16,7 +16,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
-"X-Generator: Lokalize 2.0\n"
+"X-Generator: Lokalize 19.12.3\n"
 
 #: forms.py:11
 msgid "First Name"
@@ -40,7 +40,7 @@ msgstr "Akun bank"
 
 #: forms.py:40
 msgid "Enter the bank to withdraw from."
-msgstr "Masukkan bank untuk formulir penarikan."
+msgstr "Masukkan bank untuk tempat penarikan."
 
 #: forms.py:44
 msgid "Bank"
@@ -196,7 +196,7 @@ msgstr "Tidak ada kolom yang tersedia"
 
 #: integrations.py:636
 msgid "unexpected fields provided"
-msgstr "kolom yang tidak terduga disediakan"
+msgstr "kolom yang tidak diharapkan tersedia"
 
 #: integrations.py:638
 msgid "field values must be strings"
@@ -261,21 +261,25 @@ msgstr ""
 
 #: templates/polaris/more_info.html:8
 msgid "instructions"
-msgstr ""
+msgstr "instruksi"
 
 #: templates/polaris/more_info.html:11
 msgid "Include this code as the memo when making the deposit:"
-msgstr ""
+msgstr "Sertakan kode ini sebagai memo saat melakukan penyetoran:"
 
 #: templates/polaris/more_info.html:11
 msgid "We will use this memo to identify you as the sender."
 msgstr ""
+"Kami akan menggunakan memo ini untuk mengidentifikasi Anda sebagai pengirim."
 
 #: templates/polaris/more_info.html:13
 msgid ""
 "(This deposit is automatically confirmed for demonstration purposes. Please "
 "wait.)"
 msgstr ""
+"(Penyetoran ini secara otomatis dikonfirmasi untuk tujuan demonstrasi."
+" Silakan "
+"tunggu.)"
 
 #: templates/readonly_login.html:21
 msgid "Please correct the error below."
@@ -291,7 +295,7 @@ msgid ""
 "You are authenticated as %(username)s, but are not authorized to access this "
 "page. Would you like to login to a different account?"
 msgstr ""
-"Anda diautentikasi sebagai %(username)s, tetapi tidak diizinkan untuk "
+"Anda terotentikasi sebagai %(username)s, tetapi tidak diizinkan untuk "
 "mengakses halaman ini. Apakah anda ingin menggunakan akun lain?"
 
 #: templates/readonly_login.html:64
