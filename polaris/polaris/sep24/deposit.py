@@ -314,21 +314,20 @@ def deposit(account: str, request: Request) -> Response:
     lang = request.POST.get("lang")
     sep9_fields = extract_sep9_fields(request.POST)
     claimable_balance_supported = request.POST.get("claimable_balance_supported")
-    if claimable_balance_supported:
-        try:
-            claimable_balance_supported = bool(
-                claimable_balance_supported.lower() == "true"
-            )
-        except AttributeError:
-            # claimable_balance_supported isn't a string
-            render_error_response(
-                _(
-                    "The request is either not encoded as multipart/form-data "
-                    "or the `claimable_balance_supported` value was invalid."
-                )
-            )
-    else:
+    if not claimable_balance_supported:
         claimable_balance_supported = False
+    elif isinstance(claimable_balance_supported, str):
+        if claimable_balance_supported.lower() not in ["true", "false"]:
+            return render_error_response(
+                _("'claimable_balance_supported' value must be 'true' or 'false'")
+            )
+        claimable_balance_supported = claimable_balance_supported.lower() == "true"
+    elif not isinstance(claimable_balance_supported, bool):
+        return render_error_response(
+            _(
+                "unexpected data type for 'claimable_balance_supprted'. Expected string or boolean."
+            )
+        )
 
     if lang:
         err_resp = validate_language(lang)

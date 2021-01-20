@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gettext-tools 0.18.3\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-08-26 16:01+0000\n"
+"POT-Creation-Date: 2021-01-20 03:35+0000\n"
 "PO-Revision-Date: 2014-01-07 15:19+0900\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -63,63 +63,68 @@ msgstr "O valor mínimo é: %s"
 msgid "The maximum amount is: %s"
 msgstr "O valor máximo é: %s"
 
-#: models.py:254
+#: models.py:323
+#, python-format
+msgid "Cannot decode envelope XDR for transaction: %(error)s"
+msgstr ""
+
+#: models.py:335
 #, fuzzy
 #| msgid "processing"
 msgid "Processing"
 msgstr "processando"
 
-#: models.py:255
+#: models.py:336
 msgid "waiting for a trustline to be established"
 msgstr "esperando a trustline ser estabelecida"
 
-#: models.py:256
+#: models.py:337
 msgid "waiting on user action"
 msgstr "esperando ação do usuário"
 
-#: models.py:257
+#: models.py:338
 msgid "waiting on the user to transfer funds"
 msgstr "esperando o usuário transferir os fundos"
 
-#: models.py:258
+#: models.py:339
 msgid "incomplete"
 msgstr "incompleta"
 
-#: models.py:259
+#: models.py:340
 msgid "no market for the asset"
 msgstr "sem mercado para o ativo"
 
-#: models.py:260
+#: models.py:341
 msgid "the transaction amount is too small"
 msgstr "o valor da transação é muito pequeno"
 
-#: models.py:261
+#: models.py:342
 msgid "the transaction amount is too big"
 msgstr "o valor da transação é muito grande"
 
-#: models.py:269
+#: models.py:350
 msgid "complete"
 msgstr "completa"
 
-#: models.py:270
+#: models.py:351
 msgid "error"
 msgstr "erro"
 
-#: models.py:271
+#: models.py:352
 msgid "waiting on an external entity"
 msgstr "esperando entidade externa"
 
-#: models.py:272
+#: models.py:353
 msgid "stellar is executing the transaction"
 msgstr "stellar está executando a transação"
 
-#: sep10/views.py:91
+#: sep10/views.py:101
 #, fuzzy
 #| msgid "'dest' is required"
 msgid "'transaction' is required"
 msgstr "'dest' é necessário"
 
-#: sep12/customer.py:28 sep12/customer.py:78 sep6/transaction.py:37
+#: sep12/customer.py:28 sep12/customer.py:81 sep6/transaction.py:37
 msgid "The account specified does not match authorization token"
 msgstr "a conta especificada não corresponde ao token de autorização"
 
@@ -127,128 +132,138 @@ msgstr "a conta especificada não corresponde ao token de autorização"
 msgid "unable to identify a user without 'id' or 'account'"
 msgstr "não é possível identificar um usuário sem 'id' ou 'account'"
 
-#: sep12/customer.py:36 sep12/customer.py:82
+#: sep12/customer.py:36 sep12/customer.py:85
 #, fuzzy
 #| msgid "invalid 'memo' for 'memo_type'"
 msgid "missing 'memo' for 'memo_type'"
 msgstr "`memo` inválido para o `memo_type`"
 
-#: sep12/customer.py:42 sep12/customer.py:89 sep24/deposit.py:317
-#: sep6/deposit.py:137 sep6/withdraw.py:109
+#: sep12/customer.py:42 sep12/customer.py:92 sep24/deposit.py:346
+#: sep6/deposit.py:140 sep6/withdraw.py:109
 msgid "invalid 'memo' for 'memo_type'"
 msgstr "`memo` inválido para o `memo_type`"
 
-#: sep12/customer.py:62
+#: sep12/customer.py:65
 msgid "An exception was raised validating GET /customer response"
 msgstr "Exception raised ao validar GET /customer"
 
-#: sep12/customer.py:65
+#: sep12/customer.py:68
 #, fuzzy
 #| msgid "unable to process the request"
 msgid "unable to process request."
 msgstr "não foi possível processar a requisição"
 
-#: sep12/customer.py:75
+#: sep12/customer.py:78
 msgid "bad ID value, expected str"
 msgstr ""
 
-#: sep12/customer.py:110 sep31/transactions.py:82
+#: sep12/customer.py:113 sep31/transactions.py:82
 #, fuzzy
 #| msgid "unable to process the request"
 msgid "unable to process request"
 msgstr "não foi possível processar a requisição"
 
-#: sep24/deposit.py:96 sep24/deposit.py:246 sep24/withdraw.py:92
-#: sep24/withdraw.py:257
+#: sep24/deposit.py:97 sep24/deposit.py:254 sep24/withdraw.py:93
+#: sep24/withdraw.py:265
 msgid ""
 "The anchor did not provide content, is the interactive flow already complete?"
 msgstr "A âncora não forneceu conteúdo, o fluxo interativo já está completo?"
 
-#: sep24/deposit.py:102
+#: sep24/deposit.py:103
 #, fuzzy
 #| msgid "The anchor did not provide content, unable to serve page."
 msgid "The anchor did not provide form content, unable to serve page."
 msgstr "A âncora não retornou um conteúdo, não é possível mostrar a página."
 
-#: sep24/deposit.py:111 sep24/withdraw.py:107
+#: sep24/deposit.py:112 sep24/withdraw.py:108
 msgid "Unable to validate form submission."
 msgstr "Incapaz de validar o envio do formulário."
 
-#: sep24/deposit.py:189 sep24/withdraw.py:200
+#: sep24/deposit.py:197 sep24/withdraw.py:208
 msgid "Missing id parameter in URL"
 msgstr "O parâmetro id está faltando na URL"
 
-#: sep24/deposit.py:252 sep24/withdraw.py:98 sep24/withdraw.py:263
+#: sep24/deposit.py:260 sep24/withdraw.py:99 sep24/withdraw.py:271
 msgid "The anchor did not provide content, unable to serve page."
 msgstr "A âncora não retornou um conteúdo, não é possível mostrar a página."
 
-#: sep24/deposit.py:310
+#: sep24/deposit.py:322
+msgid "'claimable_balance_supported' value must be 'true' or 'false'"
+msgstr ""
+
+#: sep24/deposit.py:327
+msgid ""
+"unexpected data type for 'claimable_balance_supprted'. Expected string or "
+"boolean."
+msgstr ""
+
+#: sep24/deposit.py:339
 msgid "`asset_code` and `account` are required parameters"
 msgstr "Os parâmetros `asset_code` e `account` são necessários"
 
-#: sep24/deposit.py:324 sep24/withdraw.py:327
+#: sep24/deposit.py:353 sep24/withdraw.py:342
 #, fuzzy
 #| msgid "invalid 'account'"
 msgid "Invalid 'amount'"
 msgstr "'account' inválido"
 
-#: sep24/deposit.py:329
+#: sep24/deposit.py:358
 #, python-format
 msgid "unknown asset: %s"
 msgstr "ativo desconhecido: %s"
 
-#: sep24/deposit.py:331 sep24/withdraw.py:332
+#: sep24/deposit.py:360 sep24/withdraw.py:347
 #, python-format
 msgid "invalid operation for asset %s"
 msgstr "Valor é maior que o máximo para esse ativo: %s"
 
-#: sep24/deposit.py:336
+#: sep24/deposit.py:365
 msgid "invalid 'account'"
 msgstr "'account' inválido"
 
-#: sep24/utils.py:108
+#: sep24/utils.py:116
 msgid "Invalid token issuer"
 msgstr "Token de emissor inválido"
 
-#: sep24/utils.py:110
+#: sep24/utils.py:118
 msgid "Token is not yet valid or is expired"
 msgstr "Token ainda não é valido ou expirou"
 
-#: sep24/utils.py:116 sep24/utils.py:143
+#: sep24/utils.py:124 sep24/utils.py:151
 msgid "Transaction for account not found"
 msgstr "Transação para conta não encontrada"
 
-#: sep24/utils.py:137
+#: sep24/utils.py:145
 msgid "Session is not authenticated"
 msgstr "A sessão não está autenticada"
 
-#: sep24/utils.py:174
+#: sep24/utils.py:182
 msgid "no 'transaction_id' provided"
 msgstr "o 'transaction_id' não foi disponibilizado"
 
-#: sep24/utils.py:180 sep6/deposit.py:121 sep6/withdraw.py:93
+#: sep24/utils.py:188 sep6/deposit.py:124 sep6/withdraw.py:93
 msgid "invalid 'asset_code'"
 msgstr "'asset_code' inválido"
 
-#: sep24/utils.py:188
+#: sep24/utils.py:196
 msgid "Transaction with ID and asset_code not found"
 msgstr "Transação com ID e asset_code não encontrada"
 
-#: sep24/withdraw.py:315
+#: sep24/withdraw.py:330
 msgid "'asset_code' is required"
 msgstr "'asset_code' é necessário"
 
-#: sep24/withdraw.py:320
+#: sep24/withdraw.py:335
 msgid "`memo` parameter is not supported"
 msgstr "parâmetro `memo` não suportado"
 
-#: sep24/withdraw.py:334
+#: sep24/withdraw.py:349
 #, python-format
 msgid "unsupported asset type: %s"
 msgstr "Tipo de ativo não suportado: %s"
 
-#: sep31/info.py:36 sep31/transactions.py:142 sep6/deposit.py:64
-#: sep6/deposit.py:73 sep6/info.py:42 sep6/withdraw.py:71 sep6/withdraw.py:82
+#: sep31/info.py:36 sep31/transactions.py:142 sep6/deposit.py:67
+#: sep6/deposit.py:76 sep6/info.py:42 sep6/withdraw.py:71 sep6/withdraw.py:82
 msgid "unable to process the request"
 msgstr "não foi possível processar a requisição"
 
@@ -269,7 +284,7 @@ msgid "missing 'id' in URI"
 msgstr "O parâmetro id está faltando na URL"
 
 #: sep31/transactions.py:50 sep31/transactions.py:52 sep31/transactions.py:67
-#: sep31/transactions.py:69 shared/endpoints.py:31
+#: sep31/transactions.py:69 shared/endpoints.py:34
 msgid "transaction not found"
 msgstr "transação não encontrada"
 
@@ -333,7 +348,7 @@ msgstr "tipo inválido para %s, precisa ser um objeto"
 msgid "missing %(field)s in %(category)s"
 msgstr "%{field}s faltando em %{category}s"
 
-#: sep6/deposit.py:132 sep6/withdraw.py:104
+#: sep6/deposit.py:135 sep6/withdraw.py:104
 msgid "invalid 'memo_type'"
 msgstr "'memo_type' inválido"
 
@@ -345,7 +360,7 @@ msgstr "'type' é necessário"
 msgid "'dest' is required"
 msgstr "'dest' é necessário"
 
-#: shared/endpoints.py:229
+#: shared/endpoints.py:234
 msgid ""
 "at least one of id, stellar_transaction_id, or external_transaction_id must "
 "be provided"
@@ -353,113 +368,123 @@ msgstr ""
 "pelo menos um desses valores deve ser disponibilizado: id, "
 "stellar_transaction_id ou external_transaction_id"
 
-#: templates/base.html:10
-msgid "SEP24 reference server"
-msgstr "Servidor de Referência da SEP24"
-
-#: templates/deposit/form.html:4
-msgid "Interactive Deposit Info Form"
-msgstr "Formulário de Informações de Depósito Interativo"
-
-#: templates/deposit/form.html:13 templates/withdraw/form.html:13
-msgid "Please fill out the fields below."
-msgstr "Por favor preencha os campos a baixo."
-
-#: templates/deposit/form.html:39 templates/withdraw/form.html:37
-msgid "Fee"
-msgstr "Taxa"
-
-#: templates/deposit/form.html:40 templates/withdraw/form.html:38
-msgid "Total"
-msgstr "Total"
-
-#: templates/deposit/form.html:45
-msgid "Submit"
-msgstr "Enviar"
-
-#: templates/deposit/form.html:52 templates/withdraw/form.html:49
-msgid "Refresh"
-msgstr "Atualizar"
-
 #: templates/django/forms/widgets/clearable_file_input.html:2
 #: templates/django/forms/widgets/file.html:2
 msgid "Select a file"
 msgstr "Selecione um arquivo"
 
-#: templates/error.html:4 templates/error.html:9
+#: templates/polaris/base.html:10
+msgid "SEP24 reference server"
+msgstr "Servidor de Referência da SEP24"
+
+#: templates/polaris/deposit.html:4
+msgid "Interactive Deposit Info Form"
+msgstr "Formulário de Informações de Depósito Interativo"
+
+#: templates/polaris/deposit.html:13 templates/polaris/withdraw.html:13
+msgid "Please fill out the fields below."
+msgstr "Por favor preencha os campos a baixo."
+
+#: templates/polaris/deposit.html:39 templates/polaris/withdraw.html:37
+msgid "Fee"
+msgstr "Taxa"
+
+#: templates/polaris/deposit.html:40 templates/polaris/withdraw.html:38
+msgid "Total"
+msgstr "Total"
+
+#: templates/polaris/deposit.html:45
+msgid "Submit"
+msgstr "Enviar"
+
+#: templates/polaris/deposit.html:52 templates/polaris/withdraw.html:49
+msgid "Refresh"
+msgstr "Atualizar"
+
+#: templates/polaris/error.html:4 templates/polaris/error.html:9
 #, python-format
 msgid "Error: %(status_code)s"
 msgstr "Erro: %(status_code)s"
 
-#: templates/transaction/more_info.html:4
+#: templates/polaris/more_info.html:4
 msgid "Transaction More Info"
 msgstr "transação não encontrada"
 
-#: templates/transaction/more_info.html:12
+#: templates/polaris/more_info.html:13
 msgid "instructions"
 msgstr "instruções"
 
-#: templates/transaction/more_info.html:21
+#: templates/polaris/more_info.html:30
 msgid "kind"
 msgstr "tipo"
 
-#: templates/transaction/more_info.html:25
+#: templates/polaris/more_info.html:34
 msgid "deposit"
 msgstr "depósito"
 
-#: templates/transaction/more_info.html:27
+#: templates/polaris/more_info.html:36
 msgid "withdrawal"
 msgstr "saque"
 
-#: templates/transaction/more_info.html:34
+#: templates/polaris/more_info.html:43
 msgid "ID"
 msgstr "ID"
 
-#: templates/transaction/more_info.html:43
+#: templates/polaris/more_info.html:53
+#, fuzzy
+#| msgid "amount received"
+msgid "amount to be received"
+msgstr "valor recebido"
+
+#: templates/polaris/more_info.html:55
 msgid "amount received"
 msgstr "valor recebido"
 
-#: templates/transaction/more_info.html:52
+#: templates/polaris/more_info.html:65
 msgid "fee"
 msgstr "taxa"
 
-#: templates/transaction/more_info.html:62
+#: templates/polaris/more_info.html:75
 msgid "amount deposited"
 msgstr "valor depositado"
 
-#: templates/transaction/more_info.html:64
+#: templates/polaris/more_info.html:77
 msgid "amount withdrawn"
 msgstr "valor sacado"
 
-#: templates/transaction/more_info.html:74
+#: templates/polaris/more_info.html:87
 msgid "status"
 msgstr "estado"
 
-#: templates/transaction/more_info.html:83
+#: templates/polaris/more_info.html:96
 msgid "start"
 msgstr "começar"
 
-#: templates/transaction/more_info.html:93
+#: templates/polaris/more_info.html:106
 msgid "completed"
 msgstr "finalizado"
 
-#: templates/withdraw/form.html:4
+#: templates/polaris/withdraw.html:4
 msgid "Interactive Withdraw Info Form"
 msgstr "Formulário de Informações de Saque Interativo"
 
-#: templates/withdraw/form.html:43
+#: templates/polaris/withdraw.html:43
 msgid "Continue"
 msgstr "Continuar"
 
-#: utils.py:86
+#: utils.py:93
 #, python-format
 msgid "the specified operation is not available for '%s'"
 msgstr "a operação especificada não está disponível para '%s'"
 
-#: utils.py:91
+#: utils.py:98
 #, python-format
 msgid "Asset amount must be within bounds [%(min)s, %(max)s]"
 msgstr "O montante do ativo deve estar dentro dos limites [%(min)s, %(max)s]"
+
+#: utils.py:145
+msgid "Multisig transaction's envelope was not signed by channel account"
+msgstr ""
 
 #, fuzzy
 #~| msgid "Missing id parameter in URL"
