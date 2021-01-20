@@ -1,13 +1,13 @@
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
 #
-# oon arfiandwi <oon.arfiandwi@gmail.com>, 2020.
+# oon arfiandwi <oon.arfiandwi@gmail.com>, 2020, 2021.
 msgid ""
 msgstr ""
 "Project-Id-Version: gettext-tools 0.18.3\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2021-01-20 03:35+0000\n"
-"PO-Revision-Date: 2020-08-27 09:26+0800\n"
+"PO-Revision-Date: 2021-01-20 22:42+0800\n"
 "Last-Translator: oon arfiandwi <oon.arfiandwi@gmail.com>\n"
 "Language-Team: Indonesian <>\n"
 "Language: id\n"
@@ -15,7 +15,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
-"X-Generator: Lokalize 2.0\n"
+"X-Generator: Lokalize 19.12.3\n"
 
 #: integrations/forms.py:31
 msgid "The credit card number is invalid"
@@ -64,7 +64,7 @@ msgstr "Jumlah maksimum sebesar: %s"
 #: models.py:323
 #, python-format
 msgid "Cannot decode envelope XDR for transaction: %(error)s"
-msgstr ""
+msgstr "Tidak dapat memecahkan kode amplop XDR untuk transaksi: %(error)s"
 
 #: models.py:335
 msgid "Processing"
@@ -176,20 +176,22 @@ msgstr "Anchor tidak menyediakan konten, tidak dapat melayani halaman."
 
 #: sep24/deposit.py:322
 msgid "'claimable_balance_supported' value must be 'true' or 'false'"
-msgstr ""
+msgstr "nilai 'claimable_balance_supported' harus 'true' atau 'false'"
 
 #: sep24/deposit.py:327
 msgid ""
 "unexpected data type for 'claimable_balance_supprted'. Expected string or "
 "boolean."
 msgstr ""
+"tipe data tidak diharapkan untuk 'claimable_balance_supprted'. Diharapkan"
+" string atau "
+"boolean."
 
 #: sep24/deposit.py:339
 msgid "`asset_code` and `account` are required parameters"
 msgstr "`asset_code` dan `account` adalah parameter wajib"
 
 #: sep24/deposit.py:353 sep24/withdraw.py:342
-#, fuzzy
 #| msgid "invalid 'amount'"
 msgid "Invalid 'amount'"
 msgstr "'amount' tidak valid"
@@ -222,7 +224,7 @@ msgstr "Transaksi untuk akun tidak ditemukan"
 
 #: sep24/utils.py:145
 msgid "Session is not authenticated"
-msgstr "Sesi tidak diautentikasi"
+msgstr "Sesi tidak terotentikasi"
 
 #: sep24/utils.py:182
 msgid "no 'transaction_id' provided"
@@ -301,7 +303,7 @@ msgstr "'fields' harus diserialisasi ke objek JSON"
 
 #: sep31/transactions.py:175
 msgid "'transaction' value in 'fields' must be a dict"
-msgstr "Nilai 'transaction' dalam 'fields' harus berupa kamus (dict)"
+msgstr "Nilai 'transaction' dalam 'fields' harus berupa dict"
 
 #: sep31/transactions.py:180
 msgid "'sender_id' and 'receiver_id' values must be strings"
@@ -405,10 +407,9 @@ msgid "ID"
 msgstr "ID"
 
 #: templates/polaris/more_info.html:53
-#, fuzzy
 #| msgid "amount received"
 msgid "amount to be received"
-msgstr "jumlah yang diterima"
+msgstr "jumlah yang akan diterima"
 
 #: templates/polaris/more_info.html:55
 msgid "amount received"
@@ -458,7 +459,7 @@ msgstr "Jumlah aset harus dalam batas [%(min)s, %(max)s]"
 
 #: utils.py:145
 msgid "Multisig transaction's envelope was not signed by channel account"
-msgstr ""
+msgstr "Amplop transaksi multisig tidak ditandatangani oleh akun kanal"
 
 #~| msgid "Missing id parameter in URL"
 #~ msgid "missing 'id' parameter"
