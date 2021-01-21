@@ -9,6 +9,7 @@ import os
 import binascii
 import time
 import jwt
+from urllib.parse import urlparse
 
 from django.utils.translation import gettext as _
 from rest_framework import status
@@ -88,6 +89,7 @@ class SEP10Auth(APIView):
             server_secret=settings.SIGNING_SEED,
             client_account_id=client_account,
             home_domain=home_domain,
+            web_auth_domain=urlparse(settings.HOST_URL).netloc,
             network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
             timeout=900,
         )
@@ -126,6 +128,7 @@ class SEP10Auth(APIView):
                 challenge_transaction=envelope_xdr,
                 server_account_id=settings.SIGNING_KEY,
                 home_domains=settings.SEP10_HOME_DOMAINS,
+                web_auth_domain=urlparse(settings.HOST_URL).netloc,
                 network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
             )
         except InvalidSep10ChallengeError as e:
@@ -144,6 +147,7 @@ class SEP10Auth(APIView):
                     challenge_transaction=envelope_xdr,
                     server_account_id=settings.SIGNING_KEY,
                     home_domains=settings.SEP10_HOME_DOMAINS,
+                    web_auth_domain=urlparse(settings.HOST_URL).netloc,
                     network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
                 )
                 if len(tx_envelope.signatures) != 2:
@@ -167,6 +171,7 @@ class SEP10Auth(APIView):
                 challenge_transaction=envelope_xdr,
                 server_account_id=settings.SIGNING_KEY,
                 home_domains=settings.SEP10_HOME_DOMAINS,
+                web_auth_domain=urlparse(settings.HOST_URL).netloc,
                 network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
                 threshold=threshold,
                 signers=signers,
@@ -189,6 +194,7 @@ class SEP10Auth(APIView):
             challenge_transaction=envelope_xdr,
             server_account_id=settings.SIGNING_KEY,
             home_domains=settings.SEP10_HOME_DOMAINS,
+            web_auth_domain=urlparse(settings.HOST_URL).netloc,
             network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
         )
         logger.info(
