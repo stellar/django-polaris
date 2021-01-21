@@ -39,7 +39,7 @@ def test_auth_get_account(client):
     )
     transaction_object = envelope_object.transaction
     assert transaction_object.sequence == 0
-    assert len(transaction_object.operations) == 1
+    assert len(transaction_object.operations) == 2
 
     manage_data_op = transaction_object.operations[0]
     assert manage_data_op.type_code() == Xdr.const.MANAGE_DATA
