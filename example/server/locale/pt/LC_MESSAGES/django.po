@@ -259,21 +259,21 @@ msgstr ""
 
 #: templates/polaris/more_info.html:8
 msgid "instructions"
-msgstr ""
+msgstr "instruções"
 
 #: templates/polaris/more_info.html:11
 msgid "Include this code as the memo when making the deposit:"
-msgstr ""
+msgstr "Insira este código como descrição ao fazer o depósito"
 
 #: templates/polaris/more_info.html:11
 msgid "We will use this memo to identify you as the sender."
-msgstr ""
+msgstr "Nós usaremos este código para identificar seu depósito"
 
 #: templates/polaris/more_info.html:13
 msgid ""
 "(This deposit is automatically confirmed for demonstration purposes. Please "
 "wait.)"
-msgstr ""
+msgstr "(Este depósito é confirmado automaticamente para efeitos de demonstração. Por favor aguarde.)"
 
 #: templates/readonly_login.html:21
 msgid "Please correct the error below."
