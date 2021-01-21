@@ -12,4 +12,4 @@ def fee(request: Request) -> Response:
     """
     SEP-24 and SEP-6 /fee endpoints are identical
     """
-    return endpoints.fee(request)
+    return endpoints.fee(request, sep6=True)

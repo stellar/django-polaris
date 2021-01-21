@@ -82,10 +82,11 @@ def transactions(request: Request, account: str, sep6: bool = False) -> Response
             "invalid limit", status_code=status.HTTP_400_BAD_REQUEST
         )
 
+    protocol_filter = {"sep6_enabled": True} if sep6 else {"sep24_enabled": True}
     if not request.GET.get("asset_code"):
         return render_error_response("asset_code is required")
     elif not Asset.objects.filter(
-        code=request.GET.get("asset_code"), sep24_enabled=True
+        code=request.GET.get("asset_code"), **protocol_filter
     ).exists():
         return render_error_response("invalid asset_code")
 
@@ -142,7 +143,7 @@ def transaction(request: Request, account: str, sep6: bool = False) -> Response:
     return Response({"transaction": serializer.data})
 
 
-def fee(request: Request) -> Response:
+def fee(request: Request, sep6: bool = False) -> Response:
     """
     Definition of the /fee endpoint, in accordance with SEP-0024.
     See: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md#fee
@@ -156,7 +157,8 @@ def fee(request: Request) -> Response:
     amount_str = request.GET.get("amount")
 
     # Verify that the asset code exists in our database:
-    asset = Asset.objects.filter(code=asset_code, sep24_enabled=True).first()
+    protocol_filter = {"sep6_enabled": True} if sep6 else {"sep24_enabled": True}
+    asset = Asset.objects.filter(code=asset_code, **protocol_filter).first()
     if not asset_code or not asset:
         return render_error_response("invalid 'asset_code'")
 
@@ -213,7 +215,6 @@ def _compute_qset_filters(req_params, translation_dict):
     _compute_qset_filters translates the keys of req_params to the keys of translation_dict.
     If the key isn't present in filters_dict, it is discarded.
     """
-
     return {
         translation_dict[rp]: req_params[rp]
         for rp in filter(lambda i: i in translation_dict, req_params.keys())
