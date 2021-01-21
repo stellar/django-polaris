@@ -66,7 +66,7 @@ msgstr "O valor máximo é: %s"
 #: models.py:323
 #, python-format
 msgid "Cannot decode envelope XDR for transaction: %(error)s"
-msgstr ""
+msgstr "Impossível decodificar o envelope XDR para a transação: %(error)s"
 
 #: models.py:335
 #, fuzzy
@@ -155,7 +155,7 @@ msgstr "não foi possível processar a requisição"
 
 #: sep12/customer.py:78
 msgid "bad ID value, expected str"
-msgstr ""
+msgstr "ID value incorreto, esperando str"
 
 #: sep12/customer.py:113 sep31/transactions.py:82
 #, fuzzy
@@ -189,13 +189,14 @@ msgstr "A âncora não retornou um conteúdo, não é possível mostrar a págin
 
 #: sep24/deposit.py:322
 msgid "'claimable_balance_supported' value must be 'true' or 'false'"
-msgstr ""
+msgstr "'claimable_balance_supported' o valor precisa ser 'true' ou 'false'"
 
 #: sep24/deposit.py:327
 msgid ""
 "unexpected data type for 'claimable_balance_supprted'. Expected string or "
 "boolean."
-msgstr ""
+msgstr "tipo de dados não esperado para 'claimable_balance_supprted'. Deve ser string ou "
+"boolean."
 
 #: sep24/deposit.py:339
 msgid "`asset_code` and `account` are required parameters"
@@ -205,7 +206,7 @@ msgstr "Os parâmetros `asset_code` e `account` são necessários"
 #, fuzzy
 #| msgid "invalid 'account'"
 msgid "Invalid 'amount'"
-msgstr "'account' inválido"
+msgstr "'amount' inválido"
 
 #: sep24/deposit.py:358
 #, python-format
@@ -269,13 +270,13 @@ msgstr "não foi possível processar a requisição"
 
 #: sep31/transactions.py:39
 msgid "GET requests must include a transaction ID in the URI"
-msgstr ""
+msgstr "Requisições GET devem incluir transaction ID na URI"
 
 #: sep31/transactions.py:42
 #, fuzzy
 #| msgid "invalid 'account'"
 msgid "invalid sending account."
-msgstr "'account' inválido"
+msgstr "'conta de envio inválida"
 
 #: sep31/transactions.py:44
 #, fuzzy
@@ -290,13 +291,13 @@ msgstr "transação não encontrada"
 
 #: sep31/transactions.py:60
 msgid "PATCH requests must include a transaction ID in the URI"
-msgstr ""
+msgstr "Requisições PATCH devem incluir transaction ID na URI"
 
 #: sep31/transactions.py:63
 #, fuzzy
 #| msgid "invalid 'account'"
 msgid "invalid sending account"
-msgstr "'account' inválido"
+msgstr "conta de envio inválida"
 
 #: sep31/transactions.py:71
 #, fuzzy
@@ -306,7 +307,7 @@ msgstr "'type' é necessário"
 
 #: sep31/transactions.py:95
 msgid "POST requests should not specify subresources in the URI"
-msgstr ""
+msgstr "Requisições POST devem especificar subrecursos na URI"
 
 #: sep31/transactions.py:156
 #, fuzzy
@@ -484,7 +485,7 @@ msgstr "O montante do ativo deve estar dentro dos limites [%(min)s, %(max)s]"
 
 #: utils.py:145
 msgid "Multisig transaction's envelope was not signed by channel account"
-msgstr ""
+msgstr "O envelope da transação multisig não foi assinado pela conta channel"
 
 #, fuzzy
 #~| msgid "Missing id parameter in URL"
