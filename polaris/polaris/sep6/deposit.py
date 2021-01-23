@@ -31,7 +31,7 @@ logger = getLogger(__name__)
 
 @api_view(["GET"])
 @renderer_classes([JSONRenderer])
-@validate_sep10_token("sep6")
+@validate_sep10_token()
 def deposit(account: str, request: Request) -> Response:
     args = parse_request_args(request)
     if "error" in args:

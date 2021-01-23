@@ -21,7 +21,7 @@ class CustomerAPIView(APIView):
     renderer_classes = [JSONRenderer]
 
     @staticmethod
-    @validate_sep10_token("sep6")
+    @validate_sep10_token()
     def get(account: str, request: Request) -> Response:
         if request.GET.get("account") and account != request.GET.get("account"):
             return render_error_response(
@@ -71,7 +71,7 @@ class CustomerAPIView(APIView):
         return Response(response_data)
 
     @staticmethod
-    @validate_sep10_token("sep6")
+    @validate_sep10_token()
     def put(account: str, request: Request) -> Response:
         if request.data.get("id") and not request.data.get("account"):
             if not isinstance(request.data.get("id"), str):
@@ -117,7 +117,7 @@ class CustomerAPIView(APIView):
 
 @api_view(["DELETE"])
 @renderer_classes([JSONRenderer])
-@validate_sep10_token("sep6")
+@validate_sep10_token()
 def delete(account_from_auth: str, request: Request, account: str) -> Response:
     if account_from_auth != account:
         return render_error_response("account not found", status_code=404)

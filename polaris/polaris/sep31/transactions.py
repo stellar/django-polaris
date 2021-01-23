@@ -32,7 +32,7 @@ class TransactionsAPIView(APIView):
     renderer_classes = [JSONRenderer]
 
     @staticmethod
-    @validate_sep10_token("sep31")
+    @validate_sep10_token()
     def get(account: str, request: Request, transaction_id: str = None) -> Response:
         if not transaction_id:
             return render_error_response(
@@ -53,7 +53,7 @@ class TransactionsAPIView(APIView):
         return Response({"transaction": SEP31TransactionSerializer(t).data})
 
     @staticmethod
-    @validate_sep10_token("sep31")
+    @validate_sep10_token()
     def patch(account: str, request: Request, transaction_id: str = None) -> Response:
         if not transaction_id:
             return render_error_response(
@@ -88,7 +88,7 @@ class TransactionsAPIView(APIView):
         return Response(status=200)
 
     @staticmethod
-    @validate_sep10_token("sep31")
+    @validate_sep10_token()
     def post(account: str, request: Request, **kwargs):
         if kwargs:
             return render_error_response(

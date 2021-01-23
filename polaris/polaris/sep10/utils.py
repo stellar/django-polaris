@@ -7,13 +7,10 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from polaris import settings
-from polaris.models import Transaction
 from polaris.utils import render_error_response
 
 
-def check_auth(
-    request, func, sep, *args, content_type: str = "application/json", **kwargs
-):
+def check_auth(request, func, *args, **kwargs):
     """
     Check SEP 10 authentication in a request.
     Else call the original view function.
@@ -21,25 +18,19 @@ def check_auth(
     try:
         account = validate_jwt_request(request)
     except ValueError as e:
-        if sep == Transaction.PROTOCOL.sep6:
+        if "sep6/" in request.path:
             return Response({"type": "authentication_required"}, status=403)
         else:
-            return render_error_response(
-                str(e),
-                content_type=content_type,
-                status_code=status.HTTP_403_FORBIDDEN,
-            )
+            return render_error_response(str(e), status_code=status.HTTP_403_FORBIDDEN)
     return func(account, request, *args, **kwargs)
 
 
-def validate_sep10_token(sep: str = "sep24", content_type: str = "application/json"):
+def validate_sep10_token():
     """Decorator to validate the SEP 10 token in a request."""
 
     def decorator(view):
         def wrapper(request, *args, **kwargs):
-            return check_auth(
-                request, view, sep, *args, content_type=content_type, **kwargs
-            )
+            return check_auth(request, view, *args, **kwargs)
 
         return wrapper
 

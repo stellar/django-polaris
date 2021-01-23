@@ -26,7 +26,7 @@ def more_info(request: Request) -> Response:
 
 @api_view(["GET"])
 @renderer_classes([JSONRenderer])
-@validate_sep10_token("sep6")
+@validate_sep10_token()
 def transactions(account: str, request: Request) -> Response:
     """
     Definition of the /transactions endpoint, in accordance with SEP-0006.
@@ -42,7 +42,7 @@ def transactions(account: str, request: Request) -> Response:
 
 @api_view(["GET"])
 @renderer_classes([JSONRenderer])
-@validate_sep10_token("sep6")
+@validate_sep10_token()
 def transaction(account: str, request: Request) -> Response:
     """
     Definition of the /transaction endpoint, in accordance with SEP-0006.

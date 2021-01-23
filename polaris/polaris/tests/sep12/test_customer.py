@@ -116,7 +116,7 @@ def test_put_no_auth(client):
         content_type="application/json",
     )
     assert response.status_code == 403
-    assert "type" in response.json()
+    assert "error" in response.json()
 
 
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
@@ -242,7 +242,7 @@ def test_get_no_auth(client):
         endpoint + "?" + urlencode({"account": "test source address"})
     )
     assert response.status_code == 403
-    assert "type" in response.json()
+    assert "error" in response.json()
 
 
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
