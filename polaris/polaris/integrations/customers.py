@@ -1,8 +1,10 @@
-from typing import Dict, Union, Optional
+from typing import Dict, Optional
 
 
 class CustomerIntegration:
-    def more_info_url(self, account: str) -> str:
+    def more_info_url(
+        self, account: str, memo: Optional[str] = None, memo_type: Optional[str] = None
+    ) -> str:
         """
         .. _SEP-6 Customer Information Status: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#4-customer-information-status
 
@@ -11,6 +13,8 @@ class CustomerIntegration:
         response. This is optional.
 
         :param account: the stellar account for the url to be returned
+        :param memo: the memo used to identify the user within a shared Stellar account
+        :param memo_type: the type of memo (text, hash, or id)
         """
         pass
 

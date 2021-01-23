@@ -25,7 +25,6 @@ from polaris.integrations import (
     calculate_fee,
 )
 
-
 logger = getLogger(__name__)
 
 
@@ -39,19 +38,25 @@ def withdraw(
     if "error" in args:
         return args["error"]
     args["account"] = account
+    if not (memo == args["memo"] and memo_type == args["memo_type"]):
+        return render_error_response(
+            _("memo argument does not match memo of authenticated account"),
+        )
 
     transaction_id = create_transaction_id()
     transaction_id_hex = transaction_id.hex
     padded_hex_memo = "0" * (64 - len(transaction_id_hex)) + transaction_id_hex
-    memo = memo_hex_to_base64(padded_hex_memo)
+    transaction_memo = memo_hex_to_base64(padded_hex_memo)
     transaction = Transaction(
         id=transaction_id,
         stellar_account=account,
+        account_memo=memo,
+        account_memo_type=memo_type,
         asset=args["asset"],
         kind=Transaction.KIND.withdrawal,
         status=Transaction.STATUS.pending_user_transfer_start,
         receiving_anchor_account=args["asset"].distribution_account,
-        memo=memo,
+        memo=transaction_memo,
         memo_type=Transaction.MEMO_TYPES.hash,
         protocol=Transaction.PROTOCOL.sep6,
     )
@@ -74,9 +79,9 @@ def withdraw(
         )
 
     if status_code == 200:
-        response["memo"] = memo
-        response["memo_type"] = Transaction.MEMO_TYPES.hash
-        logger.info(f"Created withdraw transaction {transaction_id}")
+        response["memo"] = transaction.memo
+        response["memo_type"] = transaction.memo_type
+        logger.info(f"Created withdraw transaction {transaction.id}")
         transaction.save()
     elif Transaction.objects.filter(id=transaction.id).exists():
         logger.error("Do not save transaction objects for invalid SEP-6 requests")
@@ -137,11 +142,10 @@ def parse_request_args(request: Request) -> Dict:
 def validate_response(
     args: Dict, integration_response: Dict, transaction: Transaction
 ) -> Tuple[Dict, int]:
-    account = args["account"]
-    asset = args["asset"]
     if "type" in integration_response:
-        return validate_403_response(account, integration_response, transaction), 403
+        return validate_403_response(integration_response, transaction), 403
 
+    asset = args["asset"]
     response = {
         "account_id": asset.distribution_account,
         "min_amount": round(asset.withdrawal_min_amount, asset.significant_decimals),

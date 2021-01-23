@@ -39,7 +39,7 @@ def transactions(
             _("The account specified does not match authorization token"),
             status_code=403,
         )
-    return endpoints.transactions(request, account, sep6=True)
+    return endpoints.transactions(request, account, memo, memo_type, sep6=True)
 
 
 @api_view(["GET"])
@@ -52,4 +52,4 @@ def transaction(
     Definition of the /transaction endpoint, in accordance with SEP-0006.
     See: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#single-historical-transaction
     """
-    return endpoints.transaction(request, account, sep6=True)
+    return endpoints.transaction(request, account, memo, memo_type, sep6=True)

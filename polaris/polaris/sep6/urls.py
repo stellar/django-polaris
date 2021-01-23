@@ -1,5 +1,4 @@
 from django.urls import path
-from django.conf import settings
 from polaris.sep6 import info, deposit, withdraw, fee, transaction
 
 urlpatterns = [

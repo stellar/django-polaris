@@ -332,7 +332,7 @@ class Transaction(models.Model):
 
     status_to_message = {
         # SEP-6 & SEP-24
-        "pending_anchor": _("Processing"),
+        "pending_anchor": _("processing"),
         "pending_trust": _("waiting for a trustline to be established"),
         "pending_user": _("waiting on user action"),
         "pending_user_transfer_start": _("waiting on the user to transfer funds"),
@@ -367,10 +367,19 @@ class Transaction(models.Model):
     paging_token = models.TextField(null=True)
     """The token to be used as a cursor for querying before or after this transaction"""
 
-    # Stellar account to watch, and asset that is being transacted
-    # NOTE: these fields should not be publicly exposed
     stellar_account = models.TextField(validators=[MinLengthValidator(1)])
     """The stellar source account for the transaction."""
+
+    account_memo = models.TextField(null=True, blank=True)
+    """
+    The memo used to uniquely identify the user if `stellar_account` is shared 
+    by many users.
+    """
+
+    account_memo_type = models.CharField(
+        choices=MEMO_TYPES, default=MEMO_TYPES.text, max_length=10
+    )
+    """The memo type of `account_memo`. One of text, id, or hash"""
 
     asset = models.ForeignKey("Asset", on_delete=models.CASCADE)
     """The Django foreign key to the associated :class:`Asset`"""

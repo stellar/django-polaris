@@ -40,10 +40,11 @@ def deposit(
         return args["error"]
     args["account"] = account
 
-    transaction_id = create_transaction_id()
     transaction = Transaction(
-        id=transaction_id,
+        id=create_transaction_id(),
         stellar_account=account,
+        account_memo=memo,
+        account_memo_type=memo_type,
         asset=args["asset"],
         kind=Transaction.KIND.deposit,
         status=Transaction.STATUS.pending_user_transfer_start,
@@ -87,11 +88,10 @@ def validate_response(
     """
     Validate /deposit response returned from integration function
     """
-    account = args["account"]
-    asset = args["asset"]
     if "type" in integration_response:
-        return validate_403_response(account, integration_response, transaction), 403
+        return validate_403_response(integration_response, transaction), 403
 
+    asset = args["asset"]
     response = {
         "min_amount": round(asset.deposit_min_amount, asset.significant_decimals),
         "max_amount": round(asset.deposit_max_amount, asset.significant_decimals),

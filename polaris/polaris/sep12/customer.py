@@ -34,14 +34,29 @@ class CustomerAPIView(APIView):
             return render_error_response(
                 _("unable to identify a user without 'id' or 'account'")
             )
-        elif request.GET.get("memo_type") and not request.GET.get("memo"):
-            return render_error_response(_("missing 'memo' for 'memo_type'"))
+        elif request.GET.get("id") and (
+            request.GET.get("account")
+            or request.GET.get("memo")
+            or request.GET.get("memo_type")
+        ):
+            return render_error_response(
+                _(
+                    "requests with 'id' cannot also have 'account', 'memo', or 'memo_type'"
+                )
+            )
+        elif memo and not (
+            memo != request.GET.get("memo") or memo_type != request.GET.get("memo_type")
+        ):
+            return render_error_response(
+                _("memo argument does not match memo of authenticated account")
+            )
 
-        try:
-            # validate memo and memo_type
-            make_memo(request.GET.get("memo"), request.GET.get("memo_type"))
-        except ValueError:
-            return render_error_response(_("invalid 'memo' for 'memo_type'"))
+        if not memo and request.GET.get("memo"):
+            try:
+                # validate memo and memo_type
+                make_memo(request.data.get("memo"), request.data.get("memo_type"))
+            except ValueError:
+                return render_error_response(_("invalid 'memo' for 'memo_type'"))
 
         try:
             response_data = rci.get(
@@ -77,18 +92,34 @@ class CustomerAPIView(APIView):
     def put(
         account: str, memo: Optional[str], memo_type: Optional[str], request: Request
     ) -> Response:
-        if request.data.get("id") and not request.data.get("account"):
+        if request.data.get("id"):
             if not isinstance(request.data.get("id"), str):
                 return render_error_response(_("bad ID value, expected str"))
+            elif (
+                request.data.get("account")
+                or request.data.get("memo")
+                or request.data.get("memo_type")
+            ):
+                return render_error_response(
+                    _(
+                        "requests with 'id' cannot also have 'account', 'memo', or 'memo_type'"
+                    )
+                )
         elif account != request.data.get("account"):
             return render_error_response(
                 _("The account specified does not match authorization token"),
                 status_code=403,
             )
-        elif request.data.get("memo_type") and not request.data.get("memo"):
-            return render_error_response(_("missing 'memo' for 'memo_type'"))
+        elif (
+            memo
+            and memo != request.GET.get("memo")
+            or memo_type != request.GET.get("memo_type")
+        ):
+            return render_error_response(
+                _("memo argument does not match memo of authenticated account")
+            )
 
-        if request.data.get("memo"):
+        if not memo and request.data.get("memo"):
             try:
                 # validate memo and memo_type
                 make_memo(request.data.get("memo"), request.data.get("memo_type"))
@@ -130,15 +161,22 @@ def delete(
     account: str,
 ) -> Response:
     if account_from_auth != account:
-        return render_error_response("account not found", status_code=404)
-    try:
-        make_memo(request.data.get("memo"), request.data.get("memo_type"))
-    except ValueError as e:
-        return render_error_response("invalid 'memo' for 'memo_type'")
+        return render_error_response(_("account not found"), status_code=404)
+    elif memo and (
+        memo != request.data.get("memo") or memo_type != request.data.get("memo_type")
+    ):
+        return render_error_response(
+            _("memo argument does not match memo of authenticated account")
+        )
+    elif not memo and request.data.get("memo"):
+        try:
+            make_memo(request.data.get("memo"), request.data.get("memo_type"))
+        except ValueError:
+            return render_error_response(_("invalid 'memo' for 'memo_type'"))
     try:
         rci.delete(account, request.data.get("memo"), request.data.get("memo_type"))
     except ObjectDoesNotExist:
-        return render_error_response("account not found", status_code=404)
+        return render_error_response(_("account not found"), status_code=404)
     else:
         return Response({}, status=200)
 
