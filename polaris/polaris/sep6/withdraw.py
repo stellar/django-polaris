@@ -12,7 +12,7 @@ from polaris.utils import (
     render_error_response,
     create_transaction_id,
     extract_sep9_fields,
-    memo_str,
+    make_memo,
     memo_hex_to_base64,
 )
 from polaris.sep6.utils import validate_403_response
@@ -104,7 +104,7 @@ def parse_request_args(request: Request) -> Dict:
         return {"error": render_error_response(_("invalid 'memo_type'"))}
 
     try:
-        memo = memo_str(request.GET.get("memo"), memo_type)
+        make_memo(request.GET.get("memo"), memo_type)
     except (ValueError, MemoInvalidException):
         return {"error": render_error_response(_("invalid 'memo' for 'memo_type'"))}
 
@@ -116,7 +116,7 @@ def parse_request_args(request: Request) -> Dict:
     args = {
         "asset": asset,
         "memo_type": memo_type,
-        "memo": memo,
+        "memo": request.GET.get("memo"),
         "lang": request.GET.get("lang"),
         "type": request.GET.get("type"),
         "dest": request.GET.get("dest"),

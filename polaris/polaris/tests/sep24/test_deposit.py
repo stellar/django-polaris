@@ -147,6 +147,7 @@ def test_deposit_authenticated_success(client, acc1_usd_deposit_transaction_fact
         content_type="application/json",
     )
     content = json.loads(response.content)
+    print(content)
     encoded_jwt = content["token"]
     assert encoded_jwt
 

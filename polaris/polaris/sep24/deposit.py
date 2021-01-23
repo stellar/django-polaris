@@ -25,7 +25,7 @@ from polaris.utils import (
     render_error_response,
     extract_sep9_fields,
     create_transaction_id,
-    memo_str,
+    make_memo,
 )
 from polaris.sep10.utils import validate_sep10_token
 from polaris.sep24.utils import (
@@ -342,7 +342,7 @@ def deposit(account: str, request: Request) -> Response:
 
     # Ensure memo won't cause stellar transaction to fail when submitted
     try:
-        memo = memo_str(request.data.get("memo"), request.data.get("memo_type"))
+        make_memo(request.data.get("memo"), request.data.get("memo_type"))
     except ValueError:
         return render_error_response(_("invalid 'memo' for 'memo_type'"))
 
@@ -384,7 +384,7 @@ def deposit(account: str, request: Request) -> Response:
         to_address=account,
         protocol=Transaction.PROTOCOL.sep24,
         claimable_balance_supported=claimable_balance_supported,
-        memo=memo,
+        memo=request.data.get("memo"),
         memo_type=request.data.get("memo_type") or Transaction.MEMO_TYPES.hash,
     )
     logger.info(f"Created deposit transaction {transaction_id}")

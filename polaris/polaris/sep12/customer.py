@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from rest_framework.decorators import api_view, renderer_classes
 from rest_framework.renderers import JSONRenderer
 
-from polaris.utils import extract_sep9_fields, render_error_response, memo_str
+from polaris.utils import extract_sep9_fields, render_error_response, make_memo
 from polaris.sep10.utils import validate_sep10_token
 from polaris.integrations import registered_customer_integration as rci
 
@@ -37,7 +37,7 @@ class CustomerAPIView(APIView):
 
         try:
             # validate memo and memo_type
-            memo_str(request.GET.get("memo"), request.GET.get("memo_type"))
+            make_memo(request.GET.get("memo"), request.GET.get("memo_type"))
         except ValueError:
             return render_error_response(_("invalid 'memo' for 'memo_type'"))
 
@@ -87,7 +87,7 @@ class CustomerAPIView(APIView):
         if request.data.get("memo"):
             try:
                 # validate memo and memo_type
-                memo_str(request.data.get("memo"), request.data.get("memo_type"))
+                make_memo(request.data.get("memo"), request.data.get("memo_type"))
             except ValueError:
                 return render_error_response(_("invalid 'memo' for 'memo_type'"))
 
@@ -122,11 +122,11 @@ def delete(account_from_auth: str, request: Request, account: str) -> Response:
     if account_from_auth != account:
         return render_error_response("account not found", status_code=404)
     try:
-        memo = memo_str(request.data.get("memo"), request.data.get("memo_type"))
+        make_memo(request.data.get("memo"), request.data.get("memo_type"))
     except ValueError as e:
         return render_error_response("invalid 'memo' for 'memo_type'")
     try:
-        rci.delete(account, memo, request.data.get("memo_type"))
+        rci.delete(account, request.data.get("memo"), request.data.get("memo_type"))
     except ObjectDoesNotExist:
         return render_error_response("account not found", status_code=404)
     else:
