@@ -1,5 +1,4 @@
-from typing import Dict, Tuple
-from polaris.utils import getLogger
+from typing import Dict, Tuple, Optional
 
 from django.utils.translation import gettext as _
 from rest_framework.decorators import api_view, renderer_classes
@@ -12,6 +11,7 @@ from stellar_sdk.exceptions import MemoInvalidException
 from polaris.models import Asset, Transaction
 from polaris.locale.utils import validate_language, activate_lang_for_request
 from polaris.utils import (
+    getLogger,
     render_error_response,
     create_transaction_id,
     extract_sep9_fields,
@@ -32,7 +32,9 @@ logger = getLogger(__name__)
 @api_view(["GET"])
 @renderer_classes([JSONRenderer])
 @validate_sep10_token()
-def deposit(account: str, request: Request) -> Response:
+def deposit(
+    account: str, memo: Optional[str], memo_type: Optional[str], request: Request
+) -> Response:
     args = parse_request_args(request)
     if "error" in args:
         return args["error"]

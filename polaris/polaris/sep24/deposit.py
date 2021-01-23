@@ -4,7 +4,7 @@ This lets a user initiate a deposit of an asset into their Stellar account.
 """
 from decimal import Decimal, DecimalException
 from urllib.parse import urlencode
-from polaris.utils import getLogger
+from typing import Optional
 
 from django.urls import reverse
 from django.shortcuts import redirect
@@ -22,6 +22,7 @@ from stellar_sdk.exceptions import Ed25519PublicKeyInvalidError
 from polaris import settings
 from polaris.templates import Template
 from polaris.utils import (
+    getLogger,
     render_error_response,
     extract_sep9_fields,
     create_transaction_id,
@@ -301,7 +302,9 @@ def get_interactive_deposit(request: Request) -> Response:
 @api_view(["POST"])
 @renderer_classes([JSONRenderer])
 @validate_sep10_token()
-def deposit(account: str, request: Request) -> Response:
+def deposit(
+    account: str, memo: Optional[str], memo_type: Optional[str], request: Request
+) -> Response:
     """
     POST /transactions/deposit/interactive
 

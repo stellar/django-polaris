@@ -1,13 +1,17 @@
 import jwt
 import time
 import os
+from typing import Tuple, Optional
+
+from django.utils.translation import gettext as _
 from jwt.exceptions import InvalidTokenError
 from rest_framework import status
 from rest_framework.request import Request
 from rest_framework.response import Response
+from stellar_sdk.exceptions import MemoInvalidException
 
 from polaris import settings
-from polaris.utils import render_error_response
+from polaris.utils import render_error_response, make_memo
 
 
 def check_auth(request, func, *args, **kwargs):
@@ -16,13 +20,13 @@ def check_auth(request, func, *args, **kwargs):
     Else call the original view function.
     """
     try:
-        account = validate_jwt_request(request)
+        account, memo, memo_type = validate_jwt_request(request)
     except ValueError as e:
         if "sep6/" in request.path:
             return Response({"type": "authentication_required"}, status=403)
         else:
             return render_error_response(str(e), status_code=status.HTTP_403_FORBIDDEN)
-    return func(account, request, *args, **kwargs)
+    return func(account, memo, memo_type, request, *args, **kwargs)
 
 
 def validate_sep10_token():
@@ -37,7 +41,7 @@ def validate_sep10_token():
     return decorator
 
 
-def validate_jwt_request(request: Request) -> str:
+def validate_jwt_request(request: Request) -> Tuple[str, Optional[str], Optional[str]]:
     """
     Validate the JSON web token in a request and return the source account address
 
@@ -64,16 +68,22 @@ def validate_jwt_request(request: Request) -> str:
         jwt_dict = jwt.decode(
             encoded_jwt, settings.SERVER_JWT_KEY, algorithms=["HS256"]
         )
-    except InvalidTokenError as e:
-        raise ValueError("Unable to decode jwt")
+    except InvalidTokenError:
+        raise ValueError(_("unable to decode jwt"))
 
     if jwt_dict["iss"] != os.path.join(settings.HOST_URL, "auth"):
-        raise ValueError("'jwt' has incorrect 'issuer'")
+        raise ValueError(_("jwt has incorrect 'issuer'"))
     current_time = time.time()
     if current_time < jwt_dict["iat"] or current_time > jwt_dict["exp"]:
-        raise ValueError("'jwt' is no longer valid")
+        raise ValueError(_("jwt is no longer valid"))
+
+    if jwt_dict.get("memo") or jwt_dict.get("memo_type"):
+        try:
+            make_memo(jwt_dict["memo"], jwt_dict["memo_type"])
+        except (KeyError, ValueError, MemoInvalidException):
+            raise ValueError(_("invalid jwt memo and memo_type"))
 
     try:
-        return jwt_dict["sub"]
+        return jwt_dict["sub"], jwt_dict.get("memo"), jwt_dict.get("memo_type")
     except KeyError:
-        raise ValueError("Decoded JWT missing 'sub' field")
+        raise ValueError(_("decoded jwt missing 'sub' field"))

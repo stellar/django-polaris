@@ -33,7 +33,13 @@ class TransactionsAPIView(APIView):
 
     @staticmethod
     @validate_sep10_token()
-    def get(account: str, request: Request, transaction_id: str = None) -> Response:
+    def get(
+        account: str,
+        memo: Optional[str],
+        memo_type: Optional[str],
+        request: Request,
+        transaction_id: str = None,
+    ) -> Response:
         if not transaction_id:
             return render_error_response(
                 _("GET requests must include a transaction ID in the URI"),
@@ -54,7 +60,13 @@ class TransactionsAPIView(APIView):
 
     @staticmethod
     @validate_sep10_token()
-    def patch(account: str, request: Request, transaction_id: str = None) -> Response:
+    def patch(
+        account: str,
+        memo: Optional[str],
+        memo_type: Optional[str],
+        request: Request,
+        transaction_id: str = None,
+    ) -> Response:
         if not transaction_id:
             return render_error_response(
                 _("PATCH requests must include a transaction ID in the URI"),
@@ -89,7 +101,13 @@ class TransactionsAPIView(APIView):
 
     @staticmethod
     @validate_sep10_token()
-    def post(account: str, request: Request, **kwargs):
+    def post(
+        account: str,
+        memo: Optional[str],
+        memo_type: Optional[str],
+        request: Request,
+        **kwargs,
+    ):
         if kwargs:
             return render_error_response(
                 _("POST requests should not specify subresources in the URI")

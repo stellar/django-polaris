@@ -5,7 +5,7 @@ non-Stellar-based account.
 """
 from decimal import Decimal, DecimalException
 from urllib.parse import urlencode
-from polaris.utils import getLogger
+from typing import Optional
 
 from django.urls import reverse
 from django.views.decorators.clickjacking import xframe_options_exempt
@@ -19,6 +19,7 @@ from rest_framework.renderers import TemplateHTMLRenderer, JSONRenderer
 from polaris import settings
 from polaris.templates import Template
 from polaris.utils import (
+    getLogger,
     render_error_response,
     extract_sep9_fields,
     create_transaction_id,
@@ -311,7 +312,9 @@ def get_interactive_withdraw(request: Request) -> Response:
 @api_view(["POST"])
 @validate_sep10_token()
 @renderer_classes([JSONRenderer])
-def withdraw(account: str, request: Request) -> Response:
+def withdraw(
+    account: str, memo: Optional[str], memo_type: Optional[str], request: Request
+) -> Response:
     """
     POST /transactions/withdraw/interactive
 

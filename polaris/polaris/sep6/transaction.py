@@ -1,12 +1,12 @@
 """This module defines the logic for the `/transaction` endpoint."""
+from typing import Optional
 
 from django.utils.translation import gettext as _
+from django.views.decorators.clickjacking import xframe_options_exempt
 from rest_framework.decorators import api_view, renderer_classes
 from rest_framework.response import Response
 from rest_framework.request import Request
 from rest_framework.renderers import TemplateHTMLRenderer, JSONRenderer
-
-from django.views.decorators.clickjacking import xframe_options_exempt
 
 from polaris.shared import endpoints
 from polaris.sep10.utils import validate_sep10_token
@@ -27,7 +27,9 @@ def more_info(request: Request) -> Response:
 @api_view(["GET"])
 @renderer_classes([JSONRenderer])
 @validate_sep10_token()
-def transactions(account: str, request: Request) -> Response:
+def transactions(
+    account: str, memo: Optional[str], memo_type: Optional[str], request: Request
+) -> Response:
     """
     Definition of the /transactions endpoint, in accordance with SEP-0006.
     See: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#transaction-history
@@ -43,7 +45,9 @@ def transactions(account: str, request: Request) -> Response:
 @api_view(["GET"])
 @renderer_classes([JSONRenderer])
 @validate_sep10_token()
-def transaction(account: str, request: Request) -> Response:
+def transaction(
+    account: str, memo: Optional[str], memo_type: Optional[str], request: Request
+) -> Response:
     """
     Definition of the /transaction endpoint, in accordance with SEP-0006.
     See: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#single-historical-transaction

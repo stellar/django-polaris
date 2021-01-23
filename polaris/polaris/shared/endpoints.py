@@ -1,4 +1,5 @@
 import json
+from typing import Optional
 from decimal import Decimal, DecimalException
 
 from rest_framework import status
@@ -74,7 +75,13 @@ def more_info(request: Request, sep6: bool = False) -> Response:
     return Response(context, template_name="polaris/more_info.html")
 
 
-def transactions(request: Request, account: str, sep6: bool = False) -> Response:
+def transactions(
+    request: Request,
+    account: str,
+    memo: Optional[str],
+    memo_type: Optional[str],
+    sep6: bool = False,
+) -> Response:
     try:
         limit = _validate_limit(request.GET.get("limit"))
     except ValueError:
@@ -126,7 +133,13 @@ def transactions(request: Request, account: str, sep6: bool = False) -> Response
     return Response({"transactions": serializer.data})
 
 
-def transaction(request: Request, account: str, sep6: bool = False) -> Response:
+def transaction(
+    request: Request,
+    account: str,
+    memo: Optional[str],
+    memo_type: Optional[str],
+    sep6: bool = False,
+) -> Response:
     try:
         request_transaction = _get_transaction_from_request(
             request, account=account, sep6=sep6
