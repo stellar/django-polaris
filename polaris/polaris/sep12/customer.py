@@ -44,17 +44,17 @@ class CustomerAPIView(APIView):
                     "requests with 'id' cannot also have 'account', 'memo', or 'memo_type'"
                 )
             )
-        elif memo and not (
+        elif memo and (
             memo != request.GET.get("memo") or memo_type != request.GET.get("memo_type")
         ):
             return render_error_response(
                 _("memo argument does not match memo of authenticated account")
             )
 
-        if not memo and request.GET.get("memo"):
+        if not memo and (request.GET.get("memo") or request.GET.get("memo_type")):
             try:
                 # validate memo and memo_type
-                make_memo(request.data.get("memo"), request.data.get("memo_type"))
+                make_memo(request.GET.get("memo"), request.GET.get("memo_type"))
             except ValueError:
                 return render_error_response(_("invalid 'memo' for 'memo_type'"))
 
@@ -110,16 +110,15 @@ class CustomerAPIView(APIView):
                 _("The account specified does not match authorization token"),
                 status_code=403,
             )
-        elif (
-            memo
-            and memo != request.GET.get("memo")
-            or memo_type != request.GET.get("memo_type")
+        elif memo and (
+            memo != request.data.get("memo")
+            or memo_type != request.data.get("memo_type")
         ):
             return render_error_response(
                 _("memo argument does not match memo of authenticated account")
             )
 
-        if not memo and request.data.get("memo"):
+        if not memo and (request.data.get("memo") or request.data.get("memo_type")):
             try:
                 # validate memo and memo_type
                 make_memo(request.data.get("memo"), request.data.get("memo_type"))
@@ -168,7 +167,7 @@ def delete(
         return render_error_response(
             _("memo argument does not match memo of authenticated account")
         )
-    elif not memo and request.data.get("memo"):
+    elif not memo and (request.data.get("memo") or request.data.get("memo_type")):
         try:
             make_memo(request.data.get("memo"), request.data.get("memo_type"))
         except ValueError:

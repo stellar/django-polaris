@@ -369,7 +369,13 @@ def deposit(
         return render_error_response(_("invalid 'account'"))
 
     try:
-        rdi.save_sep9_fields(stellar_account, sep9_fields, lang)
+        rdi.save_sep9_fields(
+            stellar_account,
+            sep9_fields,
+            lang,
+            account_memo=memo,
+            account_memo_type=memo_type,
+        )
     except ValueError as e:
         # The anchor found a validation error in the sep-9 fields POSTed by
         # the wallet. The error string returned should be in the language
@@ -381,6 +387,8 @@ def deposit(
     Transaction.objects.create(
         id=transaction_id,
         stellar_account=account,
+        account_memo=memo,
+        account_memo_type=memo_type,
         asset=asset,
         kind=Transaction.KIND.deposit,
         status=Transaction.STATUS.incomplete,
@@ -396,6 +404,8 @@ def deposit(
         request,
         str(transaction_id),
         account,
+        memo,
+        memo_type,
         asset_code,
         settings.OPERATION_DEPOSIT,
         amount,

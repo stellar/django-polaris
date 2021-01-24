@@ -377,7 +377,7 @@ class Transaction(models.Model):
     """
 
     account_memo_type = models.CharField(
-        choices=MEMO_TYPES, default=MEMO_TYPES.text, max_length=10
+        choices=MEMO_TYPES, max_length=10, null=True, blank=True
     )
     """The memo type of `account_memo`. One of text, id, or hash"""
 

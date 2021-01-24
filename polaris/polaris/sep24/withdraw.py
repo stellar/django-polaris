@@ -331,18 +331,17 @@ def withdraw(
         activate_lang_for_request(lang)
     if not asset_code:
         return render_error_response(_("'asset_code' is required"))
-    elif request.data.get("memo"):
-        # Polaris SEP-24 doesn't support custodial wallets that depend on memos
-        # to disambiguate users using the same stellar account. Support would
-        # require new or adjusted integration points.
-        return render_error_response(_("`memo` parameter is not supported"))
+    elif memo != request.data.get("memo") or memo_type != request.data.get("memo_type"):
+        return render_error_response(
+            _("memo argument does not match memo of authenticated account")
+        )
 
     amount = None
     if request.data.get("amount"):
         try:
             amount = Decimal(request.data.get("amount"))
         except DecimalException:
-            return render_error_response(_("Invalid 'amount'"))
+            return render_error_response(_("invalid 'amount'"))
 
     # Verify that the asset code exists in our database, with withdraw enabled.
     asset = Asset.objects.filter(code=asset_code).first()
@@ -352,7 +351,9 @@ def withdraw(
         return render_error_response(_("unsupported asset type: %s") % asset_code)
 
     try:
-        rwi.save_sep9_fields(account, sep9_fields, lang)
+        rwi.save_sep9_fields(
+            account, sep9_fields, lang, account_memo=memo, account_memo_type=memo_type
+        )
     except ValueError as e:
         # The anchor found a validation error in the sep-9 fields POSTed by
         # the wallet. The error string returned should be in the language
@@ -363,6 +364,8 @@ def withdraw(
     Transaction.objects.create(
         id=transaction_id,
         stellar_account=account,
+        account_memo=memo,
+        account_memo_type=memo_type,
         asset=asset,
         kind=Transaction.KIND.withdrawal,
         status=Transaction.STATUS.incomplete,
@@ -376,6 +379,8 @@ def withdraw(
         request,
         str(transaction_id),
         account,
+        memo,
+        memo_type,
         asset_code,
         settings.OPERATION_WITHDRAWAL,
         amount,

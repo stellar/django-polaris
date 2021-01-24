@@ -35,9 +35,9 @@ class TransactionsAPIView(APIView):
     @validate_sep10_token()
     def get(
         account: str,
-        memo: Optional[str],
-        memo_type: Optional[str],
-        request: Request,
+        _memo: Optional[str],
+        _memo_type: Optional[str],
+        _request: Request,
         transaction_id: str = None,
     ) -> Response:
         if not transaction_id:
@@ -62,8 +62,8 @@ class TransactionsAPIView(APIView):
     @validate_sep10_token()
     def patch(
         account: str,
-        memo: Optional[str],
-        memo_type: Optional[str],
+        _memo: Optional[str],
+        _memo_type: Optional[str],
         request: Request,
         transaction_id: str = None,
     ) -> Response:
@@ -103,8 +103,8 @@ class TransactionsAPIView(APIView):
     @validate_sep10_token()
     def post(
         account: str,
-        memo: Optional[str],
-        memo_type: Optional[str],
+        _memo: Optional[str],
+        _memo_type: Optional[str],
         request: Request,
         **kwargs,
     ):

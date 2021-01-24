@@ -323,7 +323,7 @@ def memo_str(memo: Optional[Memo]) -> Tuple[Optional[str], Optional[str]]:
 
 
 def make_memo(memo: str, memo_type: str) -> Optional[Union[TextMemo, HashMemo, IdMemo]]:
-    if not memo:
+    if not (memo or memo_type):
         return None
     if memo_type == Transaction.MEMO_TYPES.id:
         return IdMemo(int(memo))
