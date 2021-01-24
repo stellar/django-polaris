@@ -105,9 +105,8 @@ class SEP10Auth(APIView):
             timeout=900,
         )
         if memo:
-            print("adding memo", memo)
-            # add memo to challenge transaction to identify user within pooled Stellar account
-            # this is not yet supported in stellar-sdk
+            # add memo to challenge transaction to identify user within pooled
+            # Stellar account, this is not yet supported in stellar-sdk
             tx = TransactionEnvelope.from_xdr(
                 tx_xdr, settings.STELLAR_NETWORK_PASSPHRASE
             ).transaction
@@ -234,6 +233,8 @@ class SEP10Auth(APIView):
         jwt_dict = {
             "iss": os.path.join(settings.HOST_URL, "auth"),
             "sub": source_account,
+            "memo": None,
+            "memo_type": None,
             "iat": issued_at,
             "exp": issued_at + 24 * 60 * 60,
             "jti": hash_hex,

@@ -354,7 +354,7 @@ def deposit(
         try:
             amount = Decimal(request.data.get("amount"))
         except DecimalException:
-            return render_error_response(_("Invalid 'amount'"))
+            return render_error_response(_("invalid 'amount'"))
 
     # Verify that the asset code exists in our database, with deposit enabled.
     asset = Asset.objects.filter(code=asset_code).first()

@@ -9,7 +9,12 @@ from stellar_sdk.keypair import Keypair
 from stellar_sdk.transaction_envelope import TransactionEnvelope
 
 from polaris import settings
-from polaris.tests.helpers import mock_check_auth_success, interactive_jwt_payload
+from polaris.models import Transaction
+from polaris.tests.helpers import (
+    mock_check_auth_success,
+    interactive_jwt_payload,
+    mock_check_auth_success_with_memo,
+)
 
 WEBAPP_PATH = "/sep24/transactions/withdraw/webapp"
 WITHDRAW_PATH = "/sep24/transactions/withdraw/interactive"
@@ -17,12 +22,25 @@ WITHDRAW_PATH = "/sep24/transactions/withdraw/interactive"
 
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-def test_withdraw_success(client, acc1_usd_withdrawal_transaction_factory):
+def test_withdraw_success(client, usd_asset_factory):
     """`GET /withdraw` succeeds with no optional arguments."""
-    acc1_usd_withdrawal_transaction_factory()
+    usd = usd_asset_factory()
     response = client.post(WITHDRAW_PATH, {"asset_code": "USD"}, follow=True)
     content = json.loads(response.content)
     assert content["type"] == "interactive_customer_info_needed"
+    assert content.get("id")
+
+    t = Transaction.objects.filter(id=content.get("id")).first()
+    assert t
+    assert t.stellar_account == "test source address"
+    assert t.account_memo is None
+    assert t.account_memo_type is None
+    assert t.asset.code == usd.code
+    assert t.protocol == Transaction.PROTOCOL.sep24
+    assert t.kind == Transaction.KIND.withdrawal
+    assert t.status == Transaction.STATUS.incomplete
+    assert t.receiving_anchor_account == usd.distribution_account
+    assert t.memo_type == Transaction.MEMO_TYPES.hash
 
 
 @pytest.mark.django_db
@@ -201,3 +219,60 @@ def test_withdraw_no_jwt(client, acc1_usd_withdrawal_transaction_factory):
     content = json.loads(response.content)
     assert response.status_code == 403
     assert content == {"error": "JWT must be passed as 'Authorization' header"}
+
+
+@pytest.mark.django_db
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_withdraw_with_memo_no_auth_memo(
+    client, acc1_usd_withdrawal_transaction_factory
+):
+    acc1_usd_withdrawal_transaction_factory()
+    response = client.post(
+        WITHDRAW_PATH,
+        {"asset_code": "USD", "memo": "a test memo", "memo_type": "text"},
+        follow=True,
+    )
+    content = json.loads(response.content)
+    assert response.status_code == 400
+    assert content == {
+        "error": "memo argument does not match memo of authenticated account"
+    }
+
+
+@pytest.mark.django_db
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success_with_memo)
+def test_withdraw_bad_memo_with_auth_memo(
+    client, acc1_usd_withdrawal_transaction_factory
+):
+    acc1_usd_withdrawal_transaction_factory()
+    response = client.post(
+        WITHDRAW_PATH,
+        {"asset_code": "USD", "memo": "not gonna match", "memo_type": "text"},
+        follow=True,
+    )
+    content = json.loads(response.content)
+    assert response.status_code == 400
+    assert content == {
+        "error": "memo argument does not match memo of authenticated account"
+    }
+
+
+@pytest.mark.django_db
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success_with_memo)
+def test_withdraw_good_memo_with_auth_memo(
+    client, acc1_usd_withdrawal_transaction_factory
+):
+    acc1_usd_withdrawal_transaction_factory()
+    response = client.post(
+        WITHDRAW_PATH,
+        {"asset_code": "USD", "memo": "test memo string", "memo_type": "text"},
+        follow=True,
+    )
+    content = json.loads(response.content)
+    assert response.status_code == 200
+    assert content.get("id")
+    t = Transaction.objects.filter(id=content.get("id")).first()
+    assert t
+    assert t.stellar_account == "test source address"
+    assert t.account_memo == "test memo string"
+    assert t.account_memo_type == "text"

@@ -79,8 +79,8 @@ def validate_jwt_request(request: Request) -> Tuple[str, Optional[str], Optional
 
     if jwt_dict.get("memo") or jwt_dict.get("memo_type"):
         try:
-            make_memo(jwt_dict["memo"], jwt_dict["memo_type"])
-        except (KeyError, ValueError, MemoInvalidException):
+            make_memo(jwt_dict.get("memo"), jwt_dict.get("memo_type"))
+        except (ValueError, MemoInvalidException):
             raise ValueError(_("invalid jwt memo and memo_type"))
 
     try:

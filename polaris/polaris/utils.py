@@ -242,7 +242,6 @@ def create_transaction_envelope(transaction, source_account) -> TransactionEnvel
         Decimal(transaction.amount_in) - Decimal(transaction.amount_fee),
         transaction.asset.significant_decimals,
     )
-    memo = make_memo(transaction.memo, transaction.memo_type)
     builder = TransactionBuilder(
         source_account=source_account,
         network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
@@ -273,8 +272,8 @@ def create_transaction_envelope(transaction, source_account) -> TransactionEnvel
             amount=str(payment_amount),
             source=transaction.asset.distribution_account,
         )
-    if memo:
-        builder.add_memo(memo)
+    if transaction.memo:
+        builder.add_memo(make_memo(transaction.memo, transaction.memo_type))
     return builder.build()
 
 
