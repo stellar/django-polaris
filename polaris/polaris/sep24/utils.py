@@ -123,8 +123,8 @@ def authenticate_session_helper(r: Request):
     transaction_qs = Transaction.objects.filter(
         id=jwt_dict["jti"],
         stellar_account=jwt_dict["sub"],
-        account_memo=jwt_dict["memo"],
-        account_memo_type=jwt_dict["memo_type"],
+        account_memo=jwt_dict.get("memo"),
+        account_memo_type=jwt_dict.get("memo_type"),
     )
     if not transaction_qs.exists():
         raise ValueError(_("Transaction for account not found"))
@@ -132,8 +132,8 @@ def authenticate_session_helper(r: Request):
     # JWT is valid, authenticate session
     r.session["authenticated"] = True
     r.session["account"] = jwt_dict["sub"]
-    r.session["account_memo"] = jwt_dict["memo"]
-    r.session["account_memo_type"] = jwt_dict["memo_type"]
+    r.session["account_memo"] = jwt_dict.get("memo")
+    r.session["account_memo_type"] = jwt_dict.get("memo_type")
     try:
         r.session["transactions"].append(jwt_dict["jti"])
     except KeyError:
