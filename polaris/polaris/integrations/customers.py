@@ -25,9 +25,9 @@ class CustomerIntegration:
 
         Return a dictionary matching the response schema outlined in `SEP-12 GET /customer`_
         based on the `params` passed. The key-value pairs in `params` match the arguments
-        sent in the request with the exception of ``sep10_client_account``, which will always be
-        included in `params` so the anchor can ensure the customer returned was created
-        by the same account specified in the corresponding ``PUT /customer`` request.
+        sent in the request with the exception of ``sep10_client_account``. This parameter
+        was added in preparation for a future change. For now, ``sep10_client_account`` will
+        always match ``account``.
 
         Raise a ``ValueError`` if the parameters are invalid, or raise an
         ObjectDoesNotExist_ exception if the customer specified via the ``id`` parameter
