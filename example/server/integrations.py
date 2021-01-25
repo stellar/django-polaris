@@ -87,7 +87,10 @@ class SEP24KYC:
                 )
 
             account = PolarisStellarAccount.objects.create(
-                account=transaction.stellar_account, user=user
+                account=transaction.stellar_account,
+                user=user,
+                memo=transaction.account_memo,
+                memo_type=transaction.account_memo_type,
             )
             if server_settings.EMAIL_HOST_USER:
                 send_confirmation_email(user, account)
@@ -96,7 +99,9 @@ class SEP24KYC:
                 # Look for an account that uses this address but doesn't have a
                 # memo, which means its a SEP-24 or SEP-6 Polaris account.
                 account = PolarisStellarAccount.objects.get(
-                    account=transaction.stellar_account, memo=None
+                    account=transaction.stellar_account,
+                    memo=transaction.account_memo,
+                    memo_type=transaction.account_memo_type,
                 )
             except PolarisStellarAccount.DoesNotExist:
                 raise RuntimeError(
@@ -116,7 +121,9 @@ class SEP24KYC:
         otherwise returns None.
         """
         account = PolarisStellarAccount.objects.filter(
-            account=transaction.stellar_account, memo=None
+            account=transaction.stellar_account,
+            memo=transaction.account_memo,
+            memo_type=transaction.account_memo_type,
         ).first()
         if not account:  # Unknown stellar account, get KYC info
             if post_data:
@@ -214,9 +221,12 @@ class MyDepositIntegration(DepositIntegration):
             )
 
     def process_sep6_request(self, params: Dict, transaction: Transaction) -> Dict:
-        qparams = {"account": params["account"], "memo": None}
         account = (
-            PolarisStellarAccount.objects.filter(**qparams)
+            PolarisStellarAccount.objects.filter(
+                account=params["account"],
+                memo=params["memo"],
+                memo_type=params["memo_type"],
+            )
             .select_related("user")
             .first()
         )
@@ -328,9 +338,12 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
             )
 
     def process_sep6_request(self, params: Dict, transaction: Transaction) -> Dict:
-        qparams = {"account": params["account"], "memo": None}
         account = (
-            PolarisStellarAccount.objects.filter(**qparams)
+            PolarisStellarAccount.objects.filter(
+                account=params["account"],
+                memo=params["memo"],
+                memo_type=params["memo_type"],
+            )
             .select_related("user")
             .first()
         )
@@ -461,19 +474,19 @@ class MyCustomerIntegration(CustomerIntegration):
         }
 
     def get(self, params: Dict) -> Dict:
-        query_params = {}
-        for attr in ["id", "memo", "memo_type", "sep10_client_account"]:
-            if params.get(attr):
-                qkey = attr if attr != "sep10_client_account" else "account"
-                query_params[qkey] = params.get(attr)
-        account = PolarisStellarAccount.objects.filter(**query_params).first()
-        if "id" in query_params and not account:
-            # client believes the customer already exists but it doesn't,
-            # at least not with the same ID, memo, account values.
-            raise ObjectDoesNotExist(
-                _("customer not found using: %s") % list(query_params.keys())
-            )
-        elif not account:
+        if "id" in params:
+            user = PolarisUser.objects.filter(id=params["id"]).first()
+            if not user:
+                raise ObjectDoesNotExist(_("customer not found"))
+        else:
+            account = PolarisStellarAccount.objects.filter(
+                account=params.get("account"),
+                memo=params.get("memo"),
+                memo_type=params.get("memo_type"),
+            ).first()
+            user = account.user if account else None
+
+        if not user:
             if params.get("type") in ["sep6-deposit", "sep31-sender", "sep31-receiver"]:
                 return self.needs_basic_info
             elif params.get("type") in [None, "sep6-withdraw"]:
@@ -482,21 +495,17 @@ class MyCustomerIntegration(CustomerIntegration):
                 raise ValueError(
                     _("invalid 'type'. see /info response for valid values.")
                 )
+
+        response_data = {"id": str(user.id)}
+        if (user.bank_number and user.bank_account_number) or (
+            params.get("type") in ["sep6-deposit", "sep31-sender", "sep31-receiver"]
+        ):
+            response_data.update(self.accepted)
+        elif params.get("type") in [None, "sep6-withdraw"]:
+            response_data.update(self.needs_bank_info)
         else:
-            user = account.user
-            response_data = {"id": str(user.id)}
-            if (user.bank_number and user.bank_account_number) or (
-                params.get("type") in ["sep6-deposit", "sep31-sender", "sep31-receiver"]
-            ):
-                response_data.update(self.accepted)
-                return response_data
-            elif params.get("type") in [None, "sep6-withdraw"]:
-                response_data.update(self.needs_bank_info)
-                return response_data
-            else:
-                raise ValueError(
-                    _("invalid 'type'. see /info response for valid values.")
-                )
+            raise ValueError(_("invalid 'type'. see /info response for valid values."))
+        return response_data
 
     def put(self, params: Dict) -> str:
         if params.get("id"):
@@ -504,14 +513,11 @@ class MyCustomerIntegration(CustomerIntegration):
             if not user:
                 raise ObjectDoesNotExist("could not identify user customer 'id'")
         else:
-            # query params for fetching/creating the PolarisStellarAccount
-            qparams = {"account": params["account"]}
-            if params.get("memo"):
-                qparams["memo"] = params["memo"]
-                qparams["memo_type"] = params["memo_type"]
-            else:
-                qparams["memo"] = None
-            account = PolarisStellarAccount.objects.filter(**qparams).first()
+            account = PolarisStellarAccount.objects.filter(
+                account=params["account"],
+                memo=params.get("memo"),
+                memo_type=params.get("memo_type"),
+            ).first()
             if not account:
                 # email_address is a secondary ID
                 if "email_address" not in params:
@@ -530,7 +536,7 @@ class MyCustomerIntegration(CustomerIntegration):
                     )
                     send_confirmation_email(user, account)
                 else:
-                    user, account = self.create_new_user(params, qparams)
+                    user, account = self.create_new_user(params)
                     send_confirmation_email(user, account)
             else:
                 user = account.user
@@ -564,7 +570,7 @@ class MyCustomerIntegration(CustomerIntegration):
         account.user.delete()
 
     @staticmethod
-    def create_new_user(params, qparams):
+    def create_new_user(params):
         if not all(f in params for f in ["first_name", "last_name", "email_address"]):
             raise ValueError(
                 "SEP-9 fields were not passed for new customer. "
@@ -577,7 +583,12 @@ class MyCustomerIntegration(CustomerIntegration):
             bank_number=params.get("bank_number"),
             bank_account_number=params.get("bank_account_number"),
         )
-        account = PolarisStellarAccount.objects.create(user=user, **qparams)
+        account = PolarisStellarAccount.objects.create(
+            user=user,
+            account=params["account"],
+            memo=params.get("memo"),
+            memo_type=params.get("memo_type"),
+        )
         return user, account
 
 
@@ -616,7 +627,7 @@ class MySEP31ReceiverIntegration(SEP31ReceiverIntegration):
             receiving_user.bank_account_number = transaction_fields["account_number"]
             receiving_user.bank_number = transaction_fields["routing_number"]
             receiving_user.save()
-        # Transaction doesn't yet exist so transaction_id is a text field
+        transaction.save()
         PolarisUserTransaction.objects.create(
             user=receiving_user, transaction_id=transaction.id
         )
