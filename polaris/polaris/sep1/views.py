@@ -67,7 +67,6 @@ def generate_toml(request: Request) -> Response:
             for asset in Asset.objects.exclude(distribution_seed__isnull=True)
         ],
         "VERSION": "0.1.0",
-        "SIGNING_KEY": settings.SIGNING_KEY,
         "NETWORK_PASSPHRASE": settings.STELLAR_NETWORK_PASSPHRASE,
     }
     if "sep-24" in django_settings.POLARIS_ACTIVE_SEPS:
@@ -77,6 +76,7 @@ def generate_toml(request: Request) -> Response:
         toml_dict["TRANSFER_SERVER"] = os.path.join(settings.HOST_URL, "sep6")
     if "sep-10" in django_settings.POLARIS_ACTIVE_SEPS:
         toml_dict["WEB_AUTH_ENDPOINT"] = os.path.join(settings.HOST_URL, "auth")
+        toml_dict["SIGNING_KEY"] = settings.SIGNING_KEY
     if "sep-12" in django_settings.POLARIS_ACTIVE_SEPS:
         toml_dict["KYC_SERVER"] = os.path.join(settings.HOST_URL, "kyc")
     if "sep-31" in django_settings.POLARIS_ACTIVE_SEPS:

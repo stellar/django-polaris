@@ -147,11 +147,11 @@ SEP10_HOME_DOMAINS
     Defaults to a list containing the hostname of ``HOST_URL`` defined above if not specified.
     Ex. ``SEP10_HOME_DOMAINS=testanchor.stellar.org,example.com``
 
-SERVER_JWT_KEY : Required
+SERVER_JWT_KEY : Required for SEP-10
     A secret string used to sign the encoded SEP-10 JWT contents. This should not be checked into version control.
     Ex. ``SERVER_JWT_KEY=supersecretstellarjwtsecret``
 
-SIGNING_SEED : Required
+SIGNING_SEED : Required for SEP-10
     A Stellar secret key used to sign challenge transactions before returning them to clients. This should not be checked into version control.
     Ex. ``SIGNING_SEED=SAEJXYFZOQT6TYDAGXFH32KV6GLSMLCX2E2IOI3DXY7TO2O63WFCI5JD``
 
