@@ -85,7 +85,7 @@ def post_interactive_deposit(request: Request) -> Response:
     callback = args_or_error["callback"]
     amount = args_or_error["amount"]
 
-    form = rdi.form_for_transaction(transaction, post_data=request.POST)
+    form = rdi.form_for_transaction(transaction, post_data=request.data)
     if not form:
         logger.error(
             "Initial form_for_transaction() call returned None in "
@@ -106,7 +106,7 @@ def post_interactive_deposit(request: Request) -> Response:
         )
 
     if not form.is_bound:
-        # The anchor must initialize the form with the request.POST data
+        # The anchor must initialize the form with the request data
         logger.error("form returned was not initialized with POST data, returning 500")
         return render_error_response(
             _("Unable to validate form submission."),
@@ -180,7 +180,6 @@ def post_interactive_deposit(request: Request) -> Response:
 
 
 @api_view(["GET"])
-@renderer_classes([])
 @check_authentication()
 def complete_interactive_deposit(request: Request) -> Response:
     """
@@ -309,11 +308,11 @@ def deposit(account: str, request: Request) -> Response:
     Creates an `incomplete` deposit Transaction object in the database and
     returns the URL entry-point for the interactive flow.
     """
-    asset_code = request.POST.get("asset_code")
-    stellar_account = request.POST.get("account")
-    lang = request.POST.get("lang")
-    sep9_fields = extract_sep9_fields(request.POST)
-    claimable_balance_supported = request.POST.get("claimable_balance_supported")
+    asset_code = request.data.get("asset_code")
+    stellar_account = request.data.get("account")
+    lang = request.data.get("lang")
+    sep9_fields = extract_sep9_fields(request.data)
+    claimable_balance_supported = request.data.get("claimable_balance_supported")
     if not claimable_balance_supported:
         claimable_balance_supported = False
     elif isinstance(claimable_balance_supported, str):
@@ -343,15 +342,15 @@ def deposit(account: str, request: Request) -> Response:
 
     # Ensure memo won't cause stellar transaction to fail when submitted
     try:
-        memo = memo_str(request.POST.get("memo"), request.POST.get("memo_type"))
+        memo = memo_str(request.data.get("memo"), request.data.get("memo_type"))
     except ValueError:
         return render_error_response(_("invalid 'memo' for 'memo_type'"))
 
     amount = None
-    if request.POST.get("amount"):
+    if request.data.get("amount"):
         try:
-            amount = Decimal(request.POST.get("amount"))
-        except DecimalException as e:
+            amount = Decimal(request.data.get("amount"))
+        except DecimalException:
             return render_error_response(_("Invalid 'amount'"))
 
     # Verify that the asset code exists in our database, with deposit enabled.
@@ -386,7 +385,7 @@ def deposit(account: str, request: Request) -> Response:
         protocol=Transaction.PROTOCOL.sep24,
         claimable_balance_supported=claimable_balance_supported,
         memo=memo,
-        memo_type=request.POST.get("memo_type") or Transaction.MEMO_TYPES.hash,
+        memo_type=request.data.get("memo_type") or Transaction.MEMO_TYPES.hash,
     )
     logger.info(f"Created deposit transaction {transaction_id}")
 

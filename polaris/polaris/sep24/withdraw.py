@@ -82,7 +82,7 @@ def post_interactive_withdraw(request: Request) -> Response:
     callback = args_or_error["callback"]
     amount = args_or_error["amount"]
 
-    form = rwi.form_for_transaction(transaction, post_data=request.POST)
+    form = rwi.form_for_transaction(transaction, post_data=request.data)
     if not form:
         logger.error(
             "Initial form_for_transaction() call returned None " f"for {transaction.id}"
@@ -102,7 +102,7 @@ def post_interactive_withdraw(request: Request) -> Response:
         )
 
     if not form.is_bound:
-        # The anchor must initialize the form with the request.POST data
+        # The anchor must initialize the form with request.data
         logger.error("form returned was not initialized with POST data, returning 500")
         return render_error_response(
             _("Unable to validate form submission."),
@@ -318,9 +318,9 @@ def withdraw(account: str, request: Request) -> Response:
     Creates an `incomplete` withdraw Transaction object in the database and
     returns the URL entry-point for the interactive flow.
     """
-    lang = request.POST.get("lang")
-    asset_code = request.POST.get("asset_code")
-    sep9_fields = extract_sep9_fields(request.POST)
+    lang = request.data.get("lang")
+    asset_code = request.data.get("asset_code")
+    sep9_fields = extract_sep9_fields(request.data)
     if lang:
         err_resp = validate_language(lang)
         if err_resp:
@@ -328,17 +328,17 @@ def withdraw(account: str, request: Request) -> Response:
         activate_lang_for_request(lang)
     if not asset_code:
         return render_error_response(_("'asset_code' is required"))
-    elif request.POST.get("memo"):
+    elif request.data.get("memo"):
         # Polaris SEP-24 doesn't support custodial wallets that depend on memos
         # to disambiguate users using the same stellar account. Support would
         # require new or adjusted integration points.
         return render_error_response(_("`memo` parameter is not supported"))
 
     amount = None
-    if request.POST.get("amount"):
+    if request.data.get("amount"):
         try:
-            amount = Decimal(request.POST.get("amount"))
-        except DecimalException as e:
+            amount = Decimal(request.data.get("amount"))
+        except DecimalException:
             return render_error_response(_("Invalid 'amount'"))
 
     # Verify that the asset code exists in our database, with withdraw enabled.

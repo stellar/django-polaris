@@ -93,7 +93,7 @@ class DepositIntegration:
         confirmed, ``form_for_transaction()`` should return the next form.
 
         :param transaction: the ``Transaction`` database object
-        :param post_data: A `django request.POST`_ object
+        :param post_data: the data sent in the POST request as a dictionary
         :param amount: a ``Decimal`` object the wallet may pass in the GET request.
             Use it to pre-populate your TransactionForm along with any SEP-9_
             parameters.
@@ -379,13 +379,12 @@ class WithdrawalIntegration:
         amount: Optional[Decimal] = None,
     ) -> Optional[forms.Form]:
         """
-        .. _django request.POST: https://docs.djangoproject.com/en/3.0/ref/request-response/#django.http.HttpRequest.POST
         .. _SEP-9: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0009.md
 
         Same as ``DepositIntegration.form_for_transaction``
 
         :param transaction: the ``Transaction`` database object
-        :param post_data: A `django request.POST`_ object
+        :param post_data: the data included in the POST request body as a dictionary
         :param amount: a ``Decimal`` object the wallet may pass in the GET request.
             Use it to pre-populate your TransactionForm along with any SEP-9_
             parameters.
