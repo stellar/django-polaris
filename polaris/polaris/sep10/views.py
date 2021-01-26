@@ -11,12 +11,13 @@ import time
 import jwt
 from urllib.parse import urlparse
 
-from django.utils.translation import gettext as _
+from django.utils.translation import gettext
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
+from stellar_sdk import TransactionEnvelope, ReturnHashMemo, NoneMemo
 from stellar_sdk.sep.stellar_web_authentication import (
     build_challenge_transaction,
     read_challenge_transaction,
@@ -24,11 +25,10 @@ from stellar_sdk.sep.stellar_web_authentication import (
     verify_challenge_transaction_signed_by_client_master_key,
 )
 from stellar_sdk.sep.exceptions import InvalidSep10ChallengeError
-from stellar_sdk.exceptions import NotFoundError
+from stellar_sdk.exceptions import NotFoundError, MemoInvalidException
 
 from polaris import settings
-from polaris.utils import getLogger
-from polaris.utils import render_error_response
+from polaris.utils import getLogger, render_error_response, make_memo, memo_str
 
 MIME_URLENCODE, MIME_JSON = "application/x-www-form-urlencoded", "application/json"
 logger = getLogger(__name__)
@@ -54,6 +54,17 @@ class SEP10Auth(APIView):
                 {"error": "no 'account' provided"}, status=status.HTTP_400_BAD_REQUEST
             )
 
+        memo, mstr, memo_type = (
+            None,
+            request.GET.get("memo"),
+            request.GET.get("memo_type"),
+        )
+        if memo_str or memo_type:
+            try:
+                memo = make_memo(mstr, memo_type)
+            except (ValueError, MemoInvalidException):
+                return render_error_response(gettext("invalid 'memo' for 'memo_type'"))
+
         home_domain = request.GET.get("home_domain")
         if home_domain and home_domain not in settings.SEP10_HOME_DOMAINS:
             return Response(
@@ -66,7 +77,7 @@ class SEP10Auth(APIView):
             home_domain = settings.SEP10_HOME_DOMAINS[0]
 
         try:
-            transaction = self._challenge_transaction(account, home_domain)
+            transaction = self._challenge_transaction(account, home_domain, memo)
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -79,13 +90,13 @@ class SEP10Auth(APIView):
         )
 
     @staticmethod
-    def _challenge_transaction(client_account, home_domain):
+    def _challenge_transaction(client_account, home_domain, memo):
         """
         Generate the challenge transaction for a client account.
         This is used in `GET <auth>`, as per SEP 10.
         Returns the XDR encoding of that transaction.
         """
-        return build_challenge_transaction(
+        tx_xdr = build_challenge_transaction(
             server_secret=settings.SIGNING_SEED,
             client_account_id=client_account,
             home_domain=home_domain,
@@ -93,6 +104,17 @@ class SEP10Auth(APIView):
             network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
             timeout=900,
         )
+        if memo:
+            # add memo to challenge transaction to identify user within pooled
+            # Stellar account, this is not yet supported in stellar-sdk
+            tx = TransactionEnvelope.from_xdr(
+                tx_xdr, settings.STELLAR_NETWORK_PASSPHRASE
+            ).transaction
+            tx.memo = memo
+            envelope = TransactionEnvelope(tx, settings.STELLAR_NETWORK_PASSPHRASE)
+            envelope.sign(settings.SIGNING_SEED)
+            tx_xdr = envelope.to_xdr()
+        return tx_xdr
 
     ################
     # POST functions
@@ -100,7 +122,7 @@ class SEP10Auth(APIView):
     def post(self, request: Request, *_args, **_kwargs) -> Response:
         envelope_xdr = request.data.get("transaction")
         if not envelope_xdr:
-            return render_error_response(_("'transaction' is required"))
+            return render_error_response(gettext("'transaction' is required"))
         try:
             self._validate_challenge_xdr(envelope_xdr)
         except ValueError as e:
@@ -142,6 +164,10 @@ class SEP10Auth(APIView):
             logger.warning(
                 "Account does not exist, using client's master key to verify"
             )
+            if not isinstance(tx_envelope.transaction.memo, NoneMemo):
+                raise ValueError(
+                    "Challenge transaction for non-existent account cannot have a memo"
+                )
             try:
                 verify_challenge_transaction_signed_by_client_master_key(
                     challenge_transaction=envelope_xdr,
@@ -163,6 +189,9 @@ class SEP10Auth(APIView):
             else:
                 logger.info("Challenge verified using client's master key")
                 return
+
+        if isinstance(tx_envelope.transaction.memo, ReturnHashMemo):
+            raise ValueError(gettext("invalid 'memo_type'"))
 
         signers = account.load_ed25519_public_key_signers()
         threshold = account.thresholds.med_threshold
@@ -204,9 +233,14 @@ class SEP10Auth(APIView):
         jwt_dict = {
             "iss": os.path.join(settings.HOST_URL, "auth"),
             "sub": source_account,
+            "memo": None,
+            "memo_type": None,
             "iat": issued_at,
             "exp": issued_at + 24 * 60 * 60,
             "jti": hash_hex,
         }
+        if not isinstance(transaction_envelope.transaction.memo, NoneMemo):
+            mstr, memo_type = memo_str(transaction_envelope.transaction.memo)
+            jwt_dict.update(memo=mstr, memo_type=memo_type)
         encoded_jwt = jwt.encode(jwt_dict, settings.SERVER_JWT_KEY, algorithm="HS256")
         return encoded_jwt.decode("ascii")

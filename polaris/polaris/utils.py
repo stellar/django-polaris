@@ -4,7 +4,7 @@ import datetime
 import uuid
 import base64
 from decimal import Decimal
-from typing import Optional, Union
+from typing import Optional, Union, Tuple
 from logging import getLogger as get_logger, LoggerAdapter
 
 from django.utils.translation import gettext
@@ -21,6 +21,7 @@ from stellar_sdk.account import Account, Thresholds
 from stellar_sdk.sep.stellar_web_authentication import _verify_te_signed_by_account_id
 from stellar_sdk.sep.exceptions import InvalidSep10ChallengeError
 from stellar_sdk.keypair import Keypair
+from stellar_sdk import Memo
 
 from polaris import settings
 from polaris.models import Transaction
@@ -241,7 +242,6 @@ def create_transaction_envelope(transaction, source_account) -> TransactionEnvel
         Decimal(transaction.amount_in) - Decimal(transaction.amount_fee),
         transaction.asset.significant_decimals,
     )
-    memo = make_memo(transaction.memo, transaction.memo_type)
     builder = TransactionBuilder(
         source_account=source_account,
         network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
@@ -272,8 +272,8 @@ def create_transaction_envelope(transaction, source_account) -> TransactionEnvel
             amount=str(payment_amount),
             source=transaction.asset.distribution_account,
         )
-    if memo:
-        builder.add_memo(memo)
+    if transaction.memo:
+        builder.add_memo(make_memo(transaction.memo, transaction.memo_type))
     return builder.build()
 
 
@@ -308,20 +308,21 @@ def get_balance_id(response: dict) -> Optional[str]:
     return None
 
 
-def memo_str(memo: str, memo_type: str) -> Optional[str]:
-    memo = make_memo(memo, memo_type)
+def memo_str(memo: Optional[Memo]) -> Tuple[Optional[str], Optional[str]]:
     if not memo:
-        return memo
+        return memo, None
     if isinstance(memo, IdMemo):
-        return str(memo.memo_id)
+        return str(memo.memo_id), Transaction.MEMO_TYPES.id
     elif isinstance(memo, HashMemo):
-        return memo_hex_to_base64(memo.memo_hash.hex())
+        return memo_hex_to_base64(memo.memo_hash.hex()), Transaction.MEMO_TYPES.hash
+    elif isinstance(memo, TextMemo):
+        return memo.memo_text.decode(), Transaction.MEMO_TYPES.text
     else:
-        return memo.memo_text.decode()
+        raise ValueError()
 
 
 def make_memo(memo: str, memo_type: str) -> Optional[Union[TextMemo, HashMemo, IdMemo]]:
-    if not memo:
+    if not (memo or memo_type):
         return None
     if memo_type == Transaction.MEMO_TYPES.id:
         return IdMemo(int(memo))

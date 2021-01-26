@@ -1,8 +1,10 @@
-from typing import Dict, Union, Optional
+from typing import Dict, Optional
 
 
 class CustomerIntegration:
-    def more_info_url(self, account: str) -> str:
+    def more_info_url(
+        self, account: str, memo: Optional[str] = None, memo_type: Optional[str] = None
+    ) -> str:
         """
         .. _SEP-6 Customer Information Status: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#4-customer-information-status
 
@@ -11,6 +13,8 @@ class CustomerIntegration:
         response. This is optional.
 
         :param account: the stellar account for the url to be returned
+        :param memo: the memo used to identify the user within a shared Stellar account
+        :param memo_type: the type of memo (text, hash, or id)
         """
         pass
 
@@ -21,9 +25,9 @@ class CustomerIntegration:
 
         Return a dictionary matching the response schema outlined in `SEP-12 GET /customer`_
         based on the `params` passed. The key-value pairs in `params` match the arguments
-        sent in the request with the exception of ``sep10_client_account``, which will always be
-        included in `params` so the anchor can ensure the customer returned was created
-        by the same account specified in the corresponding ``PUT /customer`` request.
+        sent in the request with the exception of ``sep10_client_account``. This parameter
+        was added in preparation for a future change. For now, ``sep10_client_account`` will
+        always match ``account``.
 
         Raise a ``ValueError`` if the parameters are invalid, or raise an
         ObjectDoesNotExist_ exception if the customer specified via the ``id`` parameter

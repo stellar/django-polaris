@@ -1,5 +1,4 @@
-from typing import Dict, Tuple
-from polaris.utils import getLogger
+from typing import Dict, Tuple, Optional
 
 from django.utils.translation import gettext as _
 from rest_framework.decorators import api_view, renderer_classes
@@ -12,10 +11,11 @@ from stellar_sdk.exceptions import MemoInvalidException
 from polaris.models import Asset, Transaction
 from polaris.locale.utils import validate_language, activate_lang_for_request
 from polaris.utils import (
+    getLogger,
     render_error_response,
     create_transaction_id,
     extract_sep9_fields,
-    memo_str,
+    make_memo,
 )
 from polaris.sep6.utils import validate_403_response
 from polaris.sep10.utils import validate_sep10_token
@@ -32,16 +32,19 @@ logger = getLogger(__name__)
 @api_view(["GET"])
 @renderer_classes([JSONRenderer])
 @validate_sep10_token()
-def deposit(account: str, request: Request) -> Response:
+def deposit(
+    account: str, memo: Optional[str], memo_type: Optional[str], request: Request
+) -> Response:
     args = parse_request_args(request)
     if "error" in args:
         return args["error"]
     args["account"] = account
 
-    transaction_id = create_transaction_id()
     transaction = Transaction(
-        id=transaction_id,
+        id=create_transaction_id(),
         stellar_account=account,
+        account_memo=memo,
+        account_memo_type=memo_type,
         asset=args["asset"],
         kind=Transaction.KIND.deposit,
         status=Transaction.STATUS.pending_user_transfer_start,
@@ -85,11 +88,10 @@ def validate_response(
     """
     Validate /deposit response returned from integration function
     """
-    account = args["account"]
-    asset = args["asset"]
     if "type" in integration_response:
-        return validate_403_response(account, integration_response, transaction), 403
+        return validate_403_response(integration_response, transaction), 403
 
+    asset = args["asset"]
     response = {
         "min_amount": round(asset.deposit_min_amount, asset.significant_decimals),
         "max_amount": round(asset.deposit_max_amount, asset.significant_decimals),
@@ -135,14 +137,14 @@ def parse_request_args(request: Request) -> Dict:
         return {"error": render_error_response(_("invalid 'memo_type'"))}
 
     try:
-        memo = memo_str(request.GET.get("memo"), memo_type)
+        make_memo(request.GET.get("memo"), memo_type)
     except (ValueError, MemoInvalidException):
         return {"error": render_error_response(_("invalid 'memo' for 'memo_type'"))}
 
     args = {
         "asset": asset,
         "memo_type": memo_type,
-        "memo": memo,
+        "memo": request.GET.get("memo"),
         "lang": lang,
         "type": request.GET.get("type"),
         **extract_sep9_fields(request.GET),

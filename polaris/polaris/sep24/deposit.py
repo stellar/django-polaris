@@ -4,7 +4,7 @@ This lets a user initiate a deposit of an asset into their Stellar account.
 """
 from decimal import Decimal, DecimalException
 from urllib.parse import urlencode
-from polaris.utils import getLogger
+from typing import Optional
 
 from django.urls import reverse
 from django.shortcuts import redirect
@@ -22,10 +22,11 @@ from stellar_sdk.exceptions import Ed25519PublicKeyInvalidError
 from polaris import settings
 from polaris.templates import Template
 from polaris.utils import (
+    getLogger,
     render_error_response,
     extract_sep9_fields,
     create_transaction_id,
-    memo_str,
+    make_memo,
 )
 from polaris.sep10.utils import validate_sep10_token
 from polaris.sep24.utils import (
@@ -301,7 +302,9 @@ def get_interactive_deposit(request: Request) -> Response:
 @api_view(["POST"])
 @renderer_classes([JSONRenderer])
 @validate_sep10_token()
-def deposit(account: str, request: Request) -> Response:
+def deposit(
+    account: str, memo: Optional[str], memo_type: Optional[str], request: Request
+) -> Response:
     """
     POST /transactions/deposit/interactive
 
@@ -342,7 +345,7 @@ def deposit(account: str, request: Request) -> Response:
 
     # Ensure memo won't cause stellar transaction to fail when submitted
     try:
-        memo = memo_str(request.data.get("memo"), request.data.get("memo_type"))
+        make_memo(request.data.get("memo"), request.data.get("memo_type"))
     except ValueError:
         return render_error_response(_("invalid 'memo' for 'memo_type'"))
 
@@ -351,7 +354,7 @@ def deposit(account: str, request: Request) -> Response:
         try:
             amount = Decimal(request.data.get("amount"))
         except DecimalException:
-            return render_error_response(_("Invalid 'amount'"))
+            return render_error_response(_("invalid 'amount'"))
 
     # Verify that the asset code exists in our database, with deposit enabled.
     asset = Asset.objects.filter(code=asset_code).first()
@@ -366,7 +369,13 @@ def deposit(account: str, request: Request) -> Response:
         return render_error_response(_("invalid 'account'"))
 
     try:
-        rdi.save_sep9_fields(stellar_account, sep9_fields, lang)
+        rdi.save_sep9_fields(
+            stellar_account,
+            sep9_fields,
+            lang,
+            account_memo=memo,
+            account_memo_type=memo_type,
+        )
     except ValueError as e:
         # The anchor found a validation error in the sep-9 fields POSTed by
         # the wallet. The error string returned should be in the language
@@ -378,13 +387,15 @@ def deposit(account: str, request: Request) -> Response:
     Transaction.objects.create(
         id=transaction_id,
         stellar_account=account,
+        account_memo=memo,
+        account_memo_type=memo_type,
         asset=asset,
         kind=Transaction.KIND.deposit,
         status=Transaction.STATUS.incomplete,
         to_address=account,
         protocol=Transaction.PROTOCOL.sep24,
         claimable_balance_supported=claimable_balance_supported,
-        memo=memo,
+        memo=request.data.get("memo"),
         memo_type=request.data.get("memo_type") or Transaction.MEMO_TYPES.hash,
     )
     logger.info(f"Created deposit transaction {transaction_id}")
@@ -393,6 +404,8 @@ def deposit(account: str, request: Request) -> Response:
         request,
         str(transaction_id),
         account,
+        memo,
+        memo_type,
         asset_code,
         settings.OPERATION_DEPOSIT,
         amount,

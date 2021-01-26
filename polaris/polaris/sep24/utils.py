@@ -84,10 +84,13 @@ def authenticate_session_helper(r: Request):
         # If there is no token, check if this session has already been authenticated,
         # that the session's account is the one that initiated the transaction, and
         # that the session has been authenticated for this particular transaction.
-        if r.session.get("authenticated") and r.session.get("account", ""):
+        if r.session.get("authenticated") and r.session.get("account"):
             tid = r.GET.get("transaction_id")
             tqs = Transaction.objects.filter(
-                id=tid, stellar_account=r.session["account"]
+                id=tid,
+                stellar_account=r.session["account"],
+                account_memo=r.session.get("memo"),
+                account_memo_type=r.session.get("memo_type"),
             )
             if not (tid in r.session.get("transactions", []) and tqs.exists()):
                 raise ValueError(f"Not authenticated for transaction ID: {tid}")
@@ -118,7 +121,10 @@ def authenticate_session_helper(r: Request):
         raise ValueError(_("Token is not yet valid or is expired"))
 
     transaction_qs = Transaction.objects.filter(
-        id=jwt_dict["jti"], stellar_account=jwt_dict["sub"]
+        id=jwt_dict["jti"],
+        stellar_account=jwt_dict["sub"],
+        account_memo=jwt_dict.get("memo"),
+        account_memo_type=jwt_dict.get("memo_type"),
     )
     if not transaction_qs.exists():
         raise ValueError(_("Transaction for account not found"))
@@ -126,6 +132,8 @@ def authenticate_session_helper(r: Request):
     # JWT is valid, authenticate session
     r.session["authenticated"] = True
     r.session["account"] = jwt_dict["sub"]
+    r.session["account_memo"] = jwt_dict.get("memo")
+    r.session["account_memo_type"] = jwt_dict.get("memo_type")
     try:
         r.session["transactions"].append(jwt_dict["jti"])
     except KeyError:
@@ -145,7 +153,10 @@ def check_authentication_helper(r: Request):
         raise ValueError(_("Session is not authenticated"))
 
     transaction_qs = Transaction.objects.filter(
-        id=r.GET.get("transaction_id"), stellar_account=r.session.get("account")
+        id=r.GET.get("transaction_id"),
+        stellar_account=r.session.get("account"),
+        account_memo=r.session.get("memo"),
+        account_memo_type=r.session.get("memo_type"),
     )
     if not transaction_qs.exists():
         raise ValueError(_("Transaction for account not found"))
@@ -217,7 +228,11 @@ def interactive_args_validation(request: Request) -> Dict:
 
 
 def generate_interactive_jwt(
-    request: Request, transaction_id: str, account: str
+    request: Request,
+    transaction_id: str,
+    account: str,
+    memo: Optional[str],
+    memo_type: Optional[str],
 ) -> str:
     """
     Generates a 30-second JWT for the client to use in the GET URL for
@@ -230,6 +245,8 @@ def generate_interactive_jwt(
         "exp": issued_at + 30,
         "sub": account,
         "jti": transaction_id,
+        "memo": memo,
+        "memo_type": memo_type,
     }
     encoded_jwt = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256")
     return encoded_jwt.decode("ascii")
@@ -264,6 +281,8 @@ def interactive_url(
     request: Request,
     transaction_id: str,
     account: str,
+    memo: Optional[str],
+    memo_type: Optional[str],
     asset_code: str,
     op_type: str,
     amount: Optional[Decimal],
@@ -271,7 +290,9 @@ def interactive_url(
     params = {
         "asset_code": asset_code,
         "transaction_id": transaction_id,
-        "token": generate_interactive_jwt(request, transaction_id, account),
+        "token": generate_interactive_jwt(
+            request, transaction_id, account, memo, memo_type
+        ),
     }
     if amount:
         params["amount"] = amount
