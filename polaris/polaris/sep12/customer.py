@@ -6,8 +6,9 @@ from django.core.exceptions import ObjectDoesNotExist
 from rest_framework.views import APIView
 from rest_framework.request import Request
 from rest_framework.response import Response
-from rest_framework.decorators import api_view, renderer_classes
-from rest_framework.renderers import JSONRenderer
+from rest_framework.decorators import api_view, renderer_classes, parser_classes
+from rest_framework.renderers import JSONRenderer, BrowsableAPIRenderer
+from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 
 from polaris.utils import extract_sep9_fields, render_error_response, make_memo
 from polaris.sep10.utils import validate_sep10_token
@@ -18,7 +19,8 @@ logger = getLogger(__name__)
 
 
 class CustomerAPIView(APIView):
-    renderer_classes = [JSONRenderer]
+    renderer_classes = [JSONRenderer, BrowsableAPIRenderer]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     @staticmethod
     @validate_sep10_token()
@@ -150,7 +152,8 @@ class CustomerAPIView(APIView):
 
 
 @api_view(["DELETE"])
-@renderer_classes([JSONRenderer])
+@renderer_classes([JSONRenderer, BrowsableAPIRenderer])
+@parser_classes([MultiPartParser, FormParser, JSONParser])
 @validate_sep10_token()
 def delete(
     account_from_auth: str,

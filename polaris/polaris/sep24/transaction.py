@@ -4,7 +4,11 @@ from typing import Optional
 from rest_framework.decorators import api_view, renderer_classes
 from rest_framework.response import Response
 from rest_framework.request import Request
-from rest_framework.renderers import TemplateHTMLRenderer, JSONRenderer
+from rest_framework.renderers import (
+    TemplateHTMLRenderer,
+    JSONRenderer,
+    BrowsableAPIRenderer,
+)
 
 from django.views.decorators.clickjacking import xframe_options_exempt
 
@@ -24,7 +28,7 @@ def more_info(request: Request) -> Response:
 
 
 @api_view(["GET"])
-@renderer_classes([JSONRenderer])
+@renderer_classes([JSONRenderer, BrowsableAPIRenderer])
 @validate_sep10_token()
 def transactions(
     account: str, memo: Optional[str], memo_type: Optional[str], request: Request
@@ -37,7 +41,7 @@ def transactions(
 
 
 @api_view(["GET"])
-@renderer_classes([JSONRenderer])
+@renderer_classes([JSONRenderer, BrowsableAPIRenderer])
 @validate_sep10_token()
 def transaction(
     account: str, memo: Optional[str], memo_type: Optional[str], request: Request

@@ -17,6 +17,7 @@ from rest_framework.views import APIView
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
+from rest_framework.renderers import JSONRenderer, BrowsableAPIRenderer
 from stellar_sdk import TransactionEnvelope, ReturnHashMemo, NoneMemo
 from stellar_sdk.sep.stellar_web_authentication import (
     build_challenge_transaction,
@@ -43,6 +44,7 @@ class SEP10Auth(APIView):
     """
 
     parser_classes = [JSONParser, MultiPartParser, FormParser]
+    renderer_classes = [JSONRenderer, BrowsableAPIRenderer]
 
     ###############
     # GET functions

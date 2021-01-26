@@ -7,7 +7,6 @@ https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0001.md
 """
 
 import os
-import sys
 
 import toml
 from django.conf import settings as django_settings
@@ -43,22 +42,14 @@ class PolarisPlainTextRenderer(BaseRenderer):
 
 @api_view(["GET"])
 @renderer_classes([PolarisPlainTextRenderer])
-def generate_toml(request: Request) -> Response:
+def generate_toml(_request: Request) -> Response:
     """Generate a TOML-formatted string"""
-    # Define the module variable to reference in-memory constants
-    # Check if we've already read the TOML contents
-    this = sys.modules[__name__]
-    if hasattr(this, "STELLAR_TOML_CONTENTS"):
-        return Response(this.STELLAR_TOML_CONTENTS, content_type="text/plain")
-
-    # Check for a static TOML file if the cache is empty and the TOML
-    # integration function is not replaced.
     if registered_toml_func is get_stellar_toml:
+        # integration function is not used, check to see if a static file is defined
         static_toml = finders.find("polaris/stellar.toml")
         if static_toml:
             with open(static_toml) as f:
-                this.STELLAR_TOML_CONTENTS = f.read()
-            return Response(this.STELLAR_TOML_CONTENTS, content_type="text/plain")
+                return Response(f.read(), content_type="text/plain")
 
     # The anchor uses the registered TOML function, replaced or not
     toml_dict = {

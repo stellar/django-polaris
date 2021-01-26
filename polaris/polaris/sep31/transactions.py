@@ -9,7 +9,7 @@ from django.core.exceptions import ValidationError
 from rest_framework.views import APIView
 from rest_framework.request import Request
 from rest_framework.response import Response
-from rest_framework.renderers import JSONRenderer
+from rest_framework.renderers import JSONRenderer, BrowsableAPIRenderer
 from rest_framework.parsers import JSONParser, FormParser, MultiPartParser
 
 from polaris.locale.utils import _is_supported_language, activate_lang_for_request
@@ -29,7 +29,7 @@ logger = getLogger(__name__)
 
 class TransactionsAPIView(APIView):
     parser_classes = [JSONParser, FormParser, MultiPartParser]
-    renderer_classes = [JSONRenderer]
+    renderer_classes = [JSONRenderer, BrowsableAPIRenderer]
 
     @staticmethod
     @validate_sep10_token()

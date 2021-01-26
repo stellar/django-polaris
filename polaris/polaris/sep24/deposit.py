@@ -12,10 +12,15 @@ from django.views.decorators.clickjacking import xframe_options_exempt
 from django.utils.translation import gettext as _
 
 from rest_framework import status
-from rest_framework.decorators import api_view, renderer_classes
+from rest_framework.decorators import api_view, renderer_classes, parser_classes
 from rest_framework.response import Response
 from rest_framework.request import Request
-from rest_framework.renderers import TemplateHTMLRenderer, JSONRenderer
+from rest_framework.renderers import (
+    TemplateHTMLRenderer,
+    JSONRenderer,
+    BrowsableAPIRenderer,
+)
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from stellar_sdk.keypair import Keypair
 from stellar_sdk.exceptions import Ed25519PublicKeyInvalidError
 
@@ -54,6 +59,7 @@ logger = getLogger(__name__)
 @xframe_options_exempt
 @api_view(["POST"])
 @renderer_classes([TemplateHTMLRenderer])
+@parser_classes([MultiPartParser, FormParser, JSONParser])
 @check_authentication()
 def post_interactive_deposit(request: Request) -> Response:
     """
@@ -300,7 +306,8 @@ def get_interactive_deposit(request: Request) -> Response:
 
 
 @api_view(["POST"])
-@renderer_classes([JSONRenderer])
+@renderer_classes([JSONRenderer, BrowsableAPIRenderer])
+@parser_classes([MultiPartParser, FormParser, JSONParser])
 @validate_sep10_token()
 def deposit(
     account: str, memo: Optional[str], memo_type: Optional[str], request: Request

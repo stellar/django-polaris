@@ -3,8 +3,9 @@ from typing import Dict, Tuple, Optional
 from django.utils.translation import gettext as _
 from rest_framework.request import Request
 from rest_framework.response import Response
-from rest_framework.decorators import api_view, renderer_classes
-from rest_framework.renderers import JSONRenderer
+from rest_framework.decorators import api_view, renderer_classes, parser_classes
+from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
+from rest_framework.renderers import JSONRenderer, BrowsableAPIRenderer
 from stellar_sdk.exceptions import MemoInvalidException
 
 from polaris.utils import (
@@ -29,7 +30,8 @@ logger = getLogger(__name__)
 
 
 @api_view(["GET"])
-@renderer_classes([JSONRenderer])
+@parser_classes([MultiPartParser, FormParser, JSONParser])
+@renderer_classes([JSONRenderer, BrowsableAPIRenderer])
 @validate_sep10_token()
 def withdraw(
     account: str, memo: Optional[str], memo_type: Optional[str], request: Request
