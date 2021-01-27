@@ -559,11 +559,7 @@ class MyCustomerIntegration(CustomerIntegration):
         return str(user.id)
 
     def delete(self, account: str, memo: Optional[str], memo_type: Optional[str]):
-        # Use `account` & `memo` when identifying a user
-        # If `memo` is non-None, include the expected `memo_type` as well
-        qparams = {"account": account, memo: memo}
-        if memo:
-            qparams["memo_type"] = memo_type
+        qparams = {"account": account, "memo": memo, "memo_type": memo_type}
         account = PolarisStellarAccount.objects.filter(**qparams).first()
         if not account:
             raise ObjectDoesNotExist()
