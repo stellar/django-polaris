@@ -283,11 +283,11 @@ def test_get_no_auth(client):
     assert "error" in response.json()
 
 
+@patch("polaris.sep12.customer.rci", mock_success_integration)
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-def test_no_id_or_auth(client):
+def test_no_id_or_account(client):
     response = client.get(endpoint)
-    assert response.status_code == 400
-    assert "error" in response.json()
+    assert response.status_code == 200
 
 
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
