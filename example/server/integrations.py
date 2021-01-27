@@ -474,7 +474,7 @@ class MyCustomerIntegration(CustomerIntegration):
         }
 
     def get(self, params: Dict) -> Dict:
-        if "id" in params:
+        if params.get("id"):
             user = PolarisUser.objects.filter(id=params["id"]).first()
             if not user:
                 raise ObjectDoesNotExist(_("customer not found"))
