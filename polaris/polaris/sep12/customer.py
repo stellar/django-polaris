@@ -180,7 +180,7 @@ def delete(
     except ObjectDoesNotExist:
         return render_error_response(_("account not found"), status_code=404)
     else:
-        return Response({}, status=200)
+        return Response({"status": "success"}, status=200)
 
 
 def validate_response_data(data: Dict):
