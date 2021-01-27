@@ -32,10 +32,6 @@ class CustomerAPIView(APIView):
                 _("The account specified does not match authorization token"),
                 status_code=403,
             )
-        elif not (request.GET.get("id") or request.GET.get("account")):
-            return render_error_response(
-                _("unable to identify a user without 'id' or 'account'")
-            )
         elif request.GET.get("id") and (
             request.GET.get("account")
             or request.GET.get("memo")

@@ -474,11 +474,12 @@ class MyCustomerIntegration(CustomerIntegration):
         }
 
     def get(self, params: Dict) -> Dict:
+        user = None
         if params.get("id"):
             user = PolarisUser.objects.filter(id=params["id"]).first()
             if not user:
                 raise ObjectDoesNotExist(_("customer not found"))
-        else:
+        elif params.get("account"):
             account = PolarisStellarAccount.objects.filter(
                 account=params.get("account"),
                 memo=params.get("memo"),
