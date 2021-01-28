@@ -8,6 +8,7 @@ from urllib.parse import urlencode
 from typing import Optional
 
 from django.urls import reverse
+from django.core.exceptions import ValidationError
 from django.views.decorators.clickjacking import xframe_options_exempt
 from django.shortcuts import redirect
 from django.utils.translation import gettext as _
@@ -214,9 +215,14 @@ def complete_interactive_withdraw(request: Request) -> Response:
         return render_error_response(
             _("Missing id parameter in URL"), content_type="text/html"
         )
-    Transaction.objects.filter(id=transaction_id).update(
-        status=Transaction.STATUS.pending_user_transfer_start
-    )
+    try:
+        Transaction.objects.filter(id=transaction_id).update(
+            status=Transaction.STATUS.pending_user_transfer_start
+        )
+    except ValidationError:
+        return render_error_response(
+            _("ID passed is not a valid transaction ID"), content_type="text/html"
+        )
     logger.info(f"Hands-off interactive flow complete for transaction {transaction_id}")
     url, args = (
         reverse("more_info"),
