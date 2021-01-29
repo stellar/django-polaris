@@ -28,7 +28,7 @@ logger = getLogger(__name__)
 
 
 class TransactionsAPIView(APIView):
-    parser_classes = [JSONParser, FormParser, MultiPartParser]
+    parser_classes = [JSONParser]
     renderer_classes = [JSONRenderer, BrowsableAPIRenderer]
 
     @staticmethod
