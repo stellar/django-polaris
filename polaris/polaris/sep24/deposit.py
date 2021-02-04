@@ -2,6 +2,7 @@
 This module implements the logic for the `/transactions/deposit` endpoints.
 This lets a user initiate a deposit of an asset into their Stellar account.
 """
+from typing import Optional
 from decimal import Decimal, DecimalException
 from urllib.parse import urlencode
 
@@ -318,7 +319,7 @@ def get_interactive_deposit(request: Request) -> Response:
 @renderer_classes([JSONRenderer, BrowsableAPIRenderer])
 @parser_classes([MultiPartParser, FormParser, JSONParser])
 @validate_sep10_token()
-def deposit(account: str, request: Request) -> Response:
+def deposit(account: str, client_domain: Optional[str], request: Request) -> Response:
     """
     POST /transactions/deposit/interactive
 
@@ -408,6 +409,7 @@ def deposit(account: str, request: Request) -> Response:
         more_info_url=request.build_absolute_uri(
             f"{reverse('more_info')}?id={transaction_id}"
         ),
+        client_domain=client_domain,
     )
     logger.info(f"Created deposit transaction {transaction_id}")
 

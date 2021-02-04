@@ -3,7 +3,6 @@ from unittest.mock import Mock, patch
 from urllib.parse import urlencode
 from polaris.tests.helpers import (
     mock_check_auth_success,
-    mock_check_auth_success_with_memo,
 )
 from stellar_sdk.keypair import Keypair
 

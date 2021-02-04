@@ -33,7 +33,12 @@ class TransactionsAPIView(APIView):
 
     @staticmethod
     @validate_sep10_token()
-    def get(account: str, _request: Request, transaction_id: str = None,) -> Response:
+    def get(
+        account: str,
+        _client_domain: Optional[str],
+        _request: Request,
+        transaction_id: str = None,
+    ) -> Response:
         if not transaction_id:
             return render_error_response(
                 _("GET requests must include a transaction ID in the URI"),
@@ -54,7 +59,12 @@ class TransactionsAPIView(APIView):
 
     @staticmethod
     @validate_sep10_token()
-    def patch(account: str, request: Request, transaction_id: str = None,) -> Response:
+    def patch(
+        account: str,
+        _client_domain: Optional[str],
+        request: Request,
+        transaction_id: str = None,
+    ) -> Response:
         if not transaction_id:
             return render_error_response(
                 _("PATCH requests must include a transaction ID in the URI"),
@@ -90,7 +100,10 @@ class TransactionsAPIView(APIView):
     @staticmethod
     @validate_sep10_token()
     def post(
-        account: str, request: Request, **kwargs,
+        account: str,
+        client_domain: Optional[str],
+        request: Request,
+        **kwargs,
     ):
         if kwargs:
             return render_error_response(
@@ -131,6 +144,7 @@ class TransactionsAPIView(APIView):
             memo=transaction_memo,
             memo_type=Transaction.MEMO_TYPES.hash,
             receiving_anchor_account=params["asset"].distribution_account,
+            client_domain=client_domain,
         )
 
         error_data = registered_sep31_receiver_integration.process_post_request(

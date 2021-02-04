@@ -9,6 +9,7 @@ import os
 import binascii
 import time
 import jwt
+import toml
 from urllib.parse import urlparse
 
 from django.utils.translation import gettext
@@ -18,15 +19,24 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 from rest_framework.renderers import JSONRenderer, BrowsableAPIRenderer
-from stellar_sdk import ReturnHashMemo, NoneMemo
+from stellar_sdk.operation import ManageData
+from stellar_sdk.sep.stellar_toml import fetch_stellar_toml
 from stellar_sdk.sep.stellar_web_authentication import (
     build_challenge_transaction,
     read_challenge_transaction,
     verify_challenge_transaction_threshold,
     verify_challenge_transaction_signed_by_client_master_key,
 )
-from stellar_sdk.sep.exceptions import InvalidSep10ChallengeError
-from stellar_sdk.exceptions import NotFoundError
+from stellar_sdk.sep.exceptions import (
+    InvalidSep10ChallengeError,
+    StellarTomlNotFoundError,
+)
+from stellar_sdk.exceptions import (
+    NotFoundError,
+    ConnectionError,
+    Ed25519PublicKeyInvalidError,
+)
+from stellar_sdk import Keypair
 
 from polaris import settings
 from polaris.utils import getLogger, render_error_response
@@ -67,8 +77,47 @@ class SEP10Auth(APIView):
         elif not home_domain:
             home_domain = settings.SEP10_HOME_DOMAINS[0]
 
+        client_domain, client_signing_key = request.GET.get("client_domain"), None
+        if settings.SEP10_CLIENT_ATTRIBUTION_REQUIRED and not client_domain:
+            return render_error_response(
+                gettext("'client_domain' is required"), status_code=400
+            )
+        elif client_domain:
+            if urlparse(f"https://{client_domain}").netloc != client_domain:
+                return render_error_response(
+                    gettext("client_domain must be a valid hostname"), status_code=400
+                )
+            elif (
+                settings.SEP10_CLIENT_ATTRIBUTION_DENYLIST
+                and client_domain in settings.SEP10_CLIENT_ATTRIBUTION_DENYLIST
+            ) or (
+                settings.SEP10_CLIENT_ATTRIBUTION_ALLOWLIST
+                and client_domain not in settings.SEP10_CLIENT_ATTRIBUTION_ALLOWLIST
+            ):
+                if settings.SEP10_CLIENT_ATTRIBUTION_REQUIRED:
+                    return render_error_response(
+                        gettext("unrecognized 'client_domain'"), status_code=403
+                    )
+                else:
+                    client_domain = None
+
+        if client_domain:
+            try:
+                client_signing_key = self._get_client_signing_key(client_domain)
+            except (
+                ConnectionError,
+                StellarTomlNotFoundError,
+                toml.decoder.TomlDecodeError,
+            ):
+                return render_error_response(
+                    gettext("unable to fetch 'client_domain' SIGNING_KEY"),
+                    status_code=424,
+                )
+            except ValueError as e:
+                return render_error_response(str(e), status_code=424)
+
         try:
-            transaction = self._challenge_transaction(account, home_domain)
+            transaction = self._challenge_transaction(account, home_domain, client_domain, client_signing_key)
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -81,7 +130,9 @@ class SEP10Auth(APIView):
         )
 
     @staticmethod
-    def _challenge_transaction(client_account, home_domain):
+    def _challenge_transaction(
+        client_account, home_domain, client_domain=None, client_signing_key=None
+    ):
         """
         Generate the challenge transaction for a client account.
         This is used in `GET <auth>`, as per SEP 10.
@@ -94,6 +145,8 @@ class SEP10Auth(APIView):
             web_auth_domain=urlparse(settings.HOST_URL).netloc,
             network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
             timeout=900,
+            client_domain=client_domain,
+            client_signing_key=client_signing_key,
         )
 
     ################
@@ -103,12 +156,11 @@ class SEP10Auth(APIView):
         envelope_xdr = request.data.get("transaction")
         if not envelope_xdr:
             return render_error_response(gettext("'transaction' is required"))
-        try:
-            self._validate_challenge_xdr(envelope_xdr)
-        except ValueError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        client_domain, error_response = self._validate_challenge_xdr(envelope_xdr)
+        if error_response:
+            return error_response
         else:
-            return Response({"token": self._generate_jwt(envelope_xdr)})
+            return Response({"token": self._generate_jwt(envelope_xdr, client_domain)})
 
     @staticmethod
     def _validate_challenge_xdr(envelope_xdr: str):
@@ -125,6 +177,7 @@ class SEP10Auth(APIView):
         with a weight greater than the default thresholds.
         """
         logger.info("Validating challenge transaction")
+        generic_err_msg = gettext("error while validating challenge: %s")
         try:
             tx_envelope, account_id, _ = read_challenge_transaction(
                 challenge_transaction=envelope_xdr,
@@ -134,9 +187,16 @@ class SEP10Auth(APIView):
                 network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
             )
         except InvalidSep10ChallengeError as e:
-            err_msg = f"Error while validating challenge: {str(e)}"
-            logger.error(err_msg)
-            raise ValueError(err_msg)
+            return None, render_error_response(generic_err_msg % (str(e)))
+
+        client_domain = None
+        for operation in tx_envelope.transaction.operations:
+            if (
+                isinstance(operation, ManageData)
+                and operation.data_name == "client_domain"
+            ):
+                client_domain = operation.data_value.decode()
+                break
 
         try:
             account = settings.HORIZON_SERVER.load_account(account_id)
@@ -150,19 +210,23 @@ class SEP10Auth(APIView):
                     web_auth_domain=urlparse(settings.HOST_URL).netloc,
                     network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
                 )
-                if len(tx_envelope.signatures) != 2:
+                if (client_domain and len(tx_envelope.signatures) != 3) or (
+                    not client_domain and len(tx_envelope.signatures) != 2
+                ):
                     raise InvalidSep10ChallengeError(
-                        "There is more than one client signer on a challenge "
-                        "transaction for an account that doesn't exist"
+                        gettext(
+                            "There is more than one client signer on a challenge "
+                            "transaction for an account that doesn't exist"
+                        )
                     )
             except InvalidSep10ChallengeError as e:
                 logger.info(
                     f"Missing or invalid signature(s) for {account_id}: {str(e)}"
                 )
-                raise ValueError(str(e))
+                return None, render_error_response(generic_err_msg % (str(e)))
             else:
                 logger.info("Challenge verified using client's master key")
-                return
+                return client_domain, None
 
         signers = account.load_ed25519_public_key_signers()
         threshold = account.thresholds.med_threshold
@@ -177,13 +241,13 @@ class SEP10Auth(APIView):
                 signers=signers,
             )
         except InvalidSep10ChallengeError as e:
-            logger.info(str(e))
-            raise ValueError(str(e))
+            return None, render_error_response(generic_err_msg % (str(e)))
 
         logger.info(f"Challenge verified using account signers: {signers_found}")
+        return client_domain, None
 
     @staticmethod
-    def _generate_jwt(envelope_xdr: str) -> str:
+    def _generate_jwt(envelope_xdr: str, client_domain: str = None) -> str:
         """
         Generates the JSON web token from the challenge transaction XDR.
 
@@ -207,6 +271,21 @@ class SEP10Auth(APIView):
             "iat": issued_at,
             "exp": issued_at + 24 * 60 * 60,
             "jti": hash_hex,
+            "client_domain": client_domain,
         }
         encoded_jwt = jwt.encode(jwt_dict, settings.SERVER_JWT_KEY, algorithm="HS256")
         return encoded_jwt.decode("ascii")
+
+    @staticmethod
+    def _get_client_signing_key(client_domain):
+        client_toml_contents = fetch_stellar_toml(client_domain)
+        client_signing_key = client_toml_contents.get("SIGNING_KEY")
+        if not client_signing_key:
+            raise ValueError(gettext("SIGNING_KEY not present on 'client_domain' TOML"))
+        try:
+            Keypair.from_public_key(client_signing_key)
+        except Ed25519PublicKeyInvalidError:
+            raise ValueError(
+                gettext("invalid SIGNING_KEY value on 'client_domain' TOML")
+            )
+        return client_signing_key

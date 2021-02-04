@@ -611,6 +611,15 @@ class Transaction(models.Model):
     poll_pending_deposits, check_trustlines or execute_outgoing_transactions.
     """
 
+    client_domain = models.TextField(null=True, blank=True)
+    """
+    The hostname of the client application that requested this transaction on behalf of
+    the user. The SIGNING_KEY on `https://client_domain/.well-known/stellar.toml` signed 
+    the challenge transaction used to obtain the authentication token necessary to 
+    request this transaction, effectively allowing requests including the authentication 
+    token to be attributed to it.
+    """
+
     objects = models.Manager()
 
     @property

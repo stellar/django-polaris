@@ -30,7 +30,11 @@ def more_info(request: Request) -> Response:
 @api_view(["GET"])
 @renderer_classes([JSONRenderer, BrowsableAPIRenderer])
 @validate_sep10_token()
-def transactions(account: str, request: Request) -> Response:
+def transactions(
+    account: str,
+    _client_domain: Optional[str],
+    request: Request,
+) -> Response:
     """
     Definition of the /transactions endpoint, in accordance with SEP-0024.
     See: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md#transaction-history
@@ -41,7 +45,11 @@ def transactions(account: str, request: Request) -> Response:
 @api_view(["GET"])
 @renderer_classes([JSONRenderer, BrowsableAPIRenderer])
 @validate_sep10_token()
-def transaction(account: str, request: Request) -> Response:
+def transaction(
+    account: str,
+    _client_domain: Optional[str],
+    request: Request,
+) -> Response:
     """
     Definition of the /transaction endpoint, in accordance with SEP-0024.
     See: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md#single-historical-transaction

@@ -1,5 +1,5 @@
-from typing import Dict, Tuple
 from decimal import Decimal, DecimalException
+from typing import Dict, Tuple, Optional
 
 from django.utils.translation import gettext as _
 from django.core.validators import URLValidator
@@ -39,7 +39,11 @@ logger = getLogger(__name__)
 @renderer_classes([JSONRenderer, BrowsableAPIRenderer])
 @parser_classes([MultiPartParser, FormParser, JSONParser])
 @validate_sep10_token()
-def deposit(account: str, request: Request) -> Response:
+def deposit(
+    account: str,
+    client_domain: Optional[str],
+    request: Request,
+) -> Response:
     args = parse_request_args(request)
     if "error" in args:
         return args["error"]
@@ -61,6 +65,7 @@ def deposit(account: str, request: Request) -> Response:
         ),
         claimable_balance_supported=args["claimable_balance_supported"],
         on_change_callback=args["on_change_callback"],
+        client_domain=client_domain,
     )
 
     try:

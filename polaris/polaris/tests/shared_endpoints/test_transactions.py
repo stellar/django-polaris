@@ -6,7 +6,6 @@ from unittest.mock import patch
 import pytest
 from polaris.tests.helpers import (
     mock_check_auth_success,
-    mock_check_auth_success_with_memo,
     sep10,
 )
 
