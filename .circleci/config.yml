@@ -1,11 +1,9 @@
 version: 2.1
 orbs:
-  heroku: circleci/heroku@1.0.1
+  heroku: circleci/heroku@1.2.5
 executors:
   my-executor:
     environment:
-      IMAGE_NAME: stellar/test-anchor
-      PIPENV_VENV_IN_PROJECT: true
     docker:
       - image: circleci/python:3.7.3
 jobs:
@@ -21,7 +19,7 @@ jobs:
       - run:
           command: |
             sudo pip install pipenv
-            pipenv install --dev
+            pipenv install --dev --system
       - save_cache:
           # cache Python dependencies using checksum of Pipfile as the cache-key
           key: deps9-{{ .Branch }}-{{ checksum "Pipfile.lock" }}
@@ -34,7 +32,6 @@ jobs:
             cp polaris/.env.example polaris/.env
             pipenv run pytest --cov -c polaris/pytest.ini
             pipenv run codecov
-            pipenv --rm
       - store_test_results:
           # Upload test results for display in Test Summary: https://circleci.com/docs/2.0/collect-test-data/
           path: test-results
@@ -42,39 +39,20 @@ jobs:
           # Upload test summary for display in Artifacts: https://circleci.com/docs/2.0/artifacts/
           path: test-results
           destination: tr1
-  publish_build:
-    executor: my-executor
-    steps:
-      - checkout
-      - setup_remote_docker
-      - run: docker build -t $IMAGE_NAME:latest .
-      - run:
-          command: |
-            echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
-            docker push $IMAGE_NAME:latest
 workflows:
   version: 2
-  # Runs tests for any commit
   test:
     jobs:
       - test
-  # Test, build and publish docker image, deploy
-  # only on pushes to master
   build_deploy_publish:
     jobs:
       - test:
           filters:
             branches:
               only: master
-      #- publish_build:
-      #    requires:
-      #      - test
-      #    filters:
-      #      branches:
-      #        only: master
       - heroku/deploy-via-git:
           requires:
-            - test # publish_build
+            - test
           filters:
             branches:
               only: master
