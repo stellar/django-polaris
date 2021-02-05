@@ -3,7 +3,6 @@ orbs:
   heroku: circleci/heroku@1.2.5
 executors:
   my-executor:
-    environment:
     docker:
       - image: circleci/python:3.7.3
 jobs:
