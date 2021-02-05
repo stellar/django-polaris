@@ -30,8 +30,8 @@ jobs:
       - run:
           command: |
             cp polaris/.env.example polaris/.env
-            pipenv run pytest --cov -c polaris/pytest.ini
-            pipenv run codecov
+            pytest --cov -c polaris/pytest.ini
+            codecov
       - store_test_results:
           # Upload test results for display in Test Summary: https://circleci.com/docs/2.0/collect-test-data/
           path: test-results
