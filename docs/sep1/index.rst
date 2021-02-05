@@ -24,7 +24,9 @@ Rendering a Static TOML
 
 .. _example: https://github.com/stellar/django-polaris/tree/master/example/server/static
 
-If defined, Polaris locates an anchor's `stellar.toml` file under the app's `static/polaris` directory and caches the contents for future requests. For example_, the SDF's reference server takes this approach.
+If defined, Polaris locates an anchor's `stellar.toml` file under the app's `static/polaris` directory. For example_, the SDF's reference server takes this approach.
+
+Anchors can also add a `local-stellar.toml` file for Polaris to use when ``LOCAL_MODE`` is ``True``.
 
 Rendering a Dynamic TOML
 ^^^^^^^^^^^^^^^^^^^^^^^^

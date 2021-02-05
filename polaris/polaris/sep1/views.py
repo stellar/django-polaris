@@ -46,7 +46,11 @@ def generate_toml(_request: Request) -> Response:
     """Generate a TOML-formatted string"""
     if registered_toml_func is get_stellar_toml:
         # integration function is not used, check to see if a static file is defined
-        static_toml = finders.find("polaris/stellar.toml")
+        static_toml = None
+        if settings.LOCAL_MODE:
+            static_toml = finders.find("polaris/local-stellar.toml")
+        if not static_toml:
+            static_toml = finders.find("polaris/stellar.toml")
         if static_toml:
             with open(static_toml) as f:
                 return Response(f.read(), content_type="text/plain")
