@@ -1,4 +1,4 @@
-from typing import Dict, Tuple, Optional
+from typing import Dict, Tuple
 
 from django.utils.translation import gettext as _
 from rest_framework.request import Request
@@ -33,17 +33,11 @@ logger = getLogger(__name__)
 @parser_classes([MultiPartParser, FormParser, JSONParser])
 @renderer_classes([JSONRenderer, BrowsableAPIRenderer])
 @validate_sep10_token()
-def withdraw(
-    account: str, memo: Optional[str], memo_type: Optional[str], request: Request
-) -> Response:
+def withdraw(account: str, request: Request) -> Response:
     args = parse_request_args(request)
     if "error" in args:
         return args["error"]
     args["account"] = account
-    if not (memo == args["memo"] and memo_type == args["memo_type"]):
-        return render_error_response(
-            _("memo argument does not match memo of authenticated account"),
-        )
 
     transaction_id = create_transaction_id()
     transaction_id_hex = transaction_id.hex
@@ -52,8 +46,6 @@ def withdraw(
     transaction = Transaction(
         id=transaction_id,
         stellar_account=account,
-        account_memo=memo,
-        account_memo_type=memo_type,
         asset=args["asset"],
         kind=Transaction.KIND.withdrawal,
         status=Transaction.STATUS.pending_user_transfer_start,

@@ -9,12 +9,12 @@ from stellar_sdk.transaction_envelope import TransactionEnvelope
 
 def mock_check_auth_success(request, func, **kwargs):
     """Mocks `sep10.utils.check_auth`, for success."""
-    return func("test source address", None, None, request, **kwargs)
+    return func("test source address", request, **kwargs)
 
 
 def mock_check_auth_success_with_memo(request, func, **kwargs):
     """Mocks `sep10.utils.check_auth`, for success."""
-    return func("test source address", "test memo string", "text", request, **kwargs)
+    return func("test source address", request, **kwargs)
 
 
 def sep10(client, address, seed):

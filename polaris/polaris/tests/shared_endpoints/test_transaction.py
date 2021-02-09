@@ -7,7 +7,6 @@ import pytest
 from polaris.models import Transaction
 from polaris.tests.helpers import (
     mock_check_auth_success,
-    mock_check_auth_success_with_memo,
     sep10,
 )
 
@@ -309,31 +308,3 @@ def test_transaction_bad_uuid(client):
 
     assert response.status_code == 400
     assert content == {"error": "[\"'NOTAREALID' is not a valid UUID.\"]"}
-
-
-@pytest.mark.django_db
-@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-def test_transaction_with_memo_not_found(client, acc1_usd_deposit_transaction_factory):
-    tx = acc1_usd_deposit_transaction_factory()
-    tx.stellar_account = "test source address"
-    tx.account_memo = "test"
-    tx.account_memo_type = "text"
-    tx.save()
-
-    response = client.get(f"{endpoint}?id={tx.id}", follow=True)
-    assert response.status_code == 404
-    assert "error" in response.json()
-
-
-@pytest.mark.django_db
-@patch("polaris.sep10.utils.check_auth", mock_check_auth_success_with_memo)
-def test_transaction_with_memo_with_auth(client, acc1_usd_deposit_transaction_factory):
-    tx = acc1_usd_deposit_transaction_factory()
-    tx.stellar_account = "test source address"
-    tx.account_memo = "test memo string"
-    tx.account_memo_type = "text"
-    tx.save()
-
-    response = client.get(f"{endpoint}?id={tx.id}", follow=True)
-    assert response.status_code == 200
-    assert response.json()["transaction"]["id"] == str(tx.id)

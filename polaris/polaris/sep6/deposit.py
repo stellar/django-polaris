@@ -1,4 +1,4 @@
-from typing import Dict, Tuple, Optional
+from typing import Dict, Tuple
 
 from django.utils.translation import gettext as _
 from rest_framework.decorators import api_view, renderer_classes, parser_classes
@@ -34,9 +34,7 @@ logger = getLogger(__name__)
 @renderer_classes([JSONRenderer, BrowsableAPIRenderer])
 @parser_classes([MultiPartParser, FormParser, JSONParser])
 @validate_sep10_token()
-def deposit(
-    account: str, memo: Optional[str], memo_type: Optional[str], request: Request
-) -> Response:
+def deposit(account: str, request: Request) -> Response:
     args = parse_request_args(request)
     if "error" in args:
         return args["error"]
@@ -45,8 +43,6 @@ def deposit(
     transaction = Transaction(
         id=create_transaction_id(),
         stellar_account=account,
-        account_memo=memo,
-        account_memo_type=memo_type,
         asset=args["asset"],
         kind=Transaction.KIND.deposit,
         status=Transaction.STATUS.pending_user_transfer_start,

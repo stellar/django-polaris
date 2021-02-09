@@ -93,24 +93,6 @@ def test_put_memo(client):
     assert response.json() == {"id": "123"}
 
 
-@patch("polaris.sep12.customer.rci", mock_success_integration)
-@patch("polaris.sep10.utils.check_auth", mock_check_auth_success_with_memo)
-def test_put_memo_with_auth_memo(client):
-    response = client.put(
-        endpoint,
-        data={
-            "account": "test source address",
-            "memo": "test memo string",
-            "memo_type": "text",
-            "first_name": "Test",
-            "email_address": "test@example.com",
-        },
-        content_type="application/json",
-    )
-    assert response.status_code == 202
-    assert response.json() == {"id": "123"}
-
-
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 def test_put_bad_account(client):
     response = client.put(
@@ -197,23 +179,6 @@ def test_put_missing_memo_type(client):
         data={
             "account": "test source address",
             "memo": 123,
-            "first_name": "Test",
-            "email_address": "test@example.com",
-        },
-        content_type="application/json",
-    )
-    assert response.status_code == 400
-    assert "error" in response.json()
-
-
-@patch("polaris.sep10.utils.check_auth", mock_check_auth_success_with_memo)
-def test_request_memo_doesnt_match_auth_memo(client):
-    response = client.put(
-        endpoint,
-        data={
-            "account": "test source address",
-            "memo": "not gonna match",
-            "memo_type": "text",
             "first_name": "Test",
             "email_address": "test@example.com",
         },
@@ -452,49 +417,6 @@ def test_no_description_needs_info(client):
     assert response.status_code == 500
 
 
-@patch("polaris.sep10.utils.check_auth", mock_check_auth_success_with_memo)
-def test_get_no_request_memo_with_auth_memo(client):
-    response = client.get(
-        endpoint + "?" + urlencode({"account": "test source address"})
-    )
-    assert response.status_code == 400
-    assert "memo argument does not match" in response.json()["error"]
-
-
-@patch("polaris.sep10.utils.check_auth", mock_check_auth_success_with_memo)
-def test_get_bad_request_memo_with_auth_memo(client):
-    response = client.get(
-        endpoint
-        + "?"
-        + urlencode(
-            {
-                "account": "test source address",
-                "memo": "not gonna match",
-                "memo_type": "text",
-            }
-        )
-    )
-    assert response.status_code == 400
-    assert "memo argument does not match" in response.json()["error"]
-
-
-@patch("polaris.sep12.customer.rci.get", mock_get_accepted)
-@patch("polaris.sep10.utils.check_auth", mock_check_auth_success_with_memo)
-def test_good_request_memo_with_auth_memo(client):
-    response = client.get(
-        endpoint
-        + "?"
-        + urlencode(
-            {
-                "account": "test source address",
-                "memo": "test memo string",
-                "memo_type": "text",
-            }
-        )
-    )
-    assert response.status_code == 200
-
-
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 def test_delete_success(client):
     response = client.delete("/".join([endpoint, "test source address"]))
@@ -530,9 +452,9 @@ def test_delete_memo_customer(mock_delete, client):
     mock_delete.assert_called_with("test source address", "test memo string", "text")
 
 
-@patch("polaris.sep10.utils.check_auth", mock_check_auth_success_with_memo)
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 @patch("polaris.sep12.customer.rci.delete")
-def test_delete_memo_customer_with_auth_memo(mock_delete, client):
+def test_delete_memo_customer_with_memo(mock_delete, client):
     response = client.delete(
         "/".join([endpoint, "test source address"]),
         data={"memo": "test memo string", "memo_type": "text"},
@@ -557,14 +479,3 @@ def test_delete_memo_not_found(client):
     mock_bad_delete.assert_called_with(
         "test source address", "test memo string", "text"
     )
-
-
-@patch("polaris.sep10.utils.check_auth", mock_check_auth_success_with_memo)
-def test_delete_memo_doesnt_match(client):
-    response = client.delete(
-        "/".join([endpoint, "test source address"]),
-        data={"memo": "not gonna match memo", "memo_type": "text"},
-        content_type="application/json",
-    )
-    assert response.status_code == 400
-    assert "memo argument does not match" in response.json()["error"]

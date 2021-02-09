@@ -4,7 +4,6 @@ This lets a user initiate a deposit of an asset into their Stellar account.
 """
 from decimal import Decimal, DecimalException
 from urllib.parse import urlencode
-from typing import Optional
 
 from django.urls import reverse
 from django.core.exceptions import ValidationError
@@ -316,9 +315,7 @@ def get_interactive_deposit(request: Request) -> Response:
 @renderer_classes([JSONRenderer, BrowsableAPIRenderer])
 @parser_classes([MultiPartParser, FormParser, JSONParser])
 @validate_sep10_token()
-def deposit(
-    account: str, memo: Optional[str], memo_type: Optional[str], request: Request
-) -> Response:
+def deposit(account: str, request: Request) -> Response:
     """
     POST /transactions/deposit/interactive
 
@@ -384,11 +381,7 @@ def deposit(
 
     try:
         rdi.save_sep9_fields(
-            stellar_account,
-            sep9_fields,
-            lang,
-            account_memo=memo,
-            account_memo_type=memo_type,
+            stellar_account, sep9_fields, lang,
         )
     except ValueError as e:
         # The anchor found a validation error in the sep-9 fields POSTed by
@@ -401,8 +394,6 @@ def deposit(
     Transaction.objects.create(
         id=transaction_id,
         stellar_account=account,
-        account_memo=memo,
-        account_memo_type=memo_type,
         asset=asset,
         kind=Transaction.KIND.deposit,
         status=Transaction.STATUS.incomplete,
@@ -418,8 +409,6 @@ def deposit(
         request,
         str(transaction_id),
         account,
-        memo,
-        memo_type,
         asset_code,
         settings.OPERATION_DEPOSIT,
         amount,

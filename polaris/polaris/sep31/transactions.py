@@ -10,7 +10,7 @@ from rest_framework.views import APIView
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.renderers import JSONRenderer, BrowsableAPIRenderer
-from rest_framework.parsers import JSONParser, FormParser, MultiPartParser
+from rest_framework.parsers import JSONParser
 
 from polaris.locale.utils import _is_supported_language, activate_lang_for_request
 from polaris.sep10.utils import validate_sep10_token
@@ -33,13 +33,7 @@ class TransactionsAPIView(APIView):
 
     @staticmethod
     @validate_sep10_token()
-    def get(
-        account: str,
-        _memo: Optional[str],
-        _memo_type: Optional[str],
-        _request: Request,
-        transaction_id: str = None,
-    ) -> Response:
+    def get(account: str, _request: Request, transaction_id: str = None,) -> Response:
         if not transaction_id:
             return render_error_response(
                 _("GET requests must include a transaction ID in the URI"),
@@ -60,13 +54,7 @@ class TransactionsAPIView(APIView):
 
     @staticmethod
     @validate_sep10_token()
-    def patch(
-        account: str,
-        _memo: Optional[str],
-        _memo_type: Optional[str],
-        request: Request,
-        transaction_id: str = None,
-    ) -> Response:
+    def patch(account: str, request: Request, transaction_id: str = None,) -> Response:
         if not transaction_id:
             return render_error_response(
                 _("PATCH requests must include a transaction ID in the URI"),
@@ -102,11 +90,7 @@ class TransactionsAPIView(APIView):
     @staticmethod
     @validate_sep10_token()
     def post(
-        account: str,
-        _memo: Optional[str],
-        _memo_type: Optional[str],
-        request: Request,
-        **kwargs,
+        account: str, request: Request, **kwargs,
     ):
         if kwargs:
             return render_error_response(

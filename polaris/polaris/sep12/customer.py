@@ -1,4 +1,4 @@
-from typing import Dict, Optional
+from typing import Dict
 from polaris.utils import getLogger
 
 from django.utils.translation import gettext as _
@@ -24,9 +24,7 @@ class CustomerAPIView(APIView):
 
     @staticmethod
     @validate_sep10_token()
-    def get(
-        account: str, memo: Optional[str], memo_type: Optional[str], request: Request
-    ) -> Response:
+    def get(account: str, request: Request) -> Response:
         if request.GET.get("account") and account != request.GET.get("account"):
             return render_error_response(
                 _("The account specified does not match authorization token"),
@@ -42,19 +40,12 @@ class CustomerAPIView(APIView):
                     "requests with 'id' cannot also have 'account', 'memo', or 'memo_type'"
                 )
             )
-        elif memo and (
-            memo != request.GET.get("memo") or memo_type != request.GET.get("memo_type")
-        ):
-            return render_error_response(
-                _("memo argument does not match memo of authenticated account")
-            )
 
-        if not memo and (request.GET.get("memo") or request.GET.get("memo_type")):
-            try:
-                # validate memo and memo_type
-                make_memo(request.GET.get("memo"), request.GET.get("memo_type"))
-            except ValueError:
-                return render_error_response(_("invalid 'memo' for 'memo_type'"))
+        try:
+            # validate memo and memo_type
+            make_memo(request.GET.get("memo"), request.GET.get("memo_type"))
+        except ValueError:
+            return render_error_response(_("invalid 'memo' for 'memo_type'"))
 
         try:
             response_data = rci.get(
@@ -87,9 +78,7 @@ class CustomerAPIView(APIView):
 
     @staticmethod
     @validate_sep10_token()
-    def put(
-        account: str, memo: Optional[str], memo_type: Optional[str], request: Request
-    ) -> Response:
+    def put(account: str, request: Request) -> Response:
         if request.data.get("id"):
             if not isinstance(request.data.get("id"), str):
                 return render_error_response(_("bad ID value, expected str"))
@@ -108,20 +97,12 @@ class CustomerAPIView(APIView):
                 _("The account specified does not match authorization token"),
                 status_code=403,
             )
-        elif memo and (
-            memo != request.data.get("memo")
-            or memo_type != request.data.get("memo_type")
-        ):
-            return render_error_response(
-                _("memo argument does not match memo of authenticated account")
-            )
 
-        if not memo and (request.data.get("memo") or request.data.get("memo_type")):
-            try:
-                # validate memo and memo_type
-                make_memo(request.data.get("memo"), request.data.get("memo_type"))
-            except ValueError:
-                return render_error_response(_("invalid 'memo' for 'memo_type'"))
+        try:
+            # validate memo and memo_type
+            make_memo(request.data.get("memo"), request.data.get("memo_type"))
+        except ValueError:
+            return render_error_response(_("invalid 'memo' for 'memo_type'"))
 
         try:
             customer_id = rci.put(
@@ -151,26 +132,13 @@ class CustomerAPIView(APIView):
 @renderer_classes([JSONRenderer, BrowsableAPIRenderer])
 @parser_classes([MultiPartParser, FormParser, JSONParser])
 @validate_sep10_token()
-def delete(
-    account_from_auth: str,
-    memo: Optional[str],
-    memo_type: Optional[str],
-    request: Request,
-    account: str,
-) -> Response:
+def delete(account_from_auth: str, request: Request, account: str,) -> Response:
     if account_from_auth != account:
         return render_error_response(_("account not found"), status_code=404)
-    elif memo and (
-        memo != request.data.get("memo") or memo_type != request.data.get("memo_type")
-    ):
-        return render_error_response(
-            _("memo argument does not match memo of authenticated account")
-        )
-    elif not memo and (request.data.get("memo") or request.data.get("memo_type")):
-        try:
-            make_memo(request.data.get("memo"), request.data.get("memo_type"))
-        except ValueError:
-            return render_error_response(_("invalid 'memo' for 'memo_type'"))
+    try:
+        make_memo(request.data.get("memo"), request.data.get("memo_type"))
+    except ValueError:
+        return render_error_response(_("invalid 'memo' for 'memo_type'"))
     try:
         rci.delete(account, request.data.get("memo"), request.data.get("memo_type"))
     except ObjectDoesNotExist:

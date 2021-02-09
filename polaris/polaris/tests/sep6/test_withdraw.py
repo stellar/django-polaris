@@ -6,10 +6,7 @@ from unittest.mock import patch
 from stellar_sdk.keypair import Keypair
 
 from polaris.tests.conftest import USD_DISTRIBUTION_SEED
-from polaris.tests.helpers import (
-    mock_check_auth_success,
-    mock_check_auth_success_with_memo,
-)
+from polaris.tests.helpers import mock_check_auth_success
 from polaris.integrations import WithdrawalIntegration
 from polaris.models import Transaction
 
@@ -323,98 +320,3 @@ def test_saved_transaction_on_failure_response(client, usd_asset_factory):
         },
     )
     assert response.status_code == 500
-
-
-@pytest.mark.django_db
-@patch("polaris.sep10.utils.check_auth", mock_check_auth_success_with_memo)
-def test_no_request_memo_provided_with_auth_memo(client, usd_asset_factory):
-    asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep6])
-    response = client.get(
-        WITHDRAW_PATH,
-        {
-            "asset_code": asset.code,
-            "type": "bank_account",
-            "dest": "test bank account number",
-        },
-    )
-    assert response.status_code == 400
-    assert (
-        "memo argument does not match memo of authenticated account"
-        == response.json()["error"]
-    )
-
-
-@pytest.mark.django_db
-@patch("polaris.sep10.utils.check_auth", mock_check_auth_success_with_memo)
-def test_request_memo_doesnt_match_auth_memo(client, usd_asset_factory):
-    asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep6])
-    response = client.get(
-        WITHDRAW_PATH,
-        {
-            "asset_code": asset.code,
-            "type": "bank_account",
-            "dest": "test bank account number",
-            "memo": "not gonna match memo",
-            "memo_type": "text",
-        },
-    )
-    assert response.status_code == 400
-    assert (
-        "memo argument does not match memo of authenticated account"
-        == response.json()["error"]
-    )
-
-
-@pytest.mark.django_db
-@patch("polaris.sep10.utils.check_auth", mock_check_auth_success_with_memo)
-def test_request_missing_memo_with_auth_memo(client, usd_asset_factory):
-    asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep6])
-    response = client.get(
-        WITHDRAW_PATH,
-        {
-            "asset_code": asset.code,
-            "type": "bank_account",
-            "dest": "test bank account number",
-            "memo_type": "text",
-        },
-    )
-    assert response.status_code == 400
-    assert "invalid 'memo' for 'memo_type'" == response.json()["error"]
-
-
-@pytest.mark.django_db
-@patch("polaris.sep10.utils.check_auth", mock_check_auth_success_with_memo)
-def test_request_missing_memo_type_with_auth_memo(client, usd_asset_factory):
-    asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep6])
-    response = client.get(
-        WITHDRAW_PATH,
-        {
-            "asset_code": asset.code,
-            "type": "bank_account",
-            "dest": "test bank account number",
-            "memo": "test memo string",
-        },
-    )
-    assert response.status_code == 400
-    assert "invalid 'memo' for 'memo_type'" == response.json()["error"]
-
-
-@pytest.mark.django_db
-@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-def test_request_memo_without_auth_memo(client, usd_asset_factory):
-    asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep6])
-    response = client.get(
-        WITHDRAW_PATH,
-        {
-            "asset_code": asset.code,
-            "type": "bank_account",
-            "dest": "test bank account number",
-            "memo": "test memo string",
-            "memo_type": "text",
-        },
-    )
-    assert response.status_code == 400
-    assert (
-        "memo argument does not match memo of authenticated account"
-        == response.json()["error"]
-    )
