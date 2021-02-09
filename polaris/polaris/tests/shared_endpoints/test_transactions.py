@@ -438,31 +438,3 @@ def test_transactions_no_jwt(client, acc2_eth_withdrawal_transaction_factory):
     content = json.loads(response.content)
     assert response.status_code == 403
     assert content == {"error": "JWT must be passed as 'Authorization' header"}
-
-
-@pytest.mark.django_db
-@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-def test_transaction_with_memo_not_found(client, acc1_usd_deposit_transaction_factory):
-    tx = acc1_usd_deposit_transaction_factory()
-    tx.stellar_account = "test source address"
-    tx.account_memo = "test"
-    tx.account_memo_type = "text"
-    tx.save()
-
-    response = client.get(f"{endpoint}?asset_code={tx.asset.code}", follow=True)
-    assert response.status_code == 200
-    assert response.json()["transactions"] == []
-
-
-@pytest.mark.django_db
-@patch("polaris.sep10.utils.check_auth", mock_check_auth_success_with_memo)
-def test_transaction_with_memo_with_auth(client, acc1_usd_deposit_transaction_factory):
-    tx = acc1_usd_deposit_transaction_factory()
-    tx.stellar_account = "test source address"
-    tx.account_memo = "test memo string"
-    tx.account_memo_type = "text"
-    tx.save()
-
-    response = client.get(f"{endpoint}?asset_code={tx.asset.code}", follow=True)
-    assert response.status_code == 200
-    assert response.json()["transactions"][0]["id"] == str(tx.id)

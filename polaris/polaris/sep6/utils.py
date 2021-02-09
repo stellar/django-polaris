@@ -43,11 +43,7 @@ def validate_403_response(integration_response: Dict, transaction: Transaction) 
             logger.error("Invalid 'status' returned from process_sep6_request()")
             raise ValueError()
         response["status"] = integration_response["status"]
-        more_info_url = rci.more_info_url(
-            transaction.stellar_account,
-            transaction.account_memo,
-            transaction.account_memo_type,
-        )
+        more_info_url = rci.more_info_url(transaction.stellar_account)
         if more_info_url:
             response["more_info_url"] = more_info_url
 

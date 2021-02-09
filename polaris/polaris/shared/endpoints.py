@@ -75,13 +75,7 @@ def more_info(request: Request, sep6: bool = False) -> Response:
     return Response(context, template_name="polaris/more_info.html")
 
 
-def transactions(
-    request: Request,
-    account: str,
-    memo: Optional[str],
-    memo_type: Optional[str],
-    sep6: bool = False,
-) -> Response:
+def transactions(request: Request, account: str, sep6: bool = False,) -> Response:
     try:
         limit = _validate_limit(request.GET.get("limit"))
     except ValueError:
@@ -105,8 +99,6 @@ def transactions(
 
     qset_filter = _compute_qset_filters(request.GET, translation_dict)
     qset_filter["stellar_account"] = account
-    qset_filter["account_memo"] = memo
-    qset_filter["account_memo_type"] = memo_type
 
     # Since the Transaction IDs are UUIDs, rather than in the chronological
     # order of their creation, we map the paging ID (if provided) to the
@@ -135,20 +127,10 @@ def transactions(
     return Response({"transactions": serializer.data})
 
 
-def transaction(
-    request: Request,
-    account: str,
-    memo: Optional[str],
-    memo_type: Optional[str],
-    sep6: bool = False,
-) -> Response:
+def transaction(request: Request, account: str, sep6: bool = False,) -> Response:
     try:
         request_transaction = _get_transaction_from_request(
-            request,
-            account=account,
-            account_memo=memo,
-            account_memo_type=memo_type,
-            sep6=sep6,
+            request, account=account, sep6=sep6,
         )
     except (AttributeError, ValidationError) as exc:
         return render_error_response(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
@@ -241,11 +223,7 @@ def _compute_qset_filters(req_params, translation_dict):
 
 
 def _get_transaction_from_request(
-    request,
-    account: str = None,
-    account_memo: Optional[str] = None,
-    account_memo_type: Optional[str] = None,
-    sep6: bool = False,
+    request, account: str = None, sep6: bool = False,
 ):
     translation_dict = {
         "id": "id",
@@ -264,8 +242,6 @@ def _get_transaction_from_request(
 
     if account:
         qset_filter["stellar_account"] = account
-        qset_filter["account_memo"] = account_memo
-        qset_filter["account_memo_type"] = account_memo_type
 
     protocol = Transaction.PROTOCOL.sep6 if sep6 else Transaction.PROTOCOL.sep24
     return Transaction.objects.get(protocol=protocol, **qset_filter)

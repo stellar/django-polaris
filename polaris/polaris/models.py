@@ -370,17 +370,6 @@ class Transaction(models.Model):
     stellar_account = models.TextField(validators=[MinLengthValidator(1)])
     """The stellar source account for the transaction."""
 
-    account_memo = models.TextField(null=True, blank=True)
-    """
-    The memo used to uniquely identify the user if `stellar_account` is shared 
-    by many users.
-    """
-
-    account_memo_type = models.CharField(
-        choices=MEMO_TYPES, max_length=10, null=True, blank=True
-    )
-    """The memo type of `account_memo`. One of text, id, or hash"""
-
     asset = models.ForeignKey("Asset", on_delete=models.CASCADE)
     """The Django foreign key to the associated :class:`Asset`"""
 

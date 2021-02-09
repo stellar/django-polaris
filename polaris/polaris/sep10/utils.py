@@ -8,10 +8,9 @@ from jwt.exceptions import InvalidTokenError
 from rest_framework import status
 from rest_framework.request import Request
 from rest_framework.response import Response
-from stellar_sdk.exceptions import MemoInvalidException
 
 from polaris import settings
-from polaris.utils import render_error_response, make_memo
+from polaris.utils import render_error_response
 
 
 def check_auth(request, func, *args, **kwargs):
@@ -20,13 +19,13 @@ def check_auth(request, func, *args, **kwargs):
     Else call the original view function.
     """
     try:
-        account, memo, memo_type = validate_jwt_request(request)
+        account = validate_jwt_request(request)
     except ValueError as e:
         if "sep6/" in request.path:
             return Response({"type": "authentication_required"}, status=403)
         else:
             return render_error_response(str(e), status_code=status.HTTP_403_FORBIDDEN)
-    return func(account, memo, memo_type, request, *args, **kwargs)
+    return func(account, request, *args, **kwargs)
 
 
 def validate_sep10_token():
@@ -77,13 +76,7 @@ def validate_jwt_request(request: Request) -> Tuple[str, Optional[str], Optional
     if current_time < jwt_dict["iat"] or current_time > jwt_dict["exp"]:
         raise ValueError(_("jwt is no longer valid"))
 
-    if jwt_dict.get("memo") or jwt_dict.get("memo_type"):
-        try:
-            make_memo(jwt_dict.get("memo"), jwt_dict.get("memo_type"))
-        except (ValueError, MemoInvalidException):
-            raise ValueError(_("invalid jwt memo and memo_type"))
-
     try:
-        return jwt_dict["sub"], jwt_dict.get("memo"), jwt_dict.get("memo_type")
+        return jwt_dict["sub"]
     except KeyError:
         raise ValueError(_("decoded jwt missing 'sub' field"))

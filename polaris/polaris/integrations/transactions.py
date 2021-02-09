@@ -241,20 +241,16 @@ class DepositIntegration:
         account_memo_type: Optional[str] = None,
     ):
         """
-        Save the `fields` passed for the user identified by
-        (`stellar_account`, `account_memo`, and `account_memo_type`) to pre-populate the
-        forms returned from ``form_for_transaction()``. Note that this function is called
+        Save the `fields` passed for the user identified by `stellar_account` to pre-populate
+        the forms returned from ``form_for_transaction()``. Note that this function is called
         before the transaction is created.
-
-        `account_memo` and `account_memo_type` will only be passed if `stellar_account` is
-        shared by many users.
 
         For example, you could save the user's contact information with the model used
         for KYC information.
         ::
 
             # Assuming you have a similar method and model
-            user = user_for_account(stellar_account, account_memo, account_memo_type)
+            user = user_for_account(stellar_account)
             user.phone_number = fields.get('mobile_number')
             user.email = fields.get('email_address')
             user.save()
@@ -264,11 +260,7 @@ class DepositIntegration:
         ::
 
             # In your form_for_transaction() implementation
-            user = user_for_account(
-                transaction.stellar_account,
-                transaction.account_memo,
-                transaction.account_memo_type
-            )
+            user = user_for_account(transaction.stellar_account)
             form_args = {
                 'phone_number': format_number(user.phone_number),
                 'email': user.email_address
