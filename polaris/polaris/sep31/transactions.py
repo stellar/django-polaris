@@ -162,7 +162,7 @@ class TransactionsAPIView(APIView):
         else:
             transaction.save()
 
-        return Response(response_data, status=400 if "error" in response_data else 200)
+        return Response(response_data, status=400 if "error" in response_data else 201)
 
 
 def validate_post_request(request: Request) -> Dict:

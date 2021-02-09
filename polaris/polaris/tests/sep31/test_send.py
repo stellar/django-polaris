@@ -45,7 +45,7 @@ def test_successful_send(client, usd_asset_factory):
         content_type="application/json",
     )
     body = response.json()
-    assert response.status_code == 200
+    assert response.status_code == 201
     assert all(
         f in body
         for f in ["id", "stellar_account_id", "stellar_memo_type", "stellar_memo"]
@@ -140,7 +140,7 @@ def test_extra_field(client, usd_asset_factory):
         },
         content_type="application/json",
     )
-    assert response.status_code == 200
+    assert response.status_code == 201
 
 
 @pytest.mark.django_db
@@ -329,7 +329,7 @@ def test_transaction_created(client, usd_asset_factory):
     )
     body = response.json()
     t = Transaction.objects.filter(id=body["id"]).first()
-    assert response.status_code == 200
+    assert response.status_code == 201
     assert t
     assert t.amount_in == 100
     assert t.stellar_account == "test source address"
