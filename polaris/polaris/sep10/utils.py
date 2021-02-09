@@ -1,7 +1,6 @@
 import jwt
 import time
 import os
-from typing import Tuple, Optional
 
 from django.utils.translation import gettext as _
 from jwt.exceptions import InvalidTokenError
@@ -40,7 +39,7 @@ def validate_sep10_token():
     return decorator
 
 
-def validate_jwt_request(request: Request) -> Tuple[str, Optional[str], Optional[str]]:
+def validate_jwt_request(request: Request) -> str:
     """
     Validate the JSON web token in a request and return the source account address
 

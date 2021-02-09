@@ -144,10 +144,6 @@ class SEP10Auth(APIView):
             logger.warning(
                 "Account does not exist, using client's master key to verify"
             )
-            if not isinstance(tx_envelope.transaction.memo, NoneMemo):
-                raise ValueError(
-                    "Challenge transaction for non-existent account cannot have a memo"
-                )
             try:
                 verify_challenge_transaction_signed_by_client_master_key(
                     challenge_transaction=envelope_xdr,
@@ -169,9 +165,6 @@ class SEP10Auth(APIView):
             else:
                 logger.info("Challenge verified using client's master key")
                 return
-
-        if isinstance(tx_envelope.transaction.memo, ReturnHashMemo):
-            raise ValueError(gettext("invalid 'memo_type'"))
 
         signers = account.load_ed25519_public_key_signers()
         threshold = account.thresholds.med_threshold
