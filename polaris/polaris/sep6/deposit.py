@@ -39,11 +39,7 @@ logger = getLogger(__name__)
 @renderer_classes([JSONRenderer, BrowsableAPIRenderer])
 @parser_classes([MultiPartParser, FormParser, JSONParser])
 @validate_sep10_token()
-def deposit(
-    account: str,
-    client_domain: Optional[str],
-    request: Request,
-) -> Response:
+def deposit(account: str, client_domain: Optional[str], request: Request,) -> Response:
     args = parse_request_args(request)
     if "error" in args:
         return args["error"]

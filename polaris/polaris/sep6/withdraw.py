@@ -38,11 +38,7 @@ logger = getLogger(__name__)
 @parser_classes([MultiPartParser, FormParser, JSONParser])
 @renderer_classes([JSONRenderer, BrowsableAPIRenderer])
 @validate_sep10_token()
-def withdraw(
-    account: str,
-    client_domain: Optional[str],
-    request: Request,
-) -> Response:
+def withdraw(account: str, client_domain: Optional[str], request: Request,) -> Response:
     args = parse_request_args(request)
     if "error" in args:
         return args["error"]

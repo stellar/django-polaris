@@ -100,10 +100,7 @@ class TransactionsAPIView(APIView):
     @staticmethod
     @validate_sep10_token()
     def post(
-        account: str,
-        client_domain: Optional[str],
-        request: Request,
-        **kwargs,
+        account: str, client_domain: Optional[str], request: Request, **kwargs,
     ):
         if kwargs:
             return render_error_response(

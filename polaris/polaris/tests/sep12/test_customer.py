@@ -1,9 +1,7 @@
 from django.core.exceptions import ObjectDoesNotExist
 from unittest.mock import Mock, patch
 from urllib.parse import urlencode
-from polaris.tests.helpers import (
-    mock_check_auth_success,
-)
+from polaris.tests.helpers import mock_check_auth_success
 from stellar_sdk.keypair import Keypair
 
 

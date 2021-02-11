@@ -117,7 +117,9 @@ class SEP10Auth(APIView):
                 return render_error_response(str(e), status_code=424)
 
         try:
-            transaction = self._challenge_transaction(account, home_domain, client_domain, client_signing_key)
+            transaction = self._challenge_transaction(
+                account, home_domain, client_domain, client_signing_key
+            )
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 

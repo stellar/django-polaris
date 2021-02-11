@@ -32,9 +32,7 @@ def more_info(request: Request) -> Response:
 @renderer_classes([JSONRenderer, BrowsableAPIRenderer])
 @validate_sep10_token()
 def transactions(
-    account: str,
-    _client_domain: Optional[str],
-    request: Request,
+    account: str, _client_domain: Optional[str], request: Request,
 ) -> Response:
     """
     Definition of the /transactions endpoint, in accordance with SEP-0006.
@@ -52,9 +50,7 @@ def transactions(
 @renderer_classes([JSONRenderer, BrowsableAPIRenderer])
 @validate_sep10_token()
 def transaction(
-    account: str,
-    _client_domain: Optional[str],
-    request: Request,
+    account: str, _client_domain: Optional[str], request: Request,
 ) -> Response:
     """
     Definition of the /transaction endpoint, in accordance with SEP-0006.

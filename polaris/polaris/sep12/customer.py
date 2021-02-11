@@ -198,7 +198,12 @@ def callback(account: str, request: Request) -> Response:
 @renderer_classes([JSONRenderer, BrowsableAPIRenderer])
 @parser_classes([MultiPartParser, FormParser, JSONParser])
 @validate_sep10_token()
-def delete(account_from_auth: str, _client_domain: Optional[str], request: Request, account: str,) -> Response:
+def delete(
+    account_from_auth: str,
+    _client_domain: Optional[str],
+    request: Request,
+    account: str,
+) -> Response:
     if account_from_auth != account:
         return render_error_response(_("account not found"), status_code=404)
     try:
