@@ -62,8 +62,8 @@ def test_process_response_success(client):
     Command.process_response(json, TEST_ASSET_DISTRIBUTION_PUBLIC_KEY)
 
     transaction.refresh_from_db()
-    assert transaction.from_address
-    assert transaction.stellar_transaction_id
+    assert transaction.from_address == SUCCESS_PAYMENT_TRANSACTION_JSON["source"]
+    assert transaction.stellar_transaction_id == SUCCESS_PAYMENT_TRANSACTION_JSON["id"]
     assert transaction.status_eta == 0
     assert transaction.paging_token
     assert transaction.status == Transaction.STATUS.pending_anchor
