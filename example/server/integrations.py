@@ -87,21 +87,14 @@ class SEP24KYC:
                 )
 
             account = PolarisStellarAccount.objects.create(
-                account=transaction.stellar_account,
-                user=user,
-                memo=transaction.account_memo,
-                memo_type=transaction.account_memo_type,
+                account=transaction.stellar_account, user=user,
             )
             if server_settings.EMAIL_HOST_USER:
                 send_confirmation_email(user, account)
         else:
             try:
-                # Look for an account that uses this address but doesn't have a
-                # memo, which means its a SEP-24 or SEP-6 Polaris account.
                 account = PolarisStellarAccount.objects.get(
                     account=transaction.stellar_account,
-                    memo=transaction.account_memo,
-                    memo_type=transaction.account_memo_type,
                 )
             except PolarisStellarAccount.DoesNotExist:
                 raise RuntimeError(
@@ -122,8 +115,6 @@ class SEP24KYC:
         """
         account = PolarisStellarAccount.objects.filter(
             account=transaction.stellar_account,
-            memo=transaction.account_memo,
-            memo_type=transaction.account_memo_type,
         ).first()
         if not account:  # Unknown stellar account, get KYC info
             if post_data:
