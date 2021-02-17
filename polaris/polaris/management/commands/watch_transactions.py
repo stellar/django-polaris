@@ -195,7 +195,7 @@ class Command(BaseCommand):
                     transaction,
                     response["id"],
                     response["paging_token"],
-                    ops[idx].source or horizon_tx.source,
+                    ops[idx].source or horizon_tx.source.public_key,
                 )
                 matching_payment_data = maybe_payment_data
                 break
