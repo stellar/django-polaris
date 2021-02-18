@@ -14,12 +14,22 @@ success_info_response = Mock(
                     "bank_account": {
                         "description": "bank account",
                         "choices": ["test1"],
-                        "optional": False,
                     }
                 },
             },
-            "sender_sep12_type": "sep31-sender",
-            "receiver_sep12_type": "sep31-receiver",
+            "sep12": {
+                "sender": {"types": {}},
+                "receiver": {
+                    "types": {
+                        "sep31-receiver-cash-out": {
+                            "description": "customer using physical cash out locations"
+                        },
+                        "sep31-receiver-bank-transfer": {
+                            "description": "customers who want direct bank deposits and withdraws"
+                        },
+                    }
+                },
+            },
         }
     ),
 )
@@ -39,9 +49,8 @@ def test_success_response(client, usd_asset_factory):
         "fee_fixed": asset.send_fee_fixed,
         "min_amount": asset.send_min_amount,
         "max_amount": asset.send_max_amount,
-        "sender_sep12_type": "sep31-sender",
-        "receiver_sep12_type": "sep31-receiver",
         "fields": success_info_response.info()["fields"],
+        "sep12": success_info_response.info()["sep12"],
     }
 
 
@@ -60,9 +69,8 @@ def test_empty_response():
         validate_info_response({})
 
 
-def test_empty_fields():
-    # this should pass
-    validate_info_response({"fields": {}})
+def test_empty_fields_and_types():
+    validate_info_response({"fields": {}, "sep12": {"sender": {}, "receiver": {}}})
 
 
 def test_extra_category():
@@ -73,8 +81,13 @@ def test_extra_category():
 
 
 def test_bad_category_value():
-    with pytest.raises(ValueError, match="bad type in info response"):
-        validate_info_response({"fields": {"transaction": "not a dict"}})
+    with pytest.raises(ValueError, match="fields key value must be a dict"):
+        validate_info_response(
+            {
+                "fields": {"transaction": "not a dict"},
+                "sep12": {"sender": {}, "receiver": {}},
+            }
+        )
 
 
 def test_bad_fields_value_type():
@@ -82,14 +95,20 @@ def test_bad_fields_value_type():
         ValueError, match="field value must be a dict, got <class 'str'>"
     ):
         validate_info_response(
-            {"fields": {"transaction": {"field": "should be a dict"}}}
+            {
+                "fields": {"transaction": {"field": "should be a dict"}},
+                "sep12": {"sender": {}, "receiver": {}},
+            }
         )
 
 
 def test_missing_description_key():
     with pytest.raises(ValueError, match="'fields' dict must contain 'description'"):
         validate_info_response(
-            {"fields": {"transaction": {"field": {"not description": "value"}}}}
+            {
+                "fields": {"transaction": {"field": {"not description": "value"}}},
+                "sep12": {"sender": {}, "receiver": {}},
+            }
         )
 
 
@@ -101,7 +120,8 @@ def test_extra_fields_key():
                     "transaction": {
                         "field": {"description": "description", "extra": "value"}
                     }
-                }
+                },
+                "sep12": {"sender": {}, "receiver": {}},
             }
         )
 
@@ -112,9 +132,10 @@ def test_bad_optional_type():
             {
                 "fields": {
                     "transaction": {
-                        "field": {"description": "description", "optional": "not bool"}
+                        "field": {"description": "description", "optional": "not bool"},
                     }
-                }
+                },
+                "sep12": {"sender": {}, "receiver": {}},
             }
         )
 
@@ -125,8 +146,77 @@ def test_bad_choices_type():
             {
                 "fields": {
                     "transaction": {
-                        "field": {"description": "description", "choices": "not a list"}
+                        "field": {
+                            "description": "description",
+                            "choices": "not a list",
+                        },
                     }
+                },
+                "sep12": {"sender": {}, "receiver": {}},
+            }
+        )
+
+
+def test_missing_sep12_object():
+    with pytest.raises(ValueError, match="missing sep12 object in info response"):
+        validate_info_response({"fields": {}})
+
+
+def test_missing_sender_key():
+    with pytest.raises(
+        ValueError, match="sender and/or receiver object missing in sep12 object"
+    ):
+        validate_info_response({"fields": {}, "sep12": {"receiver": {}}})
+
+
+def test_bad_sender_type():
+    with pytest.raises(ValueError, match="types key value must be an dict"):
+        validate_info_response(
+            {"fields": {}, "sep12": {"receiver": {}, "sender": {"types": "not a dict"}}}
+        )
+
+
+def test_bad_sender_type_value():
+    with pytest.raises(
+        ValueError, match="sep31-sender value must be a dict, got <class 'str'>"
+    ):
+        validate_info_response(
+            {
+                "fields": {},
+                "sep12": {
+                    "receiver": {},
+                    "sender": {"types": {"sep31-sender": "test"}},
                 },
             }
         )
+
+
+def test_bad_sender_type_missing_description():
+    with pytest.raises(
+        ValueError, match="sep31-sender dict must contain a description"
+    ):
+        validate_info_response(
+            {
+                "fields": {},
+                "sep12": {"receiver": {}, "sender": {"types": {"sep31-sender": {}}}},
+            }
+        )
+
+
+def test_bad_sender_type_description_type():
+    with pytest.raises(
+        ValueError, match="sep31-sender description must be a human-readable string"
+    ):
+        validate_info_response(
+            {
+                "fields": {},
+                "sep12": {
+                    "receiver": {},
+                    "sender": {"types": {"sep31-sender": {"description": {}}}},
+                },
+            }
+        )
+
+
+def test_sender_sep12_type_still_supported():
+    validate_info_response({"fields": {}, "sender_sep12_type": "test"})

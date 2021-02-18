@@ -583,8 +583,22 @@ class MyCustomerIntegration(CustomerIntegration):
 class MySEP31ReceiverIntegration(SEP31ReceiverIntegration):
     def info(self, asset: Asset, lang: Optional[str] = None):
         return {
-            "sender_sep12_type": "sep31-sender",
-            "receiver_sep12_type": "sep31-receiver",
+            "sep12": {
+                "sender": {
+                    "types": {
+                        "sep31-sender": {
+                            "description": "the basic type for sending customers"
+                        }
+                    }
+                },
+                "receiver": {
+                    "types": {
+                        "sep31-receiver": {
+                            "description": "the basic type for receiving customers"
+                        }
+                    }
+                },
+            },
             "fields": {
                 "transaction": {
                     "routing_number": {
