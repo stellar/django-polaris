@@ -43,13 +43,36 @@ def info(request: Request) -> Response:
 def validate_info_response(fields_and_types: Dict):
     if not isinstance(fields_and_types, dict):
         raise ValueError("info integration must return a dictionary")
-    elif not all(f in ["fields", "sep12"] for f in fields_and_types.keys()):
+    elif not all(
+        f in ["fields", "sep12", "sender_sep12_type", "receiver_sep12_type"]
+        for f in fields_and_types.keys()
+    ):
         raise ValueError("unrecognized key in info integration response")
     elif "fields" not in fields_and_types:
         raise ValueError("missing fields object in info response")
     elif not isinstance(fields_and_types["fields"], dict):
         raise ValueError("invalid type for fields value")
-    elif "sep12" not in fields_and_types:
+    validate_fields(fields_and_types["fields"].get("transaction"))
+
+    if (
+        "sender_sep12_type" in fields_and_types
+        or "receiver_sep12_type" in fields_and_types
+    ):
+        if "sender_sep12_type" in fields_and_types and not isinstance(
+            fields_and_types["sender_sep12_type"], str
+        ):
+            raise ValueError("sender_sep12_type must be a string")
+        if "receiver_sep12_type" in fields_and_types and not isinstance(
+            fields_and_types["receiver_sep12_type"], str
+        ):
+            raise ValueError("receiver_sep12_type must be a string")
+        if "sep12" in fields_and_types:
+            raise ValueError(
+                "cannot specify both sep12 object and sender_sep12_type/receiver_sep12_type"
+            )
+        return
+
+    if "sep12" not in fields_and_types:
         raise ValueError("missing sep12 object in info response")
     elif not isinstance(fields_and_types["sep12"], dict):
         raise ValueError("invalid type for sep12 key value")
@@ -63,7 +86,6 @@ def validate_info_response(fields_and_types: Dict):
         and isinstance(fields_and_types["sep12"]["receiver"], dict)
     ):
         raise ValueError("sender and receiver key values must be objects")
-    validate_fields(fields_and_types["fields"].get("transaction"))
     validate_types(fields_and_types["sep12"]["sender"].get("types"))
     validate_types(fields_and_types["sep12"]["receiver"].get("types"))
 

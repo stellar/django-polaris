@@ -216,3 +216,7 @@ def test_bad_sender_type_description_type():
                 },
             }
         )
+
+
+def test_sender_sep12_type_still_supported():
+    validate_info_response({"fields": {}, "sender_sep12_type": "test"})
