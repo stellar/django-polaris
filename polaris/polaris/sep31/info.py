@@ -27,17 +27,15 @@ def info(request: Request) -> Response:
                 asset, request.GET.get("lang")
             )
         except ValueError:
-            return render_error_response("unsupported 'lang'", content_type="text/html")
+            return render_error_response("unsupported 'lang'")
         try:
             validate_info_response(fields_and_types)
         except ValueError as e:
             logger.error(f"info integration error: {str(e)}")
             return render_error_response(
-                _("unable to process the request"),
-                status_code=500,
-                content_type="text/html",
+                _("unable to process the request"), status_code=500,
             )
-        info_data["receive"][asset.code] = get_asset_info(asset, fields_and_types or {})
+        info_data["receive"][asset.code] = get_asset_info(asset, fields_and_types)
 
     return Response(info_data)
 
@@ -45,31 +43,36 @@ def info(request: Request) -> Response:
 def validate_info_response(fields_and_types: Dict):
     if not isinstance(fields_and_types, dict):
         raise ValueError("info integration must return a dictionary")
-    elif not all(
-        f in ["fields", "sender_sep12_type", "receiver_sep12_type"]
-        for f in fields_and_types.keys()
-    ):
+    elif not all(f in ["fields", "sep12"] for f in fields_and_types.keys()):
         raise ValueError("unrecognized key in info integration response")
     elif "fields" not in fields_and_types:
         raise ValueError("missing fields object in info response")
     elif not isinstance(fields_and_types["fields"], dict):
-        raise ValueError("unrecognized type for fields value")
-    elif (
-        "sender_sep12_type" in fields_and_types
-        and not isinstance(fields_and_types["sender_sep12_type"], str)
-    ) or (
-        "receiver_sep12_type" in fields_and_types
-        and not isinstance(fields_and_types["receiver_sep12_type"], str)
+        raise ValueError("invalid type for fields value")
+    elif "sep12" not in fields_and_types:
+        raise ValueError("missing sep12 object in info response")
+    elif not isinstance(fields_and_types["sep12"], dict):
+        raise ValueError("invalid type for sep12 key value")
+    elif not (
+        "sender" in fields_and_types["sep12"]
+        and "receiver" in fields_and_types["sep12"]
     ):
-        raise ValueError("invalid sep12_type value")
+        raise ValueError("sender and/or receiver object missing in sep12 object")
+    elif not (
+        isinstance(fields_and_types["sep12"]["sender"], dict)
+        and isinstance(fields_and_types["sep12"]["receiver"], dict)
+    ):
+        raise ValueError("sender and receiver key values must be objects")
     validate_fields(fields_and_types["fields"].get("transaction"))
+    validate_types(fields_and_types["sep12"]["sender"].get("types"))
+    validate_types(fields_and_types["sep12"]["receiver"].get("types"))
 
 
 def validate_fields(field_dict: Dict):
     if not field_dict:
         return
     elif not isinstance(field_dict, dict):
-        raise ValueError("bad type in info response")
+        raise ValueError("fields key value must be a dict")
     for key, val in field_dict.items():
         if not isinstance(val, dict):
             raise ValueError(f"{key} value must be a dict, got {type(val)}")
@@ -88,6 +91,22 @@ def validate_fields(field_dict: Dict):
             raise ValueError("'choices' must be a list")
 
 
+def validate_types(types: Dict):
+    if not types:
+        return
+    elif not isinstance(types, dict):
+        raise ValueError("types key value must be an dict")
+    for key, val in types.items():
+        if not isinstance(val, dict):
+            raise ValueError(f"{key} value must be a dict, got {type(val)}")
+        if "description" not in val:
+            raise ValueError(f"{key} dict must contain a description")
+        if not isinstance(val["description"], str):
+            raise ValueError(f"{key} description must be a human-readable string")
+        if len(val) != 1:
+            raise ValueError(f"unexpected key in {key} dict")
+
+
 def get_asset_info(asset: Asset, fields_and_types: Dict) -> Dict:
     if not asset.sep31_enabled:
         return {"enabled": False}
@@ -96,8 +115,7 @@ def get_asset_info(asset: Asset, fields_and_types: Dict) -> Dict:
         "enabled": True,
         "min_amount": round(asset.send_min_amount, asset.significant_decimals),
         "max_amount": round(asset.send_max_amount, asset.significant_decimals),
-        "sender_sep12_type": fields_and_types["sender_sep12_type"],
-        "receiver_sep12_type": fields_and_types["receiver_sep12_type"],
+        **fields_and_types,
     }
     if asset.send_fee_fixed:
         asset_info["fee_fixed"] = round(
@@ -106,5 +124,4 @@ def get_asset_info(asset: Asset, fields_and_types: Dict) -> Dict:
     if asset.send_fee_percent:
         asset_info["fee_percent"] = asset.send_fee_percent
 
-    asset_info["fields"] = fields_and_types["fields"]
     return asset_info

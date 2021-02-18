@@ -12,18 +12,14 @@ class SEP31ReceiverIntegration:
         """
         .. _info response: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0031.md#response
 
-        Return a dictionary containing the `"fields"` object as described in the
-        `info response`_ for the given `asset`. If your anchor requires KYC
-        information about the sender or receiver, return the `"receiver_sep12_type"`
-        or `"sender_sep12_type"` key-value pairs as well. Polaris will provide the
-        rest of the fields documented in the info response.
+        Return a dictionary containing the ``"fields"`` and `"sep12"` objects as described
+        in the `info response`_ for the given `asset`. Polaris will provide the rest of the
+        fields documented in the info response.
 
         Descriptions should be in the `lang` passed if supported.
         ::
 
             return {
-                "receiver_sep12_type": "sep31-receiver",
-                "sender_sep12_type": "sep31-sender",
                 "fields": {
                     "transaction":{
                        "routing_number":{
@@ -39,6 +35,23 @@ class SEP31ReceiverIntegration:
                              "SWIFT"
                           ]
                        }
+                    }
+                },
+                "sep12": {
+                    "sender": {
+                        "types": {
+                            "sep31-sender": {
+                                "description": "the only SEP-12 type for SEP-31 sending customers"
+                            }
+                        }
+                    },
+                    "receiver": {
+                        "sep31-receiver-cash-pickup": {
+                            "description": "recipients who will pick up cash at physical locations"
+                        },
+                        "sep31-receiver-bank-transfer": {
+                            "description" : "recipients who would like to receive funds via direct bank transfer"
+                        }
                     }
                 }
             }
