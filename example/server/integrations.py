@@ -731,14 +731,18 @@ class MyRailsIntegration(RailsIntegration):
             error()
             return
 
-        client = rails.BankAPIClient("fake anchor bank account number")
+        if transaction.kind == Transaction.KIND.withdrawal:
+            operation = settings.OPERATION_WITHDRAWAL
+        else:
+            operation = Transaction.KIND.send
         transaction.amount_fee = calculate_fee(
             {
                 "amount": transaction.amount_in,
-                "operation": settings.OPERATION_DEPOSIT,
+                "operation": operation,
                 "asset_code": transaction.asset.code,
             }
         )
+        client = rails.BankAPIClient("fake anchor bank account number")
         response = client.send_funds(
             to_account=user.bank_account_number,
             amount=transaction.amount_in - transaction.amount_fee,
