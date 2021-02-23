@@ -73,8 +73,11 @@ def more_info(request: Request, sep6: bool = False) -> Response:
         )
     context["scripts"] = registered_scripts_func(content)
 
+    # more_info.html will update the 'callback' parameter value to 'success' after
+    # making the callback. If the page is then reloaded, the callback is not included
+    # in the rendering context, ensuring only one successful callback request is made.
     callback = request.GET.get("callback")
-    if callback:
+    if callback and callback != "success":
         context["callback"] = callback
 
     return Response(context, template_name="polaris/more_info.html")

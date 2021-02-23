@@ -112,9 +112,9 @@
     {% endif %}
 
     <script type="text/javascript">
-        // Anchors should send a POST or postMessage request with the the entire transaction
-        // object, serialized by the server, in a transaction property (i.e., the value for
-        // the "transaction" key).
+        // If requested using the 'callback' parameter, anchors should send a POST or
+        // postMessage request with the the entire transaction object, serialized by the
+        // server, in a transaction property (i.e., the value for the "transaction" key).
         //
         // In other terms, the message should have the following structure:
         // tx_json = {
@@ -124,19 +124,20 @@
         //         etc.
         //     }
         // }
-        var tx_json = JSON.parse('{{ tx_json|safe }}');
-        var transaction = tx_json["transaction"];
-        var callback = '{{ callback|safe }}'
+        let tx_json = JSON.parse('{{ tx_json|safe }}');
+        let callback = '{{ callback|safe }}'
 
-        if (!callback || callback.toLowerCase() === 'postmessage') {
+        if (callback.toLowerCase() === 'postmessage') {
             postMessageCallback();
-        } else {
+        } else if (callback) {
             urlCallback();
+        } else {
+           return
         }
 
         // Callback function to post the serialized transaction to the wallet.
         function postMessageCallback() {
-            var targetWindow;
+            let targetWindow;
 
             if (window.opener != void 0) {
                 targetWindow = window.opener;
@@ -147,6 +148,7 @@
             }
 
             targetWindow.postMessage(tx_json, "*");
+            updateURLWithCallbackSuccess();
         }
 
         // Callback function to post the serialized transaction to the callback URL
@@ -158,9 +160,16 @@
                 },
                 body: JSON.stringify(tx_json)
             }).catch((e) => {
-                console.error('POST request to specified callback failed. Attempting postMessage instead.', e);
-                postMessageCallback();
+                console.error(`POST request to ${callback} failed.`, e);
+            }).then((_) => {
+                updateURLWithCallbackSuccess();
             });
+        }
+
+        function updateURLWithCallbackSuccess() {
+            let url = URL(window.location);
+            url.searchParams.set("callback", "success");
+            window.location.pushState({}, '', url);
         }
     </script>
 </section>
