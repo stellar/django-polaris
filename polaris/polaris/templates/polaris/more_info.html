@@ -131,8 +131,6 @@
             postMessageCallback();
         } else if (callback) {
             urlCallback();
-        } else {
-           return
         }
 
         // Callback function to post the serialized transaction to the wallet.
@@ -167,9 +165,9 @@
         }
 
         function updateURLWithCallbackSuccess() {
-            let url = URL(window.location);
+            let url = new URL(window.location);
             url.searchParams.set("callback", "success");
-            window.location.pushState({}, '', url);
+            window.history.pushState({}, '', url);
         }
     </script>
 </section>
