@@ -167,7 +167,7 @@
         function updateURLWithCallbackSuccess() {
             let url = new URL(window.location);
             url.searchParams.set("callback", "success");
-            window.history.pushState({}, '', url);
+            window.history.replaceState({}, '', url);
         }
     </script>
 </section>
