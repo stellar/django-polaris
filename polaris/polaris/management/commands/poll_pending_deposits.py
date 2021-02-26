@@ -148,11 +148,6 @@ def get_or_create_transaction_destination_account(
                 f"{submit_exc.message}"
             )
 
-        transaction.status = Transaction.STATUS.pending_trust
-        transaction.save()
-        logger.info(
-            f"Transaction {transaction.id} is now pending_trust of destination account"
-        )
         account, _ = get_account_obj(
             Keypair.from_public_key(transaction.stellar_account)
         )
