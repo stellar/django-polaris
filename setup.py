@@ -39,7 +39,7 @@ setup(
     package_dir={"": "polaris"},
     packages=find_packages("polaris"),
     install_requires=[
-        "aiohttp==3.7.3; python_version >= '3.6'",
+        "aiohttp==3.7.4; python_version >= '3.6'",
         "aiohttp-sse-client==0.1.7",
         "async-timeout==3.0.1; python_full_version >= '3.5.3'",
         "attrs==20.3.0; python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3'",
