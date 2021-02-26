@@ -570,7 +570,7 @@ class Transaction(models.Model):
     the encoded transaction.
     """
 
-    channel_seed = models.TextField(null=True, blank=True)
+    channel_seed = EncryptedTextField(null=True, blank=True)
     """
     A keypair of the account used when sending SEP-6 or SEP-24 deposit 
     transactions to Transaction.stellar_account, if present. 
