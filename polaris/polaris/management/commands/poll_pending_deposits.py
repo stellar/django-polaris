@@ -59,9 +59,6 @@ def check_for_multisig(transaction):
     thresholds = transaction.asset.distribution_account_thresholds
     if not master_signer or master_signer["weight"] < thresholds["med_threshold"]:
         # master account is not sufficient
-        transaction.pending_signatures = True
-        transaction.status = Transaction.STATUS.pending_anchor
-        transaction.save()
         if transaction.channel_account:
             channel_kp = Keypair.from_secret(transaction.channel_seed)
         else:
@@ -80,6 +77,8 @@ def check_for_multisig(transaction):
             envelope = create_transaction_envelope(transaction, channel_account)
             envelope.sign(channel_kp)
             transaction.envelope_xdr = envelope.to_xdr()
+            transaction.pending_signatures = True
+            transaction.status = Transaction.STATUS.pending_anchor
             transaction.save()
         return True
     else:
