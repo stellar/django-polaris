@@ -6,9 +6,6 @@ from polaris.models import Transaction
 class SEP31TransactionSerializer(serializers.ModelSerializer):
 
     id = serializers.CharField()
-    amount_in = serializers.DecimalField(max_digits=30, decimal_places=7)
-    amount_out = serializers.DecimalField(max_digits=30, decimal_places=7)
-    amount_fee = serializers.DecimalField(max_digits=30, decimal_places=7)
     stellar_account_id = serializers.SerializerMethodField()
     stellar_memo = serializers.SerializerMethodField()
     stellar_memo_type = serializers.SerializerMethodField()
@@ -38,8 +35,13 @@ class SEP31TransactionSerializer(serializers.ModelSerializer):
         else:
             return None
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        self._round_decimals(data, instance)
+        return data
+
     @staticmethod
-    def round_decimals(data, instance):
+    def _round_decimals(data, instance):
         """
         Rounds each decimal field to instance.asset.significant_decimals.
 
@@ -52,18 +54,12 @@ class SEP31TransactionSerializer(serializers.ModelSerializer):
         the calls to this serializer by asset.
         """
         asset = instance.asset
-        for suffix in ["in", "out", "fee"]:
-            field = f"amount_{suffix}"
+        for field in ["amount_in", "amount_out", "amount_fee"]:
             if getattr(instance, field) is None:
                 continue
             data[field] = str(
                 round(getattr(instance, field), asset.significant_decimals)
             )
-
-    def to_representation(self, instance):
-        data = super().to_representation(instance)
-        self.round_decimals(data, instance)
-        return data
 
     class Meta:
         model = Transaction

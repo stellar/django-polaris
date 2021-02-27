@@ -402,6 +402,9 @@ def deposit(account: str, request: Request) -> Response:
         claimable_balance_supported=claimable_balance_supported,
         memo=request.data.get("memo"),
         memo_type=request.data.get("memo_type") or Transaction.MEMO_TYPES.hash,
+        more_info_url=request.build_absolute_uri(
+            f"{reverse('more_info')}?id={transaction_id}"
+        ),
     )
     logger.info(f"Created deposit transaction {transaction_id}")
 

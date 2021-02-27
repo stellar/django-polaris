@@ -1,6 +1,7 @@
 from typing import Dict, Tuple
 
 from django.utils.translation import gettext as _
+from django.urls import reverse
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, renderer_classes, parser_classes
@@ -53,6 +54,9 @@ def withdraw(account: str, request: Request) -> Response:
         memo=transaction_memo,
         memo_type=Transaction.MEMO_TYPES.hash,
         protocol=Transaction.PROTOCOL.sep6,
+        more_info_url=request.build_absolute_uri(
+            f"{reverse('more_info_sep6')}?id={transaction_id}"
+        ),
     )
 
     # All request arguments are validated in parse_request_args()

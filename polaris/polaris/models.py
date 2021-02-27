@@ -556,7 +556,7 @@ class Transaction(models.Model):
     """True if the transaction was refunded, false otherwise."""
 
     protocol = models.CharField(choices=PROTOCOL, null=True, max_length=5)
-    """Either 'sep6' or 'sep24'"""
+    """Either 'sep6', 'sep24', or 'sep31'"""
 
     pending_signatures = models.BooleanField(default=False)
     """
@@ -589,6 +589,13 @@ class Transaction(models.Model):
     The ID of the claimable balance used to send funds to the user. This column will be
     ``None`` if ``claimable_balance_supported`` is ``False`` or if the transaction has
     not yet been submitted to the Stellar network.
+    """
+
+    more_info_url = models.TextField(null=True, blank=True)
+    """
+    A URL that is opened by wallets after the interactive flow is complete. It can include
+    banking information for users to start deposits, the status of the transaction, or any
+    other information the user might need to know about the transaction.
     """
 
     objects = models.Manager()

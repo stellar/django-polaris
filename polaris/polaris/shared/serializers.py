@@ -1,7 +1,6 @@
 """This module defines a serializer for the transaction model."""
 from rest_framework import serializers
-from django.urls import reverse
-from django.conf import settings
+from django.db.models import QuerySet
 
 from polaris.models import Transaction
 
@@ -10,54 +9,25 @@ class TransactionSerializer(serializers.ModelSerializer):
     """Defines the custom serializer for a transaction."""
 
     id = serializers.CharField()
-    amount_in = serializers.DecimalField(max_digits=30, decimal_places=7)
-    amount_out = serializers.DecimalField(max_digits=30, decimal_places=7)
-    amount_fee = serializers.DecimalField(max_digits=30, decimal_places=7)
-    more_info_url = serializers.SerializerMethodField()
     message = serializers.CharField()
 
-    def get_more_info_url(self, transaction_instance):
-        request_from_context = self.context.get("request")
-        if not request_from_context:
-            raise ValueError("Unable to construct url for transaction.")
-
-        if "sep6" in self.context.get("request").build_absolute_uri():
-            path = reverse("more_info_sep6")
-        else:
-            path = reverse("more_info")
-
-        if path:
-            path_params = f"{path}?id={transaction_instance.id}"
-            return request_from_context.build_absolute_uri(path_params)
-        else:
-            return path
-
-    def round_decimals(self, data, instance):
+    def __init__(self, data, *args, **kwargs):
         """
-        Rounds each decimal field to instance.asset.significant_decimals.
+        Saves the transaction's asset to the object instance so _round_decimals()
+        does not have to access instance.asset, making a new DB query each time.
 
-        Note that this requires an additional database query for the asset.
-        If this serializer was initialized to serialize many instances, this
-        function will be called for each instance unless ``same_asset: True``
-        is included as a key-value pair in self.context.
-
-        If the transactions to be serialized are for multiple assets, split
-        the calls to this serializer by asset.
+        This class asssumes the transaction objects being passed use the same
+        asset. If the transactions to be serialized are for multiple assets,
+        split the calls to this serializer by asset.
         """
-        if self.context.get("same_asset"):
-            if not hasattr(self, "asset_obj"):
-                self.asset_obj = instance.asset  # queries the DB
-            asset = self.asset_obj
-        else:
-            asset = instance.asset
-
-        for suffix in ["in", "out", "fee"]:
-            field = f"amount_{suffix}"
-            if getattr(instance, field) is None:
-                continue
-            data[field] = str(
-                round(getattr(instance, field), asset.significant_decimals)
-            )
+        if isinstance(data, Transaction):
+            self.asset = data.asset
+        elif isinstance(data, list) or isinstance(data, QuerySet):
+            if isinstance(data, QuerySet):
+                data = list(data)
+            if len(data) != 0:
+                self.asset = data[0].asset
+        super().__init__(data, *args, **kwargs)
 
     def to_representation(self, instance):
         """
@@ -66,7 +36,7 @@ class TransactionSerializer(serializers.ModelSerializer):
         deposit-related fields for withdraw transactions and vice-versa.
         """
         data = super().to_representation(instance)
-        self.round_decimals(data, instance)
+        self._round_decimals(data, instance)
         data["to"] = data.pop("to_address")
         data["from"] = data.pop("from_address")
         if data["kind"] == Transaction.KIND.deposit:
@@ -81,6 +51,17 @@ class TransactionSerializer(serializers.ModelSerializer):
         del data["memo"]
         del data["receiving_anchor_account"]
         return data
+
+    def _round_decimals(self, data, instance):
+        """
+        Rounds each decimal field to instance.asset.significant_decimals.
+        """
+        for field in ["amount_in", "amount_out", "amount_fee"]:
+            if getattr(instance, field) is None:
+                continue
+            data[field] = str(
+                round(getattr(instance, field), self.asset.significant_decimals)
+            )
 
     class Meta:
         model = Transaction
