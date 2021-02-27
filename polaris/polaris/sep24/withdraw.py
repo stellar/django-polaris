@@ -374,6 +374,9 @@ def withdraw(account: str, request: Request) -> Response:
         receiving_anchor_account=asset.distribution_account,
         memo_type=Transaction.MEMO_TYPES.hash,
         protocol=Transaction.PROTOCOL.sep24,
+        more_info_url=request.build_absolute_uri(
+            f"{reverse('more_info')}?id={transaction_id}"
+        ),
     )
     logger.info(f"Created withdrawal transaction {transaction_id}")
 
