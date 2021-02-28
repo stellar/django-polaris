@@ -134,7 +134,7 @@ LOGGING = {
         },
     },
     "loggers": {
-        "django": {"handlers": ["console"], "propogate": False, "level": "DEBUG"},
+        "django": {"handlers": ["console"], "propogate": False, "level": "info"},
         "polaris": {"handlers": ["console"], "propogate": False, "level": "DEBUG"},
     },
 }
