@@ -146,9 +146,10 @@ def post_interactive_deposit(request: Request) -> Response:
             invalidate_session(request)
             transaction.status = Transaction.STATUS.pending_user_transfer_start
             transaction.save()
-            url = reverse("more_info")
-            args = urlencode({"id": transaction.id, "callback": callback})
-            return redirect(f"{url}?{args}")
+            args = {"id": transaction.id, "initialLoad": "true"}
+            if callback:
+                args["callback"] = callback
+            return redirect(f"{reverse('more_info')}?{urlencode(args)}")
 
     else:
         content = (
@@ -212,11 +213,10 @@ def complete_interactive_deposit(request: Request) -> Response:
             _("ID passed is not a valid transaction ID"), content_type="text/html"
         )
     logger.info(f"Hands-off interactive flow complete for transaction {transaction_id}")
-    url, args = (
-        reverse("more_info"),
-        urlencode({"id": transaction_id, "callback": callback}),
-    )
-    return redirect(f"{url}?{args}")
+    args = {"id": transaction_id, "initialLoad": "true"}
+    if callback:
+        args["callback"] = callback
+    return redirect(f"{reverse('more_info')}?{urlencode(args)}")
 
 
 @xframe_options_exempt
@@ -249,6 +249,9 @@ def get_interactive_deposit(request: Request) -> Response:
     asset = args_or_error["asset"]
     callback = args_or_error["callback"]
     amount = args_or_error["amount"]
+    if args_or_error["on_change_callback"]:
+        transaction.on_change_callback = args_or_error["on_change_callback"]
+        transaction.save()
 
     url = rdi.interactive_url(request, transaction, asset, amount, callback)
     if url:  # The anchor uses a standalone interactive flow

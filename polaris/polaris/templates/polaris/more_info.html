@@ -112,29 +112,34 @@
     {% endif %}
 
     <script type="text/javascript">
-        // If requested using the 'callback' parameter, anchors should send a POST or
-        // postMessage request with the the entire transaction object, serialized by the
-        // server, in a transaction property (i.e., the value for the "transaction" key).
-        //
-        // In other terms, the message should have the following structure:
-        // tx_json = {
-        //     "transaction": {
-        //         "id": "fake-transaction-id",
-        //         "status": "completed"
-        //         etc.
-        //     }
-        // }
-        let tx_json = JSON.parse('{{ tx_json|safe }}');
-        let callback = '{{ callback|safe }}'
+        let txJSON = JSON.parse('{{ tx_json|safe }}');
 
+        let onChangeCallback = '{{ transaction.on_change_callback }}';
+        if (onChangeCallback === 'None')
+            onChangeCallback = '';
+        let url = new URL(window.location);
+        let currentStatus = '{{ transaction.status }}';
+        let isInitialLoad = url.searchParams.get('initialLoad');
+        let lastStatusChange = url.searchParams.get('lastStatusChange');
+        if (isInitialLoad || (lastStatusChange && lastStatusChange !== currentStatus)) {
+            if (onChangeCallback.toLowerCase() === 'postmessage') {
+                postMessageCallback({ onChange: true });
+            } else if (onChangeCallback && isInitialLoad) {
+                urlCallback({ onChange: true });
+            }
+        } else {
+            updateURLForOnChangeStatus();
+        }
+
+        let callback = '{{ callback|safe }}';
         if (callback.toLowerCase() === 'postmessage') {
-            postMessageCallback();
+            postMessageCallback({ onChange: false });
         } else if (callback) {
-            urlCallback();
+            urlCallback({ onChange: false });
         }
 
         // Callback function to post the serialized transaction to the wallet.
-        function postMessageCallback() {
+        function postMessageCallback({ onChange }) {
             let targetWindow;
 
             if (window.opener != void 0) {
@@ -145,29 +150,57 @@
                 return;
             }
 
-            targetWindow.postMessage(tx_json, "*");
-            updateURLWithCallbackSuccess();
+            targetWindow.postMessage(txJSON, "*");
+            if (onChange) {
+                updateURLForOnChangeStatus();
+            } else {
+                updateURLWithCallbackSuccess();
+            }
         }
 
         // Callback function to post the serialized transaction to the callback URL
-        function urlCallback() {
-            fetch(callback, {
+        function urlCallback({ onChange }) {
+            let url = onChange ? onChangeCallback : callback;
+            fetch(url, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify(tx_json)
+                body: JSON.stringify(txJSON)
             }).catch((e) => {
-                console.error(`POST request to ${callback} failed.`, e);
-            }).then((_) => {
-                updateURLWithCallbackSuccess();
+                console.error(`POST request to ${url} failed.`, e);
+            }).then((response) => {
+                if (!response.ok) {
+                    console.error(`POST request to ${url} failed.`, response);
+                    return;
+                }
+                if (onChange) {
+                    updateURLForOnChangeStatus();
+                } else {
+                    updateURLWithCallbackSuccess();
+                }
             });
         }
 
         function updateURLWithCallbackSuccess() {
             let url = new URL(window.location);
             url.searchParams.set("callback", "success");
+            if (isInitialLoad) {
+                url.searchParams.delete("initialLoad");
+            }
             window.history.replaceState({}, '', url);
+        }
+
+        function updateURLForOnChangeStatus() {
+            let url = new URL(window.location);
+            if (isInitialLoad) {
+                url.searchParams.delete("initialLoad");
+                window.history.replaceState({}, '', url);
+            }
+            if (onChangeCallback.toLowerCase() === 'postmessage') {
+                url.searchParams.set("lastStatusChange", currentStatus);
+                window.history.replaceState({}, '', url);
+            }
         }
     </script>
 </section>

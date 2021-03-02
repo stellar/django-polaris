@@ -598,6 +598,12 @@ class Transaction(models.Model):
     other information the user might need to know about the transaction.
     """
 
+    on_change_callback = models.TextField(null=True, blank=True)
+    """
+    A URL that the anchor should POST a JSON message to when the status property of the
+    transaction created as a result of this request changes.
+    """
+
     objects = models.Manager()
 
     @property
