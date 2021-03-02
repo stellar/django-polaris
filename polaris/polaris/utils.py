@@ -11,7 +11,7 @@ from stellar_sdk import TextMemo, IdMemo, HashMemo
 from stellar_sdk.exceptions import NotFoundError
 from stellar_sdk.account import Account, Thresholds
 from stellar_sdk import Memo, RequestsClient
-from requests import Response
+from requests import Response as RequestsResponse
 
 from polaris import settings
 from polaris.models import Transaction
@@ -229,7 +229,7 @@ def extract_sep9_fields(args):
 
 def make_on_change_callback(
     transaction: Transaction, timeout: Optional[int] = None
-) -> Response:
+) -> RequestsResponse:
     """
     Makes a POST request to `transaction.on_change_callback`, a URL
     provided by the client. The request will time out in
