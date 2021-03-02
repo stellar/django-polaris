@@ -38,7 +38,7 @@ mock_server = Mock(
 
 
 @pytest.mark.django_db
-@patch("polaris.management.commands.check_trustlines.create_stellar_deposit")
+@patch("polaris.management.commands.check_trustlines.PendingDeposits")
 @patch(
     "polaris.management.commands.check_trustlines.settings.HORIZON_SERVER", mock_server
 )

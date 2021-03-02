@@ -1,11 +1,11 @@
 import pytest
 import json
-from unittest.mock import patch, Mock, MagicMock
+from unittest.mock import patch, Mock
 
 from stellar_sdk import Keypair
 from stellar_sdk.account import Account, Thresholds
 from stellar_sdk.client.response import Response
-from stellar_sdk.exceptions import NotFoundError, BaseHorizonError
+from stellar_sdk.exceptions import NotFoundError
 
 from polaris.tests.conftest import (
     STELLAR_ACCOUNT_1,
@@ -18,15 +18,8 @@ from polaris.tests.sep24.test_deposit import (
     HORIZON_SUCCESS_RESPONSE,
     HORIZON_SUCCESS_RESPONSE_CLAIM,
 )
-from polaris.utils import create_stellar_deposit
 from polaris.models import Transaction
-
-
-@pytest.mark.django_db
-def test_bad_status(acc1_usd_deposit_transaction_factory):
-    deposit = acc1_usd_deposit_transaction_factory()
-    with pytest.raises(ValueError):
-        create_stellar_deposit(deposit)
+from polaris.management.commands.poll_pending_deposits import PendingDeposits
 
 
 def mock_load_account_no_account(account_id):
@@ -90,7 +83,7 @@ mock_account.thresholds = Thresholds(low_threshold=0, med_threshold=1, high_thre
 
 @pytest.mark.django_db
 @patch(
-    "polaris.utils.settings.HORIZON_SERVER",
+    "polaris.management.commands.poll_pending_deposits.settings.HORIZON_SERVER",
     Mock(
         load_account=Mock(return_value=mock_account),
         submit_transaction=Mock(return_value=HORIZON_SUCCESS_RESPONSE),
@@ -98,7 +91,7 @@ mock_account.thresholds = Thresholds(low_threshold=0, med_threshold=1, high_thre
     ),
 )
 @patch(
-    "polaris.utils.get_account_obj",
+    "polaris.management.commands.poll_pending_deposits.get_account_obj",
     Mock(
         return_value=(
             mock_account,
@@ -114,9 +107,7 @@ def test_deposit_stellar_success(acc1_usd_deposit_transaction_factory):
     network calls.
     """
     deposit = acc1_usd_deposit_transaction_factory()
-    deposit.status = Transaction.STATUS.pending_anchor
-    deposit.save()
-    assert create_stellar_deposit(deposit)
+    assert PendingDeposits.submit(deposit)
     assert Transaction.objects.get(id=deposit.id).status == Transaction.STATUS.completed
 
 
@@ -134,9 +125,13 @@ mock_server_no_trust_account_claim = Mock(
 
 @pytest.mark.django_db
 @patch(
-    "polaris.utils.get_account_obj", Mock(return_value=(mock_account, {"balances": []}))
+    "polaris.management.commands.poll_pending_deposits.get_account_obj",
+    Mock(return_value=(mock_account, {"balances": []})),
 )
-@patch("polaris.utils.settings.HORIZON_SERVER", mock_server_no_trust_account_claim)
+@patch(
+    "polaris.management.commands.poll_pending_deposits.settings.HORIZON_SERVER",
+    mock_server_no_trust_account_claim,
+)
 def test_deposit_stellar_no_trustline_with_claimable_bal(
     acc1_usd_deposit_transaction_factory,
 ):
@@ -153,9 +148,8 @@ def test_deposit_stellar_no_trustline_with_claimable_bal(
     where it wil complete the deposit flow as a claimable balance
     """
     deposit = acc1_usd_deposit_transaction_factory()
-    deposit.status = Transaction.STATUS.pending_anchor
     deposit.claimable_balance_supported = True
     deposit.save()
-    assert create_stellar_deposit(deposit)
+    assert PendingDeposits.submit(deposit)
     assert Transaction.objects.get(id=deposit.id).claimable_balance_id
     assert Transaction.objects.get(id=deposit.id).status == Transaction.STATUS.completed

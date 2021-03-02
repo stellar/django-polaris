@@ -1,26 +1,15 @@
 """This module defines helpers for various endpoints."""
 import codecs
-import datetime
 import uuid
-import base64
-from decimal import Decimal
 from typing import Optional, Union, Tuple
 from logging import getLogger as get_logger, LoggerAdapter
 
 from django.utils.translation import gettext
 from rest_framework import status
 from rest_framework.response import Response
-from stellar_sdk import TransactionEnvelope, TextMemo, IdMemo, HashMemo, Asset, Claimant
-from stellar_sdk.transaction_builder import TransactionBuilder
-from stellar_sdk.exceptions import (
-    BaseHorizonError,
-    NotFoundError,
-)
-from stellar_sdk.xdr.StellarXDR_type import TransactionResult
+from stellar_sdk import TextMemo, IdMemo, HashMemo
+from stellar_sdk.exceptions import NotFoundError
 from stellar_sdk.account import Account, Thresholds
-from stellar_sdk.sep.stellar_web_authentication import _verify_te_signed_by_account_id
-from stellar_sdk.sep.exceptions import InvalidSep10ChallengeError
-from stellar_sdk.keypair import Keypair
 from stellar_sdk import Memo
 
 from polaris import settings
@@ -105,96 +94,6 @@ def verify_valid_asset_operation(
         )
 
 
-def create_stellar_deposit(transaction: Transaction) -> bool:
-    """
-    Performs final status and signature checks before calling submit_stellar_deposit().
-    Returns true on successful submission, false otherwise. `transaction` will be placed
-    in the error status if submission fails or if it is a multisig transaction and is not
-    signed by the channel account.
-    """
-    if transaction.status not in [
-        Transaction.STATUS.pending_anchor,
-        Transaction.STATUS.pending_trust,
-    ]:
-        raise ValueError(
-            f"unexpected transaction status {transaction.status} for "
-            "create_stellar_deposit",
-        )
-    elif transaction.amount_in is None or transaction.amount_fee is None:
-        transaction.status = Transaction.STATUS.error
-        transaction.status_message = (
-            "`amount_in` and `amount_fee` must be populated, skipping transaction"
-        )
-        transaction.save()
-        raise ValueError(transaction.status_message)
-
-    # if the distribution account's master signer's weight is great or equal to the its
-    # medium threshold, verify the transaction is signed by it's channel account
-    master_signer = None
-    if transaction.asset.distribution_account_master_signer:
-        master_signer = transaction.asset.distribution_account_master_signer
-    thresholds = transaction.asset.distribution_account_thresholds
-    if not master_signer or master_signer["weight"] < thresholds["med_threshold"]:
-        envelope = TransactionEnvelope.from_xdr(
-            transaction.envelope_xdr, settings.STELLAR_NETWORK_PASSPHRASE
-        )
-        try:
-            _verify_te_signed_by_account_id(envelope, transaction.channel_account)
-        except InvalidSep10ChallengeError:
-            transaction.status = Transaction.STATUS.error
-            transaction.status_message = gettext(
-                "Multisig transaction's envelope was not signed by channel account"
-            )
-            transaction.save()
-            return False
-    # otherwise, create the envelope and sign it with the distribution account's secret
-    else:
-        distribution_acc, _ = get_account_obj(
-            Keypair.from_public_key(transaction.asset.distribution_account)
-        )
-        envelope = create_transaction_envelope(transaction, distribution_acc)
-        envelope.sign(transaction.asset.distribution_seed)
-
-    try:
-        submit_stellar_deposit(transaction, envelope)
-    except (RuntimeError, BaseHorizonError) as e:
-        transaction.status_message = f"{e.__class__.__name__}: {e.message}"
-        transaction.status = Transaction.STATUS.error
-        transaction.save()
-        logger.error(transaction.status_message)
-        return False
-    else:
-        return True
-
-
-def submit_stellar_deposit(transaction, envelope):
-    transaction.status = Transaction.STATUS.pending_stellar
-    transaction.save()
-    logger.info(f"Transaction {transaction.id} now pending_stellar")
-
-    response = settings.HORIZON_SERVER.submit_transaction(envelope)
-
-    if not response.get("successful"):
-        raise RuntimeError(
-            f"Stellar transaction failed when submitted to horizon: {response['result_xdr']}"
-        )
-    elif transaction.claimable_balance_supported:
-        transaction.claimable_balance_id = get_balance_id(response)
-
-    transaction.envelope_xdr = response["envelope_xdr"]
-    transaction.paging_token = response["paging_token"]
-    transaction.stellar_transaction_id = response["id"]
-    transaction.status = Transaction.STATUS.completed
-    transaction.completed_at = datetime.datetime.now(datetime.timezone.utc)
-    transaction.status_eta = 0
-    transaction.amount_out = round(
-        Decimal(transaction.amount_in) - Decimal(transaction.amount_fee),
-        transaction.asset.significant_decimals,
-    )
-    transaction.save()
-    logger.info(f"Transaction {transaction.id} completed.")
-
-
 def load_account(resp):
     sequence = int(resp["sequence"])
     thresholds = Thresholds(
@@ -235,77 +134,6 @@ def is_pending_trust(transaction, json_resp):
             pending_trust = False
             break
     return pending_trust
-
-
-def create_transaction_envelope(transaction, source_account) -> TransactionEnvelope:
-    payment_amount = round(
-        Decimal(transaction.amount_in) - Decimal(transaction.amount_fee),
-        transaction.asset.significant_decimals,
-    )
-    builder = TransactionBuilder(
-        source_account=source_account,
-        network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
-        # only one operation, so base_fee will be multipled by 1
-        base_fee=settings.MAX_TRANSACTION_FEE_STROOPS
-        or settings.HORIZON_SERVER.fetch_base_fee(),
-    )
-    _, json_resp = get_account_obj(Keypair.from_public_key(transaction.stellar_account))
-    if transaction.claimable_balance_supported and is_pending_trust(
-        transaction, json_resp
-    ):
-        logger.debug(
-            f"Crafting claimable balance operation for Transaction {transaction.id}"
-        )
-        claimant = Claimant(destination=transaction.stellar_account)
-        asset = Asset(code=transaction.asset.code, issuer=transaction.asset.issuer)
-        builder.append_create_claimable_balance_op(
-            claimants=[claimant],
-            asset=asset,
-            amount=str(payment_amount),
-            source=transaction.asset.distribution_account,
-        )
-    else:
-        builder.append_payment_op(
-            destination=transaction.stellar_account,
-            asset_code=transaction.asset.code,
-            asset_issuer=transaction.asset.issuer,
-            amount=str(payment_amount),
-            source=transaction.asset.distribution_account,
-        )
-    if transaction.memo:
-        builder.add_memo(make_memo(transaction.memo, transaction.memo_type))
-    return builder.build()
-
-
-def get_balance_id(response: dict) -> Optional[str]:
-    """
-    Pulls claimable balance ID from horizon responses.
-
-    When called we decode and read the result_xdr from the horizon response.
-    If any of the operations is a createClaimableBalanceResult we
-    decode the Base64 representation of the balanceID xdr.
-    After the fact we encode the result to hex.
-
-    The hex representation of the balanceID is important because its the
-    representation required to query and claim claimableBalances.
-
-    :param
-        response: the response from horizon
-
-    :return:
-        hex representation of the balanceID
-        or
-        None (if no createClaimableBalanceResult operation is found)
-    """
-    result_xdr = response["result_xdr"]
-    tr_xdr = TransactionResult.from_xdr(result_xdr)
-    for op_result in tr_xdr.result.results:
-        if hasattr(op_result.tr, "createClaimableBalanceResult"):
-            cbr_xdr = base64.b64decode(
-                op_result.tr.createClaimableBalanceResult.balanceID.to_xdr()
-            )
-            return cbr_xdr.hex()
-    return None
 
 
 def memo_str(memo: Optional[Memo]) -> Tuple[Optional[str], Optional[str]]:

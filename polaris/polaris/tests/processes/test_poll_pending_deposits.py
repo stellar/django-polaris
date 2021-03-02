@@ -1,9 +1,13 @@
 import pytest
 from unittest.mock import patch, Mock
 
-from django.core.management import CommandError
-
-from polaris.management.commands.poll_pending_deposits import Command, rdi, rri, logger
+from polaris.management.commands.poll_pending_deposits import (
+    Command,
+    rdi,
+    rri,
+    logger,
+    PendingDeposits,
+)
 from polaris.models import Transaction
 from polaris.tests.processes.test_create_stellar_deposit import mock_account
 
@@ -24,12 +28,14 @@ def mock_poll_pending_deposits_success(deposits):
 
 
 @pytest.mark.django_db
-@patch(f"{test_module}.create_stellar_deposit", Mock(return_value=True))
+@patch(f"{test_module}.PendingDeposits.submit", Mock(return_value=True))
 @patch(
-    f"{test_module}.get_or_create_transaction_destination_account",
-    Mock(return_value=(mock_account, False, False)),
+    f"{test_module}.PendingDeposits.get_or_create_destination_account",
+    Mock(return_value=(mock_account, False)),
 )
-@patch(f"{test_module}.check_for_multisig", Mock(return_value=False))
+@patch(
+    f"{test_module}.MultiSigTransactions.requires_multisig", Mock(return_value=False)
+)
 def test_poll_pending_deposits_success(client, acc1_usd_deposit_transaction_factory):
     transaction_user = acc1_usd_deposit_transaction_factory()
     transaction_external = acc1_usd_deposit_transaction_factory()
@@ -41,21 +47,16 @@ def test_poll_pending_deposits_success(client, acc1_usd_deposit_transaction_fact
     Command.execute_deposits()
 
     transaction_user.refresh_from_db()
-    assert transaction_user.status == Transaction.STATUS.pending_anchor
-    assert transaction_user.status_eta == 5
-    assert rdi.after_deposit.was_called
-
-    transaction_external.refresh_from_db()
-    assert transaction_external.status == Transaction.STATUS.pending_external
+    rdi.after_deposit.assert_called_once_with(transaction_user)
 
     rri.poll_pending_deposits = og_pending_deposits
 
 
 @pytest.mark.django_db
-@patch(f"{test_module}.create_stellar_deposit", Mock(return_value=True))
+@patch(f"{test_module}.PendingDeposits.submit", Mock(return_value=True))
 @patch(
-    f"{test_module}.get_or_create_transaction_destination_account",
-    Mock(return_value=(mock_account, False, False)),
+    f"{test_module}.PendingDeposits.get_or_create_destination_account",
+    Mock(return_value=(mock_account, False)),
 )
 def test_poll_pending_deposits_bad_integration(
     client,
@@ -69,5 +70,5 @@ def test_poll_pending_deposits_bad_integration(
     rri.poll_pending_deposits = Mock(return_value=[withdrawal_transaction])
     logger.error = Mock()
 
-    with pytest.raises(CommandError):
-        Command.execute_deposits()
+    with pytest.raises(ValueError):
+        PendingDeposits.get_ready_deposits()

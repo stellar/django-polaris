@@ -6,11 +6,13 @@ from django.core.management.base import BaseCommand
 from stellar_sdk.exceptions import BaseHorizonError
 
 from polaris import settings
-from polaris.utils import create_stellar_deposit
 from polaris.models import Transaction
 from polaris.utils import getLogger
 from polaris.integrations import registered_deposit_integration as rdi
-from polaris.management.commands.poll_pending_deposits import check_for_multisig
+from polaris.management.commands.poll_pending_deposits import (
+    PendingDeposits,
+    MultiSigTransactions,
+)
 
 
 logger = getLogger(__name__)
@@ -113,18 +115,14 @@ class Command(BaseCommand):
                     asset_code == transaction.asset.code
                     and asset_issuer == transaction.asset.issuer
                 ):
-                    if check_for_multisig(transaction):
-                        # Now we're waiting for signatures to be collected on real deposit transaction
-                        logger.info(
-                            f"Account {account['id']} has established a trustline for {asset_code}"
-                        )
+                    logger.info(
+                        f"Account {account['id']} has established a trustline for {asset_code}"
+                    )
+                    if MultiSigTransactions.requires_multisig(transaction):
+                        MultiSigTransactions.save_as_pending_signatures(transaction)
                         continue
 
-                    logger.info(
-                        f"Account {account['id']} has established a trustline for {asset_code}, "
-                        f"initiating deposit for {transaction.id}"
-                    )
-                    if create_stellar_deposit(transaction):
+                    if PendingDeposits.submit(transaction):
                         transaction.refresh_from_db()
                         try:
                             rdi.after_deposit(transaction)
