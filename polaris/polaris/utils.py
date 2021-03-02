@@ -10,10 +10,12 @@ from rest_framework.response import Response
 from stellar_sdk import TextMemo, IdMemo, HashMemo
 from stellar_sdk.exceptions import NotFoundError
 from stellar_sdk.account import Account, Thresholds
-from stellar_sdk import Memo
+from stellar_sdk import Memo, RequestsClient
+from requests import Response
 
 from polaris import settings
 from polaris.models import Transaction
+from polaris.shared.serializers import TransactionSerializer
 
 
 class PolarisLoggerAdapter(LoggerAdapter):
@@ -223,3 +225,44 @@ def extract_sep9_fields(args):
         if field in args:
             sep9_args[field] = args.get(field)
     return sep9_args
+
+
+def make_on_change_callback(
+    transaction: Transaction, timeout: Optional[int] = None
+) -> Response:
+    """
+    Makes a POST request to `transaction.on_change_callback`, a URL
+    provided by the client. The request will time out in
+    ``settings.CALLBACK_REQUEST_TIMEOUT`` seconds if _timeout_ is not specified.
+
+    The client is responsible for providing a publicly-accessible URL that
+    responds within the timeout period. Polaris will continue processing
+    `transaction` regardless of the result of this request.
+
+    :raises: ``stellar_sdk.exceptions.ConnectionError``
+    :returns: The ``requests.Response`` object for the request
+    """
+    if (
+        not transaction.on_change_callback
+        or transaction.on_change_callback.lower() == "postmessage"
+    ):
+        raise ValueError("invalid or missing on_change_callback")
+    if not timeout:
+        timeout = settings.CALLBACK_REQUEST_TIMEOUT
+    return RequestsClient(post_timeout=timeout).post(
+        url=transaction.on_change_callback, data=TransactionSerializer(transaction).data
+    )
+
+
+def maybe_make_callback(transaction):
+    if (
+        transaction.on_change_callback
+        and transaction.on_change_callback.lower() != "postmessage"
+    ):
+        try:
+            callback_resp = make_on_change_callback(transaction)
+        except ConnectionError as e:
+            logger.error(f"Callback request failed: {str(e)}")
+        else:
+            if not callback_resp.ok:
+                logger.error(f"Callback request returned {callback_resp.status_code}")

@@ -9,7 +9,7 @@ from django.core.management import BaseCommand
 
 from polaris import settings
 from polaris.integrations import registered_fee_func, calculate_fee
-from polaris.utils import getLogger
+from polaris.utils import getLogger, maybe_make_callback
 from polaris.models import Transaction
 from polaris.integrations import registered_rails_integration as rri
 
@@ -142,6 +142,7 @@ class Command(BaseCommand):
                 continue
 
             transaction.save()
+            maybe_make_callback(transaction)
 
         if num_completed:
             logger.info(f"{num_completed} transfers have been completed")
