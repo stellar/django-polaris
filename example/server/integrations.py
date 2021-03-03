@@ -94,7 +94,7 @@ class SEP24KYC:
         else:
             try:
                 account = PolarisStellarAccount.objects.get(
-                    account=transaction.stellar_account,
+                    account=transaction.stellar_account, memo=None
                 )
             except PolarisStellarAccount.DoesNotExist:
                 raise RuntimeError(
