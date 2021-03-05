@@ -213,11 +213,7 @@ class MyDepositIntegration(DepositIntegration):
 
     def process_sep6_request(self, params: Dict, transaction: Transaction) -> Dict:
         account = (
-            PolarisStellarAccount.objects.filter(
-                account=params["account"],
-                memo=params["memo"],
-                memo_type=params["memo_type"],
-            )
+            PolarisStellarAccount.objects.filter(account=params["account"], memo=None)
             .select_related("user")
             .first()
         )

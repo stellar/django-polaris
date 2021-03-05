@@ -4,7 +4,7 @@ import time
 import datetime
 import base64
 from decimal import Decimal
-from typing import Tuple, List
+from typing import Tuple, List, Optional
 
 from django.core.management import BaseCommand, CommandError
 from stellar_sdk import Keypair, TransactionEnvelope, Asset, Claimant
@@ -241,9 +241,9 @@ class PendingDeposits:
         return builder.build()
 
     @staticmethod
-    def get_balance_id(response: dict) -> str:
+    def get_balance_id(response: dict) -> Optional[str]:
         """
-        Pulls claimable balance ID from horizon responses.
+        Pulls claimable balance ID from horizon responses if present
 
         When called we decode and read the result_xdr from the horizon response.
         If any of the operations is a createClaimableBalanceResult we
@@ -258,20 +258,17 @@ class PendingDeposits:
 
         :return
             hex representation of the balanceID
-
-        :raises
-            ValueError if no result xdr is found claimable balance
+            or
+            None (if no createClaimableBalanceResult operation is found)
         """
         result_xdr = response["result_xdr"]
-        result_op_xdr = None
+        balance_id_hex = None
         for op_result in TransactionResult.from_xdr(result_xdr).result.results:
             if hasattr(op_result.tr, "createClaimableBalanceResult"):
-                result_op_xdr = base64.b64decode(
+                balance_id_hex = base64.b64decode(
                     op_result.tr.createClaimableBalanceResult.balanceID.to_xdr()
-                )
-        if not result_op_xdr:
-            raise ValueError("No createClaimableBalanceResult found in result_xdr")
-        return result_op_xdr.hex()
+                ).hex()
+        return balance_id_hex
 
 
 class MultiSigTransactions:
