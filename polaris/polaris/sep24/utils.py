@@ -202,7 +202,7 @@ def interactive_args_validation(request: Request) -> Dict:
                 _("invalid 'asset_code'"), content_type="text/html"
             )
         )
-    elif any(
+    elif on_change_callback and any(
         domain in on_change_callback
         for domain in settings.CALLBACK_REQUEST_DOMAIN_DENYLIST
     ):
