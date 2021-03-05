@@ -125,49 +125,66 @@ You may want to configure the ``LEVEL`` of the Polaris logger differently depend
 Environment Variables
 ^^^^^^^^^^^^^^^^^^^^^
 
+.. _`Timeout Error`: https://developers.stellar.org/api/errors/http-status-codes/horizon-specific/timeout
+.. _source: https://github.com/StellarCN/py-stellar-base/blob/275d9cb7c679801b4452597c0bc3994a2779096f/stellar_sdk/server.py#L530
+
 Polaris uses environment variables that should be defined in the environment or included in ``BASE_DIR/.env`` or ``POLARIS_ENV_PATH``. Below are the definitions for each variable used by Polaris.
 
 LOCAL_MODE
     A boolean value indicating if Polaris is in a local environment. Defaults to ``False``.
     The value will be read from the environment using ``environ.Env.bool()``.
+
     Ex. ``LOCAL_MODE=True``, ``LOCAL_MODE=1``
 
 HORIZON_URI
     A URL (protocol + hostname) for the Horizon instance Polaris should connect to.
+
     Defaults to ``https://horizon-testnet.stellar.org``.
+
     Ex. ``HORIZON_URI=https://horizon.stellar.org``
 
 HOST_URL : Required
     The URL (protocol + hostname) that this Polaris instance will run on.
+
     Ex. ``HOST_URL=https://testanchor.stellar.org``, ``HOST_URL=http://localhost:8000``
 
 SEP10_HOME_DOMAINS
     A list of home domains (no protocol, only hostname) that Polaris should consider valid when verifying SEP-10 challenge transactions sent by clients. The first domain will be used to build SEP-10 challenge transactions if the client request does not contain a ``home_domain`` parameter. Polaris will reject client requests that contain a ``home_domain`` value not included in this list.
     The value will be read from the environment using ``environ.Env.list()``.
+
     Defaults to a list containing the hostname of ``HOST_URL`` defined above if not specified.
+
     Ex. ``SEP10_HOME_DOMAINS=testanchor.stellar.org,example.com``
 
 SERVER_JWT_KEY : Required for SEP-10
     A secret string used to sign the encoded SEP-10 JWT contents. This should not be checked into version control.
+
     Ex. ``SERVER_JWT_KEY=supersecretstellarjwtsecret``
 
 SIGNING_SEED : Required for SEP-10
     A Stellar secret key used to sign challenge transactions before returning them to clients. This should not be checked into version control.
+
     Ex. ``SIGNING_SEED=SAEJXYFZOQT6TYDAGXFH32KV6GLSMLCX2E2IOI3DXY7TO2O63WFCI5JD``
 
 STELLAR_NETWORK_PASSHRASE
     The string identifying the Stellar network to use.
+
     Defaults to ``Test SDF Network ; September 2015``.
+
     Ex. ``STELLAR_NETWORK_PASSPHRASE="Public Global Stellar Network ; September 2015"``
 
 MAX_TRANSACTION_FEE_STROOPS
-    An integer limit for submitting Stellar transactions. Increasing this will decrease the probability of Horizon rejecting a transaction due to a [Timeout Error](https://developers.stellar.org/api/errors/http-status-codes/horizon-specific/timeout), which means the Stellar Network selected transactions offering higher fees.
-    Defaults to the return value Python SDK's ``Server().fetch_base_fee()`` [source](https://github.com/StellarCN/py-stellar-base/blob/275d9cb7c679801b4452597c0bc3994a2779096f/stellar_sdk/server.py#L530), which is the most recent ledger's base fee, usually 100.
+    An integer limit for submitting Stellar transactions. Increasing this will decrease the probability of Horizon rejecting a transaction due to a `Timeout Error`_, which means the Stellar Network selected transactions offering higher fees.
+
+    Defaults to the return value Python SDK's ``Server().fetch_base_fee()`` `source`_, which is the most recent ledger's base fee, usually 100.
+
     Ex. ``MAX_TRANSACTION_FEE_STROOPS=300``
 
 CALLBACK_REQUEST_TIMEOUT
     An integer for the number of seconds to wait before canceling a server-side callback request to ``Transaction.on_change_callback`` if present. Only used for SEP-6 and SEP-24. Polaris makes server-side requests to ``Transaction.on_change_callback`` from CLI commands such as ``poll_pending_deposits`` and ``execute_outgoing_transactions``. Server-side callbacks requests are not made from the API server.
+
     Defaults to 3 seconds.
+
     Ex. ``CALLBACK_REQUEST_TIMEOUT=10``
 
 CALLBACK_REQUEST_DOMAIN_DENYLIST
