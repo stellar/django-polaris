@@ -202,6 +202,11 @@ def interactive_args_validation(request: Request) -> Dict:
                 _("invalid 'asset_code'"), content_type="text/html"
             )
         )
+    elif any(
+        domain in on_change_callback
+        for domain in settings.CALLBACK_REQUEST_DOMAIN_DENYLIST
+    ):
+        on_change_callback = None
     try:
         transaction = Transaction.objects.get(id=transaction_id, asset=asset)
     except (Transaction.DoesNotExist, ValidationError):

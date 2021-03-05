@@ -165,14 +165,20 @@ MAX_TRANSACTION_FEE_STROOPS
     Defaults to the return value Python SDK's ``Server().fetch_base_fee()`` [source](https://github.com/StellarCN/py-stellar-base/blob/275d9cb7c679801b4452597c0bc3994a2779096f/stellar_sdk/server.py#L530), which is the most recent ledger's base fee, usually 100.
     Ex. ``MAX_TRANSACTION_FEE_STROOPS=300``
 
-Polaris also supports specifying your environment variables in your project's settings file. However, any variable Polaris expects in the environment must be prepended with ``POLARIS_`` if declared in ``settings.py``. For example,
+CALLBACK_REQUEST_TIMEOUT
+    An integer for the number of seconds to wait before canceling a server-side callback request to ``Transaction.on_change_callback`` if present. Only used for SEP-6 and SEP-24. Polaris makes server-side requests to ``Transaction.on_change_callback`` from CLI commands such as ``poll_pending_deposits`` and ``execute_outgoing_transactions``. Server-side callbacks requests are not made from the API server.
+    Defaults to 3 seconds.
+    Ex. ``CALLBACK_REQUEST_TIMEOUT=10``
+
+CALLBACK_REQUEST_DOMAIN_DENYLIST
+    A list of home domains to check before accepting an ``on_change_callback`` parameter in SEP-6 and SEP-24 requests. This setting can be useful when a client is providing a callback URL that consistently reaches the **CALLBACK_REQUEST_TIMEOUT** limit, slowing down the rate at which transactions are processed. Requests containing denied callback URLs will not be rejected, but the URLs will not be saved to ``Transaction.on_change_callback`` and requests will not be made.
+
+Polaris also supports specifying your environment variables in your project's settings file. However, any variable Polaris expects in the environment must be prepended with ``POLARIS_`` if declared in your settings file. For example,
 ::
 
     POLARIS_STELLAR_NETWORK_PASSPHRASE = "Test SDF Network ; September 2015"
     POLARIS_HOST_URL = "https://example.com"
     POLARIS_SEP10_HOME_DOMAINS = ["testanchor.stellar.org", "example.com"]
-
-If a variable cannot be found in the environment, Polaris will check ``django.conf.settings``. By default, the variables defined in ``settings.py`` are added to ``django.conf.settings``.
 
 Endpoints
 ^^^^^^^^^
