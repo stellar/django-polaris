@@ -2,6 +2,8 @@ from typing import Dict, Tuple
 
 from django.utils.translation import gettext as _
 from django.urls import reverse
+from django.core.validators import URLValidator
+from django.core.exceptions import ValidationError
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, renderer_classes, parser_classes
@@ -9,6 +11,7 @@ from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 from rest_framework.renderers import JSONRenderer, BrowsableAPIRenderer
 from stellar_sdk.exceptions import MemoInvalidException
 
+from polaris import settings
 from polaris.utils import (
     getLogger,
     render_error_response,
@@ -57,6 +60,7 @@ def withdraw(account: str, request: Request) -> Response:
         more_info_url=request.build_absolute_uri(
             f"{reverse('more_info_sep6')}?id={transaction_id}"
         ),
+        on_change_callback=args["on_change_callback"],
     )
 
     # All request arguments are validated in parse_request_args()
@@ -118,6 +122,19 @@ def parse_request_args(request: Request) -> Dict:
     if not request.GET.get("dest"):
         return {"error": render_error_response(_("'dest' is required"))}
 
+    on_change_callback = request.GET.get("on_change_callback")
+    if on_change_callback:
+        schemes = ["https"] if not settings.LOCAL_MODE else ["https", "http"]
+        try:
+            URLValidator(schemes=schemes)(on_change_callback)
+        except ValidationError:
+            return {"error": render_error_response(_("invalid callback URL provided"))}
+        if any(
+            domain in on_change_callback
+            for domain in settings.CALLBACK_REQUEST_DOMAIN_DENYLIST
+        ):
+            on_change_callback = None
+
     args = {
         "asset": asset,
         "memo_type": memo_type,
@@ -126,6 +143,7 @@ def parse_request_args(request: Request) -> Dict:
         "type": request.GET.get("type"),
         "dest": request.GET.get("dest"),
         "dest_extra": request.GET.get("dest_extra"),
+        "on_change_callback": on_change_callback,
         **extract_sep9_fields(request.GET),
     }
 
