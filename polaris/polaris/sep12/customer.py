@@ -111,6 +111,7 @@ class CustomerAPIView(APIView):
                     "account": account,
                     "memo": request.data.get("memo"),
                     "memo_type": request.data.get("memo_type"),
+                    "type": request.data.get("type"),
                     **extract_sep9_fields(request.data),
                 }
             )
