@@ -1,6 +1,6 @@
 import pytest
 import json
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 from typing import Dict
 
 from stellar_sdk import Keypair
@@ -410,3 +410,54 @@ def test_claimable_balance_not_supported(client, usd_asset_factory):
     assert response.status_code == 200
     t = Transaction.objects.first()
     assert t.claimable_balance_supported is False
+
+
+@pytest.mark.django_db
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_bad_amount(client, usd_asset_factory):
+    asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep6])
+    response = client.get(
+        DEPOSIT_PATH,
+        {
+            "asset_code": asset.code,
+            "account": Keypair.random().public_key,
+            "amount": "not an amount",
+        },
+    )
+    assert response.status_code == 400
+    assert "amount" in json.loads(response.content)["error"]
+
+
+@pytest.mark.django_db
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_amount_too_large(client, usd_asset_factory):
+    asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep6])
+    response = client.get(
+        DEPOSIT_PATH,
+        {
+            "asset_code": asset.code,
+            "account": Keypair.random().public_key,
+            "amount": asset.deposit_max_amount + 1,
+        },
+    )
+    assert response.status_code == 400
+    assert "amount" in json.loads(response.content)["error"]
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.deposit.rdi")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_good_amount(mock_deposit, client, usd_asset_factory):
+    asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep6])
+    mock_deposit.process_sep6_request = Mock(return_value={"how": "test"})
+    response = client.get(
+        DEPOSIT_PATH,
+        {
+            "asset_code": asset.code,
+            "account": Keypair.random().public_key,
+            "amount": asset.deposit_max_amount - 1,
+        },
+    )
+    assert response.status_code == 200
+    args, _ = mock_deposit.process_sep6_request.call_args[0]
+    assert args.get("amount") == asset.deposit_max_amount - 1

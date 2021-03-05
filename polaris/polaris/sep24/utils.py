@@ -224,7 +224,7 @@ def interactive_args_validation(request: Request) -> Dict:
         try:
             amount = Decimal(amount_str)
         except (DecimalException, TypeError):
-            return dict(error=render_error_response("invalid 'amount'"))
+            return dict(error=render_error_response(_("invalid 'amount'")))
 
         err_resp = verify_valid_asset_operation(
             asset, amount, transaction.kind, content_type="text/html"

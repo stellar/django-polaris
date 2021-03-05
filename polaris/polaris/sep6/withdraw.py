@@ -1,4 +1,5 @@
 from typing import Dict, Tuple
+from decimal import Decimal, DecimalException
 
 from django.utils.translation import gettext as _
 from django.urls import reverse
@@ -135,6 +136,21 @@ def parse_request_args(request: Request) -> Dict:
         ):
             on_change_callback = None
 
+    amount = request.GET.get("amount")
+    if amount:
+        try:
+            amount = round(Decimal(amount), asset.significant_decimals)
+        except DecimalException:
+            return {"error": render_error_response(_("invalid 'amount'"))}
+        min_amount = round(asset.withdrawal_min_amount, asset.significant_decimals)
+        max_amount = round(asset.withdrawal_max_amount, asset.significant_decimals)
+        if not (min_amount <= amount <= max_amount):
+            return {
+                "error": render_error_response(
+                    _("'amount' must be within [%s, %s]") % (min_amount, min_amount)
+                )
+            }
+
     args = {
         "asset": asset,
         "memo_type": memo_type,
@@ -144,6 +160,8 @@ def parse_request_args(request: Request) -> Dict:
         "dest": request.GET.get("dest"),
         "dest_extra": request.GET.get("dest_extra"),
         "on_change_callback": on_change_callback,
+        "amount": amount,
+        "country_code": request.GET.get("country_code"),
         **extract_sep9_fields(request.GET),
     }
 
