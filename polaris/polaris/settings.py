@@ -78,6 +78,8 @@ if any(d.startswith("http") for d in SEP10_HOME_DOMAINS):
 
 MAX_TRANSACTION_FEE_STROOPS = env_or_settings("MAX_TRANSACTION_FEE_STROOPS", int=True)
 
+CALLBACK_REQUEST_TIMEOUT = env_or_settings("CALLBACK_REQUEST_TIMEOUT", int=True) or 3
+
 # Constants
 OPERATION_DEPOSIT = "deposit"
 OPERATION_WITHDRAWAL = "withdraw"

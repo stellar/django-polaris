@@ -89,7 +89,7 @@ class Command(BaseCommand):
                 status=Transaction.STATUS.completed,
                 completed_at=datetime.now(timezone.utc),
             )
+            if num_completed:
+                logger.info(f"{num_completed} pending transfers have been completed")
         for t in complete_transactions:
             maybe_make_callback(t)
-        if num_completed:
-            logger.info(f"{num_completed} pending transfers have been completed")

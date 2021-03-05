@@ -10,8 +10,8 @@ from rest_framework.response import Response
 from stellar_sdk import TextMemo, IdMemo, HashMemo
 from stellar_sdk.exceptions import NotFoundError
 from stellar_sdk.account import Account, Thresholds
-from stellar_sdk import Memo, RequestsClient
-from requests import Response as RequestsResponse
+from stellar_sdk import Memo
+from requests import Response as RequestsResponse, RequestException, post
 
 from polaris import settings
 from polaris.models import Transaction
@@ -239,7 +239,7 @@ def make_on_change_callback(
     responds within the timeout period. Polaris will continue processing
     `transaction` regardless of the result of this request.
 
-    :raises: ``stellar_sdk.exceptions.ConnectionError``
+    :raises: A ``requests.RequestException`` subclass or ``ValueError``
     :returns: The ``requests.Response`` object for the request
     """
     if (
@@ -249,20 +249,27 @@ def make_on_change_callback(
         raise ValueError("invalid or missing on_change_callback")
     if not timeout:
         timeout = settings.CALLBACK_REQUEST_TIMEOUT
-    return RequestsClient(post_timeout=timeout).post(
-        url=transaction.on_change_callback, data=TransactionSerializer(transaction).data
+    return post(
+        url=transaction.on_change_callback,
+        json=TransactionSerializer(transaction).data,
+        timeout=timeout,
     )
 
 
-def maybe_make_callback(transaction):
+def maybe_make_callback(transaction: Transaction, timeout: Optional[int] = None):
+    """
+    Makes the on_change_callback request if present on the transaciton and
+    potentially logs an error. Use this function only if the response to the
+    callback is irrelevant for your use case.
+    """
     if (
         transaction.on_change_callback
         and transaction.on_change_callback.lower() != "postmessage"
     ):
         try:
-            callback_resp = make_on_change_callback(transaction)
-        except ConnectionError as e:
-            logger.error(f"Callback request failed: {str(e)}")
+            callback_resp = make_on_change_callback(transaction, timeout=timeout)
+        except RequestException as e:
+            logger.error(f"Callback request raised {e.__class__.__name__}: {str(e)}")
         else:
             if not callback_resp.ok:
                 logger.error(f"Callback request returned {callback_resp.status_code}")

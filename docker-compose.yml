@@ -22,6 +22,7 @@ services:
       - db
   watch_transactions:
     container_name: watch_transactions
+    network_mode: host
     build: .
     volumes:
       - ./polaris/polaris:/code/polaris/polaris
@@ -32,6 +33,7 @@ services:
     command: watchmedo auto-restart --recursive --pattern="*.py" --directory="." python manage.py watch_transactions
   check_trustlines:
     container_name: check_trustlines
+    network_mode: host
     build: .
     volumes:
       - ./polaris/polaris:/code/polaris/polaris
@@ -42,6 +44,7 @@ services:
     command: watchmedo auto-restart --recursive --pattern="*.py" --directory="." python manage.py check_trustlines -- --loop
   poll_pending_deposits:
     container_name: poll_pending_deposits
+    network_mode: host
     build: .
     volumes:
       - ./polaris/polaris:/code/polaris/polaris
@@ -52,6 +55,7 @@ services:
     command: watchmedo auto-restart --recursive --pattern="*.py" --directory="." python manage.py poll_pending_deposits -- --loop
   poll_outgoing_transactions:
     container_name: poll_outgoing_transactions
+    network_mode: host
     build: .
     volumes:
       - ./polaris/polaris:/code/polaris/polaris
@@ -62,6 +66,7 @@ services:
     command: watchmedo auto-restart --recursive --pattern="*.py" --directory="." python manage.py poll_outgoing_transactions -- --loop
   execute_outgoing_transactions:
     container_name: execute_outgoing_transactions
+    network_mode: host
     build: .
     volumes:
       - ./polaris/polaris:/code/polaris/polaris
@@ -72,6 +77,7 @@ services:
     command: watchmedo auto-restart --recursive --pattern="*.py" --directory="." python manage.py execute_outgoing_transactions -- --loop
   sign_multisig_transactions:
     container_name: sign_multisig_transactions
+    network_mode: host
     build: .
     volumes:
       - ./polaris/polaris:/code/polaris/polaris
