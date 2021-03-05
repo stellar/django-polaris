@@ -140,6 +140,7 @@ def post_interactive_withdraw(request: Request) -> Response:
                 f"Finished data collection and processing for transaction {transaction.id}"
             )
             invalidate_session(request)
+
             # Add memo now that interactive flow is complete
             #
             # We use the transaction ID as a memo on the Stellar transaction for the
@@ -151,13 +152,12 @@ def post_interactive_withdraw(request: Request) -> Response:
             transaction_id_hex = transaction.id.hex
             padded_hex_memo = "0" * (64 - len(transaction_id_hex)) + transaction_id_hex
             transaction.memo = memo_hex_to_base64(padded_hex_memo)
-            # Update status
-            # This signals to the wallet that the transaction can be submitted
             transaction.status = Transaction.STATUS.pending_user_transfer_start
             transaction.save()
-            url = reverse("more_info")
-            args = urlencode({"id": transaction.id, "callback": callback})
-            return redirect(f"{url}?{args}")
+            args = {"id": transaction.id, "initialLoad": "true"}
+            if callback:
+                args["callback"] = callback
+            return redirect(f"{reverse('more_info')}?{urlencode(args)}")
 
     else:
         content = (
@@ -223,11 +223,10 @@ def complete_interactive_withdraw(request: Request) -> Response:
             _("ID passed is not a valid transaction ID"), content_type="text/html"
         )
     logger.info(f"Hands-off interactive flow complete for transaction {transaction_id}")
-    url, args = (
-        reverse("more_info"),
-        urlencode({"id": transaction_id, "callback": callback}),
-    )
-    return redirect(f"{url}?{args}")
+    args = {"id": transaction_id, "initialLoad": "true"}
+    if callback:
+        args["callback"] = callback
+    return redirect(f"{reverse('more_info')}?{urlencode(args)}")
 
 
 @xframe_options_exempt
@@ -260,6 +259,9 @@ def get_interactive_withdraw(request: Request) -> Response:
     asset = args_or_error["asset"]
     callback = args_or_error["callback"]
     amount = args_or_error["amount"]
+    if args_or_error["on_change_callback"]:
+        transaction.on_change_callback = args_or_error["on_change_callback"]
+        transaction.save()
 
     url = rwi.interactive_url(request, transaction, asset, amount, callback)
     if url:  # The anchor uses a standalone interactive flow

@@ -23,7 +23,7 @@ from stellar_sdk.client.aiohttp_client import AiohttpClient
 
 from polaris import settings
 from polaris.models import Asset, Transaction
-from polaris.utils import getLogger
+from polaris.utils import getLogger, maybe_make_callback
 
 logger = getLogger(__name__)
 PaymentOpResult = Union[
@@ -171,6 +171,7 @@ class Command(BaseCommand):
             # SEP-6 and 24 uses 'pending_anchor' status
             transaction.status = Transaction.STATUS.pending_anchor
             transaction.save()
+        maybe_make_callback(transaction)
         return
 
     @classmethod

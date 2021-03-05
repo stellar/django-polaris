@@ -2,6 +2,8 @@ from typing import Dict, Tuple
 
 from django.utils.translation import gettext as _
 from django.urls import reverse
+from django.core.validators import URLValidator
+from django.core.exceptions import ValidationError
 from rest_framework.decorators import api_view, renderer_classes, parser_classes
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -10,6 +12,7 @@ from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.exceptions import APIException
 from stellar_sdk.exceptions import MemoInvalidException
 
+from polaris import settings
 from polaris.models import Asset, Transaction
 from polaris.locale.utils import validate_language, activate_lang_for_request
 from polaris.utils import (
@@ -56,6 +59,7 @@ def deposit(account: str, request: Request) -> Response:
             f"{reverse('more_info_sep6')}?id={transaction_id}"
         ),
         claimable_balance_supported=args["claimable_balance_supported"],
+        on_change_callback=args["on_change_callback"],
     )
 
     try:
@@ -157,6 +161,19 @@ def parse_request_args(request: Request) -> Dict:
     else:
         claimable_balance_supported = claimable_balance_supported == "true"
 
+    on_change_callback = request.GET.get("on_change_callback")
+    if on_change_callback and on_change_callback.lower() != "postmessage":
+        schemes = ["https"] if not settings.LOCAL_MODE else ["https", "http"]
+        try:
+            URLValidator(schemes=schemes)(on_change_callback)
+        except ValidationError:
+            return {"error": render_error_response(_("invalid callback URL provided"))}
+        if any(
+            domain in on_change_callback
+            for domain in settings.CALLBACK_REQUEST_DOMAIN_DENYLIST
+        ):
+            on_change_callback = None
+
     args = {
         "asset": asset,
         "memo_type": memo_type,
@@ -164,6 +181,7 @@ def parse_request_args(request: Request) -> Dict:
         "lang": lang,
         "type": request.GET.get("type"),
         "claimable_balance_supported": claimable_balance_supported,
+        "on_change_callback": on_change_callback,
         **extract_sep9_fields(request.GET),
     }
 

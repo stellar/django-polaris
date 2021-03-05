@@ -12,6 +12,7 @@ from django.core.exceptions import ValidationError
 from django.utils.translation import gettext as _
 from django.urls import reverse
 from django.conf import settings as django_settings
+from django.core.validators import URLValidator
 
 from polaris import settings
 from polaris.utils import getLogger
@@ -163,6 +164,18 @@ def invalidate_session(request: Request):
     request.session["authenticated"] = False
 
 
+def validate_url(url) -> Optional[Dict]:
+    schemes = ["https"] if not settings.LOCAL_MODE else ["https", "http"]
+    try:
+        URLValidator(schemes=schemes)(url)
+    except ValidationError:
+        return dict(
+            error=render_error_response(
+                _("invalid callback URL provided"), content_type="text/html",
+            )
+        )
+
+
 def interactive_args_validation(request: Request) -> Dict:
     """
     Validates the arguments passed to the /webapp endpoints
@@ -174,6 +187,7 @@ def interactive_args_validation(request: Request) -> Dict:
     transaction_id = request.GET.get("transaction_id")
     asset_code = request.GET.get("asset_code")
     callback = request.GET.get("callback")
+    on_change_callback = request.GET.get("on_change_callback")
     amount_str = request.GET.get("amount")
     asset = Asset.objects.filter(code=asset_code, sep24_enabled=True).first()
     if not transaction_id:
@@ -188,6 +202,11 @@ def interactive_args_validation(request: Request) -> Dict:
                 _("invalid 'asset_code'"), content_type="text/html"
             )
         )
+    elif on_change_callback and any(
+        domain in on_change_callback
+        for domain in settings.CALLBACK_REQUEST_DOMAIN_DENYLIST
+    ):
+        on_change_callback = None
     try:
         transaction = Transaction.objects.get(id=transaction_id, asset=asset)
     except (Transaction.DoesNotExist, ValidationError):
@@ -213,7 +232,19 @@ def interactive_args_validation(request: Request) -> Dict:
         if err_resp:
             return dict(error=err_resp)
 
-    return dict(transaction=transaction, asset=asset, callback=callback, amount=amount)
+    for url in [callback, on_change_callback]:
+        if url and url.lower() != "postmessage":
+            error_response = validate_url(url)
+            if error_response:
+                return error_response
+
+    return dict(
+        transaction=transaction,
+        asset=asset,
+        callback=callback,
+        on_change_callback=on_change_callback,
+        amount=amount,
+    )
 
 
 def generate_interactive_jwt(

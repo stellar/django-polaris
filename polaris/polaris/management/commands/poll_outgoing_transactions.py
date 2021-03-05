@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 
 from django.core.management import BaseCommand
 
-from polaris.utils import getLogger
+from polaris.utils import getLogger, maybe_make_callback
 from polaris.models import Transaction
 from polaris.integrations import registered_rails_integration as rri
 
@@ -84,9 +84,11 @@ class Command(BaseCommand):
             return
 
         ids = [t.id for t in complete_transactions]
-        num_completed = Transaction.objects.filter(id__in=ids).update(
-            status=Transaction.STATUS.completed,
-            completed_at=datetime.now(timezone.utc),
-        )
-        if num_completed:
+        if ids:
+            num_completed = Transaction.objects.filter(id__in=ids).update(
+                status=Transaction.STATUS.completed,
+                completed_at=datetime.now(timezone.utc),
+            )
             logger.info(f"{num_completed} pending transfers have been completed")
+        for t in complete_transactions:
+            maybe_make_callback(t)
