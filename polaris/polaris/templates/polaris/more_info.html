@@ -1,4 +1,4 @@
-{% extends "./base.html" %} {% load i18n %}
+{% extends "./base.html" %} {% load i18n %} {% load tz %}
 
 {% block "title" %}
 <title>{% trans "Transaction More Info" %}</title>
@@ -96,7 +96,7 @@
             {% trans "start" %}
         </div>
         <div class="field-value">
-            {{ transaction.started_at }}
+            {{ transaction.started_at|localtime }}
         </div>
     </div>
 
@@ -106,7 +106,7 @@
                 {% trans "completed" %}
             </div>
             <div class="field-value">
-                {{ transaction.completed_at }}
+                {{ transaction.completed_at|localtime }}
             </div>
         </div>
     {% endif %}
