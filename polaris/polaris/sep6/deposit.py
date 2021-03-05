@@ -162,7 +162,7 @@ def parse_request_args(request: Request) -> Dict:
         claimable_balance_supported = claimable_balance_supported == "true"
 
     on_change_callback = request.GET.get("on_change_callback")
-    if on_change_callback:
+    if on_change_callback and on_change_callback.lower() != "postmessage":
         schemes = ["https"] if not settings.LOCAL_MODE else ["https", "http"]
         try:
             URLValidator(schemes=schemes)(on_change_callback)

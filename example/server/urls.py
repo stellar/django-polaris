@@ -16,18 +16,7 @@ from django.contrib import admin
 from django.contrib.auth import views
 from django.urls import path, re_path, include
 import polaris.urls
-from .views import all_fields_form_view, confirm_email, skip_confirm_email
-
-from django.views.decorators.csrf import csrf_exempt
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
-
-
-@csrf_exempt
-@api_view(["POST"])
-def printCallback(request):
-    print(request.data)
-    return Response({"status": "ok"}, status=200)
+from .views import all_fields_form_view, confirm_email, skip_confirm_email, log_callback
 
 
 urlpatterns = [
@@ -40,6 +29,6 @@ urlpatterns = [
     path("all-fields", all_fields_form_view),
     path("confirm_email", confirm_email, name="confirm_email"),
     path("skip_confirm_email", skip_confirm_email, name="skip_confirm_email"),
-    path("onChangeCallback", printCallback),
+    path("onChangeCallback", log_callback),
     path("", include(polaris.urls)),
 ]

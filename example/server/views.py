@@ -1,3 +1,4 @@
+import json
 from logging import getLogger
 from django.utils.translation import gettext as _
 
@@ -67,3 +68,16 @@ def skip_confirm_email(request: Request) -> Response:
                 f"Approved multiple PolarisStellarAccounts for address: {account}"
             )
         return Response({"status": "success"}, content_type="application/json")
+
+
+@api_view(["POST"])
+@renderer_classes([JSONRenderer])
+def log_callback(request):
+    """
+    The URL for this endpoint is can be used by clients as the on_change_callback URL
+    to test Polaris' on_change_callback requests.
+    """
+    logger.info(
+        f"on_change_callback request received: {json.dumps(request.data, indent=2)}"
+    )
+    return Response({"status": "ok"}, status=200)
