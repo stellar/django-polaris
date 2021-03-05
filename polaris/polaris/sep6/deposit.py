@@ -55,6 +55,7 @@ def deposit(account: str, request: Request) -> Response:
         more_info_url=request.build_absolute_uri(
             f"{reverse('more_info_sep6')}?id={transaction_id}"
         ),
+        claimable_balance_supported=args["claimable_balance_supported"],
     )
 
     try:
@@ -144,12 +145,25 @@ def parse_request_args(request: Request) -> Dict:
     except (ValueError, MemoInvalidException):
         return {"error": render_error_response(_("invalid 'memo' for 'memo_type'"))}
 
+    claimable_balance_supported = request.GET.get(
+        "claimable_balance_supported", ""
+    ).lower()
+    if claimable_balance_supported not in ["", "true", "false"]:
+        return {
+            "error": render_error_response(
+                _("'claimable_balance_supported' value must be 'true' or 'false'")
+            )
+        }
+    else:
+        claimable_balance_supported = claimable_balance_supported == "true"
+
     args = {
         "asset": asset,
         "memo_type": memo_type,
         "memo": request.GET.get("memo"),
         "lang": lang,
         "type": request.GET.get("type"),
+        "claimable_balance_supported": claimable_balance_supported,
         **extract_sep9_fields(request.GET),
     }
 

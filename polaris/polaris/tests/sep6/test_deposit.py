@@ -3,6 +3,8 @@ import json
 from unittest.mock import patch
 from typing import Dict
 
+from stellar_sdk import Keypair
+
 from polaris.models import Transaction
 from polaris.tests.helpers import mock_check_auth_success
 from polaris.integrations import DepositIntegration
@@ -19,16 +21,13 @@ class GoodDepositIntegration(DepositIntegration):
 
 
 @pytest.mark.django_db
-@patch("polaris.sep6.deposit.rdi", new_callable=GoodDepositIntegration)
-@patch("polaris.sep10.utils.check_auth", side_effect=mock_check_auth_success)
-def test_deposit_success(
-    mock_check, mock_integration, client, acc1_usd_deposit_transaction_factory
-):
-    del mock_check, mock_integration
-    deposit = acc1_usd_deposit_transaction_factory(protocol=Transaction.PROTOCOL.sep6)
-    asset = deposit.asset
+@patch("polaris.sep6.deposit.rdi", GoodDepositIntegration())
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_deposit_success(client, usd_asset_factory):
+    asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep6])
     response = client.get(
-        DEPOSIT_PATH, {"asset_code": asset.code, "account": deposit.stellar_account},
+        DEPOSIT_PATH,
+        {"asset_code": asset.code, "account": Keypair.random().public_key},
     )
     content = json.loads(response.content)
     assert response.status_code == 200
@@ -358,3 +357,56 @@ def test_saved_transaction_on_failure_response(client, usd_asset_factory):
         },
     )
     assert response.status_code == 500
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.deposit.rdi", GoodDepositIntegration())
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_claimable_balance_supported(client, usd_asset_factory):
+    asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep6])
+    response = client.get(
+        DEPOSIT_PATH,
+        {
+            "asset_code": asset.code,
+            "account": Keypair.random().public_key,
+            "claimable_balance_supported": "true",
+        },
+    )
+    assert response.status_code == 200
+    t = Transaction.objects.first()
+    assert t.claimable_balance_supported
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.deposit.rdi", GoodDepositIntegration())
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_invalid_claimable_balance_supported_value(client, usd_asset_factory):
+    asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep6])
+    response = client.get(
+        DEPOSIT_PATH,
+        {
+            "asset_code": asset.code,
+            "account": Keypair.random().public_key,
+            "claimable_balance_supported": "yes",
+        },
+    )
+    assert response.status_code == 400
+    assert "claimable_balance_supported" in json.loads(response.content)["error"]
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.deposit.rdi", GoodDepositIntegration())
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_claimable_balance_not_supported(client, usd_asset_factory):
+    asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep6])
+    response = client.get(
+        DEPOSIT_PATH,
+        {
+            "asset_code": asset.code,
+            "account": Keypair.random().public_key,
+            "claimable_balance_supported": "False",
+        },
+    )
+    assert response.status_code == 200
+    t = Transaction.objects.first()
+    assert t.claimable_balance_supported is False
