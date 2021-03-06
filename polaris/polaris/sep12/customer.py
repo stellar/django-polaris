@@ -1,8 +1,8 @@
 from typing import Dict
-from polaris.utils import getLogger
 
 from django.utils.translation import gettext as _
-from django.core.exceptions import ObjectDoesNotExist
+from django.core.validators import URLValidator
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from rest_framework.views import APIView
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -10,7 +10,13 @@ from rest_framework.decorators import api_view, renderer_classes, parser_classes
 from rest_framework.renderers import JSONRenderer, BrowsableAPIRenderer
 from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 
-from polaris.utils import extract_sep9_fields, render_error_response, make_memo
+from polaris import settings
+from polaris.utils import (
+    extract_sep9_fields,
+    render_error_response,
+    make_memo,
+    getLogger,
+)
 from polaris.sep10.utils import validate_sep10_token
 from polaris.integrations import registered_customer_integration as rci
 
@@ -127,6 +133,65 @@ class CustomerAPIView(APIView):
             return render_error_response(_("unable to process request"))
 
         return Response({"id": customer_id}, status=202)
+
+
+@api_view(["PUT"])
+@renderer_classes([JSONRenderer, BrowsableAPIRenderer])
+@parser_classes([MultiPartParser, FormParser, JSONParser])
+@validate_sep10_token()
+def callback(account: str, request: Request) -> Response:
+    if request.data.get("id"):
+        if not isinstance(request.data.get("id"), str):
+            return render_error_response(_("bad ID value, expected str"))
+        elif (
+            request.data.get("account")
+            or request.data.get("memo")
+            or request.data.get("memo_type")
+        ):
+            return render_error_response(
+                _(
+                    "requests with 'id' cannot also have 'account', 'memo', or 'memo_type'"
+                )
+            )
+    elif account != request.data.get("account"):
+        return render_error_response(
+            _("The account specified does not match authorization token"),
+            status_code=403,
+        )
+
+    try:
+        # validate memo and memo_type
+        make_memo(request.data.get("memo"), request.data.get("memo_type"))
+    except ValueError:
+        return render_error_response(_("invalid 'memo' for 'memo_type'"))
+
+    callback_url = request.data.get("url")
+    if not callback_url:
+        return render_error_response(_("callback 'url' required"))
+    schemes = ["https"] if not settings.LOCAL_MODE else ["https", "http"]
+    try:
+        URLValidator(schemes=schemes)(request.data.get("url"))
+    except ValidationError:
+        return render_error_response(_("'url' must be a valid URL"))
+
+    try:
+        rci.callback(
+            {
+                "id": request.data.get("id"),
+                "account": account,
+                "memo": request.data.get("memo"),
+                "memo_type": request.data.get("memo_type"),
+                "url": callback_url,
+            }
+        )
+    except ValueError as e:
+        return render_error_response(str(e), status_code=400)
+    except ObjectDoesNotExist as e:
+        return render_error_response(str(e), status_code=404)
+    except NotImplemented:
+        return render_error_response(_("not implemented"), status_code=501)
+
+    return Response({"success": True})
 
 
 @api_view(["DELETE"])

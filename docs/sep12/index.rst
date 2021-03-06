@@ -50,4 +50,6 @@ Integrations
 
 .. autofunction:: polaris.integrations.CustomerIntegration.delete
 
+.. autofunction:: polaris.integrations.CustomerIntegration.callback
+
 .. autofunction:: polaris.integrations.CustomerIntegration.more_info_url

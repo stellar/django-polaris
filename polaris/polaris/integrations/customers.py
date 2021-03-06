@@ -72,5 +72,27 @@ class CustomerIntegration:
         """
         pass
 
+    def callback(self, params: Dict):
+        """
+        Save the URL provided in association with the user identified by the parameters sent
+        in the request. The anchor is responsible for making POST requests containing the
+        response body of a GET request to the saved URL whenever the SEP-12 status of the
+        customer changes. Polaris does not manage an anchor's customer data and therefore
+        cannot make these requests.
+
+        Client applications may register callback URLs if the application does not have the
+        ability to poll the ``GET /customer`` endopoint at any time, which requires SEP-10
+        authentication (and consequently the relevant account's signature).
+
+        If the customer specified does not exist, raise an ``ObjectDoesNotExist``. If the
+        URL is provided is invalid in some way, raise a ``ValueError``.
+
+        If this function is not implemented, Polaris will respond with a 501 Not Implemented.
+
+        :param params: request parameters as described in SEP-12_
+        :raises: ValueError or django.core.exceptions.ObjectDoesNotExist
+        """
+        raise NotImplemented()
+
 
 registered_customer_integration = CustomerIntegration()
