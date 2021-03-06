@@ -92,7 +92,7 @@ class CustomerIntegration:
         :param params: request parameters as described in SEP-12_
         :raises: ValueError or django.core.exceptions.ObjectDoesNotExist
         """
-        raise NotImplemented()
+        raise NotImplementedError()
 
 
 registered_customer_integration = CustomerIntegration()

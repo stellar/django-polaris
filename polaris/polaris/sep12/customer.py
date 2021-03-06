@@ -188,7 +188,7 @@ def callback(account: str, request: Request) -> Response:
         return render_error_response(str(e), status_code=400)
     except ObjectDoesNotExist as e:
         return render_error_response(str(e), status_code=404)
-    except NotImplemented:
+    except NotImplementedError:
         return render_error_response(_("not implemented"), status_code=501)
 
     return Response({"success": True})
