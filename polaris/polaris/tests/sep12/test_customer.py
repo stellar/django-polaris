@@ -212,6 +212,7 @@ def test_sep9_params(client):
             "account": "test source address",
             "first_name": "Test",
             "email_address": "test@example.com",
+            "type": None,
         }
     )
     mock_put.reset_mock()
