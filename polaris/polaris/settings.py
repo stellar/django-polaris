@@ -10,7 +10,7 @@ from stellar_sdk.server import Server
 from stellar_sdk.keypair import Keypair
 
 
-def env_or_settings(variable, bool=False, list=False, int=False):
+def env_or_settings(variable, required=True, bool=False, list=False, int=False):
     try:
         if bool:
             return env.bool(variable)
@@ -20,9 +20,11 @@ def env_or_settings(variable, bool=False, list=False, int=False):
             return env.int(variable)
         else:
             return env(variable)
-    except ImproperlyConfigured:
+    except ImproperlyConfigured as e:
         if hasattr(settings, "POLARIS_" + variable):
             return getattr(settings, "POLARIS_" + variable)
+        elif required:
+            raise e
         else:
             return None
 
@@ -52,15 +54,19 @@ if any(sep in settings.POLARIS_ACTIVE_SEPS for sep in ["sep-10", "sep-24"]):
     SERVER_JWT_KEY = env_or_settings("SERVER_JWT_KEY")
 
 STELLAR_NETWORK_PASSPHRASE = (
-    env_or_settings("STELLAR_NETWORK_PASSPHRASE") or "Test SDF Network ; September 2015"
+    env_or_settings("STELLAR_NETWORK_PASSPHRASE", required=False)
+    or "Test SDF Network ; September 2015"
 )
 
-HORIZON_URI = env_or_settings("HORIZON_URI") or "https://horizon-testnet.stellar.org"
+HORIZON_URI = (
+    env_or_settings("HORIZON_URI", required=False)
+    or "https://horizon-testnet.stellar.org"
+)
 if not HORIZON_URI.startswith("http"):
     raise ImproperlyConfigured("HORIZON_URI must include a protocol (http or https)")
 HORIZON_SERVER = Server(horizon_url=HORIZON_URI)
 
-LOCAL_MODE = env_or_settings("LOCAL_MODE", bool=True) or False
+LOCAL_MODE = env_or_settings("LOCAL_MODE", bool=True, required=False) or False
 
 HOST_URL = env_or_settings("HOST_URL")
 if not HOST_URL.startswith("http"):
@@ -70,17 +76,21 @@ elif LOCAL_MODE and HOST_URL.startswith("https"):
 elif not LOCAL_MODE and not HOST_URL.startswith("https"):
     raise ImproperlyConfigured("HOST_URL uses HTTP but LOCAL_MODE is off")
 
-SEP10_HOME_DOMAINS = env_or_settings("SEP10_HOME_DOMAINS", list=True) or [
-    urlparse(HOST_URL).netloc
-]
+SEP10_HOME_DOMAINS = env_or_settings(
+    "SEP10_HOME_DOMAINS", list=True, required=False
+) or [urlparse(HOST_URL).netloc]
 if any(d.startswith("http") for d in SEP10_HOME_DOMAINS):
     raise ImproperlyConfigured("SEP10_HOME_DOMAINS must only be hostnames")
 
-MAX_TRANSACTION_FEE_STROOPS = env_or_settings("MAX_TRANSACTION_FEE_STROOPS", int=True)
+MAX_TRANSACTION_FEE_STROOPS = env_or_settings(
+    "MAX_TRANSACTION_FEE_STROOPS", int=True, required=False
+)
 
-CALLBACK_REQUEST_TIMEOUT = env_or_settings("CALLBACK_REQUEST_TIMEOUT", int=True) or 3
+CALLBACK_REQUEST_TIMEOUT = (
+    env_or_settings("CALLBACK_REQUEST_TIMEOUT", int=True, required=False) or 3
+)
 CALLBACK_REQUEST_DOMAIN_DENYLIST = (
-    env_or_settings("CALLBACK_REQUEST_DOMAIN_DENYLIST", list=True) or []
+    env_or_settings("CALLBACK_REQUEST_DOMAIN_DENYLIST", list=True, required=False) or []
 )
 
 # Constants
