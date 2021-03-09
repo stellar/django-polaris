@@ -3,7 +3,7 @@ import signal
 import time
 
 from django.core.management.base import BaseCommand
-from stellar_sdk.exceptions import BaseHorizonError
+from stellar_sdk.exceptions import BaseRequestError
 
 from polaris import settings
 from polaris.models import Transaction
@@ -81,42 +81,33 @@ class Command(BaseCommand):
             kind=Transaction.KIND.deposit, status=Transaction.STATUS.pending_trust
         )
         server = settings.HORIZON_SERVER
+        accounts = {}
         for transaction in transactions:
             if module.TERMINATE:
                 break
-            try:
-                account = (
-                    server.accounts().account_id(transaction.stellar_account).call()
-                )
-            except BaseHorizonError:
-                logger.warning(
-                    f"could not load account {transaction.stellar_account} using provided horizon URL"
-                )
-                continue
-            try:
-                balances = account["balances"]
-            except KeyError:
-                logger.debug(
-                    f"horizon account {transaction.stellar_account} response had no balances"
-                )
-                continue
-            for balance in balances:
-                if balance.get("asset_type") == "native":
-                    continue
+            if accounts.get(transaction.stellar_account):
+                account = accounts[transaction.stellar_account]
+            else:
                 try:
-                    asset_code = balance["asset_code"]
-                    asset_issuer = balance["asset_issuer"]
-                except KeyError:
-                    logger.debug(
-                        f"horizon balance had no asset_code for account {account['id']}"
+                    account = (
+                        server.accounts().account_id(transaction.stellar_account).call()
+                    )
+                    accounts[transaction.stellar_account] = account
+                except BaseRequestError:
+                    logger.exception(
+                        f"Failed to load account {transaction.stellar_account}"
                     )
                     continue
+            for balance in account["balances"]:
+                if balance.get("asset_type") == "native":
+                    continue
                 if (
-                    asset_code == transaction.asset.code
-                    and asset_issuer == transaction.asset.issuer
+                    balance["asset_code"] == transaction.asset.code
+                    and balance["asset_issuer"] == transaction.asset.issuer
                 ):
                     logger.info(
-                        f"Account {account['id']} has established a trustline for {asset_code}"
+                        f"Account {account['id']} has established a trustline for "
+                        f"{balance['asset_code']}:{balance['asset_issuer']}"
                     )
                     if MultiSigTransactions.requires_multisig(transaction):
                         MultiSigTransactions.save_as_pending_signatures(transaction)
