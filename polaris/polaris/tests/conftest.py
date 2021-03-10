@@ -227,7 +227,6 @@ def acc1_usd_withdrawal_transaction_factory(usd_asset_factory):
             status=Transaction.STATUS.pending_user_transfer_start,
             amount_in=50.0,
             amount_fee=0,
-            completed_at=datetime.datetime.now(datetime.timezone.utc),
             stellar_transaction_id="c5e8ada72c0e3c248ac7e1ec0ec97e204c06c295113eedbe632020cd6dc29ff8",
             memo="AAAAAAAAAAAAAAAAAAAAAIDqc+oB00EajZzqIpme754=",
             memo_type=Transaction.MEMO_TYPES.hash,

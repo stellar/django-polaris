@@ -122,3 +122,29 @@ def test_bad_status_change(mock_logger, acc1_usd_deposit_transaction_factory):
         transaction
     )
     mock_rails_integration_sender.reset_mock()
+
+
+mock_sep6_rails_integration = Mock(
+    execute_outgoing_transaction=Mock(side_effect=change_to_bad_status)
+)
+
+
+@pytest.mark.django_db
+@patch("polaris.management.commands.execute_outgoing_transactions.rri")
+@patch("polaris.management.commands.execute_outgoing_transactions.logger")
+def test_sep6_no_status_change(
+    mock_logger, mock_rri, acc1_usd_withdrawal_transaction_factory
+):
+    transaction = acc1_usd_withdrawal_transaction_factory(
+        protocol=Transaction.PROTOCOL.sep6
+    )
+    transaction.status = Transaction.STATUS.pending_anchor
+    transaction.amount_out = None
+    transaction.save()
+    Command.execute_outgoing_transactions()
+    transaction.refresh_from_db()
+    assert transaction.status == Transaction.STATUS.pending_anchor
+    assert not transaction.amount_out
+    assert not transaction.completed_at
+    mock_logger.error.assert_called()
+    mock_rri.execute_outgoing_transaction.assert_called_with(transaction)

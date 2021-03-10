@@ -97,7 +97,14 @@ class Command(BaseCommand):
                 continue
 
             transaction.refresh_from_db()
-            if transaction.status == Transaction.STATUS.pending_receiver:
+            if (
+                transaction.protocol == Transaction.PROTOCOL.sep31
+                and transaction.status == Transaction.STATUS.pending_receiver
+            ) or (
+                transaction.protocol
+                in [Transaction.PROTOCOL.sep24, Transaction.PROTOCOL.sep6]
+                and transaction.status == transaction.STATUS.pending_anchor
+            ):
                 logger.error(
                     f"Transaction {transaction.id} status must be "
                     f"updated after call to execute_outgoing_transaction()"
