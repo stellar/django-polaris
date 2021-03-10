@@ -1,4 +1,5 @@
 from django.apps import AppConfig
+from django.core.exceptions import ImproperlyConfigured
 
 
 class PolarisConfig(AppConfig):
@@ -28,10 +29,11 @@ class PolarisConfig(AppConfig):
     def check_middleware():
         from django.conf import settings as django_settings
 
-        err_msg = "{} is not installed in settings.MIDDLEWARE"
         cors_middleware_path = "corsheaders.middleware.CorsMiddleware"
         if cors_middleware_path not in django_settings.MIDDLEWARE:
-            raise ValueError(err_msg.format(cors_middleware_path))
+            raise ImproperlyConfigured(
+                f"{cors_middleware_path} is not installed in settings.MIDDLEWARE"
+            )
 
     @staticmethod
     def check_protocol():
@@ -45,12 +47,14 @@ class PolarisConfig(AppConfig):
                 "Polaris is in local mode. This makes the SEP-24 interactive flow "
                 "insecure and should only be used for local development."
             )
-        if not (settings.LOCAL_MODE or getattr(django_settings, "SECURE_SSL_REDIRECT")):
-            logger.warning(
-                "SECURE_SSL_REDIRECT is required to redirect HTTP traffic to HTTPS"
-            )
         if getattr(django_settings, "SECURE_PROXY_SSL_HEADER"):
             logger.warning(
                 "SECURE_PROXY_SSL_HEADER should only be set if Polaris is "
                 "running behind an HTTPS reverse proxy."
+            )
+        elif not (
+            settings.LOCAL_MODE or getattr(django_settings, "SECURE_SSL_REDIRECT")
+        ):
+            logger.warning(
+                "SECURE_SSL_REDIRECT is required to redirect HTTP traffic to HTTPS"
             )
