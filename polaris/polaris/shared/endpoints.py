@@ -23,6 +23,7 @@ from polaris.integrations import (
 
 
 logger = getLogger(__name__)
+SEP6_MORE_INFO_PATH = "/sep6/transaction/more_info"
 
 
 def more_info(request: Request, sep6: bool = False) -> Response:

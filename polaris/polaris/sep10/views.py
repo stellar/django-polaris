@@ -141,9 +141,7 @@ class SEP10Auth(APIView):
         try:
             account = settings.HORIZON_SERVER.load_account(account_id)
         except NotFoundError:
-            logger.warning(
-                "Account does not exist, using client's master key to verify"
-            )
+            logger.info("Account does not exist, using client's master key to verify")
             try:
                 verify_challenge_transaction_signed_by_client_master_key(
                     challenge_transaction=envelope_xdr,

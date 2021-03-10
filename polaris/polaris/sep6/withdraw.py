@@ -2,7 +2,6 @@ from typing import Dict, Tuple
 from decimal import Decimal, DecimalException
 
 from django.utils.translation import gettext as _
-from django.urls import reverse
 from django.core.validators import URLValidator
 from django.core.exceptions import ValidationError
 from rest_framework.request import Request
@@ -23,6 +22,7 @@ from polaris.utils import (
 )
 from polaris.sep6.utils import validate_403_response
 from polaris.sep10.utils import validate_sep10_token
+from polaris.shared.endpoints import SEP6_MORE_INFO_PATH
 from polaris.locale.utils import validate_language, activate_lang_for_request
 from polaris.models import Asset, Transaction
 from polaris.integrations import (
@@ -59,7 +59,7 @@ def withdraw(account: str, request: Request) -> Response:
         memo_type=Transaction.MEMO_TYPES.hash,
         protocol=Transaction.PROTOCOL.sep6,
         more_info_url=request.build_absolute_uri(
-            f"{reverse('more_info_sep6')}?id={transaction_id}"
+            f"{SEP6_MORE_INFO_PATH}?id={transaction_id}"
         ),
         on_change_callback=args["on_change_callback"],
     )

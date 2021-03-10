@@ -15,7 +15,8 @@ from polaris.tests.helpers import (
 client_address = "GDKFNRUATPH4BSZGVFDRBIGZ5QAFILVFRIRYNSQ4UO7V2ZQAPRNL73RI"
 client_seed = "SDKWSBERDHP3SXW5A3LXSI7FWMMO5H7HG33KNYBKWH2HYOXJG2DXQHQY"
 
-endpoint = "/sep24/transaction"
+sep24_endpoint = "/sep24/transaction"
+sep6_endpoint = "/sep6/transaction"
 
 
 @pytest.mark.django_db
@@ -29,7 +30,7 @@ def test_transaction_requires_param(
     acc1_usd_deposit_transaction_factory()
     acc2_eth_withdrawal_transaction_factory()
 
-    response = client.get(endpoint, follow=True)
+    response = client.get(sep24_endpoint, follow=True)
     content = json.loads(response.content)
 
     assert response.status_code == 400
@@ -43,8 +44,12 @@ def test_transaction_id_filter_and_format(
     acc2_eth_withdrawal_transaction_factory,
 ):
     """Succeeds with expected response if `id` provided."""
-    acc1_usd_deposit_transaction_factory(client_address)
-    withdrawal = acc2_eth_withdrawal_transaction_factory(client_address)
+    acc1_usd_deposit_transaction_factory(
+        client_address, protocol=Transaction.PROTOCOL.sep6
+    )
+    withdrawal = acc2_eth_withdrawal_transaction_factory(
+        client_address, protocol=Transaction.PROTOCOL.sep6
+    )
 
     encoded_jwt = sep10(client, client_address, client_seed)
     # For testing, we make the key `HTTP_AUTHORIZATION`. This is the value that
@@ -54,7 +59,7 @@ def test_transaction_id_filter_and_format(
     w_started_at = withdrawal.started_at.isoformat().replace("+00:00", "Z")
     w_completed_at = withdrawal.completed_at.isoformat().replace("+00:00", "Z")
 
-    response = client.get(f"{endpoint}?id={withdrawal.id}", follow=True, **header)
+    response = client.get(f"{sep6_endpoint}?id={withdrawal.id}", follow=True, **header)
     content = json.loads(response.content)
 
     assert response.status_code == 200
@@ -87,6 +92,7 @@ def test_transaction_id_filter_and_format(
     )
     assert withdrawal_transaction["withdraw_memo"] == withdrawal.memo
     assert withdrawal_transaction["withdraw_memo_type"] == withdrawal.memo_type
+    assert "more_info_url" not in withdrawal_transaction
 
 
 @pytest.mark.django_db
@@ -105,7 +111,7 @@ def test_transaction_stellar_filter(
     header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
 
     response = client.get(
-        f"{endpoint}?stellar_transaction_id={withdrawal.stellar_transaction_id}",
+        f"{sep24_endpoint}?stellar_transaction_id={withdrawal.stellar_transaction_id}",
         follow=True,
         **header,
     )
@@ -134,7 +140,7 @@ def test_transaction_external_filter(
     header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
 
     response = client.get(
-        f"{endpoint}?external_transaction_id={deposit.external_transaction_id}",
+        f"{sep24_endpoint}?external_transaction_id={deposit.external_transaction_id}",
         follow=True,
         **header,
     )
@@ -167,7 +173,7 @@ def test_transaction_multiple_filters(
 
     response = client.get(
         (
-            f"{endpoint}?id={withdrawal.id}"
+            f"{sep24_endpoint}?id={withdrawal.id}"
             f"&external_transaction_id={withdrawal.external_transaction_id}"
             f"&stellar_transaction_id={withdrawal.stellar_transaction_id}"
         ),
@@ -203,7 +209,7 @@ def test_transaction_filtering_no_result(
 
     response = client.get(
         (
-            f"{endpoint}?id={deposit.id}"
+            f"{sep24_endpoint}?id={deposit.id}"
             f"&external_transaction_id={withdrawal.external_transaction_id}"
             f"&stellar_transaction_id={withdrawal.stellar_transaction_id}"
         ),
@@ -228,7 +234,7 @@ def test_transaction_claimable_balance_id_result(
     # we expect due to the middleware.
     header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
 
-    response = client.get((f"{endpoint}?id={deposit.id}"), follow=True, **header,)
+    response = client.get((f"{sep24_endpoint}?id={deposit.id}"), follow=True, **header,)
     content = json.loads(response.content)
 
     assert response.status_code == 200
@@ -267,7 +273,7 @@ def test_transaction_authenticated_success(
     header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
 
     response = client.get(
-        f"{endpoint}?stellar_transaction_id={withdrawal.stellar_transaction_id}",
+        f"{sep24_endpoint}?stellar_transaction_id={withdrawal.stellar_transaction_id}",
         follow=True,
         **header,
     )
@@ -287,7 +293,7 @@ def test_transaction_no_jwt(client, acc2_eth_withdrawal_transaction_factory):
 
     response = client.get(
         (
-            f"{endpoint}?id={withdrawal.id}"
+            f"{sep24_endpoint}?id={withdrawal.id}"
             f"&external_transaction_id={withdrawal.external_transaction_id}"
             f"&stellar_transaction_id={withdrawal.stellar_transaction_id}"
         ),
@@ -303,7 +309,7 @@ def test_transaction_no_jwt(client, acc2_eth_withdrawal_transaction_factory):
 def test_transaction_bad_uuid(client):
     encoded_jwt = sep10(client, client_address, client_seed)
     header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
-    response = client.get(f"{endpoint}?id=NOTAREALID", follow=True, **header)
+    response = client.get(f"{sep24_endpoint}?id=NOTAREALID", follow=True, **header)
     content = json.loads(response.content)
 
     assert response.status_code == 400

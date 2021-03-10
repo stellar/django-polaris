@@ -93,6 +93,10 @@ CALLBACK_REQUEST_DOMAIN_DENYLIST = (
     env_or_settings("CALLBACK_REQUEST_DOMAIN_DENYLIST", list=True, required=False) or []
 )
 
+SEP6_USE_MORE_INFO_URL = (
+    env_or_settings("SEP6_USE_MORE_INFO_URL", bool=True, required=False) or False
+)
+
 # Constants
 OPERATION_DEPOSIT = "deposit"
 OPERATION_WITHDRAWAL = "withdraw"

@@ -190,6 +190,13 @@ CALLBACK_REQUEST_TIMEOUT
 CALLBACK_REQUEST_DOMAIN_DENYLIST
     A list of home domains to check before accepting an ``on_change_callback`` parameter in SEP-6 and SEP-24 requests. This setting can be useful when a client is providing a callback URL that consistently reaches the **CALLBACK_REQUEST_TIMEOUT** limit, slowing down the rate at which transactions are processed. Requests containing denied callback URLs will not be rejected, but the URLs will not be saved to ``Transaction.on_change_callback`` and requests will not be made.
 
+SEP6_USE_MORE_INFO_URL
+    A boolean value indicating whether or not to provide the ``more_info_url`` response attribute in SEP-6 ``GET /transaction(s)`` responses and make the ``sep6/transaction/more_info`` endpoint available.
+
+    Defaults to ``False``.
+
+    Ex. ``SEP6_USE_MORE_INFO_URL=1``, ``SEP6_USE_MORE_INFO_URL=True``
+
 Polaris also supports specifying your environment variables in your project's settings file. However, any variable Polaris expects in the environment must be prepended with ``POLARIS_`` if declared in your settings file. For example,
 ::
 

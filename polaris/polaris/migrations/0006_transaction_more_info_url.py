@@ -4,6 +4,7 @@ from django.db import migrations, models
 from django.db.models.functions import Concat
 from django.urls import reverse
 from polaris import settings
+from polaris.shared.endpoints import SEP6_MORE_INFO_PATH
 
 
 def populate_more_info_urls(apps, _):
@@ -17,7 +18,7 @@ def populate_more_info_urls(apps, _):
     )
     Transaction.objects.filter(protocol="sep6").update(
         more_info_url=Concat(
-            models.Value(f"{settings.HOST_URL}{reverse('more_info_sep6')}?id="),
+            models.Value(f"{settings.HOST_URL}{SEP6_MORE_INFO_PATH}?id="),
             models.F("id"),
             output_field=models.TextField(null=True, blank=True),
         ),

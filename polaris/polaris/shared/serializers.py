@@ -2,6 +2,7 @@
 from rest_framework import serializers
 from django.db.models import QuerySet
 
+from polaris import settings
 from polaris.models import Transaction
 
 
@@ -47,6 +48,11 @@ class TransactionSerializer(serializers.ModelSerializer):
             data["withdraw_memo"] = data["memo"]
             data["withdraw_anchor_account"] = data["receiving_anchor_account"]
             del data["claimable_balance_id"]
+        if (
+            instance.protocol == Transaction.PROTOCOL.sep6
+            and not settings.SEP6_USE_MORE_INFO_URL
+        ):
+            del data["more_info_url"]
         del data["memo_type"]
         del data["memo"]
         del data["receiving_anchor_account"]

@@ -169,6 +169,7 @@ def acc1_usd_deposit_transaction_factory(usd_asset_factory):
             amount_out=18.24,
             amount_fee=0.1,
             protocol=protocol,
+            more_info_url="more_info_url",
         )
 
     return create_deposit_transaction
@@ -184,7 +185,7 @@ def acc2_eth_CB_deposit_transaction_factory(eth_asset_factory):
         stellar_account: str = STELLAR_ACCOUNT_2,
         protocol: str = Transaction.PROTOCOL.sep24,
     ):
-        eth_asset = eth_asset_factory(protocols=protocol)
+        eth_asset = eth_asset_factory(protocols=[protocol])
         return Transaction.objects.create(
             stellar_account=stellar_account,
             asset=eth_asset,
@@ -203,6 +204,7 @@ def acc2_eth_CB_deposit_transaction_factory(eth_asset_factory):
             claimable_balance_id=(
                 "00000000f823a3c34cbd4355203834ec977777c0ce380f6ce5c6cfdbe5478cf304b307bf"
             ),
+            more_info_url="more_info_url",
         )
 
     return create_deposit_transaction
@@ -230,6 +232,7 @@ def acc1_usd_withdrawal_transaction_factory(usd_asset_factory):
             memo="AAAAAAAAAAAAAAAAAAAAAIDqc+oB00EajZzqIpme754=",
             memo_type=Transaction.MEMO_TYPES.hash,
             protocol=protocol,
+            more_info_url="more_info_url",
         )
 
     return create_withdrawal_transaction
@@ -265,6 +268,7 @@ def acc2_eth_withdrawal_transaction_factory(eth_asset_factory):
             memo="Deposit for Mr. John Doe (id: 1001)",
             memo_type=Transaction.MEMO_TYPES.text,
             protocol=protocol,
+            more_info_url="more_info_url",
         )
 
     return create_withdrawal_transaction
@@ -295,6 +299,7 @@ def acc2_eth_deposit_transaction_factory(eth_asset_factory):
             memo="86dbfaae9990b66a2a37b4",
             memo_type=Transaction.MEMO_TYPES.hash,
             protocol=protocol,
+            more_info_url="more_info_url",
         )
 
     return create_deposit_transaction
