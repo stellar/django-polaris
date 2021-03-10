@@ -101,14 +101,17 @@ def validate_response(
         return validate_403_response(integration_response, transaction), 403
 
     asset = args["asset"]
+    if not (
+        "how" in integration_response and isinstance(integration_response["how"], str)
+    ):
+        logger.error("Invalid 'how' returned from process_sep6_request()")
+        raise ValueError()
     response = {
         "min_amount": round(asset.deposit_min_amount, asset.significant_decimals),
         "max_amount": round(asset.deposit_max_amount, asset.significant_decimals),
         "how": integration_response["how"],
+        "id": transaction.id,
     }
-    if not isinstance(response["how"], str):
-        logger.error("Invalid 'how' returned from process_sep6_request()")
-        raise ValueError()
 
     if calculate_fee == registered_fee_func:
         # Polaris user has not replaced default fee function, so fee_fixed

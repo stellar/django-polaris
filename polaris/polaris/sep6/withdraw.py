@@ -184,6 +184,7 @@ def validate_response(
         "account_id": asset.distribution_account,
         "min_amount": round(asset.withdrawal_min_amount, asset.significant_decimals),
         "max_amount": round(asset.withdrawal_max_amount, asset.significant_decimals),
+        "id": transaction.id,
     }
 
     if calculate_fee == registered_fee_func:

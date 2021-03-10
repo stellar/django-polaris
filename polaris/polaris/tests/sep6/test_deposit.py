@@ -32,6 +32,7 @@ def test_deposit_success(client, usd_asset_factory):
     content = json.loads(response.content)
     assert response.status_code == 200
     assert content == {
+        "id": str(Transaction.objects.first().id),
         "how": "test",
         "extra_info": {"test": "test"},
         "min_amount": round(asset.deposit_min_amount, asset.significant_decimals),

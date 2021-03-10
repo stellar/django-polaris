@@ -25,14 +25,12 @@ class GoodWithdrawalIntegration(WithdrawalIntegration):
 @pytest.mark.django_db
 @patch("polaris.sep6.withdraw.rwi", GoodWithdrawalIntegration())
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-def test_good_withdrawal_integration(client, acc1_usd_withdrawal_transaction_factory):
-    withdraw = acc1_usd_withdrawal_transaction_factory(
-        protocol=Transaction.PROTOCOL.sep6
-    )
+def test_good_withdrawal_integration(client, usd_asset_factory):
+    asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep6])
     response = client.get(
         WITHDRAW_PATH,
         {
-            "asset_code": withdraw.asset.code,
+            "asset_code": asset.code,
             "type": "bank_account",
             "dest": "test bank account number",
         },
@@ -42,17 +40,12 @@ def test_good_withdrawal_integration(client, acc1_usd_withdrawal_transaction_fac
     assert content.pop("memo")
     assert content.pop("memo_type") == Transaction.MEMO_TYPES.hash
     assert content == {
+        "id": str(Transaction.objects.first().id),
         "account_id": Keypair.from_secret(USD_DISTRIBUTION_SEED).public_key,
-        "min_amount": round(
-            withdraw.asset.withdrawal_min_amount, withdraw.asset.significant_decimals
-        ),
-        "max_amount": round(
-            withdraw.asset.withdrawal_max_amount, withdraw.asset.significant_decimals
-        ),
-        "fee_fixed": round(
-            withdraw.asset.withdrawal_fee_fixed, withdraw.asset.significant_decimals
-        ),
-        "fee_percent": withdraw.asset.withdrawal_fee_percent,
+        "min_amount": round(asset.withdrawal_min_amount, asset.significant_decimals),
+        "max_amount": round(asset.withdrawal_max_amount, asset.significant_decimals),
+        "fee_fixed": round(asset.withdrawal_fee_fixed, asset.significant_decimals),
+        "fee_percent": asset.withdrawal_fee_percent,
         "extra_info": {"test": "test"},
     }
 
@@ -128,32 +121,22 @@ class MissingHowDepositIntegration(WithdrawalIntegration):
 @pytest.mark.django_db
 @patch("polaris.sep6.withdraw.rwi", MissingHowDepositIntegration())
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-def test_withdraw_empty_integration_response(
-    client, acc1_usd_withdrawal_transaction_factory
-):
-    withdraw = acc1_usd_withdrawal_transaction_factory(
-        protocol=Transaction.PROTOCOL.sep6
-    )
+def test_withdraw_empty_integration_response(client, usd_asset_factory):
+    asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep6])
     response = client.get(
-        WITHDRAW_PATH,
-        {"asset_code": withdraw.asset.code, "type": "good type", "dest": "test"},
+        WITHDRAW_PATH, {"asset_code": asset.code, "type": "good type", "dest": "test"},
     )
     content = json.loads(response.content)
     assert response.status_code == 200
     assert content.pop("memo")
     assert content.pop("memo_type") == Transaction.MEMO_TYPES.hash
     assert content == {
+        "id": str(Transaction.objects.first().id),
         "account_id": Keypair.from_secret(USD_DISTRIBUTION_SEED).public_key,
-        "min_amount": round(
-            withdraw.asset.withdrawal_min_amount, withdraw.asset.significant_decimals
-        ),
-        "max_amount": round(
-            withdraw.asset.withdrawal_max_amount, withdraw.asset.significant_decimals
-        ),
-        "fee_fixed": round(
-            withdraw.asset.withdrawal_fee_fixed, withdraw.asset.significant_decimals
-        ),
-        "fee_percent": withdraw.asset.withdrawal_fee_percent,
+        "min_amount": round(asset.withdrawal_min_amount, asset.significant_decimals),
+        "max_amount": round(asset.withdrawal_max_amount, asset.significant_decimals),
+        "fee_fixed": round(asset.withdrawal_fee_fixed, asset.significant_decimals),
+        "fee_percent": asset.withdrawal_fee_percent,
     }
 
 
