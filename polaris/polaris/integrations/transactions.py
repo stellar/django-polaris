@@ -414,7 +414,7 @@ class WithdrawalIntegration:
         template: Template,
         form: Optional[forms.Form] = None,
         transaction: Optional[Transaction] = None,
-    ):
+    ) -> Optional[Dict]:
         """
         Same as ``DepositIntegration.content_for_template``, except the ``Template``
         values passed will be one of:
