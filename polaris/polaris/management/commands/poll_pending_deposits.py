@@ -380,20 +380,24 @@ class Command(BaseCommand):
             raise CommandError(
                 "poll_pending_deposits() did not return a list of transaction objects."
             )
-        ready_transactions.extend(
-            list(
-                Transaction.objects.filter(
-                    kind=Transaction.KIND.deposit,
-                    status=Transaction.STATUS.pending_anchor,
-                    pending_signatures=False,
-                    envelope_xdr__isnull=False,
-                )
-            )
-        )
         for transaction in ready_transactions:
             if module.TERMINATE:
                 break
             cls.execute_deposit(transaction)
+
+        multisig_transactions = Transaction.objects.filter(
+            kind=Transaction.KIND.deposit,
+            status=Transaction.STATUS.pending_anchor,
+            pending_signatures=False,
+            envelope_xdr__isnull=False,
+        )
+        for transaction in multisig_transactions:
+            if PendingDeposits.submit(transaction):
+                transaction.refresh_from_db()
+                try:
+                    rdi.after_deposit(transaction)
+                except Exception:
+                    logger.exception("after_deposit() threw an unexpected exception")
 
     @classmethod
     def execute_deposit(cls, transaction):
