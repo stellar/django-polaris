@@ -10,19 +10,13 @@ class PolarisConfig(AppConfig):
         """
         Initialize the app
         """
-        from django.conf import settings as django_settings
         from polaris import settings  # loads internal settings
         from polaris import cors  # loads CORS signals
         from polaris.sep24.utils import check_sep24_config
 
-        if not hasattr(django_settings, "POLARIS_ACTIVE_SEPS"):
-            raise AttributeError(
-                "POLARIS_ACTIVE_SEPS must be defined in your django settings file."
-            )
-
         self.check_middleware()
         self.check_protocol()
-        if "sep-24" in django_settings.POLARIS_ACTIVE_SEPS:
+        if "sep-24" in settings.ACTIVE_SEPS:
             check_sep24_config()
 
     @staticmethod

@@ -130,6 +130,11 @@ Environment Variables
 
 Polaris uses environment variables that should be defined in the environment or included in ``BASE_DIR/.env`` or ``POLARIS_ENV_PATH``. Below are the definitions for each variable used by Polaris.
 
+ACTIVE_SEPS: Required
+    A list of Stellar Ecosystem Proposals (SEPs) to run using Polaris. Polaris uses this list to configure various aspects of the deployment, such as the endpoint available and settings required.
+
+    Ex. ``ACTIVE_SEPS=sep-1,sep-10,sep-24``
+
 LOCAL_MODE
     A boolean value indicating if Polaris is in a local environment. Defaults to ``False``.
     The value will be read from the environment using ``environ.Env.bool()``.

@@ -64,17 +64,17 @@ def generate_toml(_request: Request) -> Response:
         "VERSION": "0.1.0",
         "NETWORK_PASSPHRASE": settings.STELLAR_NETWORK_PASSPHRASE,
     }
-    if "sep-24" in django_settings.POLARIS_ACTIVE_SEPS:
+    if "sep-24" in settings.ACTIVE_SEPS:
         toml_dict["TRANSFER_SERVER"] = os.path.join(settings.HOST_URL, "sep24")
         toml_dict["TRANSFER_SERVER_SEP0024"] = toml_dict["TRANSFER_SERVER"]
-    if "sep-6" in django_settings.POLARIS_ACTIVE_SEPS:
+    if "sep-6" in settings.ACTIVE_SEPS:
         toml_dict["TRANSFER_SERVER"] = os.path.join(settings.HOST_URL, "sep6")
-    if "sep-10" in django_settings.POLARIS_ACTIVE_SEPS:
+    if "sep-10" in settings.ACTIVE_SEPS:
         toml_dict["WEB_AUTH_ENDPOINT"] = os.path.join(settings.HOST_URL, "auth")
         toml_dict["SIGNING_KEY"] = settings.SIGNING_KEY
-    if "sep-12" in django_settings.POLARIS_ACTIVE_SEPS:
+    if "sep-12" in settings.ACTIVE_SEPS:
         toml_dict["KYC_SERVER"] = os.path.join(settings.HOST_URL, "kyc")
-    if "sep-31" in django_settings.POLARIS_ACTIVE_SEPS:
+    if "sep-31" in settings.ACTIVE_SEPS:
         toml_dict["DIRECT_PAYMENT_SERVER"] = os.path.join(settings.HOST_URL, "sep31")
 
     toml_dict.update(registered_toml_func())

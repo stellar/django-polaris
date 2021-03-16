@@ -41,8 +41,17 @@ elif hasattr(settings, "POLARIS_ENV_PATH"):
             f"Could not find env file at {settings.POLARIS_ENV_PATH}"
         )
 
+accepted_seps = ["sep-1", "sep-6", "sep-6", "sep-10", "sep-12", "sep-24", "sep-31"]
+ACTIVE_SEPS = env_or_settings("ACTIVE_SEPS", list=True)
+for i, sep in enumerate(ACTIVE_SEPS):
+    if sep.lower() not in accepted_seps:
+        raise ImproperlyConfigured(
+            f"Unrecognized value in ACTIVE_SEPS list: {sep}; Accepted values: {accepted_seps}"
+        )
+    ACTIVE_SEPS[i] = sep.lower()
+
 SIGNING_SEED, SIGNING_KEY = None, None
-if "sep-10" in settings.POLARIS_ACTIVE_SEPS:
+if "sep-10" in ACTIVE_SEPS:
     SIGNING_SEED = env_or_settings("SIGNING_SEED")
     try:
         SIGNING_KEY = Keypair.from_secret(SIGNING_SEED).public_key
@@ -50,7 +59,7 @@ if "sep-10" in settings.POLARIS_ACTIVE_SEPS:
         raise ImproperlyConfigured("Invalid SIGNING_SEED")
 
 SERVER_JWT_KEY = None
-if any(sep in settings.POLARIS_ACTIVE_SEPS for sep in ["sep-10", "sep-24"]):
+if any(sep in ACTIVE_SEPS for sep in ["sep-10", "sep-24"]):
     SERVER_JWT_KEY = env_or_settings("SERVER_JWT_KEY")
 
 STELLAR_NETWORK_PASSPHRASE = (
