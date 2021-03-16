@@ -22,7 +22,8 @@ RUN if [ ! -f /code/.env ]; then echo $'\
 SIGNING_SEED=SB4XM7E6ZP4NIQF3UNVMX5O5NH7RGHFHDLIS4Z5U4OMNQ7T4EDNKPVNU\n\
 HOST_URL=https://fake.com\n\
 SERVER_JWT_KEY=notsosecretkey\n\
-DJANGO_SECRET_KEY=notsosecretkey\
+DJANGO_SECRET_KEY=notsosecretkey\n\
+ACTIVE_SEPS=\
 ' >> /code/.env; fi
 
 # Install dependencies
