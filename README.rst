@@ -324,7 +324,7 @@ Submit a PR
 
 After you've made your changes, push them to you a remote branch
 and make a Pull Request on the stellar/django-polaris master branch.
-Note that Polaris user the `black`_ code formatter, so please format your
+Note that Polaris uses the `black`_ code formatter, so please format your
 code before requesting us to merge your changes.
 
 
