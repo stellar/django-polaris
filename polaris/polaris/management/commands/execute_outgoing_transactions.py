@@ -88,7 +88,9 @@ class Command(BaseCommand):
                 sep6_24_qparams | sep31_qparams, pending_execution_attempt=False
             )
             transactions = list(transactions_qs.select_for_update())
-            transactions_qs.update(pending_execution_attempt=True)
+            Transaction.objects.filter(id__in=[t.id for t in transactions]).update(
+                pending_execution_attempt=True
+            )
 
         if transactions:
             logger.info(f"Executing {len(transactions)} outgoing transactions")
