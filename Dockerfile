@@ -28,7 +28,7 @@ ACTIVE_SEPS=\
 
 # Install dependencies
 WORKDIR /code
-RUN pip install pipenv; pipenv install --dev --system
+RUN pip install pipenv; pipenv lock --clear; pipenv install --dev --system
 
 # collect static assets
 RUN python manage.py collectstatic --no-input --ignore=*.scss
