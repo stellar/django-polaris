@@ -6,7 +6,8 @@ import base64
 from decimal import Decimal
 from typing import Tuple, List, Optional
 
-from django.core.management import BaseCommand, CommandError
+import django.db.transaction
+from django.core.management import BaseCommand
 from stellar_sdk import Keypair, TransactionEnvelope, Asset, Claimant
 from stellar_sdk.account import Account
 from stellar_sdk.exceptions import BaseHorizonError, ConnectionError
@@ -30,39 +31,54 @@ DEFAULT_INTERVAL = 10
 
 
 class PendingDeposits:
-    @staticmethod
-    def get_ready_deposits() -> List[Transaction]:
+    @classmethod
+    def get_ready_deposits(cls) -> List[Transaction]:
         pending_deposits = Transaction.objects.filter(
             status__in=[
                 Transaction.STATUS.pending_user_transfer_start,
                 Transaction.STATUS.pending_external,
             ],
             kind=Transaction.KIND.deposit,
-        )
-        ready_transactions = rri.poll_pending_deposits(pending_deposits)
+            pending_execution_attempt=False,
+        ).select_for_update()
+        with django.db.transaction.atomic():
+            ready_transactions = rri.poll_pending_deposits(pending_deposits)
+            Transaction.objects.filter(
+                id__in=[t.id for t in ready_transactions]
+            ).update(pending_execution_attempt=True)
+        verified_ready_transactions = []
         for transaction in ready_transactions:
-            if transaction.kind != Transaction.KIND.deposit:
-                raise ValueError(
-                    "A non-deposit Transaction was returned from poll_pending_deposits()"
+            if transaction.kind != transaction.KIND.deposit:
+                cls._handle_error(
+                    transaction,
+                    "poll_pending_deposits() returned a non-deposit transaction",
                 )
-            elif transaction.amount_in is None:
-                raise ValueError(
+                continue
+            if transaction.amount_in is None:
+                cls._handle_error(
+                    transaction,
                     "poll_pending_deposits() did not assign a value to the "
-                    "amount_in field of a Transaction object returned"
+                    "amount_in field of a Transaction object returned",
                 )
+                continue
             elif transaction.amount_fee is None:
                 if registered_fee_func is calculate_fee:
-                    transaction.amount_fee = calculate_fee(
-                        {
-                            "amount": transaction.amount_in,
-                            "operation": settings.OPERATION_DEPOSIT,
-                            "asset_code": transaction.asset.code,
-                        }
-                    )
+                    try:
+                        transaction.amount_fee = calculate_fee(
+                            {
+                                "amount": transaction.amount_in,
+                                "operation": settings.OPERATION_DEPOSIT,
+                                "asset_code": transaction.asset.code,
+                            }
+                        )
+                    except ValueError as e:
+                        cls._handle_error(transaction, str(e))
+                        continue
                 else:
                     transaction.amount_fee = Decimal(0)
                 transaction.save()
-        return ready_transactions
+            verified_ready_transactions.append(transaction)
+        return verified_ready_transactions
 
     @staticmethod
     def get_or_create_destination_account(
@@ -115,10 +131,10 @@ class PendingDeposits:
 
             try:
                 settings.HORIZON_SERVER.submit_transaction(transaction_envelope)
-            except BaseHorizonError as submit_exc:  # pragma: no cover
+            except BaseHorizonError as e:  # pragma: no cover
                 raise RuntimeError(
-                    "Horizon error when submitting create account to horizon: "
-                    f"{submit_exc.message}"
+                    "Horizon error when submitting create account "
+                    f"to horizon: {e.message}"
                 )
 
             account, _ = get_account_obj(
@@ -129,6 +145,8 @@ class PendingDeposits:
             raise RuntimeError(
                 f"Horizon error when loading stellar account: {e.message}"
             )
+        except ConnectionError:
+            raise RuntimeError("Failed to connect to Horizon")
 
     @classmethod
     def submit(cls, transaction: Transaction) -> bool:
@@ -145,15 +163,18 @@ class PendingDeposits:
             )
 
         transaction.status = Transaction.STATUS.pending_anchor
-        transaction.status_eta = 5  # Ledger close time.
         transaction.save()
         logger.info(f"Initiating Stellar deposit for {transaction.id}")
         maybe_make_callback(transaction)
 
         if transaction.envelope_xdr:
-            envelope = TransactionEnvelope.from_xdr(
-                transaction.envelope_xdr, settings.STELLAR_NETWORK_PASSPHRASE
-            )
+            try:
+                envelope = TransactionEnvelope.from_xdr(
+                    transaction.envelope_xdr, settings.STELLAR_NETWORK_PASSPHRASE
+                )
+            except Exception:
+                cls._handle_error(transaction, "Failed to decode transaction envelope")
+                return False
         else:
             distribution_acc, _ = get_account_obj(
                 Keypair.from_public_key(transaction.asset.distribution_account)
@@ -186,7 +207,6 @@ class PendingDeposits:
         transaction.stellar_transaction_id = response["id"]
         transaction.status = Transaction.STATUS.completed
         transaction.completed_at = datetime.datetime.now(datetime.timezone.utc)
-        transaction.status_eta = 0
         transaction.amount_out = round(
             Decimal(transaction.amount_in) - Decimal(transaction.amount_fee),
             transaction.asset.significant_decimals,
@@ -272,6 +292,7 @@ class PendingDeposits:
     def _handle_error(cls, transaction, message):
         transaction.status_message = message
         transaction.status = Transaction.STATUS.error
+        transaction.pending_execution_attempt = False
         transaction.save()
         logger.error(transaction.status_message)
         maybe_make_callback(transaction)
@@ -302,7 +323,6 @@ class MultiSigTransactions:
         except RuntimeError as e:
             transaction.status = Transaction.STATUS.error
             transaction.status_message = str(e)
-            transaction.save()
             logger.error(transaction.status_message)
         else:
             # Create the initial envelope XDR with the channel signature
@@ -313,7 +333,8 @@ class MultiSigTransactions:
             transaction.envelope_xdr = envelope.to_xdr()
             transaction.pending_signatures = True
             transaction.status = Transaction.STATUS.pending_anchor
-            transaction.save()
+        transaction.pending_execution_attempt = False
+        transaction.save()
         maybe_make_callback(transaction)
 
 
@@ -376,23 +397,48 @@ class Command(BaseCommand):
         except Exception:
             logger.exception("poll_pending_deposits() threw an unexpected exception")
             return
-        if not isinstance(ready_transactions, list):
-            raise CommandError(
-                "poll_pending_deposits() did not return a list of transaction objects."
-            )
-        for transaction in ready_transactions:
+        for i, transaction in enumerate(ready_transactions):
             if module.TERMINATE:
+                still_processing_transactions = ready_transactions[i:]
+                Transaction.objects.filter(
+                    id__in=[t.id for t in still_processing_transactions]
+                ).update(pending_execution_attempt=False)
                 break
             cls.execute_deposit(transaction)
 
-        multisig_transactions = Transaction.objects.filter(
-            kind=Transaction.KIND.deposit,
-            status=Transaction.STATUS.pending_anchor,
-            pending_signatures=False,
-            envelope_xdr__isnull=False,
-        )
-        for transaction in multisig_transactions:
-            if PendingDeposits.submit(transaction):
+        with django.db.transaction.atomic():
+            multisig_transactions = list(
+                Transaction.objects.filter(
+                    kind=Transaction.KIND.deposit,
+                    status=Transaction.STATUS.pending_anchor,
+                    pending_signatures=False,
+                    pending_execution_attempt=False,
+                ).select_for_update()
+            )
+            Transaction.objects.filter(
+                id__in=[t.id for t in multisig_transactions]
+            ).update(pending_execution_attempt=True)
+
+        for i, transaction in enumerate(multisig_transactions):
+            if module.TERMINATE:
+                still_processing_transactions = ready_transactions[i:]
+                Transaction.objects.filter(
+                    id__in=[t.id for t in still_processing_transactions]
+                ).update(pending_execution_attempt=False)
+                break
+
+            try:
+                success = PendingDeposits.submit(transaction)
+            except Exception as e:
+                logger.exception("submit() threw an unexpected exception")
+                transaction.status_message = str(e)
+                transaction.status = Transaction.STATUS.error
+                transaction.pending_execution_attempt = False
+                transaction.save()
+                maybe_make_callback(transaction)
+                continue
+
+            if success:
                 transaction.refresh_from_db()
                 try:
                     rdi.after_deposit(transaction)
@@ -424,7 +470,19 @@ class Command(BaseCommand):
         if MultiSigTransactions.requires_multisig(transaction):
             MultiSigTransactions.save_as_pending_signatures(transaction)
             return
-        if PendingDeposits.submit(transaction):
+
+        try:
+            success = PendingDeposits.submit(transaction)
+        except Exception as e:
+            logger.exception("submit() threw an unexpected exception")
+            transaction.status_message = str(e)
+            transaction.status = Transaction.STATUS.error
+            transaction.pending_execution_attempt = False
+            transaction.save()
+            maybe_make_callback(transaction)
+            return
+
+        if success:
             transaction.refresh_from_db()
             try:
                 rdi.after_deposit(transaction)

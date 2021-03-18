@@ -210,7 +210,6 @@ class Command(BaseCommand):
         transaction.stellar_transaction_id = stellar_txid
         transaction.from_address = source
         transaction.paging_token = paging_token
-        transaction.status_eta = 0
         transaction.save()
 
     @classmethod

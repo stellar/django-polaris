@@ -220,5 +220,7 @@ def test_poll_pending_deposits_bad_integration(
     rri.poll_pending_deposits = Mock(return_value=[withdrawal_transaction])
     logger.error = Mock()
 
-    with pytest.raises(ValueError):
-        PendingDeposits.get_ready_deposits()
+    PendingDeposits.get_ready_deposits()
+
+    withdrawal_transaction.refresh_from_db()
+    assert withdrawal_transaction.status == Transaction.STATUS.error

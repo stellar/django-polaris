@@ -4,6 +4,7 @@ import time
 from decimal import Decimal
 from datetime import datetime, timezone
 
+import django.db.transaction
 from django.db.models import Q
 from django.core.management import BaseCommand
 
@@ -82,17 +83,28 @@ class Command(BaseCommand):
             status=Transaction.STATUS.pending_anchor,
             kind=Transaction.KIND.withdrawal,
         )
-        transactions = Transaction.objects.filter(sep6_24_qparams | sep31_qparams)
+        with django.db.transaction.atomic():
+            transactions_qs = Transaction.objects.filter(
+                sep6_24_qparams | sep31_qparams, pending_execution_attempt=False
+            )
+            transactions = list(transactions_qs.select_for_update())
+            transactions_qs.update(pending_execution_attempt=True)
         num_completed = 0
-        for transaction in transactions:
+        for i, transaction in enumerate(transactions):
             if module.TERMINATE:
+                still_processing_transactions = transactions[i:]
+                Transaction.objects.filter(
+                    id__in=[t.id for t in still_processing_transactions]
+                ).update(pending_execution_attempt=False)
                 break
 
             try:
                 rri.execute_outgoing_transaction(transaction)
             except Exception:
+                transaction.pending_execution_attempt = False
+                transaction.save()
                 logger.exception(
-                    "An exception was raised by execute_outgoing_transaction()"
+                    "execute_outgoing_transactions() threw an unexpected " "exception"
                 )
                 continue
 
@@ -105,6 +117,8 @@ class Command(BaseCommand):
                 in [Transaction.PROTOCOL.sep24, Transaction.PROTOCOL.sep6]
                 and transaction.status == transaction.STATUS.pending_anchor
             ):
+                transaction.pending_execution_attempt = False
+                transaction.save()
                 logger.error(
                     f"Transaction {transaction.id} status must be "
                     f"updated after call to execute_outgoing_transaction()"
@@ -120,19 +134,25 @@ class Command(BaseCommand):
                             Transaction.KIND.withdrawal: settings.OPERATION_WITHDRAWAL,
                             Transaction.KIND.send: Transaction.KIND.send,
                         }[transaction.kind]
-                        transaction.amount_fee = calculate_fee(
-                            {
-                                "amount": transaction.amount_in,
-                                "operation": op,
-                                "asset_code": transaction.asset.code,
-                            }
-                        )
+                        try:
+                            transaction.amount_fee = calculate_fee(
+                                {
+                                    "amount": transaction.amount_in,
+                                    "operation": op,
+                                    "asset_code": transaction.asset.code,
+                                }
+                            )
+                        except ValueError:
+                            transaction.pending_execution_attempt = False
+                            transaction.save()
+                            logger.exception("Unable to calculate fee")
+                            continue
                     else:
                         transaction.amount_fee = Decimal(0)
                 transaction.amount_out = transaction.amount_in - transaction.amount_fee
                 # Anchors can mark transactions as pending_external if the transfer
                 # cannot be completed immediately due to external processing.
-                # poll_pending_transfers will check on these transfers and mark them
+                # poll_outgoing_transactions will check on these transfers and mark them
                 # as complete when the funds have been received by the user.
                 if transaction.status == Transaction.STATUS.completed:
                     num_completed += 1
@@ -142,12 +162,15 @@ class Command(BaseCommand):
                 Transaction.STATUS.pending_transaction_info_update,
                 Transaction.STATUS.pending_customer_info_update,
             ]:
+                transaction.pending_execution_attempt = False
+                transaction.save()
                 logger.error(
                     f"Transaction {transaction.id} was moved to invalid status"
                     f" {transaction.status}"
                 )
                 continue
 
+            transaction.pending_execution_attempt = False
             transaction.save()
             maybe_make_callback(transaction)
 

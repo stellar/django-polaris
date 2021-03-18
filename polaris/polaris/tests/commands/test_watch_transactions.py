@@ -64,7 +64,6 @@ def test_process_response_success(client):
     transaction.refresh_from_db()
     assert transaction.from_address
     assert transaction.stellar_transaction_id
-    assert transaction.status_eta == 0
     assert transaction.paging_token
     assert transaction.status == Transaction.STATUS.pending_anchor
     assert transaction.amount_in == 10000
@@ -97,7 +96,6 @@ def test_process_response_strict_send_success(client):
     transaction.refresh_from_db()
     assert transaction.from_address
     assert transaction.stellar_transaction_id
-    assert transaction.status_eta == 0
     assert transaction.paging_token
     assert transaction.status == Transaction.STATUS.pending_receiver
     assert transaction.amount_in == 1001
