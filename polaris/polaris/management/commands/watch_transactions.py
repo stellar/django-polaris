@@ -138,6 +138,10 @@ class Command(BaseCommand):
             logger.error(f"multiple Transaction objects returned for memo: {memo}")
             transaction = transactions[0]
 
+        logger.info(
+            f"Matched transaction object {transaction.id} for stellar transaction {response['id']}"
+        )
+
         op_results = (
             Xdr.StellarXDRUnpacker(b64decode(result_xdr))
             .unpack_TransactionResult()

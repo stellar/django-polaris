@@ -709,6 +709,7 @@ class MyRailsIntegration(RailsIntegration):
             )
             transaction.save()
 
+        logger.info("fetching user data for transaction")
         user_transaction = PolarisUserTransaction.objects.filter(
             transaction_id=transaction.id
         ).first()
@@ -745,6 +746,7 @@ class MyRailsIntegration(RailsIntegration):
         )
 
         if response["success"]:
+            logger.info(f"successfully sent mock outgoing transaction {transaction.id}")
             transaction.status = Transaction.STATUS.pending_external
         else:
             # Parse a mock bank API response to demonstrate how an anchor would

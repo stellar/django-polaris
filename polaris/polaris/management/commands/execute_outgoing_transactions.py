@@ -89,6 +89,9 @@ class Command(BaseCommand):
             )
             transactions = list(transactions_qs.select_for_update())
             transactions_qs.update(pending_execution_attempt=True)
+
+        if transactions:
+            logger.info(f"Executing {len(transactions)} outgoing transactions")
         num_completed = 0
         for i, transaction in enumerate(transactions):
             if module.TERMINATE:
@@ -98,6 +101,7 @@ class Command(BaseCommand):
                 ).update(pending_execution_attempt=False)
                 break
 
+            logger.info(f"Calling execute_outgoing_transaction() for {transaction.id}")
             try:
                 rri.execute_outgoing_transaction(transaction)
             except Exception:
