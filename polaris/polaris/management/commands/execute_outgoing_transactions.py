@@ -84,10 +84,11 @@ class Command(BaseCommand):
             kind=Transaction.KIND.withdrawal,
         )
         with django.db.transaction.atomic():
-            transactions_qs = Transaction.objects.filter(
-                sep6_24_qparams | sep31_qparams, pending_execution_attempt=False
+            transactions = list(
+                Transaction.objects.filter(
+                    sep6_24_qparams | sep31_qparams, pending_execution_attempt=False
+                ).select_for_update()
             )
-            transactions = list(transactions_qs.select_for_update())
             Transaction.objects.filter(id__in=[t.id for t in transactions]).update(
                 pending_execution_attempt=True
             )

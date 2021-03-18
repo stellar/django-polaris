@@ -79,13 +79,16 @@ class Command(BaseCommand):
         """
         module = sys.modules[__name__]
         with django.db.transaction.atomic():
-            transactions_qs = Transaction.objects.filter(
-                kind=Transaction.KIND.deposit,
-                status=Transaction.STATUS.pending_trust,
-                pending_execution_attempt=False,
+            transactions = list(
+                Transaction.objects.filter(
+                    kind=Transaction.KIND.deposit,
+                    status=Transaction.STATUS.pending_trust,
+                    pending_execution_attempt=False,
+                ).select_for_update()
             )
-            transactions = list(transactions_qs.select_for_update())
-            transactions_qs.update(pending_execution_attempt=True)
+            Transaction.objects.filter(id__in=[t.id for t in transactions]).update(
+                pending_execution_attempt=True
+            )
         server = settings.HORIZON_SERVER
         accounts = {}
         for i, transaction in enumerate(transactions):
