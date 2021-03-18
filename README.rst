@@ -26,12 +26,12 @@ Polaris is an extendable `django app`_ for Stellar Ecosystem Proposal (SEP) impl
 maintained by the `Stellar Development Foundation`_ (SDF). Using Polaris, you can run a web
 server supporting any combination of SEP-1, 6, 10, 12, 24, and 31.
 
-While Polaris handles the majority of the business logic described in each SEP, there are
+While Polaris implements the majority of the functionality described in each SEP, there are
 pieces of functionality that can only be implemented by the developer using Polaris.
 For example, only an anchor can implement the integration with their partner bank.
 
-This is why each SEP implemented by Polaris comes with a programmable interface, or
-integration points, for developers to inject their own business logic.
+This is why each SEP implemented by Polaris comes with a programmable interface for developers
+to inject their own business logic.
 
 The complete documentation can be found on readthedocs_. The SDF also runs a reference
 server using Polaris that can be tested using our `demo wallet`_.
@@ -82,13 +82,6 @@ by adding `corsheaders signal`_ that checks the request URI. However this
 does not change the CORS policy for any other endpoint on the server. You can change
 this functionality using the settings listed in the `corsheaders documentation`_.
 
-Ensure ``BASE_DIR`` is defined in your project's settings.py. Django adds this setting
-automatically. Polaris uses this to find your ``.env`` file. If this setting isn't present,
-Polaris will try to use the ``ENV_PATH`` setting. It should be the path to the ``.env`` file.
-::
-
-    BASE_DIR = "<path to your django project's top-level directory>"
-
 Optionally, you can add Polaris' logger to your `LOGGING` configuration. For example:
 ::
 
@@ -127,13 +120,21 @@ You may want to configure the ``LEVEL`` of the Polaris logger differently depend
 Environment Variables
 ^^^^^^^^^^^^^^^^^^^^^
 
-Polaris uses environment variables that should be defined in the
-environment or included in ``BASE_DIR/.env`` or ``ENV_PATH``.
-::
+.. _`environment variables documentation`: https://django-polaris.readthedocs.io/en/stable/#environment-variables
 
-    STELLAR_NETWORK_PASSPHRASE="Test SDF Network ; September 2015"
-    HORIZON_URI="https://horizon-testnet.stellar.org/"
-    HOST_URL="https://example.com"
+See the `environment variables documentation`_ for a complete list of supported
+environment variables. Some environment variables are required for all Polaris
+deployments, some are required for a specific set of SEPs, and others are optional.
+
+Environment variables can be set within the environment itelf, in a ``.env`` file,
+or specified in your Django settings file.
+
+A ``.env`` file must be within the directory specified by Django's ``BASE_DIR``
+setting or specified explitly using the ``POLARIS_ENV_PATH`` setting.
+
+To set the variables in the project's settings file, the variable name must be
+prepended with ``POLARIS_``. Make sure not to put sensitive information in the
+project's settings file, such as Stellar secret keys, encryption keys, etc.
 
 Endpoints
 ^^^^^^^^^
@@ -149,11 +150,6 @@ Add the Polaris endpoints in ``urls.py``
         path("", include(polaris.urls)),
     ]
 
-Once you have implemented all the steps above, go to the documentation for each SEP
-you want the anchor server to support and follow the configuration instructions. Once
-your SEPs are configured, you can build the database and create your an ``Asset``
-object.
-
 Database Models
 ^^^^^^^^^^^^^^^
 
@@ -162,8 +158,8 @@ Database Models
 .. _Fernet symmetric encryption: https://cryptography.io/en/latest/fernet/
 .. _Asset: https://django-polaris.readthedocs.io/en/stable/models/index.html#polaris.models.Asset
 
-SEP-1, 6, and 24 require Polaris' database models. Polaris currently only supports
-PostgreSQL and uses psycopg2_ to connect to the database. If you use another
+Polaris works with all major relational databases, and the psycopg2_ PostgreSQL driver in
+installed out-of-the-box. If you find Polaris attempts to make queries incompatible with your
 database, file an issue in the project's github repository_.
 
 Run migrations to create these tables in your database.
@@ -180,22 +176,13 @@ into your python shell, then run something like this:
         code="USD",
         issuer="<the issuer address>",
         distribution_seed="<distribution account secret key>",
-        significant_decimals=2,
-        deposit_fee_fixed=1,
-        deposit_fee_percent=2,
-        withdrawal_fee_fixed=1,
-        withdrawal_fee_percent=2,
-        deposit_min_amount=10,
-        deposit_max_amount=10000,
-        withdrawal_min_amount=10,
-        withdrawal_max_amount=10000,
         sep24_enabled=True,
-        sep6_enabled=True
+        ...
     )
 
-The ``distribution_seed`` column is encrypted at the database layer using `Fernet symmetric
-encryption`_, and only decrypted when held in memory within an ``Asset`` object. It uses
-your Django project's ``SECRET_KEY`` setting to generate the encryption key, **so make sure
+The ``distribution_seed`` and ``channel_seed`` columns are encrypted at the database layer using
+`Fernet symmetric encryption`_, and only decrypted when held in memory within an ``Asset`` object.
+It uses your Django project's ``SECRET_KEY`` setting to generate the encryption key, **so make sure
 its value is unguessable and kept a secret**.
 
 See the Asset_ documentation for more information on the fields used.
@@ -265,19 +252,16 @@ a signing account on Stellar's testnet and add it to your environment variables.
 
     DJANGO_SECRET_KEY="supersecretdjangokey"
     DJANGO_DEBUG=True
-
+    DJANGO_ALLOWED_HOSTS=localhost,0.0.0.0,127.0.0.1
     SIGNING_SEED=<your signing account seed>
-
     STELLAR_NETWORK_PASSPHRASE="Test SDF Network ; September 2015"
-
     HORIZON_URI="https://horizon-testnet.stellar.org/"
     SERVER_JWT_KEY="your jwt local secret"
-    DJANGO_ALLOWED_HOSTS=localhost,0.0.0.0,127.0.0.1
     HOST_URL="http://localhost:8000"
     LOCAL_MODE=True
 
 Next, you'll need to create an asset on the Stellar test network and setup a distribution account.
-See `this tool`_ for creating assets on testnet.
+Polaris comes with a `testnet issue` command to help with this.
 
 Now you're ready to add your asset to Polaris. Run the following commands:
 ::
@@ -289,8 +273,7 @@ Go to http://localhost:8000/admin and login with the default credentials (root, 
 
 Go to the Assets menu, and click "Add Asset"
 
-Enter the code, issuer, and distribution seed for the asset. Make sure that the asset is enabled for SEP-24 and SEP-6
-by selecting the `Deposit Enabled`, `Withdrawal Enabled`, and either both or one of `Sep24 Enabled` and `Sep6 Enabled`.
+Enter the code, issuer, and distribution seed for the asset. Enable the SEPs you want to test.
 
 Click `Save`.
 
@@ -299,7 +282,7 @@ Finally, kill the current ``docker-compose`` process and run a new one:
 
     $ docker-compose up
 
-You should now have a anchor server running SEP 6 & 24 on port 8000.
+You should now have a anchor server running on port 8000.
 When you make changes locally, the docker containers will restart with the updated code.
 
 Testing
@@ -320,6 +303,7 @@ this may be slower.
 
 Submit a PR
 ^^^^^^^^^^^
+
 .. _black: https://pypi.org/project/black/
 
 After you've made your changes, push them to you a remote branch

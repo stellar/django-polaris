@@ -24,12 +24,12 @@ Polaris is an extendable `django app`_ for Stellar Ecosystem Proposal (SEP) impl
 maintained by the `Stellar Development Foundation`_ (SDF). Using Polaris, you can run a web
 server supporting any combination of SEP-1, 6, 10, 12, 24, and 31.
 
-While Polaris handles the majority of the business logic described in each SEP, there are
+While Polaris implements the majority of the functionality described in each SEP, there are
 pieces of functionality that can only be implemented by the developer using Polaris.
 For example, only an anchor can implement the integration with their partner bank.
 
-This is why each SEP implemented by Polaris comes with a programmable interface, or
-integration points, for developers to inject their own business logic.
+This is why each SEP implemented by Polaris comes with a programmable interface for developers
+to inject their own business logic.
 
 Polaris is completely open source and available on github_. The SDF also runs a reference
 server using Polaris that can be tested using our `demo client`_.
@@ -80,13 +80,6 @@ by adding `corsheaders signal`_ that checks the request URI. However this
 does not change the CORS policy for any other endpoint on the server. You can change
 this functionality using the settings listed in the `corsheaders documentation`_.
 
-Ensure ``BASE_DIR`` is defined in your project's settings.py. Django adds this setting
-automatically. Polaris uses this to find your ``.env`` file. If this setting isn't present,
-Polaris will try to use the ``POLARIS_ENV_PATH`` setting. It should be the path to the ``.env`` file.
-::
-
-    BASE_DIR = "<path to your django project's top-level directory>"
-
 Optionally, you can add Polaris' logger to your `LOGGING` configuration. For example:
 ::
 
@@ -128,7 +121,13 @@ Environment Variables
 .. _`Timeout Error`: https://developers.stellar.org/api/errors/http-status-codes/horizon-specific/timeout
 .. _source: https://github.com/StellarCN/py-stellar-base/blob/275d9cb7c679801b4452597c0bc3994a2779096f/stellar_sdk/server.py#L530
 
-Polaris uses environment variables that should be defined in the environment or included in ``BASE_DIR/.env`` or ``POLARIS_ENV_PATH``. Below are the definitions for each variable used by Polaris.
+Some environment variables are required for all Polaris deployments, some are required for a specific set of SEPs, and others are optional.
+
+Environment variables can be set within the environment itelf, in a ``.env`` file, or specified in your Django settings file.
+
+A ``.env`` file must be within the directory specified by Django's ``BASE_DIR`` setting or specified explitly using the ``POLARIS_ENV_PATH`` setting.
+
+To set the variables in the project's settings file, the variable name must be prepended with ``POLARIS_``. Make sure not to put sensitive information in the project's settings file, such as Stellar secret keys, encryption keys, etc.
 
 ACTIVE_SEPS: Required
     A list of Stellar Ecosystem Proposals (SEPs) to run using Polaris. Polaris uses this list to configure various aspects of the deployment, such as the endpoint available and settings required.
@@ -202,13 +201,6 @@ SEP6_USE_MORE_INFO_URL
 
     Ex. ``SEP6_USE_MORE_INFO_URL=1``, ``SEP6_USE_MORE_INFO_URL=True``
 
-Polaris also supports specifying your environment variables in your project's settings file. However, any variable Polaris expects in the environment must be prepended with ``POLARIS_`` if declared in your settings file. For example,
-::
-
-    POLARIS_STELLAR_NETWORK_PASSPHRASE = "Test SDF Network ; September 2015"
-    POLARIS_HOST_URL = "https://example.com"
-    POLARIS_SEP10_HOME_DOMAINS = ["testanchor.stellar.org", "example.com"]
-
 Endpoints
 ^^^^^^^^^
 
@@ -223,20 +215,15 @@ Add the Polaris endpoints in ``urls.py``
         path("", include(polaris.urls)),
     ]
 
-Once you have implemented all the steps above, go to the documentation for each SEP
-you want the anchor server to support and follow the configuration instructions. Once
-your SEPs are configured, you can build the database and create your an ``Asset``
-object.
-
 Database Models
 ^^^^^^^^^^^^^^^
 
 .. _psycopg2: https://pypi.org/project/psycopg2/
-.. _repository: https://github.com/stellar/django-polaris/issues
+.. _repository: https://github.com/stellar/django-polaris
 .. _Fernet symmetric encryption: https://cryptography.io/en/latest/fernet/
 
-SEP-1, 6, and 24 require Polaris' database models. Polaris currently only supports
-PostgreSQL and uses psycopg2_ to connect to the database. If you use another
+Polaris works with all major relational databases, and the psycopg2_ PostgreSQL driver in
+installed out-of-the-box. If you find Polaris attempts to make queries incompatible with your
 database, file an issue in the project's github repository_.
 
 Run migrations to create these tables in your database.
@@ -253,23 +240,14 @@ into your python shell, then run something like this:
         code="USD",
         issuer="<the issuer address>",
         distribution_seed="<distribution account secret key>",
-        significant_decimals=2,
-        deposit_fee_fixed=1,
-        deposit_fee_percent=2,
-        withdrawal_fee_fixed=1,
-        withdrawal_fee_percent=2,
-        deposit_min_amount=10,
-        deposit_max_amount=10000,
-        withdrawal_min_amount=10,
-        withdrawal_max_amount=10000,
         sep24_enabled=True,
-        sep6_enabled=True
+        ...
     )
 
-The ``distribution_seed`` column is encrypted at the database layer using `Fernet symmetric
-encryption`_, and only decrypted when held in memory within an ``Asset`` object. It uses
-your Django project's ``SECRET_KEY`` setting to generate the encryption key, **so make sure
-its value is unguessable and kept a secret**.
+The ``distribution_seed`` and ``channel_seed`` columns are encrypted at the database layer
+using `Fernet symmetric encryption`_, and only decrypted when held in memory within an
+``Asset`` object. It uses your Django project's ``SECRET_KEY`` setting to generate the
+encryption key, **so make sure its value is unguessable and kept a secret**.
 
 See the :doc:`Asset </models/index>` documentation for more information on the fields used.
 
@@ -323,8 +301,6 @@ which requires HTTPS. **Do not use local mode in production**.
 Contributing
 ============
 
-.. _this tool: https://github.com/stellar/create-stellar-token
-
 To set up the development environment or run the SDF's reference server, run follow the
 instructions below.
 ::
@@ -361,8 +337,7 @@ Go to http://localhost:8000/admin and login with the default credentials (root, 
 
 Go to the Assets menu, and click "Add Asset"
 
-Enter the code, issuer, and distribution seed for the asset. Make sure that the asset is enabled for SEP-24 and SEP-6
-by selecting the `Deposit Enabled`, `Withdrawal Enabled`, and either both or one of `Sep24 Enabled` and `Sep6 Enabled`.
+Enter the code, issuer, and distribution seed for the asset. Enable the SEPs you want to test.
 
 Click `Save`.
 
@@ -371,11 +346,12 @@ Finally, kill the current ``docker-compose`` process and run a new one:
 
     $ docker-compose up
 
-You should now have a anchor server running SEP 6 & 24 on port 8000.
+You should now have a anchor server running on port 8000.
 When you make changes locally, the docker containers will restart with the updated code.
 
 Testing
 ^^^^^^^
+
 First, ``cd`` into the ``polaris`` directory and create an ``.env`` file just like you did for ``example``. However, do not include ``LOCAL_MODE`` and make sure all URLs use HTTPS. This is done because Polaris tests functionality that is only run when ``LOCAL_MODE`` is not ``True``. When not in local mode, Polaris expects it's URLs to be HTTPS.
 
 Once you've created your ``.env`` file, you can install the dependencies locally in a virtual environment:
@@ -393,7 +369,11 @@ this may be slower.
 
 Submit a PR
 ^^^^^^^^^^^
-After you've made your changes, push them to you a remote branch
-and make a Pull Request on the stellar/django-polaris master branch.
+
+.. _black: https://pypi.org/project/black/
+
+After you've made your changes, push them to you a remote branch and make a Pull Request on the
+stellar/django-polaris repository_'s master branch. Note that Polaris uses the `black`_ code
+formatter, so please format your code before requesting us to merge your changes.
 
 
