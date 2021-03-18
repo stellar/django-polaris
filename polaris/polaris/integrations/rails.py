@@ -80,6 +80,8 @@ class RailsIntegration:
 
     def poll_pending_deposits(self, pending_deposits: QuerySet) -> List[Transaction]:
         """
+        .. _autocommit: https://docs.djangoproject.com/en/2.2/topics/db/transactions/#autocommit
+
         This function should poll the appropriate financial entity for the
         state of all `pending_deposits` and return the ones that have
         externally completed, meaning the off-chain funds are available in the
@@ -109,12 +111,13 @@ class RailsIntegration:
         `pending_deposits` is a QuerySet of the form
         ::
 
-            Transactions.object.filter(
+            pending_deposits = Transactions.object.filter(
                 kind=Transaction.KIND.deposit,
                 status=[
                     Transaction.STATUS.pending_user_transfer_start,
                     Transaction.STATUS.pending_external
-                ]
+                ],
+                pending_execution_attempt=False
             )
 
         ``pending_user_transfer_start`` is the proper status for a
@@ -128,12 +131,27 @@ class RailsIntegration:
         transaction in ``pending_user_transfer_start`` until the funds have
         arrived.
 
-        If you have many pending deposits, you may way want to batch
-        the retrieval of these objects to improve query performance and
-        memory usage.
+        **Note**: As of verison 1.3, this function is called within a database
+        transaction context manager:
+        ::
+
+            with django.db.transaction.atomic():
+                ready_transactions = rri.poll_pending_deposits(
+                    pending_deposits.select_for_update()
+                )
+                Transaction.objects.filter(
+                    id__in=[t.id for t in ready_transactions]
+                ).update(pending_execution_attempt=True)
+
+        This is done to ensure the same ``Transaction`` object is not retrieved
+        from the database by multiple invocations of the poll_pending_deposits
+        command and submitted to Stellar as unique transactions.
+
+        This differs from the majority of other queries Polaris makes, which
+        are executed in autocommit_ mode, the Django default.
 
         :param pending_deposits: a django Queryset for pending Transactions
-        :return: a list of Transaction database objects which correspond to
+        :return: a list of ``Transaction`` objects which correspond to
             successful user deposits to the anchor's account.
         """
         pass

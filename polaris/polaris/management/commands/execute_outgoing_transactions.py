@@ -104,7 +104,7 @@ class Command(BaseCommand):
                 transaction.pending_execution_attempt = False
                 transaction.save()
                 logger.exception(
-                    "execute_outgoing_transactions() threw an unexpected " "exception"
+                    "execute_outgoing_transactions() threw an unexpected exception"
                 )
                 continue
 
