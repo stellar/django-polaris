@@ -2,12 +2,13 @@ import sys
 import signal
 import time
 
+import django.db.transaction
 from django.core.management.base import BaseCommand
 from stellar_sdk.exceptions import BaseRequestError
 
 from polaris import settings
 from polaris.models import Transaction
-from polaris.utils import getLogger
+from polaris.utils import getLogger, maybe_make_callback
 from polaris.integrations import registered_deposit_integration as rdi
 from polaris.management.commands.poll_pending_deposits import (
     PendingDeposits,
@@ -77,13 +78,22 @@ class Command(BaseCommand):
         trust, if a trustline has been created.
         """
         module = sys.modules[__name__]
-        transactions = Transaction.objects.filter(
-            kind=Transaction.KIND.deposit, status=Transaction.STATUS.pending_trust
-        )
+        with django.db.transaction.atomic():
+            transactions_qs = Transaction.objects.filter(
+                kind=Transaction.KIND.deposit,
+                status=Transaction.STATUS.pending_trust,
+                pending_execution_attempt=False,
+            )
+            transactions = list(transactions_qs.select_for_update())
+            transactions_qs.update(pending_execution_attempt=True)
         server = settings.HORIZON_SERVER
         accounts = {}
-        for transaction in transactions:
+        for i, transaction in enumerate(transactions):
             if module.TERMINATE:
+                still_process_transactions = transactions[i:]
+                Transaction.objects.filter(
+                    id__in=[t.id for t in still_process_transactions]
+                ).update(pending_execution_attempt=False)
                 break
             if accounts.get(transaction.stellar_account):
                 account = accounts[transaction.stellar_account]
@@ -113,12 +123,22 @@ class Command(BaseCommand):
                         MultiSigTransactions.save_as_pending_signatures(transaction)
                         continue
 
-                    if PendingDeposits.submit(transaction):
+                    try:
+                        success = PendingDeposits.submit(transaction)
+                    except Exception as e:
+                        logger.exception("submit() threw an unexpected exception")
+                        transaction.status_message = str(e)
+                        transaction.status = Transaction.STATUS.error
+                        transaction.pending_execution_attempt = False
+                        transaction.save()
+                        maybe_make_callback(transaction)
+                        return
+
+                    if success:
                         transaction.refresh_from_db()
                         try:
                             rdi.after_deposit(transaction)
                         except Exception:
                             logger.exception(
-                                "An unexpected error was raised from "
-                                "after_deposit() in check_trustlines"
+                                "after_deposit() threw an unexpected exception"
                             )

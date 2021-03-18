@@ -86,8 +86,9 @@ class Command(BaseCommand):
                 .order_by("-completed_at")
                 .first()
             )
-            transaction.paging_token = None
-            transaction.save()
+            if transaction:
+                transaction.paging_token = None
+                transaction.save()
         print("\nPlacing all pending_trust transactions into error status")
         Transaction.objects.filter(status=Transaction.STATUS.pending_trust).update(
             status=Transaction.STATUS.error

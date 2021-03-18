@@ -604,6 +604,13 @@ class Transaction(models.Model):
     transaction created as a result of this request changes.
     """
 
+    pending_execution_attempt = models.BooleanField(default=False)
+    """
+    An internal column used to ensure transactions are not retrieved from the database 
+    and executed by different processes running the same command, specifically 
+    poll_pending_deposits, check_trustlines or execute_outgoing_transactions.
+    """
+
     objects = models.Manager()
 
     @property
