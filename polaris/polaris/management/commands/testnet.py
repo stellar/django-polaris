@@ -177,6 +177,33 @@ class Command(BaseCommand):
         if client:
             self.add_balance(code, client_amount, accounts, client, distributor, issuer)
 
+        home_domain = input("Home domain for the issuing account (optional): ")
+        if home_domain:
+            self.set_home_domain(issuer, home_domain)
+
+    def set_home_domain(self, issuer: Keypair, home_domain: str):
+        envelope = (
+            TransactionBuilder(
+                self.server.load_account(issuer.public_key),
+                base_fee=settings.MAX_TRANSACTION_FEE_STROOPS
+                or settings.HORIZON_SERVER.fetch_base_fee(),
+                network_passphrase="Test SDF Network ; September 2015",
+            )
+            .append_set_options_op(home_domain=home_domain)
+            .set_timeout(30)
+            .build()
+        )
+        envelope.sign(issuer)
+        try:
+            self.server.submit_transaction(envelope)
+        except BaseHorizonError as e:
+            print(
+                f"Failed to set {home_domain} as home_domain for {issuer.public_key}."
+                f"Result codes: {e.extras.get('result_codes')}"
+            )
+        else:
+            print("Success!")
+
     def add_balance(self, code, amount, accounts, dest, src, issuer):
         tb = TransactionBuilder(
             self.account_from_json(accounts[src.public_key]),
@@ -200,7 +227,7 @@ class Command(BaseCommand):
         else:
             print(
                 "Destination account already has more than the amount "
-                "specified, skipping"
+                "specified, skipping\n"
             )
             return
 
