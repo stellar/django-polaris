@@ -89,7 +89,11 @@ class Command(BaseCommand):
                     sep6_24_qparams | sep31_qparams, pending_execution_attempt=False
                 ).select_for_update()
             )
-            Transaction.objects.filter(id__in=[t.id for t in transactions]).update(
+            ids = []
+            for t in transactions:
+                t.pending_execution_attempt = True
+                ids.append(t.id)
+            Transaction.objects.filter(id__in=ids).update(
                 pending_execution_attempt=True
             )
 

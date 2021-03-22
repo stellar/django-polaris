@@ -43,9 +43,13 @@ class PendingDeposits:
         ).select_for_update()
         with django.db.transaction.atomic():
             ready_transactions = rri.poll_pending_deposits(pending_deposits)
-            Transaction.objects.filter(
-                id__in=[t.id for t in ready_transactions]
-            ).update(pending_execution_attempt=True)
+            ids = []
+            for t in ready_transactions:
+                t.pending_execution_attempt = True
+                ids.append(t.id)
+            Transaction.objects.filter(id__in=ids).update(
+                pending_execution_attempt=True
+            )
         verified_ready_transactions = []
         for transaction in ready_transactions:
             if transaction.kind != transaction.KIND.deposit:
@@ -211,6 +215,7 @@ class PendingDeposits:
             Decimal(transaction.amount_in) - Decimal(transaction.amount_fee),
             transaction.asset.significant_decimals,
         )
+        transaction.pending_execution_attempt = False
         transaction.save()
         logger.info(f"Transaction {transaction.id} completed.")
         maybe_make_callback(transaction)
@@ -412,12 +417,17 @@ class Command(BaseCommand):
                     kind=Transaction.KIND.deposit,
                     status=Transaction.STATUS.pending_anchor,
                     pending_signatures=False,
+                    envelope_xdr__isnull=False,
                     pending_execution_attempt=False,
                 ).select_for_update()
             )
-            Transaction.objects.filter(
-                id__in=[t.id for t in multisig_transactions]
-            ).update(pending_execution_attempt=True)
+            ids = []
+            for t in multisig_transactions:
+                t.pending_execution_attempt = True
+                ids.append(t.id)
+            Transaction.objects.filter(id__in=ids).update(
+                pending_execution_attempt=True
+            )
 
         for i, transaction in enumerate(multisig_transactions):
             if module.TERMINATE:
@@ -454,6 +464,7 @@ class Command(BaseCommand):
         except RuntimeError as e:
             transaction.status = Transaction.STATUS.error
             transaction.status_message = str(e)
+            transaction.pending_execution_attempt = False
             transaction.save()
             logger.error(transaction.status_message)
             maybe_make_callback(transaction)
@@ -464,6 +475,7 @@ class Command(BaseCommand):
                 f"destination account is pending_trust for transaction {transaction.id}"
             )
             transaction.status = Transaction.STATUS.pending_trust
+            transaction.pending_execution_attempt = False
             transaction.save()
             maybe_make_callback(transaction)
             return

@@ -86,7 +86,11 @@ class Command(BaseCommand):
                     pending_execution_attempt=False,
                 ).select_for_update()
             )
-            Transaction.objects.filter(id__in=[t.id for t in transactions]).update(
+            ids = []
+            for t in transactions:
+                t.pending_execution_attempt = True
+                ids.append(t.id)
+            Transaction.objects.filter(id__in=ids).update(
                 pending_execution_attempt=True
             )
         server = settings.HORIZON_SERVER
@@ -110,6 +114,8 @@ class Command(BaseCommand):
                     logger.exception(
                         f"Failed to load account {transaction.stellar_account}"
                     )
+                    transaction.pending_execution_attempt = False
+                    transaction.save()
                     continue
             for balance in account["balances"]:
                 if balance.get("asset_type") == "native":
@@ -124,7 +130,7 @@ class Command(BaseCommand):
                     )
                     if MultiSigTransactions.requires_multisig(transaction):
                         MultiSigTransactions.save_as_pending_signatures(transaction)
-                        continue
+                        break
 
                     try:
                         success = PendingDeposits.submit(transaction)
@@ -135,7 +141,7 @@ class Command(BaseCommand):
                         transaction.pending_execution_attempt = False
                         transaction.save()
                         maybe_make_callback(transaction)
-                        return
+                        break
 
                     if success:
                         transaction.refresh_from_db()
@@ -145,3 +151,6 @@ class Command(BaseCommand):
                             logger.exception(
                                 "after_deposit() threw an unexpected exception"
                             )
+            if transaction.pending_execution_attempt:
+                transaction.pending_execution_attempt = False
+                transaction.save()

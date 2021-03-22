@@ -57,7 +57,6 @@ def test_good_info_response(client, usd_asset_factory):
     response = client.get(INFO_PATH)
     content = json.loads(response.content)
     assert response.status_code == 200
-    print(json.dumps(content, indent=4))
     assert content == {
         "deposit": {
             "USD": {

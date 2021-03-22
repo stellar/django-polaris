@@ -297,7 +297,6 @@ def test_deposit_good_integration_customer_info(
         {"asset_code": deposit.asset.code, "account": deposit.stellar_account,},
     )
     content = json.loads(response.content)
-    print(content)
     assert response.status_code == 403
     assert content == {"type": "customer_info_status", "status": "pending"}
 
