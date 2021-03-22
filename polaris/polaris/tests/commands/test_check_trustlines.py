@@ -47,6 +47,8 @@ def test_check_trustlines_single_transaction_success(
     mock_requires_multisig.assert_called_once_with(transaction)
     mock_submit.assert_called_once_with(transaction)
     mock_rdi.after_deposit.assert_called_once_with(transaction)
+    transaction.refresh_from_db()
+    assert transaction.pending_execution_attempt is False
 
 
 @pytest.mark.django_db
@@ -98,6 +100,10 @@ def test_check_trustlines_two_transactions_same_account_success(
     mock_rdi.after_deposit.assert_has_calls(
         [call(transaction_two), call(transaction_one)]
     )
+    transaction_one.refresh_from_db()
+    assert transaction_one.pending_execution_attempt is False
+    transaction_two.refresh_from_db()
+    assert transaction_two.pending_execution_attempt is False
 
 
 @pytest.mark.django_db
@@ -130,6 +136,8 @@ def test_check_trustlines_horizon_connection_error(
     mock_requires_multisig.assert_not_called()
     mock_submit.assert_not_called()
     mock_rdi.assert_not_called()
+    transaction.refresh_from_db()
+    assert transaction.pending_execution_attempt is False
 
 
 @pytest.mark.django_db
@@ -174,6 +182,8 @@ def test_check_trustlines_skip_xlm(
     mock_requires_multisig.assert_called_once_with(transaction)
     mock_submit.assert_called_once_with(transaction)
     mock_rdi.after_deposit.assert_called_once_with(transaction)
+    transaction.refresh_from_db()
+    assert transaction.pending_execution_attempt is False
 
 
 @pytest.mark.django_db
@@ -226,3 +236,38 @@ def test_check_trustlines_requires_multisig(
     mock_save_as_pending_signatures.assert_called_once_with(transaction)
     mock_submit.assert_not_called()
     mock_rdi.after_deposit.assert_not_called()
+    transaction.refresh_from_db()
+    assert transaction.pending_execution_attempt is False
+
+
+@pytest.mark.django_db
+@patch("polaris.management.commands.check_trustlines.settings.HORIZON_SERVER")
+@patch("polaris.management.commands.check_trustlines.PendingDeposits.submit")
+def test_still_pending_trust_transaction(mock_submit, mock_server):
+    usd = Asset.objects.create(code="USD", issuer=Keypair.random().public_key)
+    transaction = Transaction.objects.create(
+        asset=usd,
+        stellar_account=Keypair.random().public_key,
+        status=Transaction.STATUS.pending_trust,
+        kind=Transaction.KIND.deposit,
+    )
+    account_json = {
+        "id": 1,
+        "sequence": 1,
+        "balances": [{"asset_type": "native"},],
+        "thresholds": {"low_threshold": 1, "med_threshold": 1, "high_threshold": 1,},
+        "signers": [{"key": transaction.stellar_account, "weight": 1}],
+    }
+    mock_server.accounts.return_value = Mock(
+        account_id=Mock(return_value=Mock(call=Mock(return_value=account_json)))
+    )
+
+    CheckTrustlinesCMD.check_trustlines()
+
+    mock_server.accounts().account_id.assert_called_once_with(
+        transaction.stellar_account
+    )
+    mock_server.accounts().account_id().call.assert_called_once()
+    mock_submit.assert_not_called()
+    transaction.refresh_from_db()
+    assert transaction.pending_execution_attempt is False
