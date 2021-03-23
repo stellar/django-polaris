@@ -10,10 +10,7 @@ from polaris import settings
 from polaris.models import Transaction
 from polaris.utils import getLogger, maybe_make_callback
 from polaris.integrations import registered_deposit_integration as rdi
-from polaris.management.commands.poll_pending_deposits import (
-    PendingDeposits,
-    MultiSigTransactions,
-)
+from polaris.management.commands.poll_pending_deposits import PendingDeposits
 
 
 logger = getLogger(__name__)
@@ -128,8 +125,8 @@ class Command(BaseCommand):
                         f"Account {account['id']} has established a trustline for "
                         f"{balance['asset_code']}:{balance['asset_issuer']}"
                     )
-                    if MultiSigTransactions.requires_multisig(transaction):
-                        MultiSigTransactions.save_as_pending_signatures(transaction)
+                    if PendingDeposits.requires_multisig(transaction):
+                        PendingDeposits.save_as_pending_signatures(transaction)
                         break
 
                     try:

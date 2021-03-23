@@ -11,9 +11,7 @@ from polaris.management.commands.check_trustlines import Command as CheckTrustli
 @pytest.mark.django_db
 @patch("polaris.management.commands.check_trustlines.settings.HORIZON_SERVER")
 @patch("polaris.management.commands.check_trustlines.PendingDeposits.submit")
-@patch(
-    "polaris.management.commands.check_trustlines.MultiSigTransactions.requires_multisig"
-)
+@patch("polaris.management.commands.check_trustlines.PendingDeposits.requires_multisig")
 @patch("polaris.management.commands.check_trustlines.rdi")
 def test_check_trustlines_single_transaction_success(
     mock_rdi, mock_requires_multisig, mock_submit, mock_server
@@ -54,9 +52,7 @@ def test_check_trustlines_single_transaction_success(
 @pytest.mark.django_db
 @patch("polaris.management.commands.check_trustlines.settings.HORIZON_SERVER")
 @patch("polaris.management.commands.check_trustlines.PendingDeposits.submit")
-@patch(
-    "polaris.management.commands.check_trustlines.MultiSigTransactions.requires_multisig"
-)
+@patch("polaris.management.commands.check_trustlines.PendingDeposits.requires_multisig")
 @patch("polaris.management.commands.check_trustlines.rdi")
 def test_check_trustlines_two_transactions_same_account_success(
     mock_rdi, mock_requires_multisig, mock_submit, mock_server
@@ -109,9 +105,7 @@ def test_check_trustlines_two_transactions_same_account_success(
 @pytest.mark.django_db
 @patch("polaris.management.commands.check_trustlines.settings.HORIZON_SERVER")
 @patch("polaris.management.commands.check_trustlines.PendingDeposits.submit")
-@patch(
-    "polaris.management.commands.check_trustlines.MultiSigTransactions.requires_multisig"
-)
+@patch("polaris.management.commands.check_trustlines.PendingDeposits.requires_multisig")
 @patch("polaris.management.commands.check_trustlines.rdi")
 def test_check_trustlines_horizon_connection_error(
     mock_rdi, mock_requires_multisig, mock_submit, mock_server
@@ -143,9 +137,7 @@ def test_check_trustlines_horizon_connection_error(
 @pytest.mark.django_db
 @patch("polaris.management.commands.check_trustlines.settings.HORIZON_SERVER")
 @patch("polaris.management.commands.check_trustlines.PendingDeposits.submit")
-@patch(
-    "polaris.management.commands.check_trustlines.MultiSigTransactions.requires_multisig"
-)
+@patch("polaris.management.commands.check_trustlines.PendingDeposits.requires_multisig")
 @patch("polaris.management.commands.check_trustlines.rdi")
 def test_check_trustlines_skip_xlm(
     mock_rdi, mock_requires_multisig, mock_submit, mock_server
@@ -189,12 +181,10 @@ def test_check_trustlines_skip_xlm(
 @pytest.mark.django_db
 @patch("polaris.management.commands.check_trustlines.settings.HORIZON_SERVER")
 @patch("polaris.management.commands.check_trustlines.PendingDeposits.submit")
-@patch(
-    "polaris.management.commands.check_trustlines.MultiSigTransactions.requires_multisig"
-)
+@patch("polaris.management.commands.check_trustlines.PendingDeposits.requires_multisig")
 @patch("polaris.management.commands.check_trustlines.rdi")
 @patch(
-    "polaris.management.commands.check_trustlines.MultiSigTransactions.save_as_pending_signatures"
+    "polaris.management.commands.check_trustlines.PendingDeposits.save_as_pending_signatures"
 )
 def test_check_trustlines_requires_multisig(
     mock_save_as_pending_signatures,
