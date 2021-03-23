@@ -277,14 +277,16 @@ class PendingDeposits:
 
         try:
             response = settings.HORIZON_SERVER.submit_transaction(envelope)
-        except BaseHorizonError as e:
-            cls._handle_error(transaction, f"{e.__class__.__name__}: {e.message}")
+        except (BaseHorizonError, ConnectionError) as e:
+            message = getattr(e, "message", str(e))
+            cls._handle_error(transaction, f"{e.__class__.__name__}: {message}")
             return False
 
         if not response.get("successful"):
             cls._handle_error(
                 transaction,
-                f"Stellar transaction failed when submitted to horizon: {response['result_xdr']}",
+                "Stellar transaction failed when submitted to horizon: "
+                f"{response['result_xdr']}",
             )
             return False
         elif transaction.claimable_balance_supported:
@@ -311,11 +313,7 @@ class PendingDeposits:
             success = PendingDeposits.submit(transaction)
         except Exception as e:
             logger.exception("submit() threw an unexpected exception")
-            transaction.status_message = str(e)
-            transaction.status = Transaction.STATUS.error
-            transaction.pending_execution_attempt = False
-            transaction.save()
-            maybe_make_callback(transaction)
+            cls._handle_error(transaction, str(e))
             return
 
         if success:
@@ -338,31 +336,32 @@ class PendingDeposits:
             base_fee=settings.MAX_TRANSACTION_FEE_STROOPS
             or settings.HORIZON_SERVER.fetch_base_fee(),
         )
-        _, json_resp = get_account_obj(
-            Keypair.from_public_key(transaction.stellar_account)
-        )
-        if transaction.claimable_balance_supported and is_pending_trust(
-            transaction, json_resp
-        ):
-            logger.debug(
-                f"Crafting claimable balance operation for Transaction {transaction.id}"
+        payment_op_kwargs = {
+            "destination": transaction.stellar_account,
+            "asset_code": transaction.asset.code,
+            "asset_issuer": transaction.asset.issuer,
+            "amount": str(payment_amount),
+            "source": transaction.asset.distribution_account,
+        }
+        if transaction.claimable_balance_supported:
+            _, json_resp = get_account_obj(
+                Keypair.from_public_key(transaction.stellar_account)
             )
-            claimant = Claimant(destination=transaction.stellar_account)
-            asset = Asset(code=transaction.asset.code, issuer=transaction.asset.issuer)
-            builder.append_create_claimable_balance_op(
-                claimants=[claimant],
-                asset=asset,
-                amount=str(payment_amount),
-                source=transaction.asset.distribution_account,
-            )
+            if is_pending_trust(transaction, json_resp):
+                claimant = Claimant(destination=transaction.stellar_account)
+                asset = Asset(
+                    code=transaction.asset.code, issuer=transaction.asset.issuer
+                )
+                builder.append_create_claimable_balance_op(
+                    claimants=[claimant],
+                    asset=asset,
+                    amount=str(payment_amount),
+                    source=transaction.asset.distribution_account,
+                )
+            else:
+                builder.append_payment_op(**payment_op_kwargs)
         else:
-            builder.append_payment_op(
-                destination=transaction.stellar_account,
-                asset_code=transaction.asset.code,
-                asset_issuer=transaction.asset.issuer,
-                amount=str(payment_amount),
-                source=transaction.asset.distribution_account,
-            )
+            builder.append_payment_op(**payment_op_kwargs)
         if transaction.memo:
             builder.add_memo(make_memo(transaction.memo, transaction.memo_type))
         return builder.build()
