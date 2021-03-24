@@ -76,7 +76,8 @@ def withdraw(account: str, request: Request) -> Response:
         response, status_code = validate_response(
             args, integration_response, transaction
         )
-    except ValueError:
+    except ValueError as e:
+        logger.error(str(e))
         return render_error_response(
             _("unable to process the request"), status_code=500
         )
@@ -182,10 +183,44 @@ def validate_response(
     asset = args["asset"]
     response = {
         "account_id": asset.distribution_account,
-        "min_amount": round(asset.withdrawal_min_amount, asset.significant_decimals),
-        "max_amount": round(asset.withdrawal_max_amount, asset.significant_decimals),
         "id": transaction.id,
     }
+    if "min_amount" in integration_response:
+        response["min_amount"] = integration_response["min_amount"]
+        if type(integration_response["min_amount"]) not in [Decimal, int, float]:
+            raise ValueError(
+                "Invalid 'min_amount' type returned from process_sep6_request()"
+            )
+        elif integration_response["min_amount"] < 0:
+            raise ValueError(
+                "Invalid 'min_amount' returned from process_sep6_request()"
+            )
+    elif (
+        transaction.asset.withdrawal_min_amount
+        > Asset._meta.get_field("withdrawal_min_amount").default
+    ):
+        response["min_amount"] = round(
+            transaction.asset.withdrawal_min_amount,
+            transaction.asset.significant_decimals,
+        )
+    if "max_amount" in integration_response:
+        if type(integration_response["max_amount"]) not in [Decimal, int, float]:
+            raise ValueError(
+                "Invalid 'max_amount' type returned from process_sep6_request()"
+            )
+        elif integration_response["max_amount"] < 0:
+            raise ValueError(
+                "Invalid 'max_amount' returned from process_sep6_request()"
+            )
+        response["max_amount"] = integration_response["max_amount"]
+    elif (
+        transaction.asset.withdrawal_max_amount
+        < Asset._meta.get_field("withdrawal_max_amount").default
+    ):
+        response["max_amount"] = round(
+            transaction.asset.withdrawal_max_amount,
+            transaction.asset.significant_decimals,
+        )
 
     if calculate_fee == registered_fee_func:
         # Polaris user has not replaced default fee function, so fee_fixed
@@ -197,8 +232,7 @@ def validate_response(
 
     if "extra_info" in integration_response:
         if not isinstance(integration_response["extra_info"], dict):
-            logger.info("invalid 'extra_info' returned from integration")
-            raise ValueError()
+            raise ValueError("invalid 'extra_info' returned from integration")
         response["extra_info"] = integration_response["extra_info"]
 
     return response, 200

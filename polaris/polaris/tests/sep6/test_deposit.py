@@ -5,7 +5,7 @@ from typing import Dict
 
 from stellar_sdk import Keypair
 
-from polaris.models import Transaction
+from polaris.models import Transaction, Asset
 from polaris.tests.helpers import mock_check_auth_success
 from polaris.integrations import DepositIntegration
 
@@ -21,22 +21,102 @@ class GoodDepositIntegration(DepositIntegration):
 
 
 @pytest.mark.django_db
-@patch("polaris.sep6.deposit.rdi", GoodDepositIntegration())
+@patch("polaris.sep6.deposit.rdi.process_sep6_request")
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-def test_deposit_success(client, usd_asset_factory):
-    asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep6])
+def test_deposit_success(mock_process_sep6_request, client):
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        deposit_min_amount=10,
+        deposit_max_amount=1000,
+        sep6_enabled=True,
+        deposit_enabled=True,
+    )
+    mock_process_sep6_request.return_value = {
+        "how": "test",
+        "extra_info": {"test": "test"},
+    }
     response = client.get(
         DEPOSIT_PATH,
         {"asset_code": asset.code, "account": Keypair.random().public_key},
     )
-    content = json.loads(response.content)
+    mock_process_sep6_request.assert_called_once()
+    assert Transaction.objects.count() == 1
+    content = response.json()
     assert response.status_code == 200
     assert content == {
         "id": str(Transaction.objects.first().id),
         "how": "test",
-        "extra_info": {"test": "test"},
         "min_amount": round(asset.deposit_min_amount, asset.significant_decimals),
         "max_amount": round(asset.deposit_max_amount, asset.significant_decimals),
+        "extra_info": {"test": "test"},
+        "fee_fixed": round(asset.deposit_fee_fixed, asset.significant_decimals),
+        "fee_percent": asset.deposit_fee_percent,
+    }
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.deposit.rdi.process_sep6_request")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_deposit_success_no_min_max_amounts(mock_process_sep6_request, client):
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        sep6_enabled=True,
+        deposit_enabled=True,
+    )
+    mock_process_sep6_request.return_value = {
+        "how": "test",
+        "extra_info": {"test": "test"},
+    }
+    response = client.get(
+        DEPOSIT_PATH,
+        {"asset_code": asset.code, "account": Keypair.random().public_key},
+    )
+    mock_process_sep6_request.assert_called_once()
+    assert Transaction.objects.count() == 1
+    assert response.status_code == 200
+    assert response.json() == {
+        "id": str(Transaction.objects.first().id),
+        "how": "test",
+        "extra_info": {"test": "test"},
+        "fee_fixed": round(asset.deposit_fee_fixed, asset.significant_decimals),
+        "fee_percent": asset.deposit_fee_percent,
+    }
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.deposit.rdi.process_sep6_request")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_deposit_success_custom_min_max_amounts(mock_process_sep6_request, client):
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        sep6_enabled=True,
+        deposit_enabled=True,
+        deposit_min_amount=10,
+        deposit_max_amount=1000,
+    )
+    mock_process_sep6_request.return_value = {
+        "how": "test",
+        "extra_info": {"test": "test"},
+        "min_amount": 1000,
+        "max_amount": 10000,
+    }
+    response = client.get(
+        DEPOSIT_PATH,
+        {"asset_code": asset.code, "account": Keypair.random().public_key},
+    )
+    mock_process_sep6_request.assert_called_once()
+    assert Transaction.objects.count() == 1
+    content = response.json()
+    assert response.status_code == 200
+    assert content == {
+        "id": str(Transaction.objects.first().id),
+        "how": "test",
+        "min_amount": 1000,
+        "max_amount": 10000,
+        "extra_info": {"test": "test"},
         "fee_fixed": round(asset.deposit_fee_fixed, asset.significant_decimals),
         "fee_percent": asset.deposit_fee_percent,
     }
