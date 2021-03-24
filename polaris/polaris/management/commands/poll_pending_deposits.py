@@ -10,7 +10,7 @@ import django.db.transaction
 from django.core.management import BaseCommand
 from stellar_sdk import Keypair, TransactionEnvelope, Asset, Claimant
 from stellar_sdk.account import Account
-from stellar_sdk.exceptions import BaseHorizonError, ConnectionError
+from stellar_sdk.exceptions import BaseHorizonError, ConnectionError, NotFoundError
 from stellar_sdk.transaction_builder import TransactionBuilder
 from stellar_sdk.xdr.StellarXDR_type import TransactionResult
 
@@ -96,6 +96,7 @@ class Command(BaseCommand):
             return
 
         for i, transaction in enumerate(ready_transactions):
+            print(module.TERMINATE)
             if module.TERMINATE:
                 still_processing_transactions = ready_transactions[i:]
                 Transaction.objects.filter(
@@ -106,7 +107,23 @@ class Command(BaseCommand):
             if PendingDeposits.requires_trustline(transaction):
                 continue
 
-            if PendingDeposits.requires_multisig(transaction):
+            try:
+                requires_multisig = PendingDeposits.requires_multisig(transaction)
+            except NotFoundError:
+                PendingDeposits.handle_error(
+                    transaction,
+                    f"{transaction.asset.code} distribution account "
+                    f"{transaction.asset.distribution_account} does not exist",
+                )
+                continue
+            except ConnectionError:
+                PendingDeposits.handle_error(
+                    transaction,
+                    f"Unable to connect to horizon to fetch {transaction.asset.code} "
+                    "distribution account signers",
+                )
+                continue
+            if requires_multisig:
                 PendingDeposits.save_as_pending_signatures(transaction)
                 continue
 
@@ -139,13 +156,13 @@ class PendingDeposits:
         verified_ready_transactions = []
         for transaction in ready_transactions:
             if transaction.kind != transaction.KIND.deposit:
-                cls._handle_error(
+                cls.handle_error(
                     transaction,
                     "poll_pending_deposits() returned a non-deposit transaction",
                 )
                 continue
             if transaction.amount_in is None:
-                cls._handle_error(
+                cls.handle_error(
                     transaction,
                     "poll_pending_deposits() did not assign a value to the "
                     "amount_in field of a Transaction object returned",
@@ -162,7 +179,7 @@ class PendingDeposits:
                             }
                         )
                     except ValueError as e:
-                        cls._handle_error(transaction, str(e))
+                        cls.handle_error(transaction, str(e))
                         continue
                 else:
                     transaction.amount_fee = Decimal(0)
@@ -195,7 +212,15 @@ class PendingDeposits:
             )
             return account, is_pending_trust(transaction, json_resp)
         except RuntimeError:  # account does not exist
-            if cls.requires_multisig(transaction):
+            try:
+                requires_multisig = PendingDeposits.requires_multisig(transaction)
+            except NotFoundError:
+                logger.error(
+                    f"{transaction.asset.code} distribution account "
+                    f"{transaction.asset.distribution_account} does not exist"
+                )
+                raise RuntimeError("the distribution account does not exist")
+            if requires_multisig:
                 source_account_kp = cls.get_channel_keypair(transaction)
                 source_account, _ = get_account_obj(source_account_kp)
             else:
@@ -261,7 +286,7 @@ class PendingDeposits:
                     transaction.envelope_xdr, settings.STELLAR_NETWORK_PASSPHRASE
                 )
             except Exception:
-                cls._handle_error(transaction, "Failed to decode transaction envelope")
+                cls.handle_error(transaction, "Failed to decode transaction envelope")
                 return False
         else:
             distribution_acc, _ = get_account_obj(
@@ -279,11 +304,11 @@ class PendingDeposits:
             response = settings.HORIZON_SERVER.submit_transaction(envelope)
         except (BaseHorizonError, ConnectionError) as e:
             message = getattr(e, "message", str(e))
-            cls._handle_error(transaction, f"{e.__class__.__name__}: {message}")
+            cls.handle_error(transaction, f"{e.__class__.__name__}: {message}")
             return False
 
         if not response.get("successful"):
-            cls._handle_error(
+            cls.handle_error(
                 transaction,
                 "Stellar transaction failed when submitted to horizon: "
                 f"{response['result_xdr']}",
@@ -313,7 +338,7 @@ class PendingDeposits:
             success = PendingDeposits.submit(transaction)
         except Exception as e:
             logger.exception("submit() threw an unexpected exception")
-            cls._handle_error(transaction, str(e))
+            cls.handle_error(transaction, str(e))
             return
 
         if success:
@@ -403,8 +428,8 @@ class PendingDeposits:
                 transaction
             )
         except RuntimeError as e:
-            cls._handle_error(transaction, str(e))
-            return False
+            cls.handle_error(transaction, str(e))
+            return True
 
         if pending_trust and not transaction.claimable_balance_supported:
             logger.info(
@@ -433,7 +458,7 @@ class PendingDeposits:
         channel_kp = cls.get_channel_keypair(transaction)
         try:
             channel_account, _ = get_account_obj(channel_kp)
-        except RuntimeError as e:
+        except (RuntimeError, ConnectionError) as e:
             transaction.status = Transaction.STATUS.error
             transaction.status_message = str(e)
             logger.error(transaction.status_message)
@@ -504,7 +529,7 @@ class PendingDeposits:
             cls.handle_submit(transaction)
 
     @classmethod
-    def _handle_error(cls, transaction, message):
+    def handle_error(cls, transaction, message):
         transaction.status_message = message
         transaction.status = Transaction.STATUS.error
         transaction.pending_execution_attempt = False

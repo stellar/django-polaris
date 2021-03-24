@@ -289,7 +289,7 @@ class Asset(TimeStampedModel):
         else:
             account_json = (
                 settings.HORIZON_SERVER.accounts()
-                .account_id(account_id=self.distribution_account)
+                .account_id(self.distribution_account)
                 .call()
             )
             ASSET_DISTRIBUTION_ACCOUNT_MAP[(self.code, self.issuer)] = account_json

@@ -4,7 +4,7 @@ import time
 
 import django.db.transaction
 from django.core.management.base import BaseCommand
-from stellar_sdk.exceptions import BaseRequestError
+from stellar_sdk.exceptions import BaseRequestError, NotFoundError, ConnectionError
 
 from polaris import settings
 from polaris.models import Transaction
@@ -125,7 +125,23 @@ class Command(BaseCommand):
                         f"Account {account['id']} has established a trustline for "
                         f"{balance['asset_code']}:{balance['asset_issuer']}"
                     )
-                    if PendingDeposits.requires_multisig(transaction):
+                    try:
+                        requires_multisig = PendingDeposits.requires_multisig(
+                            transaction
+                        )
+                    except NotFoundError:
+                        PendingDeposits.handle_error(
+                            transaction,
+                            f"{transaction.asset.code} distribution account "
+                            f"{transaction.asset.distribution_account} does not exist",
+                        )
+                        break
+                    except ConnectionError:
+                        logger.error("Failed to connect to Horizon")
+                        transaction.pending_execution_attempt = False
+                        transaction.save()
+                        break
+                    if requires_multisig:
                         PendingDeposits.save_as_pending_signatures(transaction)
                         break
 
@@ -133,11 +149,9 @@ class Command(BaseCommand):
                         success = PendingDeposits.submit(transaction)
                     except Exception as e:
                         logger.exception("submit() threw an unexpected exception")
-                        transaction.status_message = str(e)
-                        transaction.status = Transaction.STATUS.error
-                        transaction.pending_execution_attempt = False
-                        transaction.save()
-                        maybe_make_callback(transaction)
+                        PendingDeposits.handle_error(
+                            transaction, f"{e.__class__.__name__}: {str(e)}"
+                        )
                         break
 
                     if success:

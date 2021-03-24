@@ -4,7 +4,7 @@ from unittest.mock import patch, Mock
 
 from polaris import settings
 from polaris.models import Asset, Transaction
-from polaris.management.commands.poll_pending_deposits import PendingDeposits
+from polaris.management.commands.poll_pending_deposits import PendingDeposits, Command
 
 from stellar_sdk import (
     Keypair,
@@ -20,7 +20,7 @@ from stellar_sdk.operation import (
     Payment,
     CreateClaimableBalance,
 )
-from stellar_sdk.exceptions import BadRequestError, ConnectionError
+from stellar_sdk.exceptions import BadRequestError, ConnectionError, NotFoundError
 from stellar_sdk.memo import TextMemo
 
 
@@ -629,7 +629,7 @@ def test_create_transaction_envelope(mock_fetch_base_fee, mock_get_account_obj):
         stellar_account=Keypair.random().public_key,
         amount_in=100,
         amount_fee=1,
-        memo_type="text",
+        memo_type=Transaction.MEMO_TYPES.text,
         memo="testing",
     )
     source_account = Account(usd.distribution_account, 1)
@@ -671,7 +671,7 @@ def test_create_transaction_envelope_claimable_balance_supported_has_trustline(
         stellar_account=Keypair.random().public_key,
         amount_in=100,
         amount_fee=1,
-        memo_type="text",
+        memo_type=Transaction.MEMO_TYPES.text,
         memo="testing",
         claimable_balance_supported=True,
     )
@@ -720,7 +720,7 @@ def test_create_transaction_envelope_claimable_balance_supported_no_trustline(
         stellar_account=Keypair.random().public_key,
         amount_in=100,
         amount_fee=1,
-        memo_type="text",
+        memo_type=Transaction.MEMO_TYPES.text,
         memo="testing",
         claimable_balance_supported=True,
     )
@@ -751,3 +751,579 @@ def test_create_transaction_envelope_claimable_balance_supported_no_trustline(
         envelope.transaction.operations[0].claimants[0].destination
         == transaction.stellar_account
     )
+
+
+@pytest.mark.django_db
+@patch(f"{test_module}.PendingDeposits.get_or_create_destination_account")
+@patch(f"{test_module}.maybe_make_callback")
+def test_requires_trustline_has_trustline(
+    mock_maybe_make_callback, mock_get_or_create_destination_account
+):
+    usd = Asset.objects.create(code="USD", issuer=Keypair.random().public_key,)
+    transaction = Transaction.objects.create(
+        asset=usd,
+        status=Transaction.STATUS.pending_user_transfer_start,
+        kind=Transaction.KIND.deposit,
+        stellar_account=Keypair.random().public_key,
+        pending_execution_attempt=True,
+    )
+    mock_get_or_create_destination_account.return_value = None, False
+
+    assert PendingDeposits.requires_trustline(transaction) is False
+    mock_maybe_make_callback.assert_not_called()
+    transaction.refresh_from_db()
+    assert transaction.status == transaction.STATUS.pending_user_transfer_start
+    assert transaction.pending_execution_attempt is True
+
+
+@pytest.mark.django_db
+@patch(f"{test_module}.PendingDeposits.get_or_create_destination_account")
+@patch(f"{test_module}.maybe_make_callback")
+def test_requires_trustline_no_trustline(
+    mock_maybe_make_callback, mock_get_or_create_destination_account
+):
+    usd = Asset.objects.create(code="USD", issuer=Keypair.random().public_key,)
+    transaction = Transaction.objects.create(
+        asset=usd,
+        status=Transaction.STATUS.pending_user_transfer_start,
+        kind=Transaction.KIND.deposit,
+        stellar_account=Keypair.random().public_key,
+        pending_execution_attempt=True,
+    )
+    mock_get_or_create_destination_account.return_value = None, True
+
+    assert PendingDeposits.requires_trustline(transaction) is True
+    mock_maybe_make_callback.assert_called_once_with(transaction)
+    transaction.refresh_from_db()
+    assert transaction.status == transaction.STATUS.pending_trust
+    assert transaction.pending_execution_attempt is False
+
+
+@pytest.mark.django_db
+@patch(f"{test_module}.PendingDeposits.get_or_create_destination_account")
+@patch(f"{test_module}.maybe_make_callback")
+def test_requires_trustline_create_fails(
+    mock_maybe_make_callback, mock_get_or_create_destination_account
+):
+    usd = Asset.objects.create(code="USD", issuer=Keypair.random().public_key,)
+    transaction = Transaction.objects.create(
+        asset=usd,
+        status=Transaction.STATUS.pending_user_transfer_start,
+        kind=Transaction.KIND.deposit,
+        stellar_account=Keypair.random().public_key,
+        pending_execution_attempt=True,
+    )
+    mock_get_or_create_destination_account.side_effect = RuntimeError()
+
+    assert PendingDeposits.requires_trustline(transaction) is True
+    mock_maybe_make_callback.assert_called_once_with(transaction)
+    transaction.refresh_from_db()
+    assert transaction.status == transaction.STATUS.error
+    assert transaction.pending_execution_attempt is False
+
+
+@pytest.mark.django_db
+@patch(f"polaris.models.ASSET_DISTRIBUTION_ACCOUNT_MAP")
+def test_requires_multisig_single_master_signer(mock_account_map):
+    usd = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        distribution_seed=Keypair.random().secret,
+    )
+    transaction = Transaction.objects.create(
+        asset=usd,
+        status=Transaction.STATUS.pending_user_transfer_start,
+        kind=Transaction.KIND.deposit,
+        stellar_account=Keypair.random().public_key,
+        pending_execution_attempt=True,
+    )
+    with patch(
+        "polaris.models.ASSET_DISTRIBUTION_ACCOUNT_MAP",
+        {
+            (usd.code, usd.issuer): {
+                "signers": [{"key": usd.distribution_account, "weight": 0}],
+                "thresholds": {
+                    "low_threshold": 0,
+                    "med_threshold": 0,
+                    "high_threshold": 0,
+                },
+            }
+        },
+    ):
+        assert PendingDeposits.requires_multisig(transaction) is False
+
+
+@pytest.mark.django_db
+@patch(f"polaris.models.ASSET_DISTRIBUTION_ACCOUNT_MAP")
+def test_requires_multisig_single_master_signer_insufficient_weight(mock_account_map):
+    usd = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        distribution_seed=Keypair.random().secret,
+    )
+    transaction = Transaction.objects.create(
+        asset=usd,
+        status=Transaction.STATUS.pending_user_transfer_start,
+        kind=Transaction.KIND.deposit,
+        stellar_account=Keypair.random().public_key,
+        pending_execution_attempt=True,
+    )
+    with patch(
+        "polaris.models.ASSET_DISTRIBUTION_ACCOUNT_MAP",
+        {
+            (usd.code, usd.issuer): {
+                "signers": [{"key": usd.distribution_account, "weight": 0,}],
+                "thresholds": {
+                    "low_threshold": 1,
+                    "med_threshold": 1,
+                    "high_threshold": 1,
+                },
+            }
+        },
+    ):
+        assert PendingDeposits.requires_multisig(transaction) is True
+
+
+@pytest.mark.django_db
+@patch(f"polaris.models.ASSET_DISTRIBUTION_ACCOUNT_MAP")
+def test_requires_multisig_no_master_signer(mock_account_map):
+    usd = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        distribution_seed=Keypair.random().secret,
+    )
+    transaction = Transaction.objects.create(
+        asset=usd,
+        status=Transaction.STATUS.pending_user_transfer_start,
+        kind=Transaction.KIND.deposit,
+        stellar_account=Keypair.random().public_key,
+        pending_execution_attempt=True,
+    )
+    with patch(
+        "polaris.models.ASSET_DISTRIBUTION_ACCOUNT_MAP",
+        {
+            (usd.code, usd.issuer): {
+                "signers": [{"key": Keypair.random().public_key, "weight": 1}],
+                "thresholds": {
+                    "low_threshold": 0,
+                    "med_threshold": 0,
+                    "high_threshold": 0,
+                },
+            }
+        },
+    ):
+        assert PendingDeposits.requires_multisig(transaction) is True
+
+
+@pytest.mark.django_db
+@patch(f"polaris.settings.HORIZON_SERVER.accounts")
+def test_requires_multisig_fetch_account_single_master_signer(mock_accounts_endpoint):
+    usd = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        distribution_seed=Keypair.random().secret,
+    )
+    transaction = Transaction.objects.create(
+        asset=usd,
+        status=Transaction.STATUS.pending_user_transfer_start,
+        kind=Transaction.KIND.deposit,
+        stellar_account=Keypair.random().public_key,
+        pending_execution_attempt=True,
+    )
+    mock_accounts_endpoint.return_value.account_id.return_value.call.return_value = {
+        "signers": [{"key": usd.distribution_account, "weight": 0}],
+        "thresholds": {"low_threshold": 0, "med_threshold": 0, "high_threshold": 0},
+    }
+    assert PendingDeposits.requires_multisig(transaction) is False
+    mock_accounts_endpoint.return_value.account_id.assert_called_once_with(
+        usd.distribution_account
+    )
+    mock_accounts_endpoint.return_value.account_id.return_value.call.assert_called_once()
+
+
+@pytest.mark.django_db
+@patch(f"{test_module}.get_account_obj")
+@patch(f"{test_module}.maybe_make_callback")
+@patch(f"{test_module}.PendingDeposits.create_deposit_envelope")
+def test_save_as_pending_signatures(
+    mock_create_deposit_envelope, mock_maybe_make_callback, mock_get_account_obj
+):
+    usd = Asset.objects.create(code="USD", issuer=Keypair.random().public_key,)
+    transaction = Transaction.objects.create(
+        asset=usd,
+        status=Transaction.STATUS.pending_user_transfer_start,
+        kind=Transaction.KIND.deposit,
+        stellar_account=Keypair.random().public_key,
+        pending_execution_attempt=True,
+        channel_seed=Keypair.random().secret,
+    )
+    mock_get_account_obj.return_value = Account(Keypair.random().public_key, 1), None
+    mock_create_deposit_envelope.return_value = TransactionEnvelope(
+        SdkTransaction(
+            source=Keypair.from_secret(transaction.channel_seed),
+            sequence=2,
+            fee=100,
+            operations=[BumpSequence(3)],
+        ),
+        network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
+    )
+
+    PendingDeposits.save_as_pending_signatures(transaction)
+
+    transaction.refresh_from_db()
+    assert transaction.pending_execution_attempt is False
+    assert transaction.status == Transaction.STATUS.pending_anchor
+    assert transaction.pending_signatures is True
+    envelope = TransactionEnvelope.from_xdr(
+        transaction.envelope_xdr, network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE
+    )
+    assert len(envelope.signatures) == 1
+    mock_maybe_make_callback.assert_called_once()
+    mock_create_deposit_envelope.assert_called_once_with(
+        transaction, mock_get_account_obj.return_value[0]
+    )
+
+
+@pytest.mark.django_db
+@patch(f"{test_module}.get_account_obj")
+@patch(f"{test_module}.maybe_make_callback")
+@patch(f"{test_module}.PendingDeposits.create_deposit_envelope")
+def test_save_as_pending_signatures_channel_account_not_found(
+    mock_create_deposit_envelope, mock_maybe_make_callback, mock_get_account_obj
+):
+    usd = Asset.objects.create(code="USD", issuer=Keypair.random().public_key,)
+    transaction = Transaction.objects.create(
+        asset=usd,
+        status=Transaction.STATUS.pending_user_transfer_start,
+        kind=Transaction.KIND.deposit,
+        stellar_account=Keypair.random().public_key,
+        pending_execution_attempt=True,
+        channel_seed=Keypair.random().secret,
+    )
+    mock_get_account_obj.side_effect = RuntimeError("testing")
+
+    PendingDeposits.save_as_pending_signatures(transaction)
+
+    transaction.refresh_from_db()
+    assert transaction.pending_execution_attempt is False
+    assert transaction.status == Transaction.STATUS.error
+    assert transaction.status_message == "testing"
+    assert transaction.pending_signatures is False
+    assert transaction.envelope_xdr is None
+    mock_maybe_make_callback.assert_called_once()
+    mock_create_deposit_envelope.assert_not_called()
+
+
+@pytest.mark.django_db
+@patch(f"{test_module}.get_account_obj")
+@patch(f"{test_module}.maybe_make_callback")
+@patch(f"{test_module}.PendingDeposits.create_deposit_envelope")
+def test_save_as_pending_signatures_connection_failed(
+    mock_create_deposit_envelope, mock_maybe_make_callback, mock_get_account_obj
+):
+    usd = Asset.objects.create(code="USD", issuer=Keypair.random().public_key,)
+    transaction = Transaction.objects.create(
+        asset=usd,
+        status=Transaction.STATUS.pending_user_transfer_start,
+        kind=Transaction.KIND.deposit,
+        stellar_account=Keypair.random().public_key,
+        pending_execution_attempt=True,
+        channel_seed=Keypair.random().secret,
+    )
+    mock_get_account_obj.side_effect = ConnectionError("testing")
+
+    PendingDeposits.save_as_pending_signatures(transaction)
+
+    transaction.refresh_from_db()
+    assert transaction.pending_execution_attempt is False
+    assert transaction.status == Transaction.STATUS.error
+    assert transaction.status_message == "testing"
+    assert transaction.pending_signatures is False
+    assert transaction.envelope_xdr is None
+    mock_maybe_make_callback.assert_called_once()
+    mock_create_deposit_envelope.assert_not_called()
+
+
+@pytest.mark.django_db
+@patch(f"{test_module}.PendingDeposits.submit")
+def test_execute_ready_multisig_transactions_query(mock_submit):
+    usd = Asset.objects.create(code="USD", issuer=Keypair.random().public_key,)
+    transaction = Transaction.objects.create(
+        asset=usd,
+        status=Transaction.STATUS.pending_anchor,
+        kind=Transaction.KIND.deposit,
+        stellar_account=Keypair.random().public_key,
+        envelope_xdr="not null",
+    )
+    mock_submit.return_value = True
+
+    PendingDeposits.execute_ready_multisig_deposits()
+    # call again, mock_submit should only be called once
+    PendingDeposits.execute_ready_multisig_deposits()
+
+    transaction.refresh_from_db()
+    assert transaction.pending_execution_attempt is True
+    mock_submit.assert_called_once_with(transaction)
+
+
+@pytest.mark.django_db
+@patch(f"{test_module}.PendingDeposits.handle_submit")
+@patch(f"{test_module}.TERMINATE", True)
+def test_execute_ready_multisig_transactions_cleanup_on_sigint(mock_handle_submit):
+    usd = Asset.objects.create(code="USD", issuer=Keypair.random().public_key,)
+    transaction = Transaction.objects.create(
+        asset=usd,
+        status=Transaction.STATUS.pending_anchor,
+        kind=Transaction.KIND.deposit,
+        stellar_account=Keypair.random().public_key,
+        envelope_xdr="not null",
+    )
+
+    PendingDeposits.execute_ready_multisig_deposits()
+
+    transaction.refresh_from_db()
+    assert transaction.pending_execution_attempt is False
+    mock_handle_submit.assert_not_called()
+
+
+@pytest.mark.django_db
+@patch(f"{test_module}.PendingDeposits.get_ready_deposits")
+@patch(f"{test_module}.PendingDeposits.requires_trustline")
+@patch(f"{test_module}.PendingDeposits.requires_multisig")
+@patch(f"{test_module}.PendingDeposits.handle_submit")
+@patch(f"{test_module}.PendingDeposits.execute_ready_multisig_deposits")
+def test_execute_deposits_success(
+    mock_execute_ready_multisig_deposits,
+    mock_handle_submit,
+    mock_requires_multisig,
+    mock_requires_trustline,
+    mock_get_ready_deposits,
+):
+    usd = Asset.objects.create(code="USD", issuer=Keypair.random().public_key,)
+    transaction = Transaction.objects.create(
+        asset=usd,
+        status=Transaction.STATUS.pending_user_transfer_start,
+        kind=Transaction.KIND.deposit,
+        stellar_account=Keypair.random().public_key,
+        pending_execution_attempt=True,
+        amount_in=100,
+        amount_fee=1,
+    )
+    mock_get_ready_deposits.return_value = [transaction]
+    mock_requires_trustline.return_value = False
+    mock_requires_multisig.return_value = False
+
+    Command.execute_deposits()
+
+    mock_get_ready_deposits.assert_called_once()
+    mock_requires_trustline.assert_called_once_with(transaction)
+    mock_requires_multisig.assert_called_once_with(transaction)
+    mock_handle_submit.assert_called_once_with(transaction)
+    mock_execute_ready_multisig_deposits.assert_called_once()
+
+
+@pytest.mark.django_db
+@patch(f"{test_module}.PendingDeposits.get_ready_deposits")
+@patch(f"{test_module}.PendingDeposits.requires_trustline")
+@patch(f"{test_module}.PendingDeposits.requires_multisig")
+@patch(f"{test_module}.PendingDeposits.handle_submit")
+@patch(f"{test_module}.PendingDeposits.execute_ready_multisig_deposits")
+def test_execute_deposits_requires_trustline(
+    mock_execute_ready_multisig_deposits,
+    mock_handle_submit,
+    mock_requires_multisig,
+    mock_requires_trustline,
+    mock_get_ready_deposits,
+):
+    usd = Asset.objects.create(code="USD", issuer=Keypair.random().public_key,)
+    transaction = Transaction.objects.create(
+        asset=usd,
+        status=Transaction.STATUS.pending_user_transfer_start,
+        kind=Transaction.KIND.deposit,
+        stellar_account=Keypair.random().public_key,
+        pending_execution_attempt=True,
+        amount_in=100,
+        amount_fee=1,
+    )
+    mock_get_ready_deposits.return_value = [transaction]
+    mock_requires_trustline.return_value = True
+
+    Command.execute_deposits()
+
+    mock_get_ready_deposits.assert_called_once()
+    mock_requires_trustline.assert_called_once_with(transaction)
+    mock_requires_multisig.assert_not_called()
+    mock_handle_submit.assert_not_called()
+    mock_execute_ready_multisig_deposits.assert_called_once()
+
+
+@pytest.mark.django_db
+@patch(f"{test_module}.PendingDeposits.get_ready_deposits")
+@patch(f"{test_module}.PendingDeposits.requires_trustline")
+@patch(f"{test_module}.PendingDeposits.requires_multisig")
+@patch(f"{test_module}.PendingDeposits.handle_submit")
+@patch(f"{test_module}.PendingDeposits.execute_ready_multisig_deposits")
+@patch(f"{test_module}.PendingDeposits.save_as_pending_signatures")
+def test_execute_deposits_requires_multisig(
+    mock_save_as_pending_signatures,
+    mock_execute_ready_multisig_deposits,
+    mock_handle_submit,
+    mock_requires_multisig,
+    mock_requires_trustline,
+    mock_get_ready_deposits,
+):
+    usd = Asset.objects.create(code="USD", issuer=Keypair.random().public_key,)
+    transaction = Transaction.objects.create(
+        asset=usd,
+        status=Transaction.STATUS.pending_user_transfer_start,
+        kind=Transaction.KIND.deposit,
+        stellar_account=Keypair.random().public_key,
+        pending_execution_attempt=True,
+        amount_in=100,
+        amount_fee=1,
+    )
+    mock_get_ready_deposits.return_value = [transaction]
+    mock_requires_trustline.return_value = False
+    mock_requires_multisig.return_value = True
+
+    Command.execute_deposits()
+
+    mock_get_ready_deposits.assert_called_once()
+    mock_requires_trustline.assert_called_once_with(transaction)
+    mock_requires_multisig.assert_called_once_with(transaction)
+    mock_save_as_pending_signatures.assert_called_once_with(transaction)
+    mock_handle_submit.assert_not_called()
+    mock_execute_ready_multisig_deposits.assert_called_once()
+
+
+@pytest.mark.django_db
+@patch(f"{test_module}.PendingDeposits.get_ready_deposits")
+@patch(f"{test_module}.PendingDeposits.requires_trustline")
+@patch(f"{test_module}.PendingDeposits.requires_multisig")
+@patch(f"{test_module}.PendingDeposits.handle_submit")
+@patch(f"{test_module}.PendingDeposits.execute_ready_multisig_deposits")
+@patch(f"{test_module}.PendingDeposits.save_as_pending_signatures")
+def test_execute_deposits_requires_multisig_raises_not_found(
+    mock_save_as_pending_signatures,
+    mock_execute_ready_multisig_deposits,
+    mock_handle_submit,
+    mock_requires_multisig,
+    mock_requires_trustline,
+    mock_get_ready_deposits,
+):
+    usd = Asset.objects.create(code="USD", issuer=Keypair.random().public_key,)
+    transaction = Transaction.objects.create(
+        asset=usd,
+        status=Transaction.STATUS.pending_user_transfer_start,
+        kind=Transaction.KIND.deposit,
+        stellar_account=Keypair.random().public_key,
+        pending_execution_attempt=True,
+        amount_in=100,
+        amount_fee=1,
+    )
+    mock_get_ready_deposits.return_value = [transaction]
+    mock_requires_trustline.return_value = False
+    mock_requires_multisig.side_effect = NotFoundError(Mock())
+
+    Command.execute_deposits()
+
+    mock_get_ready_deposits.assert_called_once()
+    mock_requires_trustline.assert_called_once_with(transaction)
+    mock_requires_multisig.assert_called_once_with(transaction)
+    mock_save_as_pending_signatures.assert_not_called()
+    mock_handle_submit.assert_not_called()
+    mock_execute_ready_multisig_deposits.assert_called_once()
+
+    transaction.refresh_from_db()
+    assert transaction.status == transaction.STATUS.error
+    assert transaction.pending_execution_attempt is False
+    assert (
+        transaction.status_message
+        == f"{usd.code} distribution account {usd.distribution_account} does not exist"
+    )
+
+
+@pytest.mark.django_db
+@patch(f"{test_module}.PendingDeposits.get_ready_deposits")
+@patch(f"{test_module}.PendingDeposits.requires_trustline")
+@patch(f"{test_module}.PendingDeposits.requires_multisig")
+@patch(f"{test_module}.PendingDeposits.handle_submit")
+@patch(f"{test_module}.PendingDeposits.execute_ready_multisig_deposits")
+@patch(f"{test_module}.PendingDeposits.save_as_pending_signatures")
+def test_execute_deposits_requires_multisig_raises_connection_error(
+    mock_save_as_pending_signatures,
+    mock_execute_ready_multisig_deposits,
+    mock_handle_submit,
+    mock_requires_multisig,
+    mock_requires_trustline,
+    mock_get_ready_deposits,
+):
+    usd = Asset.objects.create(code="USD", issuer=Keypair.random().public_key,)
+    transaction = Transaction.objects.create(
+        asset=usd,
+        status=Transaction.STATUS.pending_user_transfer_start,
+        kind=Transaction.KIND.deposit,
+        stellar_account=Keypair.random().public_key,
+        pending_execution_attempt=True,
+        amount_in=100,
+        amount_fee=1,
+    )
+    mock_get_ready_deposits.return_value = [transaction]
+    mock_requires_trustline.return_value = False
+    mock_requires_multisig.side_effect = ConnectionError()
+
+    Command.execute_deposits()
+
+    mock_get_ready_deposits.assert_called_once()
+    mock_requires_trustline.assert_called_once_with(transaction)
+    mock_requires_multisig.assert_called_once_with(transaction)
+    mock_save_as_pending_signatures.assert_not_called()
+    mock_handle_submit.assert_not_called()
+    mock_execute_ready_multisig_deposits.assert_called_once()
+
+    transaction.refresh_from_db()
+    assert transaction.status == transaction.STATUS.error
+    assert transaction.pending_execution_attempt is False
+    assert (
+        transaction.status_message
+        == f"Unable to connect to horizon to fetch {usd.code} distribution account signers"
+    )
+
+
+@pytest.mark.django_db
+@patch(f"{test_module}.PendingDeposits.get_ready_deposits")
+@patch(f"{test_module}.PendingDeposits.requires_trustline")
+@patch(f"{test_module}.PendingDeposits.requires_multisig")
+@patch(f"{test_module}.PendingDeposits.handle_submit")
+@patch(f"{test_module}.PendingDeposits.execute_ready_multisig_deposits")
+@patch(f"{test_module}.TERMINATE", True)
+def test_execute_deposits_cleanup_on_sigint(
+    mock_execute_ready_multisig_deposits,
+    mock_handle_submit,
+    mock_requires_multisig,
+    mock_requires_trustline,
+    mock_get_ready_deposits,
+):
+    usd = Asset.objects.create(code="USD", issuer=Keypair.random().public_key,)
+    transaction = Transaction.objects.create(
+        asset=usd,
+        status=Transaction.STATUS.pending_user_transfer_start,
+        kind=Transaction.KIND.deposit,
+        stellar_account=Keypair.random().public_key,
+        pending_execution_attempt=True,
+        amount_in=100,
+        amount_fee=1,
+    )
+    mock_get_ready_deposits.return_value = [transaction]
+
+    Command.execute_deposits()
+
+    mock_get_ready_deposits.assert_called_once()
+    mock_requires_trustline.assert_not_called()
+    mock_requires_multisig.assert_not_called()
+    mock_handle_submit.assert_not_called()
+    mock_execute_ready_multisig_deposits.assert_not_called()
+
+    transaction.refresh_from_db()
+    assert transaction.pending_execution_attempt is False
+    assert transaction.status == Transaction.STATUS.pending_user_transfer_start
