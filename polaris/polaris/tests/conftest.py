@@ -77,16 +77,6 @@ def fixture_usd_asset_factory():
     return create_usd_asset
 
 
-@pytest.fixture(scope="session", autouse=True)
-def fixture_no_asset_distribution_account_updates():
-    from polaris import models
-
-    tmp = models.Asset.load_distribution_account_data
-    models.Asset.load_distribution_account_data = Mock()
-    yield  # run tests, then in cleanup:
-    models.Asset.load_distribution_account_data = tmp
-
-
 @pytest.fixture(scope="session", name="eth_asset_factory")
 def fixture_eth_asset_factory():
     """Factory method fixture to populate the test database with an ETH asset."""

@@ -10,7 +10,7 @@ import django.db.transaction
 from django.core.management import BaseCommand
 from stellar_sdk import Keypair, TransactionEnvelope, Asset, Claimant
 from stellar_sdk.account import Account
-from stellar_sdk.exceptions import BaseHorizonError, ConnectionError
+from stellar_sdk.exceptions import BaseHorizonError, ConnectionError, NotFoundError
 from stellar_sdk.transaction_builder import TransactionBuilder
 from stellar_sdk.xdr.StellarXDR_type import TransactionResult
 
@@ -28,6 +28,109 @@ from polaris.utils import getLogger, make_memo
 logger = getLogger(__name__)
 TERMINATE = False
 DEFAULT_INTERVAL = 10
+
+
+class Command(BaseCommand):
+    """
+    The poll_pending_deposits command handler.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        signal.signal(signal.SIGINT, self.exit_gracefully)
+        signal.signal(signal.SIGTERM, self.exit_gracefully)
+
+    @staticmethod
+    def exit_gracefully(*_):
+        logger.info("Exiting poll_pending_deposits...")
+        module = sys.modules[__name__]
+        module.TERMINATE = True
+
+    @staticmethod
+    def sleep(seconds):
+        module = sys.modules[__name__]
+        for _ in range(seconds):
+            if module.TERMINATE:
+                break
+            time.sleep(1)
+
+    def add_arguments(self, parser):  # pragma: no cover
+        parser.add_argument(
+            "--loop",
+            action="store_true",
+            help="Continually restart command after a specified number of seconds.",
+        )
+        parser.add_argument(
+            "--interval",
+            "-i",
+            type=int,
+            help="The number of seconds to wait before restarting command. "
+            "Defaults to {}.".format(DEFAULT_INTERVAL),
+        )
+
+    def handle(self, *_args, **options):
+        """
+        The entrypoint for the functionality implemented in this file.
+
+        Calls execute_deposits(), and if the --loop option is used, does so
+        periodically after sleeping for the number of seconds specified by
+        --interval.
+        """
+        module = sys.modules[__name__]
+        if options.get("loop"):
+            while True:
+                if module.TERMINATE:
+                    break
+                self.execute_deposits()
+                self.sleep(options.get("interval") or DEFAULT_INTERVAL)
+        else:
+            self.execute_deposits()
+
+    @classmethod
+    def execute_deposits(cls):
+        module = sys.modules[__name__]
+        try:
+            ready_transactions = PendingDeposits.get_ready_deposits()
+        except Exception:
+            logger.exception("poll_pending_deposits() threw an unexpected exception")
+            return
+
+        for i, transaction in enumerate(ready_transactions):
+            print(module.TERMINATE)
+            if module.TERMINATE:
+                still_processing_transactions = ready_transactions[i:]
+                Transaction.objects.filter(
+                    id__in=[t.id for t in still_processing_transactions]
+                ).update(pending_execution_attempt=False)
+                break
+
+            if PendingDeposits.requires_trustline(transaction):
+                continue
+
+            try:
+                requires_multisig = PendingDeposits.requires_multisig(transaction)
+            except NotFoundError:
+                PendingDeposits.handle_error(
+                    transaction,
+                    f"{transaction.asset.code} distribution account "
+                    f"{transaction.asset.distribution_account} does not exist",
+                )
+                continue
+            except ConnectionError:
+                PendingDeposits.handle_error(
+                    transaction,
+                    f"Unable to connect to horizon to fetch {transaction.asset.code} "
+                    "distribution account signers",
+                )
+                continue
+            if requires_multisig:
+                PendingDeposits.save_as_pending_signatures(transaction)
+                continue
+
+            PendingDeposits.handle_submit(transaction)
+
+        if not module.TERMINATE:
+            PendingDeposits.execute_ready_multisig_deposits()
 
 
 class PendingDeposits:
@@ -53,13 +156,13 @@ class PendingDeposits:
         verified_ready_transactions = []
         for transaction in ready_transactions:
             if transaction.kind != transaction.KIND.deposit:
-                cls._handle_error(
+                cls.handle_error(
                     transaction,
                     "poll_pending_deposits() returned a non-deposit transaction",
                 )
                 continue
             if transaction.amount_in is None:
-                cls._handle_error(
+                cls.handle_error(
                     transaction,
                     "poll_pending_deposits() did not assign a value to the "
                     "amount_in field of a Transaction object returned",
@@ -76,7 +179,7 @@ class PendingDeposits:
                             }
                         )
                     except ValueError as e:
-                        cls._handle_error(transaction, str(e))
+                        cls.handle_error(transaction, str(e))
                         continue
                 else:
                     transaction.amount_fee = Decimal(0)
@@ -84,9 +187,9 @@ class PendingDeposits:
             verified_ready_transactions.append(transaction)
         return verified_ready_transactions
 
-    @staticmethod
+    @classmethod
     def get_or_create_destination_account(
-        transaction: Transaction,
+        cls, transaction: Transaction,
     ) -> Tuple[Account, bool]:
         """
         Returns:
@@ -108,11 +211,17 @@ class PendingDeposits:
                 Keypair.from_public_key(transaction.stellar_account)
             )
             return account, is_pending_trust(transaction, json_resp)
-        except RuntimeError:
-            if MultiSigTransactions().requires_multisig(transaction):
-                source_account_kp = MultiSigTransactions.get_channel_keypair(
-                    transaction
+        except RuntimeError:  # account does not exist
+            try:
+                requires_multisig = PendingDeposits.requires_multisig(transaction)
+            except NotFoundError:
+                logger.error(
+                    f"{transaction.asset.code} distribution account "
+                    f"{transaction.asset.distribution_account} does not exist"
                 )
+                raise RuntimeError("the distribution account does not exist")
+            if requires_multisig:
+                source_account_kp = cls.get_channel_keypair(transaction)
                 source_account, _ = get_account_obj(source_account_kp)
             else:
                 source_account_kp = Keypair.from_secret(
@@ -177,7 +286,7 @@ class PendingDeposits:
                     transaction.envelope_xdr, settings.STELLAR_NETWORK_PASSPHRASE
                 )
             except Exception:
-                cls._handle_error(transaction, "Failed to decode transaction envelope")
+                cls.handle_error(transaction, "Failed to decode transaction envelope")
                 return False
         else:
             distribution_acc, _ = get_account_obj(
@@ -193,14 +302,16 @@ class PendingDeposits:
 
         try:
             response = settings.HORIZON_SERVER.submit_transaction(envelope)
-        except BaseHorizonError as e:
-            cls._handle_error(transaction, f"{e.__class__.__name__}: {e.message}")
+        except (BaseHorizonError, ConnectionError) as e:
+            message = getattr(e, "message", str(e))
+            cls.handle_error(transaction, f"{e.__class__.__name__}: {message}")
             return False
 
         if not response.get("successful"):
-            cls._handle_error(
+            cls.handle_error(
                 transaction,
-                f"Stellar transaction failed when submitted to horizon: {response['result_xdr']}",
+                "Stellar transaction failed when submitted to horizon: "
+                f"{response['result_xdr']}",
             )
             return False
         elif transaction.claimable_balance_supported:
@@ -221,6 +332,22 @@ class PendingDeposits:
         maybe_make_callback(transaction)
         return True
 
+    @classmethod
+    def handle_submit(cls, transaction: Transaction):
+        try:
+            success = PendingDeposits.submit(transaction)
+        except Exception as e:
+            logger.exception("submit() threw an unexpected exception")
+            cls.handle_error(transaction, str(e))
+            return
+
+        if success:
+            transaction.refresh_from_db()
+            try:
+                rdi.after_deposit(transaction)
+            except Exception:
+                logger.exception("after_deposit() threw an unexpected exception")
+
     @staticmethod
     def create_deposit_envelope(transaction, source_account) -> TransactionEnvelope:
         payment_amount = round(
@@ -234,31 +361,32 @@ class PendingDeposits:
             base_fee=settings.MAX_TRANSACTION_FEE_STROOPS
             or settings.HORIZON_SERVER.fetch_base_fee(),
         )
-        _, json_resp = get_account_obj(
-            Keypair.from_public_key(transaction.stellar_account)
-        )
-        if transaction.claimable_balance_supported and is_pending_trust(
-            transaction, json_resp
-        ):
-            logger.debug(
-                f"Crafting claimable balance operation for Transaction {transaction.id}"
+        payment_op_kwargs = {
+            "destination": transaction.stellar_account,
+            "asset_code": transaction.asset.code,
+            "asset_issuer": transaction.asset.issuer,
+            "amount": str(payment_amount),
+            "source": transaction.asset.distribution_account,
+        }
+        if transaction.claimable_balance_supported:
+            _, json_resp = get_account_obj(
+                Keypair.from_public_key(transaction.stellar_account)
             )
-            claimant = Claimant(destination=transaction.stellar_account)
-            asset = Asset(code=transaction.asset.code, issuer=transaction.asset.issuer)
-            builder.append_create_claimable_balance_op(
-                claimants=[claimant],
-                asset=asset,
-                amount=str(payment_amount),
-                source=transaction.asset.distribution_account,
-            )
+            if is_pending_trust(transaction, json_resp):
+                claimant = Claimant(destination=transaction.stellar_account)
+                asset = Asset(
+                    code=transaction.asset.code, issuer=transaction.asset.issuer
+                )
+                builder.append_create_claimable_balance_op(
+                    claimants=[claimant],
+                    asset=asset,
+                    amount=str(payment_amount),
+                    source=transaction.asset.distribution_account,
+                )
+            else:
+                builder.append_payment_op(**payment_op_kwargs)
         else:
-            builder.append_payment_op(
-                destination=transaction.stellar_account,
-                asset_code=transaction.asset.code,
-                asset_issuer=transaction.asset.issuer,
-                amount=str(payment_amount),
-                source=transaction.asset.distribution_account,
-            )
+            builder.append_payment_op(**payment_op_kwargs)
         if transaction.memo:
             builder.add_memo(make_memo(transaction.memo, transaction.memo_type))
         return builder.build()
@@ -294,16 +422,27 @@ class PendingDeposits:
         return balance_id_hex
 
     @classmethod
-    def _handle_error(cls, transaction, message):
-        transaction.status_message = message
-        transaction.status = Transaction.STATUS.error
-        transaction.pending_execution_attempt = False
-        transaction.save()
-        logger.error(transaction.status_message)
-        maybe_make_callback(transaction)
+    def requires_trustline(cls, transaction: Transaction) -> bool:
+        try:
+            _, pending_trust = PendingDeposits.get_or_create_destination_account(
+                transaction
+            )
+        except RuntimeError as e:
+            cls.handle_error(transaction, str(e))
+            return True
 
+        if pending_trust and not transaction.claimable_balance_supported:
+            logger.info(
+                f"destination account is pending_trust for transaction {transaction.id}"
+            )
+            transaction.status = Transaction.STATUS.pending_trust
+            transaction.pending_execution_attempt = False
+            transaction.save()
+            maybe_make_callback(transaction)
+            return True
 
-class MultiSigTransactions:
+        return False
+
     @staticmethod
     def requires_multisig(transaction: Transaction) -> bool:
         master_signer = None
@@ -314,18 +453,12 @@ class MultiSigTransactions:
             not master_signer or master_signer["weight"] < thresholds["med_threshold"]
         )
 
-    @staticmethod
-    def get_channel_keypair(transaction) -> Keypair:
-        if not transaction.channel_account:
-            rdi.create_channel_account(transaction)
-        return Keypair.from_secret(transaction.channel_seed)
-
     @classmethod
     def save_as_pending_signatures(cls, transaction):
         channel_kp = cls.get_channel_keypair(transaction)
         try:
             channel_account, _ = get_account_obj(channel_kp)
-        except RuntimeError as e:
+        except (RuntimeError, ConnectionError) as e:
             transaction.status = Transaction.STATUS.error
             transaction.status_message = str(e)
             logger.error(transaction.status_message)
@@ -342,75 +475,31 @@ class MultiSigTransactions:
         transaction.save()
         maybe_make_callback(transaction)
 
-
-class Command(BaseCommand):
-    """
-    Polls the anchor's financial entity, gathers ready deposit transactions
-    for execution, and executes them. This process can be run in a loop,
-    restarting every 10 seconds (or a user-defined time period)
-    """
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        signal.signal(signal.SIGINT, self.exit_gracefully)
-        signal.signal(signal.SIGTERM, self.exit_gracefully)
-
     @staticmethod
-    def exit_gracefully(sig, frame):
-        logger.info("Exiting poll_pending_deposits...")
-        module = sys.modules[__name__]
-        module.TERMINATE = True
-
-    @staticmethod
-    def sleep(seconds):
-        module = sys.modules[__name__]
-        for _ in range(seconds):
-            if module.TERMINATE:
-                break
-            time.sleep(1)
-
-    def add_arguments(self, parser):  # pragma: no cover
-        parser.add_argument(
-            "--loop",
-            action="store_true",
-            help="Continually restart command after a specified number of seconds.",
-        )
-        parser.add_argument(
-            "--interval",
-            "-i",
-            type=int,
-            help="The number of seconds to wait before restarting command. "
-            "Defaults to {}.".format(DEFAULT_INTERVAL),
-        )
-
-    def handle(self, *_args, **options):  # pragma: no cover
-        module = sys.modules[__name__]
-        if options.get("loop"):
-            while True:
-                if module.TERMINATE:
-                    break
-                self.execute_deposits()
-                self.sleep(options.get("interval") or DEFAULT_INTERVAL)
-        else:
-            self.execute_deposits()
+    def get_channel_keypair(transaction) -> Keypair:
+        if not transaction.channel_account:
+            rdi.create_channel_account(transaction)
+        return Keypair.from_secret(transaction.channel_seed)
 
     @classmethod
-    def execute_deposits(cls):
-        module = sys.modules[__name__]
-        try:
-            ready_transactions = PendingDeposits.get_ready_deposits()
-        except Exception:
-            logger.exception("poll_pending_deposits() threw an unexpected exception")
-            return
-        for i, transaction in enumerate(ready_transactions):
-            if module.TERMINATE:
-                still_processing_transactions = ready_transactions[i:]
-                Transaction.objects.filter(
-                    id__in=[t.id for t in still_processing_transactions]
-                ).update(pending_execution_attempt=False)
-                break
-            cls.execute_deposit(transaction)
+    def execute_ready_multisig_deposits(cls):
+        """
+        PendingDeposits.get_ready_deposits() returns transactions whose funds
+        have been received off chain. However, if the anchor's distribution
+        account requires multiple signatures before submitting to Stellar,
+        Polaris generates the envelope and updates Transaction.pending_signatures
+        to True.
 
+        Polaris then expects the anchor to collect the necessary signatures and
+        set Transaction.pending_signatures back to False. This function checks if
+        any transaction is in this state and submits it to Stellar.
+
+        Multisig transactions are therefore identified by a non-null envelope_xdr
+        column and a 'pending_anchor' status. The status check is important
+        because all successfully submitted transactions have their envelope_xdr
+        column set after submission and status set to 'completed'.
+        """
+        module = sys.modules[__name__]
         with django.db.transaction.atomic():
             multisig_transactions = list(
                 Transaction.objects.filter(
@@ -431,72 +520,19 @@ class Command(BaseCommand):
 
         for i, transaction in enumerate(multisig_transactions):
             if module.TERMINATE:
-                still_processing_transactions = ready_transactions[i:]
+                still_processing_transactions = multisig_transactions[i:]
                 Transaction.objects.filter(
                     id__in=[t.id for t in still_processing_transactions]
                 ).update(pending_execution_attempt=False)
                 break
 
-            try:
-                success = PendingDeposits.submit(transaction)
-            except Exception as e:
-                logger.exception("submit() threw an unexpected exception")
-                transaction.status_message = str(e)
-                transaction.status = Transaction.STATUS.error
-                transaction.pending_execution_attempt = False
-                transaction.save()
-                maybe_make_callback(transaction)
-                continue
-
-            if success:
-                transaction.refresh_from_db()
-                try:
-                    rdi.after_deposit(transaction)
-                except Exception:
-                    logger.exception("after_deposit() threw an unexpected exception")
+            cls.handle_submit(transaction)
 
     @classmethod
-    def execute_deposit(cls, transaction):
-        try:
-            _, pending_trust = PendingDeposits.get_or_create_destination_account(
-                transaction
-            )
-        except RuntimeError as e:
-            transaction.status = Transaction.STATUS.error
-            transaction.status_message = str(e)
-            transaction.pending_execution_attempt = False
-            transaction.save()
-            logger.error(transaction.status_message)
-            maybe_make_callback(transaction)
-            return
-
-        if pending_trust and not transaction.claimable_balance_supported:
-            logger.info(
-                f"destination account is pending_trust for transaction {transaction.id}"
-            )
-            transaction.status = Transaction.STATUS.pending_trust
-            transaction.pending_execution_attempt = False
-            transaction.save()
-            maybe_make_callback(transaction)
-            return
-        if MultiSigTransactions.requires_multisig(transaction):
-            MultiSigTransactions.save_as_pending_signatures(transaction)
-            return
-
-        try:
-            success = PendingDeposits.submit(transaction)
-        except Exception as e:
-            logger.exception("submit() threw an unexpected exception")
-            transaction.status_message = str(e)
-            transaction.status = Transaction.STATUS.error
-            transaction.pending_execution_attempt = False
-            transaction.save()
-            maybe_make_callback(transaction)
-            return
-
-        if success:
-            transaction.refresh_from_db()
-            try:
-                rdi.after_deposit(transaction)
-            except Exception:
-                logger.exception("after_deposit() threw an unexpected exception")
+    def handle_error(cls, transaction, message):
+        transaction.status_message = message
+        transaction.status = Transaction.STATUS.error
+        transaction.pending_execution_attempt = False
+        transaction.save()
+        logger.error(transaction.status_message)
+        maybe_make_callback(transaction)
