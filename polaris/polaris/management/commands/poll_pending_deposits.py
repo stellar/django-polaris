@@ -96,7 +96,6 @@ class Command(BaseCommand):
             return
 
         for i, transaction in enumerate(ready_transactions):
-            print(module.TERMINATE)
             if module.TERMINATE:
                 still_processing_transactions = ready_transactions[i:]
                 Transaction.objects.filter(

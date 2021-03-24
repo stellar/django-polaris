@@ -89,10 +89,13 @@ class Command(BaseCommand):
                 .first()
             )
 
-            cursor = "now"
+            cursor = "0"
             if last_completed_transaction:
                 cursor = last_completed_transaction.paging_token
 
+            logger.info(
+                f"starting transaction stream for {account} with cursor {cursor}"
+            )
             endpoint = server.transactions().for_account(account).cursor(cursor)
             async for response in endpoint.stream():
                 self.process_response(response, account)
