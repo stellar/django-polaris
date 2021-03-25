@@ -165,8 +165,10 @@ HOST_URL : Required
     Ex. ``HOST_URL=https://testanchor.stellar.org``, ``HOST_URL=http://localhost:8000``
 
 MAX_TRANSACTION_FEE_STROOPS
-    An integer limit for submitting Stellar transactions. Increasing this will decrease the probability of Horizon rejecting a transaction due to a [Timeout Error](https://developers.stellar.org/api/errors/http-status-codes/horizon-specific/timeout), which means the Stellar Network selected transactions offering higher fees.
-    Defaults to the return value Python SDK's ``Server().fetch_base_fee()`` [source](https://github.com/StellarCN/py-stellar-base/blob/275d9cb7c679801b4452597c0bc3994a2779096f/stellar_sdk/server.py#L530), which is the most recent ledger's base fee, usually 100.
+    An integer limit for submitting Stellar transactions. Increasing this will increases the probability of the transaction being included in a ledger.
+
+    Defaults to the return value Python SDK's ``Server().fetch_base_fee()`` `source`_, which is the most recent ledger's base fee, usually 100.
+
     Ex. ``MAX_TRANSACTION_FEE_STROOPS=300``
 
 SEP10_CLIENT_ATTRIBUTION_REQUIRED
@@ -210,13 +212,6 @@ STELLAR_NETWORK_PASSHRASE
     Defaults to ``Test SDF Network ; September 2015``.
 
     Ex. ``STELLAR_NETWORK_PASSPHRASE="Public Global Stellar Network ; September 2015"``
-
-MAX_TRANSACTION_FEE_STROOPS
-    An integer limit for submitting Stellar transactions. Increasing this will decrease the probability of Horizon rejecting a transaction due to a `Timeout Error`_, which means the Stellar Network selected transactions offering higher fees.
-
-    Defaults to the return value Python SDK's ``Server().fetch_base_fee()`` `source`_, which is the most recent ledger's base fee, usually 100.
-
-    Ex. ``MAX_TRANSACTION_FEE_STROOPS=300``
 
 CALLBACK_REQUEST_TIMEOUT
     An integer for the number of seconds to wait before canceling a server-side callback request to ``Transaction.on_change_callback`` if present. Only used for SEP-6 and SEP-24. Polaris makes server-side requests to ``Transaction.on_change_callback`` from CLI commands such as ``poll_pending_deposits`` and ``execute_outgoing_transactions``. Server-side callbacks requests are not made from the API server.
