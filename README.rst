@@ -2,6 +2,16 @@
 Welcome to Polaris
 ==================
 
+.. image:: https://circleci.com/gh/stellar/django-polaris.svg?style=sheild
+    :target: https://circleci.com/gh/stellar/django-polaris
+
+.. image:: https://codecov.io/gh/stellar/django-polaris/branch/master/graph/badge.svg?token=3DaW3jM6Q8
+    :target: https://codecov.io/gh/stellar/django-polaris
+
+.. image:: https://img.shields.io/badge/python-3.7%20%7C%203.7%20%7C%203.8%20%7C%203.9-blue?style=flat-square
+    :alt: Python - Version
+    :target: https://pypi.python.org/pypi/django-polaris
+
 .. _readthedocs: https://django-polaris.readthedocs.io/
 .. _tutorial: https://django-polaris.readthedocs.io/en/stable/tutorials/index.html
 .. _`email list`: https://groups.google.com/g/stellar-polaris

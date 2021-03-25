@@ -1,7 +1,6 @@
 [run]
 source =
-  polaris,
-  server
+  polaris
 omit =
   *admin.py,
   *apps.py,
