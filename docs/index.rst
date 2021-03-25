@@ -173,19 +173,23 @@ MAX_TRANSACTION_FEE_STROOPS
 
 SEP10_CLIENT_ATTRIBUTION_REQUIRED
     A boolean that if true, requires client applications to verify their identity by passing a domain in the challenge transaction request and signing the challenge with the ``SIGNING_KEY`` on that domain's `SEP-1 stellar.toml`_. See the SEP-10 section `Verifying Client Application Identity`_ for more information.
+
     Defaults to false.
+
     Ex. ``SEP10_CLIENT_ATTRIBUTION_REQUIRED=True``, ``SEP10_CLIENT_ATTRIBUTION_REQUIRED=1``
 
 SEP10_CLIENT_ATTRIBUTION_ALLOWLIST
     A list of domains that the server will issue challenge transactions containing ``client_domain`` Manage Data operations for.
     If ``SEP10_CLIENT_ATTRIBUTION_REQUIRED`` is ``True``, client applications must pass a ``client_domain`` parameter whose value matches one of the elements in this list, otherwise the request will be rejected.
     If ``SEP10_CLIENT_ATTRIBUTION_REQUIRED`` is ``False``, Polaris will return a challenge transaction without the requested ``client_domain`` Manage Data operation.
+
     Ex. ``SEP10_CLIENT_ATTRIBUTION_ALLOWLIST=approvedwallet1.com,approvedwallet2.com``
 
 SEP10_CLIENT_ATTRIBUTION_DENYLIST
     A list of domains that the server will not issue challenge transactions containing ``client_domain`` Manage Data operations for.
     If ``SEP10_CLIENT_ATTRIBUTION_REQUIRED`` is ``True``, client applications that pass a ``client_domain`` parameter value that matches one of the elements in this list will be rejected.
     If ``SEP10_CLIENT_ATTRIBUTION_REQUIRED`` is ``False``, Polaris will return a challenge transaction without the requested ``client_domain`` Manage Data operation.
+
     Ex. ``SEP10_CLIENT_ATTRIBUTION_DENYLIST=maliciousclient.com``
 
 SEP10_HOME_DOMAINS
