@@ -128,6 +128,8 @@ You may want to configure the ``LEVEL`` of the Polaris logger differently depend
 Environment Variables
 ^^^^^^^^^^^^^^^^^^^^^
 
+.. _`SEP-1 stellar.toml`:
+.. _`Verifying Client Application Identity`: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.md#verifying-client-application-identity
 .. _`Timeout Error`: https://developers.stellar.org/api/errors/http-status-codes/horizon-specific/timeout
 .. _source: https://github.com/StellarCN/py-stellar-base/blob/275d9cb7c679801b4452597c0bc3994a2779096f/stellar_sdk/server.py#L530
 
@@ -162,6 +164,41 @@ HOST_URL : Required
 
     Ex. ``HOST_URL=https://testanchor.stellar.org``, ``HOST_URL=http://localhost:8000``
 
+MAX_TRANSACTION_FEE_STROOPS
+    An integer limit for submitting Stellar transactions. Increasing this will increases the probability of the transaction being included in a ledger.
+
+    Defaults to the return value Python SDK's ``Server().fetch_base_fee()`` `source`_, which is the most recent ledger's base fee, usually 100.
+
+    Ex. ``MAX_TRANSACTION_FEE_STROOPS=300``
+
+SEP10_CLIENT_ATTRIBUTION_REQUIRED
+    A boolean that if true, requires client applications to verify their identity by passing a domain in the challenge transaction request and signing the challenge with the ``SIGNING_KEY`` on that domain's `SEP-1 stellar.toml`_. See the SEP-10 section `Verifying Client Application Identity`_ for more information.
+
+    Defaults to ``False``.
+
+    Ex. ``SEP10_CLIENT_ATTRIBUTION_REQUIRED=True``, ``SEP10_CLIENT_ATTRIBUTION_REQUIRED=1``
+
+SEP10_CLIENT_ATTRIBUTION_REQUEST_TIMEOUT
+    An integer for the number of seconds to wait before canceling a server-side request to the ``client_domain`` parameter specified in the request, if present. This request is made from the API server and therefore an unresponsive ``client_domain`` can slow down request processing.
+
+    Defaults to 3 seconds.
+
+    Ex. ``SEP10_CLIENT_ATTRIBUTION_REQUEST_TIMEOUT=10``
+
+SEP10_CLIENT_ATTRIBUTION_ALLOWLIST
+    A list of domains that the server will issue challenge transactions containing ``client_domain`` Manage Data operations for.
+    If ``SEP10_CLIENT_ATTRIBUTION_REQUIRED`` is ``True``, client applications must pass a ``client_domain`` parameter whose value matches one of the elements in this list, otherwise the request will be rejected.
+    If ``SEP10_CLIENT_ATTRIBUTION_REQUIRED`` is ``False``, Polaris will return a challenge transaction without the requested ``client_domain`` Manage Data operation.
+
+    Ex. ``SEP10_CLIENT_ATTRIBUTION_ALLOWLIST=approvedwallet1.com,approvedwallet2.com``
+
+SEP10_CLIENT_ATTRIBUTION_DENYLIST
+    A list of domains that the server will not issue challenge transactions containing ``client_domain`` Manage Data operations for.
+    If ``SEP10_CLIENT_ATTRIBUTION_REQUIRED`` is ``True``, client applications that pass a ``client_domain`` parameter value that matches one of the elements in this list will be rejected.
+    If ``SEP10_CLIENT_ATTRIBUTION_REQUIRED`` is ``False``, Polaris will return a challenge transaction without the requested ``client_domain`` Manage Data operation.
+
+    Ex. ``SEP10_CLIENT_ATTRIBUTION_DENYLIST=maliciousclient.com``
+
 SEP10_HOME_DOMAINS
     A list of home domains (no protocol, only hostname) that Polaris should consider valid when verifying SEP-10 challenge transactions sent by clients. The first domain will be used to build SEP-10 challenge transactions if the client request does not contain a ``home_domain`` parameter. Polaris will reject client requests that contain a ``home_domain`` value not included in this list.
     The value will be read from the environment using ``environ.Env.list()``.
@@ -186,13 +223,6 @@ STELLAR_NETWORK_PASSHRASE
     Defaults to ``Test SDF Network ; September 2015``.
 
     Ex. ``STELLAR_NETWORK_PASSPHRASE="Public Global Stellar Network ; September 2015"``
-
-MAX_TRANSACTION_FEE_STROOPS
-    An integer limit for submitting Stellar transactions. Increasing this will decrease the probability of Horizon rejecting a transaction due to a `Timeout Error`_, which means the Stellar Network selected transactions offering higher fees.
-
-    Defaults to the return value Python SDK's ``Server().fetch_base_fee()`` `source`_, which is the most recent ledger's base fee, usually 100.
-
-    Ex. ``MAX_TRANSACTION_FEE_STROOPS=300``
 
 CALLBACK_REQUEST_TIMEOUT
     An integer for the number of seconds to wait before canceling a server-side callback request to ``Transaction.on_change_callback`` if present. Only used for SEP-6 and SEP-24. Polaris makes server-side requests to ``Transaction.on_change_callback`` from CLI commands such as ``poll_pending_deposits`` and ``execute_outgoing_transactions``. Server-side callbacks requests are not made from the API server.

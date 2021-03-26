@@ -3,16 +3,20 @@ This module tests the `/deposit` endpoint.
 Celery tasks are called synchronously. Horizon calls are mocked for speed and correctness.
 """
 import json
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 import jwt
 import time
 
+
 import pytest
 from stellar_sdk import Keypair, TransactionEnvelope
+from stellar_sdk.sep.ed25519_public_key_signer import Ed25519PublicKeySigner
 
 from polaris import settings
+from polaris.models import Transaction, Asset
 from polaris.tests.helpers import (
     mock_check_auth_success,
+    mock_check_auth_success_client_domain,
     interactive_jwt_payload,
 )
 
@@ -123,11 +127,20 @@ def test_deposit_invalid_asset(client, acc1_usd_deposit_transaction_factory):
 
 
 @pytest.mark.django_db
-def test_deposit_authenticated_success(client, acc1_usd_deposit_transaction_factory):
+@patch(f"polaris.sep10.views.settings.HORIZON_SERVER.load_account")
+def test_deposit_authenticated_success(
+    mock_load_account, client, acc1_usd_deposit_transaction_factory
+):
     """`GET /deposit` succeeds with the SEP 10 authentication flow."""
     from polaris.tests.auth_test import endpoint
 
     deposit = acc1_usd_deposit_transaction_factory()
+    mock_load_account.return_value = Mock(
+        load_ed25519_public_key_signers=Mock(
+            return_value=[Ed25519PublicKeySigner(client_address, 0)]
+        ),
+        thresholds=Mock(med_threshold=0),
+    )
 
     # SEP 10.
     response = client.get(f"{endpoint}?account={client_address}", follow=True)
@@ -312,3 +325,23 @@ def test_interactive_auth_new_transaction(client, acc1_usd_deposit_transaction_f
         f"&asset_code={new_deposit.asset.code}"
     )
     assert response.status_code == 403
+
+
+@pytest.mark.django_db
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success_client_domain)
+def test_deposit_client_domain_saved(client):
+    kp = Keypair.random()
+    usd = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        sep24_enabled=True,
+        deposit_enabled=True,
+    )
+    response = client.post(
+        DEPOSIT_PATH, {"asset_code": usd.code, "account": kp.public_key},
+    )
+    content = response.json()
+    assert response.status_code == 200, json.dumps(content, indent=2)
+    assert Transaction.objects.count() == 1
+    transaction = Transaction.objects.first()
+    assert transaction.client_domain == "test.com"

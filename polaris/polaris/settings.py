@@ -106,6 +106,22 @@ SEP6_USE_MORE_INFO_URL = (
     env_or_settings("SEP6_USE_MORE_INFO_URL", bool=True, required=False) or False
 )
 
+SEP10_CLIENT_ATTRIBUTION_REQUIRED = env_or_settings(
+    "SEP10_CLIENT_ATTRIBUTION_REQUIRED", bool=True, required=False
+)
+SEP10_CLIENT_ATTRIBUTION_REQUEST_TIMEOUT = (
+    env_or_settings(
+        "SEP10_CLIENT_ATTRIBUTION_REQUEST_TIMEOUT", int=True, required=False
+    )
+    or 3
+)
+SEP10_CLIENT_ATTRIBUTION_ALLOWLIST = env_or_settings(
+    "SEP10_CLIENT_ATTRIBUTION_ALLOWLIST", list=True, required=False
+)
+SEP10_CLIENT_ATTRIBUTION_DENYLIST = env_or_settings(
+    "SEP10_CLIENT_ATTRIBUTION_DENYLIST", list=True, required=False
+)
+
 # Constants
 OPERATION_DEPOSIT = "deposit"
 OPERATION_WITHDRAWAL = "withdraw"

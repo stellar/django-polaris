@@ -1,5 +1,5 @@
-from typing import Dict, Tuple
 from decimal import Decimal, DecimalException
+from typing import Dict, Tuple, Optional
 
 from django.utils.translation import gettext as _
 from django.core.validators import URLValidator
@@ -38,7 +38,7 @@ logger = getLogger(__name__)
 @parser_classes([MultiPartParser, FormParser, JSONParser])
 @renderer_classes([JSONRenderer, BrowsableAPIRenderer])
 @validate_sep10_token()
-def withdraw(account: str, request: Request) -> Response:
+def withdraw(account: str, client_domain: Optional[str], request: Request,) -> Response:
     args = parse_request_args(request)
     if "error" in args:
         return args["error"]
@@ -62,6 +62,7 @@ def withdraw(account: str, request: Request) -> Response:
             f"{SEP6_MORE_INFO_PATH}?id={transaction_id}"
         ),
         on_change_callback=args["on_change_callback"],
+        client_domain=client_domain,
     )
 
     # All request arguments are validated in parse_request_args()

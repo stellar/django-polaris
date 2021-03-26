@@ -27,7 +27,6 @@ from polaris.integrations import (
     calculate_fee,
     RailsIntegration,
     TransactionForm,
-    TemplateScript,
 )
 from polaris import settings
 

@@ -1,6 +1,8 @@
 import jwt
 import time
 import os
+from typing import Tuple, Optional
+from urllib.parse import urlparse
 
 from django.utils.translation import gettext as _
 from jwt.exceptions import InvalidTokenError
@@ -18,13 +20,13 @@ def check_auth(request, func, *args, **kwargs):
     Else call the original view function.
     """
     try:
-        account = validate_jwt_request(request)
+        account, client_domain = validate_jwt_request(request)
     except ValueError as e:
         if "sep6/" in request.path:
             return Response({"type": "authentication_required"}, status=403)
         else:
             return render_error_response(str(e), status_code=status.HTTP_403_FORBIDDEN)
-    return func(account, request, *args, **kwargs)
+    return func(account, client_domain, request, *args, **kwargs)
 
 
 def validate_sep10_token():
@@ -39,7 +41,7 @@ def validate_sep10_token():
     return decorator
 
 
-def validate_jwt_request(request: Request) -> str:
+def validate_jwt_request(request: Request) -> Tuple[str, Optional[str]]:
     """
     Validate the JSON web token in a request and return the source account address
 
@@ -75,7 +77,14 @@ def validate_jwt_request(request: Request) -> str:
     if current_time < jwt_dict["iat"] or current_time > jwt_dict["exp"]:
         raise ValueError(_("jwt is no longer valid"))
 
+    client_domain = jwt_dict.get("client_domain")
+    if client_domain and urlparse(f"https://{client_domain}").netloc != client_domain:
+        raise ValueError(_("'client_domain' must be a hostname"))
+
     try:
-        return jwt_dict["sub"]
+        return (
+            jwt_dict["sub"],
+            client_domain,
+        )
     except KeyError:
         raise ValueError(_("decoded jwt missing 'sub' field"))

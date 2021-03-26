@@ -6,7 +6,10 @@ from unittest.mock import patch, Mock
 from stellar_sdk.keypair import Keypair
 
 from polaris.tests.conftest import USD_DISTRIBUTION_SEED
-from polaris.tests.helpers import mock_check_auth_success
+from polaris.tests.helpers import (
+    mock_check_auth_success,
+    mock_check_auth_success_client_domain,
+)
 from polaris.integrations import WithdrawalIntegration
 from polaris.models import Transaction, Asset
 
@@ -448,3 +451,32 @@ def test_good_amount(mock_deposit, client, usd_asset_factory):
     assert response.status_code == 200
     args, _ = mock_deposit.process_sep6_request.call_args[0]
     assert args.get("amount") == asset.deposit_max_amount - 1
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.withdraw.rwi")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success_client_domain)
+def test_withdraw_client_domain_saved(mock_withdraw, client):
+    kp = Keypair.random()
+    usd = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        sep6_enabled=True,
+        withdrawal_enabled=True,
+        distribution_seed=Keypair.random().secret,
+    )
+    mock_withdraw.process_sep6_request = Mock(return_value={"how": "test"})
+    response = client.get(
+        WITHDRAW_PATH,
+        {
+            "asset_code": usd.code,
+            "account": kp.public_key,
+            "type": "good type",
+            "dest": "test bank account number",
+        },
+    )
+    content = response.json()
+    assert response.status_code == 200, json.dumps(content, indent=2)
+    assert Transaction.objects.count() == 1
+    transaction = Transaction.objects.first()
+    assert transaction.client_domain == "test.com"
