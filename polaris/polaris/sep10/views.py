@@ -37,6 +37,7 @@ from stellar_sdk.exceptions import (
     Ed25519PublicKeyInvalidError,
 )
 from stellar_sdk import Keypair
+from stellar_sdk.client.requests_client import RequestsClient
 
 from polaris import settings
 from polaris.utils import getLogger, render_error_response
@@ -85,7 +86,7 @@ class SEP10Auth(APIView):
         elif client_domain:
             if urlparse(f"https://{client_domain}").netloc != client_domain:
                 return render_error_response(
-                    gettext("client_domain must be a valid hostname"), status_code=400
+                    gettext("'client_domain' must be a valid hostname"), status_code=400
                 )
             elif (
                 settings.SEP10_CLIENT_ATTRIBUTION_DENYLIST
@@ -111,10 +112,9 @@ class SEP10Auth(APIView):
             ):
                 return render_error_response(
                     gettext("unable to fetch 'client_domain' SIGNING_KEY"),
-                    status_code=424,
                 )
             except ValueError as e:
-                return render_error_response(str(e), status_code=424)
+                return render_error_response(str(e))
 
         try:
             transaction = self._challenge_transaction(
@@ -245,7 +245,9 @@ class SEP10Auth(APIView):
         except InvalidSep10ChallengeError as e:
             return None, render_error_response(generic_err_msg % (str(e)))
 
-        logger.info(f"Challenge verified using account signers: {signers_found}")
+        logger.info(
+            f"Challenge verified using account signers: {[s.account_id for s in signers_found]}"
+        )
         return client_domain, None
 
     @staticmethod
@@ -266,13 +268,12 @@ class SEP10Auth(APIView):
         logger.info(
             f"Challenge verified, generating SEP-10 token for account {source_account}"
         )
-        hash_hex = binascii.hexlify(transaction_envelope.hash()).decode()
         jwt_dict = {
             "iss": os.path.join(settings.HOST_URL, "auth"),
             "sub": source_account,
             "iat": issued_at,
             "exp": issued_at + 24 * 60 * 60,
-            "jti": hash_hex,
+            "jti": transaction_envelope.hash().hex(),
             "client_domain": client_domain,
         }
         encoded_jwt = jwt.encode(jwt_dict, settings.SERVER_JWT_KEY, algorithm="HS256")
@@ -280,7 +281,12 @@ class SEP10Auth(APIView):
 
     @staticmethod
     def _get_client_signing_key(client_domain):
-        client_toml_contents = fetch_stellar_toml(client_domain)
+        client_toml_contents = fetch_stellar_toml(
+            client_domain,
+            client=RequestsClient(
+                request_timeout=settings.SEP10_CLIENT_ATTRIBUTION_REQUEST_TIMEOUT
+            ),
+        )
         client_signing_key = client_toml_contents.get("SIGNING_KEY")
         if not client_signing_key:
             raise ValueError(gettext("SIGNING_KEY not present on 'client_domain' TOML"))

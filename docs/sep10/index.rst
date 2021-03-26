@@ -31,6 +31,13 @@ SEP10_HOME_DOMAINS (optional)
 SEP10_CLIENT_ATTRIBUTION_REQUIRED (optional)
     If true, requires client applications to verify their identity by passing a domain in the challenge transaction request and signing the challenge with the ``SIGNING_KEY`` on that domain's `SEP-1 stellar.toml`_. Defaults to false. See the SEP-10 section `Verifying Client Application Identity`_ for more information.
 
+SEP10_CLIENT_ATTRIBUTION_REQUEST_TIMEOUT (optional)
+    An integer for the number of seconds to wait before canceling a server-side request to the ``client_domain`` parameter specified in the request, if present. This request is made from the API server and therefore an unresponsive ``client_domain`` can slow down request processing.
+
+    Defaults to 3 seconds.
+
+    Ex. ``SEP10_CLIENT_ATTRIBUTION_REQUEST_TIMEOUT=10``
+
 SEP10_CLIENT_ATTRIBUTION_ALLOWLIST (optional)
     A list of domains that the server will issue challenge transactions containing ``client_domain`` Manage Data operations for. If ``SEP10_CLIENT_ATTRIBUTION_REQUIRED`` is true, client applications must pass a ``client_domain`` parameter whose value matches one of the elements in this list, otherwise the request will be rejected. If ``SEP10_CLIENT_ATTRIBUTION_REQUIRED`` is false, Polaris will return a challenge transaction without the requested ``client_domain`` Manage Data operation.
 

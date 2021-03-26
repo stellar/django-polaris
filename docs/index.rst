@@ -174,9 +174,16 @@ MAX_TRANSACTION_FEE_STROOPS
 SEP10_CLIENT_ATTRIBUTION_REQUIRED
     A boolean that if true, requires client applications to verify their identity by passing a domain in the challenge transaction request and signing the challenge with the ``SIGNING_KEY`` on that domain's `SEP-1 stellar.toml`_. See the SEP-10 section `Verifying Client Application Identity`_ for more information.
 
-    Defaults to false.
+    Defaults to ``False``.
 
     Ex. ``SEP10_CLIENT_ATTRIBUTION_REQUIRED=True``, ``SEP10_CLIENT_ATTRIBUTION_REQUIRED=1``
+
+SEP10_CLIENT_ATTRIBUTION_REQUEST_TIMEOUT
+    An integer for the number of seconds to wait before canceling a server-side request to the ``client_domain`` parameter specified in the request, if present. This request is made from the API server and therefore an unresponsive ``client_domain`` can slow down request processing.
+
+    Defaults to 3 seconds.
+
+    Ex. ``SEP10_CLIENT_ATTRIBUTION_REQUEST_TIMEOUT=10``
 
 SEP10_CLIENT_ATTRIBUTION_ALLOWLIST
     A list of domains that the server will issue challenge transactions containing ``client_domain`` Manage Data operations for.
