@@ -158,7 +158,7 @@ def test_auth_post_success_account_exists(client):
     mock_request.META["HTTP_AUTHORIZATION"] = auth_str.format(content["token"])
     mock_view_function = Mock()
     check_auth(mock_request, mock_view_function)
-    mock_view_function.assert_called()
+    mock_view_function.assert_called_once_with(CLIENT_ADDRESS, None, mock_request)
 
 
 @patch(
@@ -187,7 +187,7 @@ def test_auth_post_success_account_does_not_exist(client):
     mock_request.META["HTTP_AUTHORIZATION"] = auth_str.format(content["token"])
     mock_view_function = Mock()
     check_auth(mock_request, mock_view_function)
-    mock_view_function.assert_called()
+    mock_view_function.assert_called_once_with(CLIENT_ADDRESS, None, mock_request)
 
 
 @patch(
@@ -227,7 +227,9 @@ def test_auth_post_success_client_attribution(client):
     mock_request.META["HTTP_AUTHORIZATION"] = auth_str.format(content["token"])
     mock_view_function = Mock()
     check_auth(mock_request, mock_view_function)
-    mock_view_function.assert_called()
+    mock_view_function.assert_called_once_with(
+        CLIENT_ADDRESS, CLIENT_ATTRIBUTION_DOMAIN, mock_request
+    )
 
 
 @patch("polaris.sep10.views.settings.SEP10_CLIENT_ATTRIBUTION_REQUIRED", True)
@@ -268,7 +270,9 @@ def test_auth_post_success_client_attribution_required(client):
     mock_request.META["HTTP_AUTHORIZATION"] = auth_str.format(content["token"])
     mock_view_function = Mock()
     check_auth(mock_request, mock_view_function)
-    mock_view_function.assert_called()
+    mock_view_function.assert_called_once_with(
+        CLIENT_ADDRESS, CLIENT_ATTRIBUTION_DOMAIN, mock_request
+    )
 
 
 @patch("polaris.sep10.views.settings.SEP10_CLIENT_ATTRIBUTION_REQUIRED", True)
@@ -345,7 +349,9 @@ def test_auth_post_success_client_attribution_required_allowlist_provided(client
     mock_request.META["HTTP_AUTHORIZATION"] = auth_str.format(content["token"])
     mock_view_function = Mock()
     check_auth(mock_request, mock_view_function)
-    mock_view_function.assert_called()
+    mock_view_function.assert_called_once_with(
+        CLIENT_ADDRESS, CLIENT_ATTRIBUTION_DOMAIN, mock_request
+    )
 
 
 @patch(

@@ -9,9 +9,10 @@ from stellar_sdk.keypair import Keypair
 from stellar_sdk.transaction_envelope import TransactionEnvelope
 
 from polaris import settings
-from polaris.models import Transaction
+from polaris.models import Transaction, Asset
 from polaris.tests.helpers import (
     mock_check_auth_success,
+    mock_check_auth_success_client_domain,
     interactive_jwt_payload,
 )
 
@@ -216,3 +217,24 @@ def test_withdraw_no_jwt(client, acc1_usd_withdrawal_transaction_factory):
     content = json.loads(response.content)
     assert response.status_code == 403
     assert content == {"error": "JWT must be passed as 'Authorization' header"}
+
+
+@pytest.mark.django_db
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success_client_domain)
+def test_withdraw_client_domain_saved(client):
+    kp = Keypair.random()
+    usd = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        sep24_enabled=True,
+        withdrawal_enabled=True,
+        distribution_seed=Keypair.random().secret,
+    )
+    response = client.post(
+        WITHDRAW_PATH, {"asset_code": usd.code, "account": kp.public_key},
+    )
+    content = response.json()
+    assert response.status_code == 200, json.dumps(content, indent=2)
+    assert Transaction.objects.count() == 1
+    transaction = Transaction.objects.first()
+    assert transaction.client_domain == "test.com"
