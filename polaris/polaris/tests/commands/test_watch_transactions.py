@@ -59,7 +59,7 @@ def test_process_response_success(client):
     )
     json = deepcopy(SUCCESS_PAYMENT_TRANSACTION_JSON)
 
-    Command.process_response(json, TEST_ASSET_DISTRIBUTION_PUBLIC_KEY)
+    Command().process_response(json, TEST_ASSET_DISTRIBUTION_PUBLIC_KEY)
 
     transaction.refresh_from_db()
     assert transaction.from_address
@@ -91,7 +91,7 @@ def test_process_response_strict_send_success(client):
     )
     json = deepcopy(SUCCESS_STRICT_SEND_PAYMENT)
 
-    Command.process_response(json, TEST_ASSET_DISTRIBUTION_PUBLIC_KEY)
+    Command().process_response(json, TEST_ASSET_DISTRIBUTION_PUBLIC_KEY)
 
     transaction.refresh_from_db()
     assert transaction.from_address
@@ -104,6 +104,6 @@ def test_process_response_strict_send_success(client):
 def test_process_response_unsuccessful(client, acc1_usd_withdrawal_transaction_factory):
     json = {"successful": False}
     try:
-        Command.process_response(json, None)
+        Command().process_response(json, None)
     except KeyError:
         assert False, "process_response() did not return for unsuccessful transaction"

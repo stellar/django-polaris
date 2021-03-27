@@ -1,6 +1,6 @@
 import urllib3
 from decimal import Decimal
-from typing import Optional
+from typing import Optional, Dict
 from logging import getLogger
 
 from django.core.management.base import BaseCommand, CommandError
@@ -27,7 +27,7 @@ class Command(BaseCommand):
         self.server = Server("https://horizon-testnet.stellar.org")
         self.http = urllib3.PoolManager()
 
-    def add_arguments(self, parser):
+    def add_arguments(self, parser):  # pragma: no cover
         subparsers = parser.add_subparsers(dest="subcommands", required=True)
         self.reset_parser = subparsers.add_parser(
             "reset", help="a sub-command for testnet resets"
@@ -58,7 +58,7 @@ class Command(BaseCommand):
             help="the amount sent to client account. Also the limit for the trustline.",
         )
 
-    def handle(self, *_args, **options):
+    def handle(self, *_args, **options):  # pragma: no cover
         if options.get("subcommands") == "reset":
             self.reset(**options)
         elif options.get("subcommands") == "issue":
@@ -179,14 +179,14 @@ class Command(BaseCommand):
 
         home_domain = input("Home domain for the issuing account (optional): ")
         if home_domain:
-            self.set_home_domain(issuer, home_domain)
+            self.set_home_domain(issuer, accounts[issuer.public_key], home_domain)
 
-    def set_home_domain(self, issuer: Keypair, home_domain: str):
+    def set_home_domain(self, issuer: Keypair, issuer_json: Dict, home_domain: str):
         envelope = (
             TransactionBuilder(
-                self.server.load_account(issuer.public_key),
+                self.account_from_json(issuer_json),
                 base_fee=settings.MAX_TRANSACTION_FEE_STROOPS
-                or settings.HORIZON_SERVER.fetch_base_fee(),
+                or self.server.fetch_base_fee(),
                 network_passphrase="Test SDF Network ; September 2015",
             )
             .append_set_options_op(home_domain=home_domain)
@@ -208,10 +208,10 @@ class Command(BaseCommand):
         tb = TransactionBuilder(
             self.account_from_json(accounts[src.public_key]),
             base_fee=settings.MAX_TRANSACTION_FEE_STROOPS
-            or settings.HORIZON_SERVER.fetch_base_fee(),
+            or self.server.fetch_base_fee(),
             network_passphrase="Test SDF Network ; September 2015",
         )
-        balance = self.get_balance(code, accounts[dest.public_key])
+        balance = self.get_balance(code, issuer.public_key, accounts[dest.public_key])
         if not balance:
             print(f"\nCreating {code} trustline for {dest.public_key}")
             if settings.MAX_TRANSACTION_FEE_STROOPS:
@@ -266,7 +266,10 @@ class Command(BaseCommand):
         account.thresholds = thresholds
         return account
 
-    def get_balance(self, code, json) -> Optional[str]:
+    def get_balance(self, code, issuer_public_key, json) -> Optional[str]:
         for balance_obj in json["balances"]:
-            if balance_obj.get("asset_code") == code:
+            if (
+                balance_obj.get("asset_code") == code
+                and balance_obj.get("asset_issuer") == issuer_public_key
+            ):
                 return balance_obj["balance"]

@@ -8,7 +8,7 @@ from django.utils.translation import gettext
 from rest_framework import status
 from rest_framework.response import Response
 from stellar_sdk import TextMemo, IdMemo, HashMemo
-from stellar_sdk.exceptions import NotFoundError, ConnectionError
+from stellar_sdk.exceptions import NotFoundError
 from stellar_sdk.account import Account, Thresholds
 from stellar_sdk import Memo
 from requests import Response as RequestsResponse, RequestException, post

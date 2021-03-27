@@ -41,13 +41,13 @@ class Command(BaseCommand):
         signal.signal(signal.SIGTERM, self.exit_gracefully)
 
     @staticmethod
-    def exit_gracefully(*_):
+    def exit_gracefully(*_):  # pragma: no cover
         logger.info("Exiting poll_pending_deposits...")
         module = sys.modules[__name__]
         module.TERMINATE = True
 
     @staticmethod
-    def sleep(seconds):
+    def sleep(seconds):  # pragma: no cover
         module = sys.modules[__name__]
         for _ in range(seconds):
             if module.TERMINATE:
@@ -68,7 +68,7 @@ class Command(BaseCommand):
             "Defaults to {}.".format(DEFAULT_INTERVAL),
         )
 
-    def handle(self, *_args, **options):
+    def handle(self, *_args, **options):  # pragma: no cover
         """
         The entrypoint for the functionality implemented in this file.
 
@@ -89,12 +89,7 @@ class Command(BaseCommand):
     @classmethod
     def execute_deposits(cls):
         module = sys.modules[__name__]
-        try:
-            ready_transactions = PendingDeposits.get_ready_deposits()
-        except Exception:
-            logger.exception("poll_pending_deposits() threw an unexpected exception")
-            return
-
+        ready_transactions = PendingDeposits.get_ready_deposits()
         for i, transaction in enumerate(ready_transactions):
             if module.TERMINATE:
                 still_processing_transactions = ready_transactions[i:]
@@ -145,15 +140,14 @@ class PendingDeposits:
         ).select_for_update()
         with django.db.transaction.atomic():
             ready_transactions = rri.poll_pending_deposits(pending_deposits)
-            ids = []
-            for t in ready_transactions:
-                t.pending_execution_attempt = True
-                ids.append(t.id)
-            Transaction.objects.filter(id__in=ids).update(
-                pending_execution_attempt=True
-            )
+            Transaction.objects.filter(
+                id__in=[t.id for t in ready_transactions]
+            ).update(pending_execution_attempt=True)
         verified_ready_transactions = []
         for transaction in ready_transactions:
+            # refresh from DB to pull pending_execution_attempt value and to ensure invalid
+            # values were not assigned to the transaction in rri.poll_pending_deposits()
+            transaction.refresh_from_db()
             if transaction.kind != transaction.KIND.deposit:
                 cls.handle_error(
                     transaction,
@@ -533,5 +527,5 @@ class PendingDeposits:
         transaction.status = Transaction.STATUS.error
         transaction.pending_execution_attempt = False
         transaction.save()
-        logger.error(transaction.status_message)
+        logger.error(message)
         maybe_make_callback(transaction)

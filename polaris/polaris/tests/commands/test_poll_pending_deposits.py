@@ -105,6 +105,59 @@ def test_get_ready_deposits_empty_when_pending_execution_attempt(mock_rri):
 
     assert PendingDeposits.get_ready_deposits() == [transaction]
     assert PendingDeposits.get_ready_deposits() == []
+    transaction.refresh_from_db()
+    assert transaction.pending_execution_attempt is True
+
+
+@pytest.mark.django_db
+@patch(f"{test_module}.rri")
+def test_get_ready_deposits_invalid_data_assigned_to_transaction_no_error(mock_rri):
+    usd = Asset.objects.create(code="USD", issuer=Keypair.random().public_key)
+    transaction = Transaction.objects.create(
+        asset=usd,
+        status=Transaction.STATUS.pending_user_transfer_start,
+        kind=Transaction.KIND.deposit,
+        pending_execution_attempt=False,
+        amount_in=100,
+        amount_fee=None,  # ensures .save() will be called
+    )
+
+    class Amount:
+        def __init__(self, value):
+            self.value = value
+
+    def mock_poll_pending_deposits(transactions_qs):
+        transactions = list(transactions_qs)
+        for t in transactions_qs:
+            # t.save() would raise a TypeError
+            t.amount_in = Amount(100)
+        return transactions
+
+    mock_rri.poll_pending_deposits = mock_poll_pending_deposits
+
+    assert PendingDeposits.get_ready_deposits() == [transaction]
+
+
+@pytest.mark.django_db
+@patch(f"{test_module}.rri")
+@patch(f"{test_module}.registered_fee_func", lambda: None)
+def test_get_ready_deposits_custom_fee_func_used(mock_rri):
+    usd = Asset.objects.create(code="USD", issuer=Keypair.random().public_key)
+    transaction = Transaction.objects.create(
+        asset=usd,
+        status=Transaction.STATUS.pending_user_transfer_start,
+        kind=Transaction.KIND.deposit,
+        pending_execution_attempt=False,
+        amount_in=100,
+        amount_fee=None,
+    )
+    mock_rri.poll_pending_deposits = lambda x: list(x.all())
+
+    assert PendingDeposits.get_ready_deposits() == [transaction]
+
+    transaction.refresh_from_db()
+    assert transaction.pending_execution_attempt is True
+    assert transaction.amount_fee == Decimal(0)
 
 
 @pytest.mark.django_db
@@ -188,6 +241,62 @@ def test_get_or_create_destination_account_doesnt_exist(
         mock_submit_transaction.assert_called_once()
         envelope = mock_submit_transaction.mock_calls[0][1][0]
         assert envelope.transaction.source.public_key == usd.distribution_account
+        assert len(envelope.transaction.operations) == 1
+        assert isinstance(envelope.transaction.operations[0], CreateAccount)
+        assert (
+            envelope.transaction.operations[0].destination
+            == transaction.stellar_account
+        )
+
+
+@pytest.mark.django_db
+@patch(f"{test_module}.PendingDeposits.requires_multisig")
+@patch(f"{test_module}.settings.HORIZON_SERVER.fetch_base_fee")
+@patch(f"{test_module}.settings.HORIZON_SERVER.submit_transaction")
+@patch(f"{test_module}.rdi.create_channel_account")
+def test_get_or_create_destination_account_doesnt_exist_requires_multisig(
+    mock_create_channel_account,
+    mock_submit_transaction,
+    mock_fetch_base_fee,
+    mock_requires_multisig,
+):
+    usd = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        distribution_seed=Keypair.random().secret,
+    )
+    transaction = Transaction.objects.create(
+        asset=usd,
+        status=Transaction.STATUS.pending_user_transfer_start,
+        kind=Transaction.KIND.deposit,
+        stellar_account=Keypair.random().public_key,
+        channel_seed=Keypair.random().secret,
+    )
+    mock_fetch_base_fee.return_value = 100
+    mock_requires_multisig.return_value = True
+    stellar_account_obj = Account(transaction.stellar_account, 1)
+    channel_account_obj = Account(transaction.channel_account, 1)
+
+    def mock_get_account_obj_func(kp: Keypair):
+        if kp.public_key == transaction.stellar_account:
+            if mock_submit_transaction.called:
+                return stellar_account_obj, {"balances": []}
+            else:
+                raise RuntimeError()
+        elif kp.public_key == transaction.channel_account:
+            return channel_account_obj, None
+
+    with patch(f"{test_module}.get_account_obj", mock_get_account_obj_func):
+        assert PendingDeposits.get_or_create_destination_account(transaction) == (
+            stellar_account_obj,
+            True,
+        )
+        mock_fetch_base_fee.assert_called()
+        mock_requires_multisig.assert_called()
+        mock_create_channel_account.assert_not_called()
+        mock_submit_transaction.assert_called_once()
+        envelope = mock_submit_transaction.mock_calls[0][1][0]
+        assert envelope.transaction.source.public_key == transaction.channel_account
         assert len(envelope.transaction.operations) == 1
         assert isinstance(envelope.transaction.operations[0], CreateAccount)
         assert (
@@ -823,8 +932,7 @@ def test_requires_trustline_create_fails(
 
 
 @pytest.mark.django_db
-@patch(f"polaris.models.ASSET_DISTRIBUTION_ACCOUNT_MAP")
-def test_requires_multisig_single_master_signer(mock_account_map):
+def test_requires_multisig_single_master_signer():
     usd = Asset.objects.create(
         code="USD",
         issuer=Keypair.random().public_key,
@@ -854,8 +962,7 @@ def test_requires_multisig_single_master_signer(mock_account_map):
 
 
 @pytest.mark.django_db
-@patch(f"polaris.models.ASSET_DISTRIBUTION_ACCOUNT_MAP")
-def test_requires_multisig_single_master_signer_insufficient_weight(mock_account_map):
+def test_requires_multisig_single_master_signer_insufficient_weight():
     usd = Asset.objects.create(
         code="USD",
         issuer=Keypair.random().public_key,
@@ -872,7 +979,7 @@ def test_requires_multisig_single_master_signer_insufficient_weight(mock_account
         "polaris.models.ASSET_DISTRIBUTION_ACCOUNT_MAP",
         {
             (usd.code, usd.issuer): {
-                "signers": [{"key": usd.distribution_account, "weight": 0,}],
+                "signers": [{"key": usd.distribution_account, "weight": 0}],
                 "thresholds": {
                     "low_threshold": 1,
                     "med_threshold": 1,
@@ -885,8 +992,7 @@ def test_requires_multisig_single_master_signer_insufficient_weight(mock_account
 
 
 @pytest.mark.django_db
-@patch(f"polaris.models.ASSET_DISTRIBUTION_ACCOUNT_MAP")
-def test_requires_multisig_no_master_signer(mock_account_map):
+def test_requires_multisig_no_master_signer():
     usd = Asset.objects.create(
         code="USD",
         issuer=Keypair.random().public_key,
@@ -1113,7 +1219,7 @@ def test_execute_deposits_success(
     mock_requires_trustline.return_value = False
     mock_requires_multisig.return_value = False
 
-    Command.execute_deposits()
+    Command().execute_deposits()
 
     mock_get_ready_deposits.assert_called_once()
     mock_requires_trustline.assert_called_once_with(transaction)
@@ -1148,7 +1254,7 @@ def test_execute_deposits_requires_trustline(
     mock_get_ready_deposits.return_value = [transaction]
     mock_requires_trustline.return_value = True
 
-    Command.execute_deposits()
+    Command().execute_deposits()
 
     mock_get_ready_deposits.assert_called_once()
     mock_requires_trustline.assert_called_once_with(transaction)
@@ -1186,7 +1292,7 @@ def test_execute_deposits_requires_multisig(
     mock_requires_trustline.return_value = False
     mock_requires_multisig.return_value = True
 
-    Command.execute_deposits()
+    Command().execute_deposits()
 
     mock_get_ready_deposits.assert_called_once()
     mock_requires_trustline.assert_called_once_with(transaction)
@@ -1225,7 +1331,7 @@ def test_execute_deposits_requires_multisig_raises_not_found(
     mock_requires_trustline.return_value = False
     mock_requires_multisig.side_effect = NotFoundError(Mock())
 
-    Command.execute_deposits()
+    Command().execute_deposits()
 
     mock_get_ready_deposits.assert_called_once()
     mock_requires_trustline.assert_called_once_with(transaction)
@@ -1272,7 +1378,7 @@ def test_execute_deposits_requires_multisig_raises_connection_error(
     mock_requires_trustline.return_value = False
     mock_requires_multisig.side_effect = ConnectionError()
 
-    Command.execute_deposits()
+    Command().execute_deposits()
 
     mock_get_ready_deposits.assert_called_once()
     mock_requires_trustline.assert_called_once_with(transaction)
@@ -1316,7 +1422,7 @@ def test_execute_deposits_cleanup_on_sigint(
     )
     mock_get_ready_deposits.return_value = [transaction]
 
-    Command.execute_deposits()
+    Command().execute_deposits()
 
     mock_get_ready_deposits.assert_called_once()
     mock_requires_trustline.assert_not_called()

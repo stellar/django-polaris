@@ -97,9 +97,13 @@ class RailsIntegration:
         If ``amount_in`` differs from the amount deposited, assign the amount
         deposited to ``amount_in`` and update ``amount_fee`` to appropriately.
 
+        Any changes to the a transaction object must be saved to the database
+        before it is returned. The transaction object will be refreshed using
+        Django's ``.refresh_from_db()`` method and any unsaved data will be lost.
+
         For every transaction that is returned, Polaris will submit it to the
         Stellar network. If a transaction is completed on the network, the
-        ``after_deposit`` integration function will be called, however
+        ``after_deposit()`` integration function will be called, however
         implementing this function is optional.
 
         If the Stellar network is unable to execute a transaction returned
