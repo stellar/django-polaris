@@ -145,10 +145,12 @@ def check_authentication_helper(r: Request):
     if not r.session.get("authenticated"):
         raise ValueError(_("Session is not authenticated"))
 
-    transaction_qs = Transaction.objects.filter(
-        id=r.GET.get("transaction_id"), stellar_account=r.session.get("account"),
-    )
-    if not transaction_qs.exists():
+    try:
+        if not Transaction.objects.filter(
+            id=r.GET.get("transaction_id"), stellar_account=r.session.get("account")
+        ).exists():
+            raise ValueError(_("Transaction for account not found"))
+    except ValidationError:
         raise ValueError(_("Transaction for account not found"))
 
 
@@ -176,7 +178,7 @@ def validate_url(url) -> Optional[Dict]:
         )
 
 
-def interactive_args_validation(request: Request) -> Dict:
+def interactive_args_validation(request: Request, kind: str) -> Dict:
     """
     Validates the arguments passed to the /webapp endpoints
 
@@ -208,7 +210,7 @@ def interactive_args_validation(request: Request) -> Dict:
     ):
         on_change_callback = None
     try:
-        transaction = Transaction.objects.get(id=transaction_id, asset=asset)
+        transaction = Transaction.objects.get(id=transaction_id, asset=asset, kind=kind)
     except (Transaction.DoesNotExist, ValidationError):
         return dict(
             error=render_error_response(

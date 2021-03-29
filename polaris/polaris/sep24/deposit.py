@@ -84,7 +84,7 @@ def post_interactive_deposit(request: Request) -> Response:
            The user's session is invalidated, the transaction status is
            updated, and the function redirects to GET /more_info.
     """
-    args_or_error = interactive_args_validation(request)
+    args_or_error = interactive_args_validation(request, Transaction.KIND.deposit)
     if "error" in args_or_error:
         return args_or_error["error"]
 
@@ -185,7 +185,7 @@ def post_interactive_deposit(request: Request) -> Response:
             asset=asset,
             use_fee_endpoint=registered_fee_func != calculate_fee,
         )
-        return Response(content, template_name="polaris/deposit.html", status=422)
+        return Response(content, template_name="polaris/deposit.html", status=400)
 
 
 @api_view(["GET"])
@@ -201,18 +201,9 @@ def complete_interactive_deposit(request: Request) -> Response:
     """
     transaction_id = request.GET.get("transaction_id")
     callback = request.GET.get("callback")
-    if not transaction_id:
-        return render_error_response(
-            _("Missing id parameter in URL"), content_type="text/html"
-        )
-    try:
-        Transaction.objects.filter(id=transaction_id).update(
-            status=Transaction.STATUS.pending_user_transfer_start
-        )
-    except ValidationError:
-        return render_error_response(
-            _("ID passed is not a valid transaction ID"), content_type="text/html"
-        )
+    Transaction.objects.filter(id=transaction_id).update(
+        status=Transaction.STATUS.pending_user_transfer_start
+    )
     logger.info(f"Hands-off interactive flow complete for transaction {transaction_id}")
     args = {"id": transaction_id, "initialLoad": "true"}
     if callback:
@@ -242,7 +233,7 @@ def get_interactive_deposit(request: Request) -> Response:
         4. get and post URLs are constructed with the appropriate arguments
            and passed to the response to be rendered to the user.
     """
-    args_or_error = interactive_args_validation(request)
+    args_or_error = interactive_args_validation(request, Transaction.KIND.deposit)
     if "error" in args_or_error:
         return args_or_error["error"]
 
@@ -364,19 +355,21 @@ def deposit(account: str, client_domain: Optional[str], request: Request) -> Res
     except ValueError:
         return render_error_response(_("invalid 'memo' for 'memo_type'"))
 
-    amount = None
-    if request.data.get("amount"):
-        try:
-            amount = Decimal(request.data.get("amount"))
-        except DecimalException:
-            return render_error_response(_("invalid 'amount'"))
-
     # Verify that the asset code exists in our database, with deposit enabled.
     asset = Asset.objects.filter(code=asset_code).first()
     if not asset:
         return render_error_response(_("unknown asset: %s") % asset_code)
     elif not (asset.deposit_enabled and asset.sep24_enabled):
         return render_error_response(_("invalid operation for asset %s") % asset_code)
+
+    amount = None
+    if request.data.get("amount"):
+        try:
+            amount = Decimal(request.data.get("amount"))
+        except DecimalException:
+            return render_error_response(_("invalid 'amount'"))
+        if not (asset.deposit_min_amount <= amount <= asset.deposit_max_amount):
+            return render_error_response(_("invalid 'amount'"))
 
     try:
         Keypair.from_public_key(stellar_account)
