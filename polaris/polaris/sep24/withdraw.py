@@ -8,7 +8,6 @@ from decimal import Decimal, DecimalException
 from urllib.parse import urlencode
 
 from django.urls import reverse
-from django.core.exceptions import ValidationError
 from django.views.decorators.clickjacking import xframe_options_exempt
 from django.shortcuts import redirect
 from django.utils.translation import gettext as _
@@ -81,7 +80,7 @@ def post_interactive_withdraw(request: Request) -> Response:
            The user's session is invalidated, the transaction status is
            updated, and the function redirects to GET /more_info.
     """
-    args_or_error = interactive_args_validation(request)
+    args_or_error = interactive_args_validation(request, Transaction.KIND.withdrawal)
     if "error" in args_or_error:
         return args_or_error["error"]
 
@@ -195,7 +194,7 @@ def post_interactive_withdraw(request: Request) -> Response:
             use_fee_endpoint=registered_fee_func != calculate_fee,
             org_logo_url=toml_data.get("DOCUMENTATION", {}).get("ORG_LOGO"),
         )
-        return Response(content, template_name="polaris/withdraw.html", status=422)
+        return Response(content, template_name="polaris/withdraw.html", status=400)
 
 
 @api_view(["GET"])
@@ -211,18 +210,9 @@ def complete_interactive_withdraw(request: Request) -> Response:
     """
     transaction_id = request.GET.get("transaction_id")
     callback = request.GET.get("callback")
-    if not transaction_id:
-        return render_error_response(
-            _("Missing id parameter in URL"), content_type="text/html"
-        )
-    try:
-        Transaction.objects.filter(id=transaction_id).update(
-            status=Transaction.STATUS.pending_user_transfer_start
-        )
-    except ValidationError:
-        return render_error_response(
-            _("ID passed is not a valid transaction ID"), content_type="text/html"
-        )
+    Transaction.objects.filter(id=transaction_id).update(
+        status=Transaction.STATUS.pending_user_transfer_start
+    )
     logger.info(f"Hands-off interactive flow complete for transaction {transaction_id}")
     args = {"id": transaction_id, "initialLoad": "true"}
     if callback:
@@ -252,7 +242,7 @@ def get_interactive_withdraw(request: Request) -> Response:
         4. get and post URLs are constructed with the appropriate arguments
            and passed to the response to be rendered to the user.
     """
-    args_or_error = interactive_args_validation(request)
+    args_or_error = interactive_args_validation(request, Transaction.KIND.withdrawal)
     if "error" in args_or_error:
         return args_or_error["error"]
 
@@ -345,19 +335,24 @@ def withdraw(account: str, client_domain: Optional[str], request: Request,) -> R
     if not asset_code:
         return render_error_response(_("'asset_code' is required"))
 
+    # Verify that the asset code exists in our database, with withdraw enabled.
+    asset = Asset.objects.filter(code=asset_code).first()
+    if not (
+        asset
+        and asset.withdrawal_enabled
+        and asset.sep24_enabled
+        and asset.distribution_account
+    ):
+        return render_error_response(_("invalid operation for asset %s") % asset_code)
+
     amount = None
     if request.data.get("amount"):
         try:
             amount = Decimal(request.data.get("amount"))
         except DecimalException:
             return render_error_response(_("invalid 'amount'"))
-
-    # Verify that the asset code exists in our database, with withdraw enabled.
-    asset = Asset.objects.filter(code=asset_code).first()
-    if not (asset and asset.withdrawal_enabled and asset.sep24_enabled):
-        return render_error_response(_("invalid operation for asset %s") % asset_code)
-    elif not asset.distribution_account:
-        return render_error_response(_("unsupported asset type: %s") % asset_code)
+        if not (asset.withdrawal_min_amount <= amount <= asset.withdrawal_max_amount):
+            return render_error_response(_("invalid 'amount'"))
 
     try:
         rwi.save_sep9_fields(account, sep9_fields, lang)

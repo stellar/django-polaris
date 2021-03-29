@@ -2,11 +2,10 @@
 import json
 import time
 import jwt
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 
 import pytest
 from stellar_sdk.keypair import Keypair
-from stellar_sdk.transaction_envelope import TransactionEnvelope
 
 from polaris import settings
 from polaris.models import Transaction, Asset
@@ -22,11 +21,17 @@ WITHDRAW_PATH = "/sep24/transactions/withdraw/interactive"
 
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-def test_withdraw_success(client, usd_asset_factory):
+def test_withdraw_success(client):
     """`GET /withdraw` succeeds with no optional arguments."""
-    usd = usd_asset_factory()
-    response = client.post(WITHDRAW_PATH, {"asset_code": "USD"}, follow=True)
-    content = json.loads(response.content)
+    usd = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        sep24_enabled=True,
+        withdrawal_enabled=True,
+        distribution_seed=Keypair.random().secret,
+    )
+    response = client.post(WITHDRAW_PATH, {"asset_code": usd.code}, follow=True)
+    content = response.json()
     assert content["type"] == "interactive_customer_info_needed"
     assert content.get("id")
 
@@ -43,11 +48,17 @@ def test_withdraw_success(client, usd_asset_factory):
 
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-def test_withdraw_invalid_asset(client, acc1_usd_withdrawal_transaction_factory):
+def test_withdraw_invalid_operation(client):
     """`GET /withdraw` fails with an invalid asset argument."""
-    acc1_usd_withdrawal_transaction_factory()
-    response = client.post(WITHDRAW_PATH, {"asset_code": "ETH"}, follow=True)
-    content = json.loads(response.content)
+    eth = Asset.objects.create(
+        code="ETH",
+        issuer=Keypair.random().public_key,
+        sep24_enabled=True,
+        withdrawal_enabled=False,
+        distribution_seed=Keypair.random().secret,
+    )
+    response = client.post(WITHDRAW_PATH, {"asset_code": eth.code}, follow=True)
+    content = response.json()
     assert response.status_code == 400
     assert content == {"error": "invalid operation for asset ETH"}
 
@@ -57,56 +68,175 @@ def test_withdraw_invalid_asset(client, acc1_usd_withdrawal_transaction_factory)
 def test_withdraw_no_asset(client):
     """`GET /withdraw fails with no asset argument."""
     response = client.post(WITHDRAW_PATH, follow=True)
-    content = json.loads(response.content)
+    content = response.json()
     assert response.status_code == 400
     assert content == {"error": "'asset_code' is required"}
 
 
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-@patch("polaris.sep24.utils.authenticate_session_helper")
-def test_withdraw_interactive_no_txid(
-    mock_auth, client, acc1_usd_withdrawal_transaction_factory
-):
-    """
-    `GET /transactions/withdraw/webapp` fails with no transaction_id.
-    """
-    del mock_auth
-    withdraw = acc1_usd_withdrawal_transaction_factory()
+def test_withdraw_invalid_amount(client):
+    usd = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        sep24_enabled=True,
+        withdrawal_enabled=True,
+        distribution_seed=Keypair.random().secret,
+        withdrawal_max_amount=1000,
+    )
+    response = client.post(
+        WITHDRAW_PATH, {"asset_code": usd.code, "amount": 10000}, follow=True
+    )
+    assert response.status_code == 400
+    assert response.json()["error"] == "invalid 'amount'"
+
+
+@pytest.mark.django_db
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_withdraw_no_distribution_account(client):
+    usd = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        sep24_enabled=True,
+        withdrawal_enabled=True,
+    )
+    response = client.post(
+        WITHDRAW_PATH, {"asset_code": usd.code, "amount": 10000}, follow=True
+    )
+    assert response.status_code == 400
+    assert response.json()["error"] == f"invalid operation for asset {usd.code}"
+
+
+@pytest.mark.django_db
+def test_interactive_withdraw_success(client):
+    usd = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        sep24_enabled=True,
+        withdrawal_enabled=True,
+        distribution_seed=Keypair.random().secret,
+    )
+    withdraw = Transaction.objects.create(
+        asset=usd, kind=Transaction.KIND.withdrawal, protocol=Transaction.PROTOCOL.sep24
+    )
+
+    payload = interactive_jwt_payload(withdraw, "withdraw")
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode(
+        "ascii"
+    )
+
     response = client.get(
-        f"{WEBAPP_PATH}?asset_code={withdraw.asset.code}", follow=True
+        f"{WEBAPP_PATH}"
+        f"?token={token}"
+        f"&transaction_id={withdraw.id}"
+        f"&asset_code={withdraw.asset.code}"
+    )
+    assert response.status_code == 200
+    assert client.session["authenticated"] is True
+
+    response = client.get(
+        f"{WEBAPP_PATH}"
+        f"?token={token}"
+        f"&transaction_id={withdraw.id}"
+        f"&asset_code={withdraw.asset.code}"
+    )
+    assert response.status_code == 403
+    assert "Unexpected one-time auth token" in str(response.content)
+
+    response = client.post(
+        f"{WEBAPP_PATH}/submit"
+        f"?transaction_id={withdraw.id}"
+        f"&asset_code={withdraw.asset.code}",
+        {"amount": 200.0},
+    )
+    assert response.status_code == 302
+    assert client.session["authenticated"] is False
+
+
+@pytest.mark.django_db
+def test_interactive_withdraw_bad_post_data(client):
+    usd = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        sep24_enabled=True,
+        withdrawal_enabled=True,
+        distribution_seed=Keypair.random().secret,
+        withdrawal_max_amount=10000,
+    )
+    withdraw = Transaction.objects.create(
+        asset=usd,
+        kind=Transaction.KIND.withdrawal,
+        protocol=Transaction.PROTOCOL.sep24,
+    )
+
+    payload = interactive_jwt_payload(withdraw, "withdraw")
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode(
+        "ascii"
+    )
+
+    response = client.get(
+        f"{WEBAPP_PATH}"
+        f"?token={token}"
+        f"&transaction_id={withdraw.id}"
+        f"&asset_code={withdraw.asset.code}"
+    )
+    assert response.status_code == 200
+    assert client.session["authenticated"] is True
+
+    response = client.post(
+        f"{WEBAPP_PATH}/submit"
+        f"?transaction_id={withdraw.id}"
+        f"&asset_code={withdraw.asset.code}",
+        {"amount": 20000},
     )
     assert response.status_code == 400
 
 
 @pytest.mark.django_db
-@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-@patch("polaris.sep24.utils.authenticate_session_helper")
-def test_withdraw_interactive_no_asset(
-    mock_auth, client, acc1_usd_withdrawal_transaction_factory
-):
+@patch("polaris.sep24.utils.authenticate_session_helper", Mock())
+def test_withdraw_interactive_no_txid(client):
     """
-    `GET /transactions/withdraw/webapp` fails with no asset_code.
+    `GET /transactions/withdraw/webapp` fails with no transaction_id.
     """
-    del mock_auth
-    acc1_usd_withdrawal_transaction_factory()
-    response = client.get(f"{WEBAPP_PATH}?transaction_id=2", follow=True)
+    usd = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        sep24_enabled=True,
+        withdrawal_enabled=True,
+        distribution_seed=Keypair.random().secret,
+    )
+    response = client.get(f"{WEBAPP_PATH}?asset_code={usd.code}", follow=True)
     assert response.status_code == 400
+    assert "transaction_id" in response.content.decode()
 
 
 @pytest.mark.django_db
-@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-@patch("polaris.sep24.utils.authenticate_session_helper")
-def test_withdraw_interactive_invalid_asset(
-    mock_auth, client, acc1_usd_withdrawal_transaction_factory
-):
+@patch("polaris.sep24.utils.authenticate_session_helper", Mock())
+def test_withdraw_interactive_no_asset(client):
+    """
+    `GET /transactions/withdraw/webapp` fails with no asset_code.
+    """
+    Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        sep24_enabled=True,
+        withdrawal_enabled=True,
+        distribution_seed=Keypair.random().secret,
+    )
+    response = client.get(f"{WEBAPP_PATH}?transaction_id=2", follow=True)
+    assert response.status_code == 400
+    assert "asset_code" in response.content.decode()
+
+
+@pytest.mark.django_db
+@patch("polaris.sep24.utils.authenticate_session_helper", Mock())
+def test_withdraw_interactive_invalid_asset(client):
     """
     `GET /transactions/withdraw/webapp` fails with invalid asset_code.
     """
-    del mock_auth
-    acc1_usd_withdrawal_transaction_factory()
     response = client.get(f"{WEBAPP_PATH}?transaction_id=2&asset_code=ETH", follow=True)
     assert response.status_code == 400
+    assert "asset_code" in response.content.decode()
 
 
 @pytest.mark.django_db
@@ -123,15 +253,18 @@ def test_interactive_withdraw_no_token(client):
 
 
 @pytest.mark.django_db
-def test_interactive_deposit_bad_issuer(
-    client, acc1_usd_withdrawal_transaction_factory
-):
-    withdraw = acc1_usd_withdrawal_transaction_factory()
-
+def test_interactive_withdraw_bad_issuer(client):
+    usd = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        sep24_enabled=True,
+        withdrawal_enabled=True,
+        distribution_seed=Keypair.random().secret,
+    )
+    withdraw = Transaction.objects.create(asset=usd)
     payload = interactive_jwt_payload(withdraw, "withdraw")
     payload["iss"] = "bad iss"
-    encoded_token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256")
-    token = encoded_token.decode("ascii")
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode()
 
     response = client.get(f"{WEBAPP_PATH}?token={token}")
     assert "Invalid token issuer" in str(response.content)
@@ -139,8 +272,15 @@ def test_interactive_deposit_bad_issuer(
 
 
 @pytest.mark.django_db
-def test_interactive_deposit_past_exp(client, acc1_usd_withdrawal_transaction_factory):
-    withdraw = acc1_usd_withdrawal_transaction_factory()
+def test_interactive_withdraw_past_exp(client):
+    usd = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        sep24_enabled=True,
+        withdrawal_enabled=True,
+        distribution_seed=Keypair.random().secret,
+    )
+    withdraw = Transaction.objects.create(asset=usd)
 
     payload = interactive_jwt_payload(withdraw, "withdraw")
     payload["exp"] = time.time()
@@ -154,10 +294,15 @@ def test_interactive_deposit_past_exp(client, acc1_usd_withdrawal_transaction_fa
 
 
 @pytest.mark.django_db
-def test_interactive_deposit_no_transaction(
-    client, acc1_usd_withdrawal_transaction_factory
-):
-    withdraw = acc1_usd_withdrawal_transaction_factory()
+def test_interactive_withdraw_no_transaction(client):
+    usd = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        sep24_enabled=True,
+        withdrawal_enabled=True,
+        distribution_seed=Keypair.random().secret,
+    )
+    withdraw = Transaction.objects.create(asset=usd, kind=Transaction.KIND.withdrawal)
 
     payload = interactive_jwt_payload(withdraw, "withdraw")
     withdraw.delete()  # remove from database
@@ -172,51 +317,257 @@ def test_interactive_deposit_no_transaction(
 
 
 @pytest.mark.django_db
-def test_withdraw_authenticated_success(
-    client, acc1_usd_withdrawal_transaction_factory
+@patch("polaris.sep24.withdraw.rwi.form_for_transaction")
+@patch("polaris.sep24.withdraw.rwi.content_for_template")
+def test_interactive_withdraw_get_no_content_tx_incomplete(
+    mock_content_for_transaction, mock_form_for_transaction, client
 ):
-    """`GET /withdraw` succeeds with the SEP 10 authentication flow."""
-    from polaris.tests.auth_test import endpoint as auth_endpoint
-
-    client_address = "GDKFNRUATPH4BSZGVFDRBIGZ5QAFILVFRIRYNSQ4UO7V2ZQAPRNL73RI"
-    client_seed = "SDKWSBERDHP3SXW5A3LXSI7FWMMO5H7HG33KNYBKWH2HYOXJG2DXQHQY"
-    acc1_usd_withdrawal_transaction_factory()
-
-    # SEP 10.
-    response = client.get(f"{auth_endpoint}?account={client_address}", follow=True)
-    content = json.loads(response.content)
-
-    envelope_xdr = content["transaction"]
-    envelope_object = TransactionEnvelope.from_xdr(
-        envelope_xdr, network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE
+    usd = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        sep24_enabled=True,
+        withdrawal_enabled=True,
+        distribution_seed=Keypair.random().secret,
     )
-    client_signing_key = Keypair.from_secret(client_seed)
-    envelope_object.sign(client_signing_key)
-    client_signed_envelope_xdr = envelope_object.to_xdr()
-
-    response = client.post(
-        auth_endpoint,
-        data={"transaction": client_signed_envelope_xdr},
-        content_type="application/json",
+    withdraw = Transaction.objects.create(
+        asset=usd,
+        kind=Transaction.KIND.withdrawal,
+        status=Transaction.STATUS.incomplete,
     )
-    content = json.loads(response.content)
-    encoded_jwt = content["token"]
-    assert encoded_jwt
-
-    header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
-    response = client.post(WITHDRAW_PATH, {"asset_code": "USD"}, follow=True, **header)
-    content = json.loads(response.content)
-    assert content["type"] == "interactive_customer_info_needed"
+    mock_form_for_transaction.return_value = None
+    mock_content_for_transaction.return_value = None
+    payload = interactive_jwt_payload(withdraw, "withdraw")
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode(
+        "ascii"
+    )
+    response = client.get(
+        f"{WEBAPP_PATH}"
+        f"?token={token}"
+        f"&transaction_id={withdraw.id}"
+        f"&asset_code={usd.code}"
+    )
+    assert response.status_code == 500
+    # Django does not save session changes on 500 errors
+    assert not client.session.get("authenticated")
+    assert "The anchor did not provide content, unable to serve page." in str(
+        response.content
+    )
 
 
 @pytest.mark.django_db
-def test_withdraw_no_jwt(client, acc1_usd_withdrawal_transaction_factory):
+@patch("polaris.sep24.withdraw.rwi.form_for_transaction")
+@patch("polaris.sep24.withdraw.rwi.content_for_template")
+def test_interactive_withdraw_get_no_content_tx_complete(
+    mock_content_for_transaction, mock_form_for_transaction, client
+):
+    usd = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        sep24_enabled=True,
+        withdrawal_enabled=True,
+        distribution_seed=Keypair.random().secret,
+    )
+    withdraw = Transaction.objects.create(
+        asset=usd, kind=Transaction.KIND.withdrawal, status=Transaction.STATUS.completed
+    )
+    mock_form_for_transaction.return_value = None
+    mock_content_for_transaction.return_value = None
+    payload = interactive_jwt_payload(withdraw, "withdraw")
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode(
+        "ascii"
+    )
+    response = client.get(
+        f"{WEBAPP_PATH}"
+        f"?token={token}"
+        f"&transaction_id={withdraw.id}"
+        f"&asset_code={withdraw.asset.code}"
+    )
+    assert response.status_code == 422
+    assert client.session["authenticated"] is True
+    assert (
+        "The anchor did not provide content, is the interactive flow already complete?"
+        in str(response.content)
+    )
+
+
+@pytest.mark.django_db
+@patch("polaris.sep24.withdraw.rwi.form_for_transaction")
+@patch("polaris.sep24.withdraw.rwi.content_for_template")
+def test_interactive_withdraw_post_no_content_tx_incomplete(
+    mock_content_for_template, mock_form_for_transaction, client
+):
+    usd = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        sep24_enabled=True,
+        withdrawal_enabled=True,
+        distribution_seed=Keypair.random().secret,
+    )
+    withdraw = Transaction.objects.create(
+        asset=usd,
+        kind=Transaction.KIND.withdrawal,
+        status=Transaction.STATUS.incomplete,
+    )
+    mock_form_for_transaction.return_value = None
+    mock_content_for_template.return_value = {"test": "value"}
+    payload = interactive_jwt_payload(withdraw, "withdraw")
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode(
+        "ascii"
+    )
+    response = client.get(
+        f"{WEBAPP_PATH}"
+        f"?token={token}"
+        f"&transaction_id={withdraw.id}"
+        f"&asset_code={usd.code}"
+    )
+    assert response.status_code == 200
+    assert client.session["authenticated"] is True
+
+    response = client.post(
+        f"{WEBAPP_PATH}/submit"
+        f"?transaction_id={withdraw.id}"
+        f"&asset_code={withdraw.asset.code}"
+    )
+    assert response.status_code == 500
+    assert "The anchor did not provide content, unable to serve page." in str(
+        response.content
+    )
+
+
+@pytest.mark.django_db
+@patch("polaris.sep24.withdraw.rwi.form_for_transaction")
+@patch("polaris.sep24.withdraw.rwi.content_for_template")
+def test_interactive_withdraw_post_no_content_tx_complete(
+    mock_content_for_template, mock_form_for_transaction, client
+):
+    usd = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        sep24_enabled=True,
+        withdrawal_enabled=True,
+        distribution_seed=Keypair.random().secret,
+    )
+    withdraw = Transaction.objects.create(
+        asset=usd, kind=Transaction.KIND.withdrawal, status=Transaction.STATUS.completed
+    )
+    mock_form_for_transaction.return_value = None
+    mock_content_for_template.return_value = {"test": "value"}
+    payload = interactive_jwt_payload(withdraw, "withdraw")
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode(
+        "ascii"
+    )
+    response = client.get(
+        f"{WEBAPP_PATH}"
+        f"?token={token}"
+        f"&transaction_id={withdraw.id}"
+        f"&asset_code={withdraw.asset.code}"
+    )
+    assert response.status_code == 200
+    assert client.session["authenticated"] is True
+
+    response = client.post(
+        f"{WEBAPP_PATH}/submit"
+        f"?transaction_id={withdraw.id}"
+        f"&asset_code={withdraw.asset.code}"
+    )
+    assert response.status_code == 422
+    assert (
+        "The anchor did not provide content, is the interactive flow already complete?"
+        in str(response.content)
+    )
+
+
+@pytest.mark.django_db
+def test_withdraw_no_jwt(client):
     """`GET /withdraw` fails if a required JWT isn't provided."""
-    acc1_usd_withdrawal_transaction_factory()
-    response = client.post(WITHDRAW_PATH, {"asset_code": "USD"}, follow=True)
-    content = json.loads(response.content)
+    response = client.post(WITHDRAW_PATH, follow=True)
     assert response.status_code == 403
-    assert content == {"error": "JWT must be passed as 'Authorization' header"}
+    assert response.json() == {"error": "JWT must be passed as 'Authorization' header"}
+
+
+@pytest.mark.django_db()
+@patch("polaris.sep24.withdraw.rwi.interactive_url")
+def test_withdraw_interactive_complete(mock_interactive_url, client):
+    usd = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        sep24_enabled=True,
+        withdrawal_enabled=True,
+        distribution_seed=Keypair.random().secret,
+    )
+    withdraw = Transaction.objects.create(
+        asset=usd,
+        status=Transaction.STATUS.incomplete,
+        kind=Transaction.KIND.withdrawal,
+    )
+    payload = interactive_jwt_payload(withdraw, "withdraw")
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode(
+        "ascii"
+    )
+    mock_interactive_url.return_value = "https://test.com/customFlow"
+
+    response = client.get(
+        f"{WEBAPP_PATH}"
+        f"?token={token}"
+        f"&transaction_id={withdraw.id}"
+        f"&asset_code={withdraw.asset.code}"
+    )
+    assert response.status_code == 302
+    mock_interactive_url.assert_called_once()
+    assert client.session["authenticated"] is True
+
+    response = client.get(
+        WITHDRAW_PATH + "/complete",
+        {"transaction_id": withdraw.id, "callback": "test.com/callback"},
+    )
+    assert response.status_code == 302
+    redirect_to_url = response.get("Location")
+    assert "more_info" in redirect_to_url
+    assert "callback=test.com%2Fcallback" in redirect_to_url
+
+    withdraw.refresh_from_db()
+    assert withdraw.status == Transaction.STATUS.pending_user_transfer_start
+
+
+@pytest.mark.django_db()
+@patch("polaris.sep24.withdraw.rwi.interactive_url")
+def test_withdraw_interactive_complete_not_found(mock_interactive_url, client):
+    usd = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        sep24_enabled=True,
+        withdrawal_enabled=True,
+        distribution_seed=Keypair.random().secret,
+    )
+    withdraw = Transaction.objects.create(
+        asset=usd,
+        status=Transaction.STATUS.incomplete,
+        kind=Transaction.KIND.withdrawal,
+    )
+    payload = interactive_jwt_payload(withdraw, "withdraw")
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode(
+        "ascii"
+    )
+    mock_interactive_url.return_value = "https://test.com/customFlow"
+
+    response = client.get(
+        f"{WEBAPP_PATH}"
+        f"?token={token}"
+        f"&transaction_id={withdraw.id}"
+        f"&asset_code={withdraw.asset.code}"
+    )
+    assert response.status_code == 302
+    mock_interactive_url.assert_called_once()
+    assert client.session["authenticated"] is True
+
+    response = client.get(
+        WITHDRAW_PATH + "/complete",
+        {"transaction_id": "bad id", "callback": "test.com/callback"},
+    )
+    assert response.status_code == 403
+
+    withdraw.refresh_from_db()
+    assert withdraw.status == Transaction.STATUS.incomplete
 
 
 @pytest.mark.django_db

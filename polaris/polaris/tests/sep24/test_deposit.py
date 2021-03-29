@@ -127,52 +127,27 @@ def test_deposit_invalid_asset(client, acc1_usd_deposit_transaction_factory):
 
 
 @pytest.mark.django_db
-@patch(f"polaris.sep10.views.settings.HORIZON_SERVER.load_account")
-def test_deposit_authenticated_success(
-    mock_load_account, client, acc1_usd_deposit_transaction_factory
-):
-    """`GET /deposit` succeeds with the SEP 10 authentication flow."""
-    from polaris.tests.auth_test import endpoint
-
-    deposit = acc1_usd_deposit_transaction_factory()
-    mock_load_account.return_value = Mock(
-        load_ed25519_public_key_signers=Mock(
-            return_value=[Ed25519PublicKeySigner(client_address, 0)]
-        ),
-        thresholds=Mock(med_threshold=0),
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_deposit_invalid_amount(client):
+    usd = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        sep24_enabled=True,
+        deposit_enabled=True,
+        distribution_seed=Keypair.random().secret,
+        deposit_max_amount=1000,
     )
-
-    # SEP 10.
-    response = client.get(f"{endpoint}?account={client_address}", follow=True)
-    content = json.loads(response.content)
-
-    envelope_xdr = content["transaction"]
-    envelope_object = TransactionEnvelope.from_xdr(
-        envelope_xdr, network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE
-    )
-    client_signing_key = Keypair.from_secret(client_seed)
-    envelope_object.sign(client_signing_key)
-    client_signed_envelope_xdr = envelope_object.to_xdr()
-
-    response = client.post(
-        endpoint,
-        data={"transaction": client_signed_envelope_xdr},
-        content_type="application/json",
-    )
-    content = json.loads(response.content)
-    encoded_jwt = content["token"]
-    assert encoded_jwt
-
-    header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
     response = client.post(
         DEPOSIT_PATH,
-        {"asset_code": "USD", "account": deposit.stellar_account},
+        {
+            "asset_code": usd.code,
+            "account": Keypair.random().public_key,
+            "amount": 10000,
+        },
         follow=True,
-        **header,
     )
-    content = json.loads(response.content)
-    assert response.status_code == 200
-    assert content["type"] == "interactive_customer_info_needed"
+    assert response.status_code == 400
+    assert response.json()["error"] == "invalid 'amount'"
 
 
 @pytest.mark.django_db
@@ -294,6 +269,42 @@ def test_interactive_deposit_success(client, acc1_usd_deposit_transaction_factor
 
 
 @pytest.mark.django_db
+def test_interactive_deposit_bad_post_data(client):
+    usd = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        sep24_enabled=True,
+        deposit_enabled=True,
+        deposit_max_amount=10000,
+    )
+    deposit = Transaction.objects.create(
+        asset=usd, kind=Transaction.KIND.deposit, protocol=Transaction.PROTOCOL.sep24,
+    )
+
+    payload = interactive_jwt_payload(deposit, "deposit")
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode(
+        "ascii"
+    )
+
+    response = client.get(
+        f"{WEBAPP_PATH}"
+        f"?token={token}"
+        f"&transaction_id={deposit.id}"
+        f"&asset_code={deposit.asset.code}"
+    )
+    assert response.status_code == 200
+    assert client.session["authenticated"] is True
+
+    response = client.post(
+        f"{WEBAPP_PATH}/submit"
+        f"?transaction_id={deposit.id}"
+        f"&asset_code={deposit.asset.code}",
+        {"amount": 20000},
+    )
+    assert response.status_code == 400
+
+
+@pytest.mark.django_db
 def test_interactive_auth_new_transaction(client, acc1_usd_deposit_transaction_factory):
     """
     Tests that requests by previously authenticated accounts are denied if they
@@ -325,6 +336,238 @@ def test_interactive_auth_new_transaction(client, acc1_usd_deposit_transaction_f
         f"&asset_code={new_deposit.asset.code}"
     )
     assert response.status_code == 403
+
+
+@pytest.mark.django_db
+@patch("polaris.sep24.deposit.rdi.form_for_transaction")
+@patch("polaris.sep24.deposit.rdi.content_for_template")
+def test_interactive_deposit_get_no_content_tx_incomplete(
+    mock_content_for_transaction, mock_form_for_transaction, client
+):
+    usd = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        sep24_enabled=True,
+        deposit_enabled=True,
+    )
+    deposit = Transaction.objects.create(
+        asset=usd, kind=Transaction.KIND.deposit, status=Transaction.STATUS.incomplete
+    )
+    mock_form_for_transaction.return_value = None
+    mock_content_for_transaction.return_value = None
+    payload = interactive_jwt_payload(deposit, "deposit")
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode(
+        "ascii"
+    )
+    response = client.get(
+        f"{WEBAPP_PATH}"
+        f"?token={token}"
+        f"&transaction_id={deposit.id}"
+        f"&asset_code={usd.code}"
+    )
+    assert response.status_code == 500
+    # Django does not save session changes on 500 errors
+    assert not client.session.get("authenticated")
+    assert "The anchor did not provide content, unable to serve page." in str(
+        response.content
+    )
+
+
+@pytest.mark.django_db
+@patch("polaris.sep24.deposit.rdi.form_for_transaction")
+@patch("polaris.sep24.deposit.rdi.content_for_template")
+def test_interactive_deposit_get_no_content_tx_complete(
+    mock_content_for_transaction, mock_form_for_transaction, client
+):
+    usd = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        sep24_enabled=True,
+        deposit_enabled=True,
+    )
+    deposit = Transaction.objects.create(
+        asset=usd, kind=Transaction.KIND.deposit, status=Transaction.STATUS.completed
+    )
+    mock_form_for_transaction.return_value = None
+    mock_content_for_transaction.return_value = None
+    payload = interactive_jwt_payload(deposit, "deposit")
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode(
+        "ascii"
+    )
+    response = client.get(
+        f"{WEBAPP_PATH}"
+        f"?token={token}"
+        f"&transaction_id={deposit.id}"
+        f"&asset_code={usd.code}"
+    )
+    assert response.status_code == 422
+    assert client.session["authenticated"] is True
+    assert (
+        "The anchor did not provide content, is the interactive flow already complete?"
+        in str(response.content)
+    )
+
+
+@pytest.mark.django_db
+@patch("polaris.sep24.deposit.rdi.form_for_transaction")
+@patch("polaris.sep24.deposit.rdi.content_for_template")
+def test_interactive_deposit_post_no_content_tx_incomplete(
+    mock_content_for_template, mock_form_for_transaction, client
+):
+    usd = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        sep24_enabled=True,
+        deposit_enabled=True,
+    )
+    deposit = Transaction.objects.create(
+        asset=usd, kind=Transaction.KIND.deposit, status=Transaction.STATUS.incomplete
+    )
+    mock_form_for_transaction.return_value = None
+    mock_content_for_template.return_value = {"test": "value"}
+    payload = interactive_jwt_payload(deposit, "deposit")
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode(
+        "ascii"
+    )
+    response = client.get(
+        f"{WEBAPP_PATH}"
+        f"?token={token}"
+        f"&transaction_id={deposit.id}"
+        f"&asset_code={usd.code}"
+    )
+    assert response.status_code == 200
+    assert client.session["authenticated"] is True
+
+    response = client.post(
+        f"{WEBAPP_PATH}/submit"
+        f"?transaction_id={deposit.id}"
+        f"&asset_code={usd.code}"
+    )
+    assert response.status_code == 500
+    assert "The anchor did not provide form content, unable to serve page." in str(
+        response.content
+    )
+
+
+@pytest.mark.django_db
+@patch("polaris.sep24.deposit.rdi.form_for_transaction")
+@patch("polaris.sep24.deposit.rdi.content_for_template")
+def test_interactive_deposit_post_no_content_tx_complete(
+    mock_content_for_template, mock_form_for_transaction, client
+):
+    usd = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        sep24_enabled=True,
+        deposit_enabled=True,
+    )
+    deposit = Transaction.objects.create(
+        asset=usd, kind=Transaction.KIND.deposit, status=Transaction.STATUS.completed
+    )
+    mock_form_for_transaction.return_value = None
+    mock_content_for_template.return_value = {"test": "value"}
+    payload = interactive_jwt_payload(deposit, "deposit")
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode(
+        "ascii"
+    )
+    response = client.get(
+        f"{WEBAPP_PATH}"
+        f"?token={token}"
+        f"&transaction_id={deposit.id}"
+        f"&asset_code={usd.code}"
+    )
+    assert response.status_code == 200
+    assert client.session["authenticated"] is True
+
+    response = client.post(
+        f"{WEBAPP_PATH}/submit"
+        f"?transaction_id={deposit.id}"
+        f"&asset_code={deposit.asset.code}"
+    )
+    assert response.status_code == 422
+    assert (
+        "The anchor did not provide content, is the interactive flow already complete?"
+        in str(response.content)
+    )
+
+
+@pytest.mark.django_db()
+@patch("polaris.sep24.deposit.rdi.interactive_url")
+def test_deposit_interactive_complete(mock_interactive_url, client):
+    usd = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        sep24_enabled=True,
+        deposit_enabled=True,
+    )
+    deposit = Transaction.objects.create(
+        asset=usd, status=Transaction.STATUS.incomplete
+    )
+    payload = interactive_jwt_payload(deposit, "deposit")
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode(
+        "ascii"
+    )
+    mock_interactive_url.return_value = "https://test.com/customFlow"
+
+    response = client.get(
+        f"{WEBAPP_PATH}"
+        f"?token={token}"
+        f"&transaction_id={deposit.id}"
+        f"&asset_code={deposit.asset.code}"
+    )
+    assert response.status_code == 302
+    mock_interactive_url.assert_called_once()
+    assert client.session["authenticated"] is True
+
+    response = client.get(
+        DEPOSIT_PATH + "/complete",
+        {"transaction_id": deposit.id, "callback": "test.com/callback"},
+    )
+    assert response.status_code == 302
+    redirect_to_url = response.get("Location")
+    assert "more_info" in redirect_to_url
+    assert "callback=test.com%2Fcallback" in redirect_to_url
+
+    deposit.refresh_from_db()
+    assert deposit.status == Transaction.STATUS.pending_user_transfer_start
+
+
+@pytest.mark.django_db()
+@patch("polaris.sep24.deposit.rdi.interactive_url")
+def test_deposit_interactive_complete_not_found(mock_interactive_url, client):
+    usd = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        sep24_enabled=True,
+        deposit_enabled=True,
+    )
+    deposit = Transaction.objects.create(
+        asset=usd, status=Transaction.STATUS.incomplete
+    )
+    payload = interactive_jwt_payload(deposit, "deposit")
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode(
+        "ascii"
+    )
+    mock_interactive_url.return_value = "https://test.com/customFlow"
+
+    response = client.get(
+        f"{WEBAPP_PATH}"
+        f"?token={token}"
+        f"&transaction_id={deposit.id}"
+        f"&asset_code={deposit.asset.code}"
+    )
+    assert response.status_code == 302
+    mock_interactive_url.assert_called_once()
+    assert client.session["authenticated"] is True
+
+    response = client.get(
+        DEPOSIT_PATH + "/complete",
+        {"transaction_id": "bad id", "callback": "test.com/callback"},
+    )
+    assert response.status_code == 403
+
+    deposit.refresh_from_db()
+    assert deposit.status == Transaction.STATUS.incomplete
 
 
 @pytest.mark.django_db
