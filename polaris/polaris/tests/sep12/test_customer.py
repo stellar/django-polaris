@@ -1,8 +1,12 @@
-from django.core.exceptions import ObjectDoesNotExist
+import json
 from unittest.mock import Mock, patch
 from urllib.parse import urlencode
-from polaris.tests.helpers import mock_check_auth_success
+
+from django.core.exceptions import ObjectDoesNotExist
+from rest_framework.test import APIClient
 from stellar_sdk.keypair import Keypair
+
+from polaris.tests.helpers import mock_check_auth_success
 
 
 endpoint = "/kyc/customer"
@@ -477,3 +481,235 @@ def test_delete_memo_not_found(client):
     mock_bad_delete.assert_called_with(
         "test source address", "test memo string", "text"
     )
+
+
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch("polaris.sep12.customer.rci.callback")
+def test_callback_success_by_id_no_memo(mock_callback):
+    # APIClient allows PUT multipart requests (unlike Django's client)
+    client = APIClient()
+    response = client.put(
+        "/".join([endpoint, "callback"]),
+        data={"id": "test id", "url": "https://test.com/callback"},
+    )
+    assert response.status_code == 200
+    mock_callback.assert_called_once_with(
+        {
+            "id": "test id",
+            "memo": None,
+            "memo_type": None,
+            "account": "test source address",
+            "url": "https://test.com/callback",
+        }
+    )
+
+
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch("polaris.sep12.customer.rci.callback")
+def test_callback_success_by_account_no_memo(mock_callback):
+    client = APIClient()
+    response = client.put(
+        "/".join([endpoint, "callback"]),
+        data={"account": "test source address", "url": "https://test.com/callback"},
+    )
+    assert response.status_code == 200
+    mock_callback.assert_called_once_with(
+        {
+            "id": None,
+            "memo": None,
+            "memo_type": None,
+            "account": "test source address",
+            "url": "https://test.com/callback",
+        }
+    )
+
+
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch("polaris.sep12.customer.rci.callback")
+def test_callback_success_by_account_with_memo(mock_callback):
+    client = APIClient()
+    response = client.put(
+        "/".join([endpoint, "callback"]),
+        data={
+            "account": "test source address",
+            "memo": "test memo",
+            "memo_type": "text",
+            "url": "https://test.com/callback",
+        },
+    )
+    assert response.status_code == 200
+    mock_callback.assert_called_once_with(
+        {
+            "id": None,
+            "memo": "test memo",
+            "memo_type": "text",
+            "account": "test source address",
+            "url": "https://test.com/callback",
+        }
+    )
+
+
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch("polaris.sep12.customer.rci.callback")
+def test_callback_rejects_by_id_with_memo(mock_callback):
+    client = APIClient()
+    response = client.put(
+        "/".join([endpoint, "callback"]),
+        data={
+            "id": "test id",
+            "account": "test source address",
+            "memo": "test memo",
+            "memo_type": "text",
+            "url": "https://test.com/callback",
+        },
+    )
+    assert response.status_code == 400
+    assert (
+        response.json()["error"]
+        == "requests with 'id' cannot also have 'account', 'memo', or 'memo_type'"
+    )
+    mock_callback.assert_not_called()
+
+
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch("polaris.sep12.customer.rci.callback")
+def test_callback_rejects_when_account_doesnt_match(mock_callback):
+    client = APIClient()
+    response = client.put(
+        "/".join([endpoint, "callback"]),
+        data={
+            "account": "not test source address",
+            "url": "https://test.com/callback",
+        },
+    )
+    assert response.status_code == 403
+    assert (
+        response.json()["error"]
+        == "The account specified does not match authorization token"
+    )
+    mock_callback.assert_not_called()
+
+
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch("polaris.sep12.customer.rci.callback")
+def test_callback_rejects_on_missing_url(mock_callback):
+    client = APIClient()
+    response = client.put(
+        "/".join([endpoint, "callback"]), data={"account": "test source address",}
+    )
+    assert response.status_code == 400
+    assert response.json()["error"] == "callback 'url' required"
+    mock_callback.assert_not_called()
+
+
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch("polaris.sep12.customer.rci.callback")
+def test_callback_rejects_bad_id(mock_callback):
+    client = APIClient()
+    response = client.put(
+        "/".join([endpoint, "callback"]),
+        data=json.dumps({"id": 1, "url": "https://test.com/callback",}),
+        content_type="application/json",
+    )
+    assert response.status_code == 400
+    assert response.json()["error"] == "bad ID value, expected str"
+    mock_callback.assert_not_called()
+
+
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch("polaris.sep12.customer.rci.callback")
+def test_callback_rejects_bad_memo(mock_callback):
+    client = APIClient()
+    response = client.put(
+        "/".join([endpoint, "callback"]),
+        data={
+            "account": "test source address",
+            "memo": "test memo",
+            "memo_type": "hash",
+            "url": "https://test.com/callback",
+        },
+    )
+    assert response.status_code == 400
+    assert response.json()["error"] == "invalid 'memo' for 'memo_type'"
+    mock_callback.assert_not_called()
+
+
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch("polaris.sep12.customer.rci.callback")
+def test_callback_rejects_bad_url(mock_callback):
+    client = APIClient()
+    response = client.put(
+        "/".join([endpoint, "callback"]),
+        data={"account": "test source address", "url": "test.com/callback",},
+    )
+    assert response.status_code == 400
+    assert response.json()["error"] == "'url' must be a valid URL"
+    mock_callback.assert_not_called()
+
+
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch("polaris.sep12.customer.rci.callback")
+def test_callback_rejects_bad_http_url(mock_callback):
+    client = APIClient()
+    response = client.put(
+        "/".join([endpoint, "callback"]),
+        data={"account": "test source address", "url": "http://test.com/callback",},
+    )
+    assert response.status_code == 400
+    assert response.json()["error"] == "'url' must be a valid URL"
+    mock_callback.assert_not_called()
+
+
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch("polaris.sep12.customer.rci.callback")
+def test_callback_reject_on_valueerror(mock_callback):
+    client = APIClient()
+    mock_callback.side_effect = ValueError("test")
+    response = client.put(
+        "/".join([endpoint, "callback"]),
+        data={"id": "test id", "url": "https://test.com/callback"},
+    )
+    assert response.status_code == 400
+    assert response.json()["error"] == "test"
+    mock_callback.assert_called_once_with(
+        {
+            "id": "test id",
+            "memo": None,
+            "memo_type": None,
+            "account": "test source address",
+            "url": "https://test.com/callback",
+        }
+    )
+
+
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch("polaris.sep12.customer.rci.callback")
+def test_callback_reject_on_object_does_not_exist_error(mock_callback):
+    client = APIClient()
+    mock_callback.side_effect = ObjectDoesNotExist("user does not exist")
+    response = client.put(
+        "/".join([endpoint, "callback"]),
+        data={"id": "test id", "url": "https://test.com/callback"},
+    )
+    assert response.status_code == 404
+    assert response.json()["error"] == "user does not exist"
+    mock_callback.assert_called_once_with(
+        {
+            "id": "test id",
+            "memo": None,
+            "memo_type": None,
+            "account": "test source address",
+            "url": "https://test.com/callback",
+        }
+    )
+
+
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_callback_reject_on_not_implemented_error():
+    client = APIClient()
+    response = client.put(
+        "/".join([endpoint, "callback"]),
+        data={"id": "test id", "url": "https://test.com/callback"},
+    )
+    assert response.status_code == 501
+    assert response.json()["error"] == "not implemented"

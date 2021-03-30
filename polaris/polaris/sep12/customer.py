@@ -139,7 +139,7 @@ class CustomerAPIView(APIView):
 @renderer_classes([JSONRenderer, BrowsableAPIRenderer])
 @parser_classes([MultiPartParser, FormParser, JSONParser])
 @validate_sep10_token()
-def callback(account: str, request: Request) -> Response:
+def callback(account: str, _client_domain: Optional[str], request: Request) -> Response:
     if request.data.get("id"):
         if not isinstance(request.data.get("id"), str):
             return render_error_response(_("bad ID value, expected str"))
