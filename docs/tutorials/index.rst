@@ -148,6 +148,10 @@ Create the database with the schema defined for Polaris.
 Then, get into the python shell and create an ``Asset`` object.
 ::
 
+    python app/manage.py shell
+
+::
+
     from polaris.models import Asset
 
     Asset.objects.create(
