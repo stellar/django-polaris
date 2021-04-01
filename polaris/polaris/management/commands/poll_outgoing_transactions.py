@@ -22,20 +22,20 @@ class Command(BaseCommand):
         signal.signal(signal.SIGTERM, self.exit_gracefully)
 
     @staticmethod
-    def exit_gracefully(sig, frame):
+    def exit_gracefully(sig, frame):  # pragma: no cover
         logger.info("Exiting poll_outgoing_transactions...")
         module = sys.modules[__name__]
         module.TERMINATE = True
 
     @staticmethod
-    def sleep(seconds):
+    def sleep(seconds):  # pragma: no cover
         module = sys.modules[__name__]
         for _ in range(seconds):
             if module.TERMINATE:
                 break
             time.sleep(1)
 
-    def add_arguments(self, parser):
+    def add_arguments(self, parser):  # pragma: no cover
         parser.add_argument(
             "--loop",
             action="store_true",
@@ -51,7 +51,7 @@ class Command(BaseCommand):
             ),
         )
 
-    def handle(self, *_args, **options):
+    def handle(self, *_args, **options):  # pragma: no cover
         module = sys.modules[__name__]
         if options.get("loop"):
             while True:

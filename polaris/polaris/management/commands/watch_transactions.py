@@ -65,7 +65,7 @@ class Command(BaseCommand):
             ]
         )
 
-    async def _for_account(self, account: str):  # pragma: no cover
+    async def _for_account(self, account: str):
         """
         Stream transactions for the server Stellar address.
         """
