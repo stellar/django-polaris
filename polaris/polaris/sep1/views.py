@@ -9,7 +9,6 @@ https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0001.md
 import os
 
 import toml
-from django.conf import settings as django_settings
 from django.contrib.staticfiles import finders
 from django.utils.encoding import smart_text
 from rest_framework.request import Request
@@ -78,9 +77,6 @@ def generate_toml(_request: Request) -> Response:
         toml_dict["DIRECT_PAYMENT_SERVER"] = os.path.join(settings.HOST_URL, "sep31")
 
     toml_dict.update(registered_toml_func())
-    # We could assign content to this.STELLAR_TOML_CONTENTS, but if the anchor hasn't
-    # transitioned to the static file approach, it's possible the anchor does not want
-    # the TOML contents to be cached.
     content = toml.dumps(toml_dict)
 
     return Response(content, content_type="text/plain")

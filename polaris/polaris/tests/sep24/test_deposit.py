@@ -9,8 +9,7 @@ import time
 
 
 import pytest
-from stellar_sdk import Keypair, TransactionEnvelope
-from stellar_sdk.sep.ed25519_public_key_signer import Ed25519PublicKeySigner
+from stellar_sdk import Keypair
 
 from polaris import settings
 from polaris.models import Transaction, Asset
