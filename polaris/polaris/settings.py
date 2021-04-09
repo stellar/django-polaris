@@ -126,3 +126,6 @@ SEP10_CLIENT_ATTRIBUTION_DENYLIST = env_or_settings(
 OPERATION_DEPOSIT = "deposit"
 OPERATION_WITHDRAWAL = "withdraw"
 ACCOUNT_STARTING_BALANCE = str(2.01)
+
+# interactive token lifetime in seconds
+INTERACTIVE_JWT_LIFE = env_or_settings("INTERACTIVE_JWT_LIFE", int=True, required=False) or 30
