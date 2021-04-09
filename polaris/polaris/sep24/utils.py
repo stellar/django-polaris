@@ -260,7 +260,7 @@ def generate_interactive_jwt(
     payload = {
         "iss": request.build_absolute_uri(request.path),
         "iat": issued_at,
-        "exp": issued_at + 30,
+        "exp": issued_at + settings.INTERACTIVE_JWT_EXPIRATION,
         "sub": account,
         "jti": transaction_id,
     }

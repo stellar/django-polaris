@@ -126,3 +126,9 @@ SEP10_CLIENT_ATTRIBUTION_DENYLIST = env_or_settings(
 OPERATION_DEPOSIT = "deposit"
 OPERATION_WITHDRAWAL = "withdraw"
 ACCOUNT_STARTING_BALANCE = str(2.01)
+
+INTERACTIVE_JWT_EXPIRATION = (
+    env_or_settings("INTERACTIVE_JWT_EXPIRATION", int=True, required=False) or 30
+)
+if INTERACTIVE_JWT_EXPIRATION <= 0:
+    raise ImproperlyConfigured("INTERACTIVE_JWT_EXPIRATION must be positive")
