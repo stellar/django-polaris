@@ -146,6 +146,13 @@ ACTIVE_SEPS: Required
 
     Ex. ``ACTIVE_SEPS=sep-1,sep-10,sep-24``
 
+INTERACTIVE_JWT_EXPIRATION
+    An integer for the number of seconds a one-time-token used to authenticate the client with a SEP-24 interactive flow is valid for. This token (JWT) is distinct from the JWT returned by SEP-10, which should not be included in URLs.
+
+    Defaults to 30 seconds.
+
+    Ex. ``INTERACTIVE_JWT_EXPIRATION=180``
+
 LOCAL_MODE
     A boolean value indicating if Polaris is in a local environment. Defaults to ``False``.
     The value will be read from the environment using ``environ.Env.bool()``.
@@ -415,5 +422,3 @@ Submit a PR
 After you've made your changes, push them to you a remote branch and make a Pull Request on the
 stellar/django-polaris repository_'s master branch. Note that Polaris uses the `black`_ code
 formatter, so please format your code before requesting us to merge your changes.
-
-
