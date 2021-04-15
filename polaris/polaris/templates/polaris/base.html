@@ -142,6 +142,13 @@
         })
       }
 
+      // Amount symbol padding
+      const amountInputElem = document.querySelector('.amount-input');
+      const icon = amountInputElem.previousElementSibling;
+      const iconWidthStr = getComputedStyle(icon).width;
+      const iconWidthFloat = parseFloat(iconWidthStr.replace(/px/, ''));
+      amountInputElem.style.paddingLeft = (iconWidthFloat + 2).toString() + 'px';
+
       // Disable form submit buttons after first click
       let submitButton = document.querySelector('.submit');
       let anchorForm = document.querySelector('form');
@@ -186,8 +193,8 @@
               feeStr = "0";
               amountOutStr = "0";
             }
-            feeTag.innerHTML = "{{ asset.symbol }}" + feeStr;
-            amountOutTag.innerHTML = "{{ asset.symbol }}" + amountOutStr;
+            feeTag.innerHTML = "{{ asset.symbol }} " + feeStr;
+            amountOutTag.innerHTML = "{{ asset.symbol }} " + amountOutStr;
           }
 
           if ("{{ use_fee_endpoint }}" !== "True") {
