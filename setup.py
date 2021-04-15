@@ -48,7 +48,7 @@ setup(
         "chardet==4.0.0; python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3, 3.4'",
         "crc16==0.1.1",
         "cryptography==3.4.7",
-        "django==2.2.19",
+        "django==2.2.20",
         "django-cors-headers==3.7.0",
         "django-environ==0.4.5",
         "django-model-utils==4.1.1",
