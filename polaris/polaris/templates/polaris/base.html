@@ -142,6 +142,13 @@
         })
       }
 
+      // Amount symbol padding
+      const amountInputElem = document.querySelector('.amount-input');
+      const icon = amountInputElem.previousElementSibling;
+      const iconWidthStr = getComputedStyle(icon).width;
+      const iconWidthFloat = parseFloat(iconWidthStr.replace(/px/, ''));
+      amountInputElem.style.paddingLeft = (iconWidthFloat + 2).toString() + 'px';
+
       // Disable form submit buttons after first click
       let submitButton = document.querySelector('.submit');
       let anchorForm = document.querySelector('form');
@@ -205,8 +212,8 @@
           function calcFee() {
             let feeVal = fee.toFixed({{ asset.significant_decimals }});
             let amountOutVal = amountOut.toFixed({{ asset.significant_decimals }});
-            feeTag.innerHTML = "{{ asset.symbol }}" + ((Number(feeVal) === 0) ? "0" : feeVal);
-            amountOutTag.innerHTML = "{{ asset.symbol }}" + ((Number(amountOutVal) === 0) ? "0" : amountOutVal);
+            feeTag.innerHTML = "{{ asset.symbol }} " + ((Number(feeVal) === 0) ? "0" : feeVal);
+            amountOutTag.innerHTML = "{{ asset.symbol }} " + ((Number(amountOutVal) === 0) ? "0" : amountOutVal);
           }
           function waitForAmountOut() {
             if (!amountOut) {
