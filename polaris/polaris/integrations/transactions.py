@@ -540,6 +540,7 @@ class WithdrawalIntegration:
         """
         Same as ``DepositIntegration.patch_transaction``
         """
+        raise NotImplementedError("PATCH /transactions/:id is not supported")
 
 
 registered_deposit_integration = DepositIntegration()
