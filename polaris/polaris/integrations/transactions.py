@@ -374,6 +374,41 @@ class DepositIntegration:
         """
         pass
 
+    def patch_transaction(self, params: Dict, transaction: Transaction):
+        """
+        .. _`GET /info response`: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#response-2
+        .. _`GET /deposit`: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#deposit
+        .. _`GET /transactions`: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#transaction-history
+        .. _`PATCH /transactions`: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#update
+
+        Currently only used for SEP-6 transactions.
+
+        The `GET /info response`_ contains a `fields` object that describes the custom fields
+        an anchor requires in requests to the `GET /deposit`_ endpoint. If one or more of these fields
+        were originally accepted but later discovered to be invalid in some way, an anchor can place
+        the transaction in the ``pending_transaction_info_update`` status, save a JSON-serialized
+        object describing the fields that need updating to ``Transaction.required_info_updates``,
+        and save a human-readable message to ``Transaction.required_info_message`` describing the
+        reason the fields need to be updated. A client can make a request to `GET /transactions`_ to
+        detect that updated information is needed.
+
+        This function is called when SEP-6 `PATCH /transactions`_ requests are made by the client to
+        provide the updated values described in the ``Transaction.required_info_updates``. Use the
+        `params` passed in the request to update `transaction` or any related data.
+
+        Polaris validates that every field listed in ``Transaction.required_info_updates`` is
+        present in `params` but cannot validate the values. If a ``ValueError`` is raised, Polaris
+        will return a 400 response containing the exception message in the body.
+
+        If no exception is raised, Polaris assumes the update was successful and will update the
+        transaction's status back to ``pending_anchor`` as well as clear the ``required_info_updates``
+        and ``required_info_message`` fields.
+
+        :param params: The request parameters as described in the `PATCH /transactions`_ endpoint.
+        :param transaction: A ``Transaction`` object for which updated was provided.
+        """
+        raise NotImplementedError("PATCH /transactions/:id is not supported")
+
 
 class WithdrawalIntegration:
     """
@@ -500,6 +535,11 @@ class WithdrawalIntegration:
         raise NotImplementedError(
             "`process_sep6_request` must be implemented if SEP-6 is active"
         )
+
+    def patch_transaction(self, params: Dict, transaction: Transaction):
+        """
+        Same as ``DepositIntegration.patch_transaction``
+        """
 
 
 registered_deposit_integration = DepositIntegration()

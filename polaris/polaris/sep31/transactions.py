@@ -1,4 +1,3 @@
-import json
 from typing import Dict, Optional
 from decimal import Decimal, InvalidOperation
 from collections import defaultdict
@@ -21,6 +20,7 @@ from polaris.utils import (
     render_error_response,
     create_transaction_id,
     memo_hex_to_base64,
+    validate_patch_request_fields,
 )
 
 
@@ -72,7 +72,9 @@ class TransactionsAPIView(APIView):
         elif not registered_sep31_receiver_integration.valid_sending_anchor(account):
             return render_error_response(_("invalid sending account"), status_code=401)
         try:
-            transaction = Transaction.objects.filter(id=transaction_id).first()
+            transaction = Transaction.objects.filter(
+                id=transaction_id, stellar_account=account
+            ).first()
         except ValidationError:
             return render_error_response(_("transaction not found"), status_code=404)
         if not transaction:
@@ -80,7 +82,7 @@ class TransactionsAPIView(APIView):
         elif transaction.status != Transaction.STATUS.pending_transaction_info_update:
             return render_error_response(_("update not required"))
         try:
-            validate_update_fields(request.data.get("fields"), transaction)
+            validate_patch_request_fields(request.data.get("fields"), transaction)
             registered_sep31_receiver_integration.process_patch_request(
                 params=request.data.get("fields"), transaction=transaction,
             )
@@ -273,23 +275,3 @@ def validate_post_fields_needed(response_fields: Dict, asset: Asset):
             and response_fields["transaction"][field].get("description")
         ):
             raise ValueError(f"field value must be a dict with a description")
-
-
-def validate_update_fields(fields: Dict, transaction: Transaction):
-    try:
-        required_info_updates = json.loads(transaction.required_info_updates)
-    except (ValueError, TypeError):
-        raise RuntimeError(
-            "expected json-encoded string from transaction.required_info_update"
-        )
-    for category, expected_fields in required_info_updates.items():
-        if category not in fields:
-            raise ValueError(_("missing %s fields") % category)
-        elif not isinstance(fields[category], dict):
-            raise ValueError(_("invalid type for %s, must be an object") % category)
-        for field in expected_fields:
-            if field not in fields[category]:
-                raise ValueError(
-                    _("missing %(field)s in %(category)s")
-                    % {"field": field, "category": category}
-                )

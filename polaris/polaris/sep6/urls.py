@@ -9,6 +9,7 @@ urlpatterns = [
     path("info", info.info),
     path("fee", fee.fee),
     path("transaction", transaction.transaction),
+    path("transactions/<transaction_id>", transaction.patch_transaction),
     path("transactions", transaction.transactions),
 ]
 if settings.SEP6_USE_MORE_INFO_URL:

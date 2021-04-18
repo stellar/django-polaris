@@ -1,7 +1,8 @@
 """This module defines helpers for various endpoints."""
+import json
 import codecs
 import uuid
-from typing import Optional, Union, Tuple
+from typing import Optional, Union, Tuple, Dict
 from logging import getLogger as get_logger, LoggerAdapter
 
 from django.utils.translation import gettext
@@ -273,3 +274,25 @@ def maybe_make_callback(transaction: Transaction, timeout: Optional[int] = None)
         else:
             if not callback_resp.ok:
                 logger.error(f"Callback request returned {callback_resp.status_code}")
+
+
+def validate_patch_request_fields(fields: Dict, transaction: Transaction):
+    try:
+        required_info_updates = json.loads(transaction.required_info_updates)
+    except (ValueError, TypeError):
+        raise RuntimeError(
+            "expected json-encoded string from transaction.required_info_update"
+        )
+    for category, expected_fields in required_info_updates.items():
+        if category not in fields:
+            raise ValueError(gettext("missing %s fields") % category)
+        elif not isinstance(fields[category], dict):
+            raise ValueError(
+                gettext("invalid type for %s, must be an object") % category
+            )
+        for field in expected_fields:
+            if field not in fields[category]:
+                raise ValueError(
+                    gettext("missing %(field)s in %(category)s")
+                    % {"field": field, "category": category}
+                )
