@@ -4,7 +4,7 @@ from collections import defaultdict
 from polaris.utils import getLogger
 
 from django.utils.translation import gettext as _
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from rest_framework.views import APIView
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -65,21 +65,17 @@ class TransactionsAPIView(APIView):
         request: Request,
         transaction_id: str = None,
     ) -> Response:
-        if not transaction_id:
-            return render_error_response(
-                _("PATCH requests must include a transaction ID in the URI"),
-            )
-        elif not registered_sep31_receiver_integration.valid_sending_anchor(account):
-            return render_error_response(_("invalid sending account"), status_code=401)
+        if not registered_sep31_receiver_integration.valid_sending_anchor(account):
+            return render_error_response(_("invalid sending account"), status_code=403)
         try:
             transaction = Transaction.objects.filter(
-                id=transaction_id, stellar_account=account
-            ).first()
-        except ValidationError:
+                id=transaction_id,
+                stellar_account=account,
+                protocol=Transaction.PROTOCOL.sep31,
+            ).get()
+        except (ValidationError, ObjectDoesNotExist):
             return render_error_response(_("transaction not found"), status_code=404)
-        if not transaction:
-            return render_error_response(_("transaction not found"), status_code=404)
-        elif transaction.status != Transaction.STATUS.pending_transaction_info_update:
+        if transaction.status != Transaction.STATUS.pending_transaction_info_update:
             return render_error_response(_("update not required"))
         try:
             validate_patch_request_fields(request.data.get("fields"), transaction)

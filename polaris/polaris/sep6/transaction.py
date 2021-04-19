@@ -3,7 +3,7 @@ from typing import Optional
 
 from django.utils.translation import gettext as _
 from django.views.decorators.clickjacking import xframe_options_exempt
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from rest_framework.decorators import api_view, renderer_classes
 from rest_framework.response import Response
 from rest_framework.request import Request
@@ -77,31 +77,16 @@ def transaction(
 def patch_transaction(
     account: str, _client_domain: Optional[str], request: Request, transaction_id: str
 ):
-    if not transaction_id:
-        return render_error_response(
-            _("PATCH requests must include a transaction ID in the URI"),
-        )
-    not_found_response = render_error_response(
-        _("transaction not found"), status_code=404
-    )
     try:
-        t = Transaction.objects.filter(
+        t = Transaction.objects.get(
             id=transaction_id,
             stellar_account=account,
             protocol=Transaction.PROTOCOL.sep6,
-        ).first()
-    except ValidationError:
-        return not_found_response
-    if not t:
-        return not_found_response
-    elif t.status != Transaction.STATUS.pending_transaction_info_update:
+        )
+    except (ValidationError, ObjectDoesNotExist):
+        return render_error_response(_("transaction not found"), status_code=404)
+    if t.status != Transaction.STATUS.pending_transaction_info_update:
         return render_error_response(_("update not required"))
-    if t.kind == Transaction.KIND.deposit:
-        integration = rdi
-    elif t.kind == Transaction.KIND.withdrawal:
-        integration = rwi
-    else:
-        return not_found_response
     try:
         validate_patch_request_fields(request.data, t)
     except ValueError as e:
@@ -109,6 +94,7 @@ def patch_transaction(
     except RuntimeError as e:
         logger.exception(str(e))
         return render_error_response(_("unable to process request"), status_code=500)
+    integration = rdi if t.kind == Transaction.KIND.deposit else rwi
     try:
         integration.patch_transaction(params=request.data, transaction=t)
     except ValueError as e:

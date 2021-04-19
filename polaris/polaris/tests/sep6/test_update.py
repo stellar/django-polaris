@@ -4,7 +4,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 from polaris.tests.helpers import mock_check_auth_success
-from polaris.models import Transaction
+from polaris.models import Transaction, Asset
 
 
 endpoint = "/sep6/transactions/"
@@ -13,18 +13,19 @@ endpoint = "/sep6/transactions/"
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 @patch("polaris.sep6.transaction.rdi.patch_transaction")
-def test_success_update(
-    mock_patch_transaction, client, acc1_usd_deposit_transaction_factory
-):
-    transaction = acc1_usd_deposit_transaction_factory(
-        protocol=Transaction.PROTOCOL.sep6
+def test_success_update(mock_patch_transaction, client):
+    asset = Asset.objects.create(code="USD")
+    transaction = Transaction.objects.create(
+        asset=asset,
+        stellar_account="test source address",
+        protocol=Transaction.PROTOCOL.sep6,
+        kind=Transaction.KIND.deposit,
+        status=Transaction.STATUS.pending_transaction_info_update,
+        required_info_message="The provided 'bank_account' was invalid.",
+        required_info_updates=json.dumps(
+            {"transaction": {"bank_account": {"description": "a description"}}}
+        ),
     )
-    transaction.stellar_account = "test source address"
-    transaction.status = Transaction.STATUS.pending_transaction_info_update
-    transaction.required_info_updates = json.dumps(
-        {"transaction": {"bank_account": {"description": "a description"}}}
-    )
-    transaction.save()
     params = {"transaction": {"bank_account": "foo"}}
     response = client.patch(
         endpoint + str(transaction.id), params, content_type="application/json"
@@ -41,6 +42,32 @@ def test_success_update(
 
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_not_implemented(client):
+    asset = Asset.objects.create(code="USD")
+    transaction = Transaction.objects.create(
+        asset=asset,
+        stellar_account="test source address",
+        protocol=Transaction.PROTOCOL.sep6,
+        kind=Transaction.KIND.deposit,
+        status=Transaction.STATUS.pending_transaction_info_update,
+        required_info_message="The provided 'bank_account' was invalid.",
+        required_info_updates=json.dumps(
+            {"transaction": {"bank_account": {"description": "a description"}}}
+        ),
+    )
+    params = {"transaction": {"bank_account": "foo"}}
+    response = client.patch(
+        endpoint + str(transaction.id), params, content_type="application/json"
+    )
+    transaction.refresh_from_db()
+    assert response.status_code == 501
+    assert response.json() == {"error": "not implemented"}
+    assert transaction.required_info_message
+    assert transaction.required_info_updates
+
+
+@pytest.mark.django_db
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 def test_bad_id(client, acc1_usd_deposit_transaction_factory):
     response = client.patch(
         endpoint + "not an id",
@@ -52,7 +79,7 @@ def test_bad_id(client, acc1_usd_deposit_transaction_factory):
 
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-def test_missing_id(client, acc1_usd_deposit_transaction_factory):
+def test_missing_id(client):
     response = client.patch(
         endpoint,
         {"transaction": {"bank_account": "foo"}},
@@ -79,15 +106,19 @@ def test_not_found(client):
 
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-def test_update_not_required(client, acc1_usd_deposit_transaction_factory):
-    transaction = acc1_usd_deposit_transaction_factory(
-        protocol=Transaction.PROTOCOL.sep6
+def test_update_not_required(client):
+    asset = Asset.objects.create(code="USD")
+    transaction = Transaction.objects.create(
+        asset=asset,
+        stellar_account="test source address",
+        protocol=Transaction.PROTOCOL.sep6,
+        kind=Transaction.KIND.deposit,
+        status=Transaction.STATUS.pending_user_transfer_start,
+        required_info_message="The provided 'bank_account' was invalid.",
+        required_info_updates=json.dumps(
+            {"transaction": {"bank_account": {"description": "a description"}}}
+        ),
     )
-    transaction.stellar_account = "test source address"
-    transaction.required_info_updates = json.dumps(
-        {"transaction": {"bank_account": {"description": "a description"}}}
-    )
-    transaction.save()
     response = client.patch(
         endpoint + str(transaction.id),
         {"transaction": {"bank_account": "foo"}},
@@ -99,14 +130,17 @@ def test_update_not_required(client, acc1_usd_deposit_transaction_factory):
 
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-def test_bad_info_update_column(client, acc1_usd_deposit_transaction_factory):
-    transaction = acc1_usd_deposit_transaction_factory(
-        protocol=Transaction.PROTOCOL.sep6
+def test_bad_info_update_column(client):
+    asset = Asset.objects.create(code="USD")
+    transaction = Transaction.objects.create(
+        asset=asset,
+        stellar_account="test source address",
+        protocol=Transaction.PROTOCOL.sep6,
+        kind=Transaction.KIND.deposit,
+        status=Transaction.STATUS.pending_transaction_info_update,
+        required_info_message="The provided 'bank_account' was invalid.",
+        required_info_updates="test",
     )
-    transaction.stellar_account = "test source address"
-    transaction.status = Transaction.STATUS.pending_transaction_info_update
-    transaction.required_info_updates = "test"  # not valid JSON
-    transaction.save()
     response = client.patch(
         endpoint + str(transaction.id),
         {"transaction": {"bank_account": "foo"}},
@@ -117,16 +151,19 @@ def test_bad_info_update_column(client, acc1_usd_deposit_transaction_factory):
 
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-def test_bad_update_body(client, acc1_usd_deposit_transaction_factory):
-    transaction = acc1_usd_deposit_transaction_factory(
-        protocol=Transaction.PROTOCOL.sep6
+def test_bad_update_body(client):
+    asset = Asset.objects.create(code="USD")
+    transaction = Transaction.objects.create(
+        asset=asset,
+        stellar_account="test source address",
+        protocol=Transaction.PROTOCOL.sep6,
+        kind=Transaction.KIND.deposit,
+        status=Transaction.STATUS.pending_transaction_info_update,
+        required_info_message="The provided 'bank_account' was invalid.",
+        required_info_updates=json.dumps(
+            {"transaction": {"bank_account": {"description": "a description"}}}
+        ),
     )
-    transaction.stellar_account = "test source address"
-    transaction.status = Transaction.STATUS.pending_transaction_info_update
-    transaction.required_info_updates = json.dumps(
-        {"transaction": {"bank_account": {"description": "a description"}}}
-    )
-    transaction.save()
     response = client.patch(
         endpoint + str(transaction.id),
         {"transaction": {"not a listed field": True}},
@@ -138,16 +175,19 @@ def test_bad_update_body(client, acc1_usd_deposit_transaction_factory):
 
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-def test_missing_update_category(client, acc1_usd_deposit_transaction_factory):
-    transaction = acc1_usd_deposit_transaction_factory(
-        protocol=Transaction.PROTOCOL.sep6
+def test_missing_update_category(client):
+    asset = Asset.objects.create(code="USD")
+    transaction = Transaction.objects.create(
+        asset=asset,
+        stellar_account="test source address",
+        protocol=Transaction.PROTOCOL.sep6,
+        kind=Transaction.KIND.deposit,
+        status=Transaction.STATUS.pending_transaction_info_update,
+        required_info_message="The provided 'bank_account' was invalid.",
+        required_info_updates=json.dumps(
+            {"transaction": {"bank_account": {"description": "a description"}}}
+        ),
     )
-    transaction.stellar_account = "test source address"
-    transaction.status = Transaction.STATUS.pending_transaction_info_update
-    transaction.required_info_updates = json.dumps(
-        {"transaction": {"bank_account": {"description": "a description"}}}
-    )
-    transaction.save()
     response = client.patch(
         endpoint + str(transaction.id),
         {"first_name": "test"},
@@ -159,16 +199,19 @@ def test_missing_update_category(client, acc1_usd_deposit_transaction_factory):
 
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-def test_bad_category_value_type(client, acc1_usd_deposit_transaction_factory):
-    transaction = acc1_usd_deposit_transaction_factory(
-        protocol=Transaction.PROTOCOL.sep6
+def test_bad_category_value_type(client):
+    asset = Asset.objects.create(code="USD")
+    transaction = Transaction.objects.create(
+        asset=asset,
+        stellar_account="test source address",
+        protocol=Transaction.PROTOCOL.sep6,
+        kind=Transaction.KIND.deposit,
+        status=Transaction.STATUS.pending_transaction_info_update,
+        required_info_message="The provided 'bank_account' was invalid.",
+        required_info_updates=json.dumps(
+            {"transaction": {"bank_account": {"description": "a description"}}}
+        ),
     )
-    transaction.stellar_account = "test source address"
-    transaction.status = Transaction.STATUS.pending_transaction_info_update
-    transaction.required_info_updates = json.dumps(
-        {"transaction": {"bank_account": {"description": "a description"}}}
-    )
-    transaction.save()
     response = client.patch(
         endpoint + str(transaction.id),
         {"transaction": "not a dict"},
@@ -186,16 +229,19 @@ raise_error_integration = Mock(patch_transaction=Mock(side_effect=ValueError("te
 @patch(
     "polaris.sep6.transaction.rdi", raise_error_integration,
 )
-def test_user_defined_exception(client, acc1_usd_deposit_transaction_factory):
-    transaction = acc1_usd_deposit_transaction_factory(
-        protocol=Transaction.PROTOCOL.sep6
+def test_user_defined_exception(client):
+    asset = Asset.objects.create(code="USD")
+    transaction = Transaction.objects.create(
+        asset=asset,
+        stellar_account="test source address",
+        protocol=Transaction.PROTOCOL.sep6,
+        kind=Transaction.KIND.deposit,
+        status=Transaction.STATUS.pending_transaction_info_update,
+        required_info_message="The provided 'bank_account' was invalid.",
+        required_info_updates=json.dumps(
+            {"transaction": {"bank_account": {"description": "a description"}}}
+        ),
     )
-    transaction.stellar_account = "test source address"
-    transaction.status = Transaction.STATUS.pending_transaction_info_update
-    transaction.required_info_updates = json.dumps(
-        {"transaction": {"bank_account": {"description": "a description"}}}
-    )
-    transaction.save()
     response = client.patch(
         endpoint + str(transaction.id),
         {"transaction": {"bank_account": "foo"}},
