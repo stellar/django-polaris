@@ -179,6 +179,10 @@ the functions described below are only for SEP-6.
 
 .. autofunction:: polaris.integrations.default_info_func
 
+.. autofunction:: polaris.integrations.DepositIntegration.patch_transaction
+
+.. autofunction:: polaris.integrations.WithdrawalIntegration.patch_transaction
+
 .. _sep24_integrations:
 
 SEP-24 Integrations
