@@ -1,4 +1,6 @@
 """This module defines a serializer for the transaction model."""
+from decimal import Decimal
+
 from rest_framework import serializers
 from django.db.models import QuerySet
 
@@ -65,9 +67,19 @@ class TransactionSerializer(serializers.ModelSerializer):
         for field in ["amount_in", "amount_out", "amount_fee"]:
             if getattr(instance, field) is None:
                 continue
-            data[field] = str(
-                round(getattr(instance, field), self.asset.significant_decimals)
-            )
+            value = getattr(instance, field)
+            if self.asset.significant_decimals == 7 and Decimal(
+                "0.000001"
+            ) > value >= Decimal("0.0000001"):
+                # the decimal.Decimal class uses exponent notation for numbers
+                # smaller than 0.000001 (6 decimals). Stellar only supports 7
+                # decimals of precision, leaving 9 possible values where the
+                # Decimal class uses exponent notation, which is corrected here.
+                data[field] = f"{value:.7f}"
+            else:
+                data[field] = str(
+                    round(getattr(instance, field), self.asset.significant_decimals)
+                )
 
     class Meta:
         model = Transaction
