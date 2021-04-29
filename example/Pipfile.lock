@@ -166,7 +166,7 @@
                 "sha256:eb8cc2afe8b05acbd84a43905832ec78e7b3873fb124ca190f574dca7389a87d",
                 "sha256:ee77aa129f481be46f8d92a1a7db57269a2f23052d5f2433b4621bb457081cc9"
             ],
-            "markers": "python_full_version >= '3.6.0'",
+            "markers": "python_version >= '3.6'",
             "version": "==3.4.7"
         },
         "django": {
@@ -182,7 +182,7 @@
                 "sha256:1ac2b1213de75a251e2ba04448da15f99bcfcbe164288ae6b5ff929dc49b372f",
                 "sha256:96069c4aaacace786a34ee7894ff680780ec2644e4268b31181044410fecd12e"
             ],
-            "markers": "python_full_version >= '3.6.0'",
+            "markers": "python_version >= '3.6'",
             "version": "==3.7.0"
         },
         "django-environ": {
@@ -213,6 +213,7 @@
         },
         "gunicorn": {
             "hashes": [
+                "sha256:9dcc4547dbb1cb284accfb15ab5667a0e5d1881cc443e0677b4882a4067a807e",
                 "sha256:e0a968b5ba15f8a328fdfd7ab1fcb5af4470c28aaf7e55df02a99bc13138e6e8"
             ],
             "index": "pypi",
@@ -395,11 +396,11 @@
         },
         "stellar-sdk": {
             "hashes": [
-                "sha256:189f46bf8dbf95c967e0cecbc6a5b6debdb92e3b3ecf1c8cd1f1973a0b6d7c32",
-                "sha256:7c5a30ada4ffbef7814f07e79938defec2818263c8c7c033ffa71f714f0c1855"
+                "sha256:277ab1976b500ced25c72a4ea656db1a9a92255bda9b5819a434fc04916ef1fd",
+                "sha256:bef98d9bcb168ed61ee68cd67ae1ca6ef48109909e8ee16063a5e0b7ba650696"
             ],
-            "markers": "python_full_version >= '3.6.0'",
-            "version": "==2.12.0"
+            "markers": "python_version >= '3.6'",
+            "version": "==2.13.0"
         },
         "toml": {
             "hashes": [
