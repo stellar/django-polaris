@@ -46,11 +46,13 @@ class SEP31ReceiverIntegration:
                         }
                     },
                     "receiver": {
-                        "sep31-receiver-cash-pickup": {
-                            "description": "recipients who will pick up cash at physical locations"
-                        },
-                        "sep31-receiver-bank-transfer": {
-                            "description" : "recipients who would like to receive funds via direct bank transfer"
+                        "types": {
+                            "sep31-receiver-cash-pickup": {
+                                "description": "recipients who will pick up cash at physical locations"
+                            },
+                            "sep31-receiver-bank-transfer": {
+                                "description" : "recipients who would like to receive funds via direct bank transfer"
+                            }
                         }
                     }
                 }
