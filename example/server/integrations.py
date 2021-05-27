@@ -209,6 +209,19 @@ class MyDepositIntegration(DepositIntegration):
                 f"KYCForm was not served first for unknown account, id: "
                 f"{transaction.stellar_account}"
             )
+        if isinstance(form, TransactionForm):
+            transaction.amount_fee = calculate_fee(
+                {
+                    "amount": form.cleaned_data["amount"],
+                    "operation": transaction.kind,
+                    "asset_code": transaction.asset.code,
+                }
+            )
+            transaction.amount_out = round(
+                form.cleaned_data["amount"] - transaction.amount_fee,
+                transaction.asset.significant_decimals,
+            )
+            transaction.save()
 
     def process_sep6_request(self, params: Dict, transaction: Transaction) -> Dict:
         account = (
@@ -241,6 +254,26 @@ class MyDepositIntegration(DepositIntegration):
             # However, we're not going to block the client from completing
             # the flow since this is a reference server.
             pass
+
+        asset = params["asset"]
+        min_amount = round(asset.deposit_min_amount, asset.significant_decimals)
+        max_amount = round(asset.deposit_max_amount, asset.significant_decimals)
+        if params["amount"]:
+            if not (min_amount <= params["amount"] <= max_amount):
+                raise ValueError(_("invalid 'amount'"))
+            transaction.amount_in = params["amount"]
+            transaction.amount_fee = calculate_fee(
+                {
+                    "amount": params["amount"],
+                    "operation": "deposit",
+                    "asset_code": asset.code,
+                }
+            )
+            transaction.amount_out = round(
+                transaction.amount_in - transaction.amount_fee,
+                asset.significant_decimals,
+            )
+            transaction.save()
 
         # request is valid, return success data and add transaction to user model
         PolarisUserTransaction.objects.create(
@@ -322,6 +355,19 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
                 f"KYCForm was not served first for unknown account, id: "
                 f"{transaction.stellar_account}"
             )
+        if isinstance(form, TransactionForm):
+            transaction.amount_fee = calculate_fee(
+                {
+                    "amount": form.cleaned_data["amount"],
+                    "operation": "withdraw",
+                    "asset_code": transaction.asset.code,
+                }
+            )
+            transaction.amount_out = round(
+                form.cleaned_data["amount"] - transaction.amount_fee,
+                transaction.asset.significant_decimals,
+            )
+            transaction.save()
 
     def process_sep6_request(self, params: Dict, transaction: Transaction) -> Dict:
         account = (
@@ -370,14 +416,29 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
             pass
 
         asset = params["asset"]
+        min_amount = round(asset.withdrawal_min_amount, asset.significant_decimals)
+        max_amount = round(asset.withdrawal_max_amount, asset.significant_decimals)
+        if params["amount"]:
+            if not (min_amount <= params["amount"] <= max_amount):
+                raise ValueError(_("invalid 'amount'"))
+            transaction.amount_in = params["amount"]
+            transaction.amount_fee = calculate_fee(
+                {
+                    "amount": params["amount"],
+                    "operation": "withdraw",
+                    "asset_code": asset.code,
+                }
+            )
+            transaction.amount_out = round(
+                transaction.amount_in - transaction.amount_fee,
+                asset.significant_decimals,
+            )
+            transaction.save()
+
         response = {
             "account_id": asset.distribution_account,
-            "min_amount": round(
-                asset.withdrawal_min_amount, asset.significant_decimals
-            ),
-            "max_amount": round(
-                asset.withdrawal_max_amount, asset.significant_decimals
-            ),
+            "min_amount": min_amount,
+            "max_amount": max_amount,
             "fee_fixed": round(asset.withdrawal_fee_fixed, asset.significant_decimals),
             "fee_percent": asset.withdrawal_fee_percent,
         }
@@ -686,6 +747,10 @@ class MyRailsIntegration(RailsIntegration):
                         "asset_code": deposit.asset.code,
                     }
                 )
+                deposit.amount_out = round(
+                    deposit.amount_in - deposit.amount_fee,
+                    deposit.asset.significant_decimals,
+                )
                 deposit.save()
                 ready_deposits.append(deposit)
 
@@ -737,6 +802,10 @@ class MyRailsIntegration(RailsIntegration):
                 "operation": operation,
                 "asset_code": transaction.asset.code,
             }
+        )
+        transaction.amount_out = round(
+            transaction.amount_in - transaction.amount_fee,
+            transaction.asset.significant_decimals,
         )
         client = rails.BankAPIClient("fake anchor bank account number")
         response = client.send_funds(
