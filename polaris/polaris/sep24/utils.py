@@ -1,6 +1,6 @@
 import time
 import jwt
-from jwt.exceptions import InvalidTokenError
+from jwt import InvalidTokenError, ExpiredSignatureError
 from urllib.parse import urlencode
 from typing import Callable, Dict, Optional
 from decimal import Decimal, DecimalException
@@ -109,6 +109,8 @@ def authenticate_session_helper(r: Request):
 
     try:
         jwt_dict = jwt.decode(token, settings.SERVER_JWT_KEY, algorithms=["HS256"])
+    except ExpiredSignatureError:
+        raise ValueError(_("Your session has expired. Please restart the transaction"))
     except InvalidTokenError as e:
         raise ValueError(str(e))
 
