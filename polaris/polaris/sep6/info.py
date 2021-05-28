@@ -103,9 +103,15 @@ def get_asset_info(asset: Asset, op_type: str, fields_or_types: Dict) -> Dict:
     asset_info = {
         "enabled": True,
         "authentication_required": True,
-        "min_amount": getattr(asset, f"{op_type}_min_amount"),
-        "max_amount": getattr(asset, f"{op_type}_max_amount"),
     }
+    min_amount_attr = f"{op_type}_min_amount"
+    max_amount_attr = f"{op_type}_max_amount"
+    min_amount = getattr(asset, min_amount_attr)
+    max_amount = getattr(asset, max_amount_attr)
+    if min_amount > Asset._meta.get_field(min_amount_attr).default:
+        asset_info["min_amount"] = min_amount
+    if max_amount < Asset._meta.get_field(max_amount_attr).default:
+        asset_info["max_amount"] = max_amount
     if registered_fee_func is calculate_fee:
         # the anchor has not replaced the default fee function
         # so `fee_fixed` and `fee_percent` are still relevant.
