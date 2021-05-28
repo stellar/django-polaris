@@ -16,7 +16,6 @@ def _get_expected_response():
                 },
                 "ETH": {
                     "enabled": true,
-                    "min_amount": 0.0,
                     "max_amount": 10000000.0,
                     "fee_fixed": 0.002,
                     "fee_percent": 0.0
@@ -28,7 +27,7 @@ def _get_expected_response():
                     "min_amount": 0.1,
                     "max_amount": 1000.0,
                     "fee_fixed": 5.0,
-                    "fee_percent": 0
+                    "fee_percent": 0.0
                 },
                 "ETH": {
                     "enabled": false
