@@ -219,7 +219,6 @@
          * Uses timeouts to ensure a call to the /fee endpoint is only made once
          * every 500 milliseconds.
          */
-        console.log("making call");
         clearTimeout(timeout)
         timeout = setTimeout(() => {
           let params = new URLSearchParams({
@@ -243,10 +242,8 @@
       }
 
       function amountInputChange(e) {
-        console.log("event fired");
         if (isNaN(amountInput.value)) return;
         if (typeInput && !typeInput.value) {
-          console.log("type is unselected");
           return;
         }
         let fee_fixed;
