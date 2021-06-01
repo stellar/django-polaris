@@ -82,11 +82,11 @@ class TransactionForm(forms.Form):
     A subclass of this form should be returned by
     ``form_for_transaction()`` once for each interactive flow.
 
-    After form validation, the key-value pairs in `self.cleaned_data` will be
-    passed to the registered fee function to calculate `amount_fee` for the
-    associated ``Transaction``. If you want a key-value pair passed to
-    the registered fee function but don't want to display an additional field
-    to the user, add a field with a `HiddenInput`_ widget.
+    If the default UI is used, Polaris makes calls to the anchor's `/fee` endpoint
+    and displays the response value to the user. If your `/fee` endpoint requires
+    a `type` parameter, add a ``TransactionForm.type`` attribute to the form.
+    Polaris will detect the attribute's presence on the form and include it in
+    `/fee` requests.
 
     The `amount` field is validated with the :meth:`clean_amount` function,
     which ensures the amount is within the bounds for the asset type.
