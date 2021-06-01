@@ -26,6 +26,10 @@ class KYCForm(forms.Form):
 class WithdrawForm(TransactionForm):
     """This form accepts the amount to withdraw from the user."""
 
+    type = forms.ChoiceField(
+        choices=[(None, "--"), ("bank_account", "Bank Account")],
+        label="Transaction Type",
+    )
     bank_account = forms.CharField(
         min_length=0,
         help_text=_("Enter the bank account number for withdrawal."),
