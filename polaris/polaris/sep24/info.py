@@ -44,13 +44,7 @@ def info(request):
     See: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md#info
     """
 
-    info_data = {
-        "deposit": {},
-        "withdraw": {},
-        "fee": {"enabled": True},
-        "transactions": {"enabled": True},
-        "transaction": {"enabled": True},
-    }
+    info_data = {"deposit": {}, "withdraw": {}, "fee": {"enabled": True}}
 
     for asset in Asset.objects.filter(sep24_enabled=True):
         info_data["deposit"][asset.code] = _get_asset_info(asset, "deposit")

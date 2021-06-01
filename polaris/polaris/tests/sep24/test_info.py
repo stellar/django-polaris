@@ -35,12 +35,6 @@ def _get_expected_response():
             },
             "fee": {
                 "enabled": true
-            },
-            "transactions": {
-                "enabled": true
-            },
-            "transaction": {
-                "enabled": true
             }
         }
     """
