@@ -182,20 +182,26 @@ class DepositIntegration:
         """
         Use this function to process the data collected with `form` and to update
         the state of the interactive flow so that the next call to
-        ``DepositIntegration.form_for_transaction`` returns the next form to render
-        to the user, or returns None.
-
-        Keep in mind that if a ``TransactionForm`` is submitted, Polaris will
-        update the `amount_in` and `amount_fee` with the information collected.
-        There is no need to implement that yourself.
-
-        DO NOT update `transaction.status` here or in any other function for
-        that matter. This column is managed by Polaris and is expected to have
-        particular values at different points in the flow.
+        ``DepositIntegration.form_for_transaction()`` returns the next form to render
+        to the user.
 
         If you need to store some data to determine which form to return next when
         ``DepositIntegration.form_for_transaction`` is called, store this
         data in a model not used by Polaris.
+
+        Keep in mind that if a ``TransactionForm`` is submitted, Polaris will
+        update the ``Transaction.amount_in`` field with the information collected.
+        There is no need to implement that yourself.
+
+        If `form` is the last form to be served to the user, Polaris will update the
+        transaction status to ``pending_user_transfer_start``, indicating that the
+        anchor is waiting for the user to deliver off-chain funds to the anchor. If
+        the KYC information collected is still being verified, update the
+        ``Transaction.status`` column to ``pending_anchor`` here. In this case
+        Polaris will detect the status change and will not update the status again.
+        Polaris will instead wait until the anchor changes the transaction's status
+        to ``pending_user_transfer_start`` before including the transaction in calls
+        to ``DepositIntegration.poll_pending_deposits()``.
 
         :param form: the completed ``forms.Form`` submitted by the user
         :param transaction: the ``Transaction`` database object
@@ -528,7 +534,7 @@ class WithdrawalIntegration:
                 }
             }
 
-        In addition to this response, uou may also return the `Customer information needed`_
+        In addition to this response, you may also return the `Customer information needed`_
         and `Customer Information Status`_ responses as described in
         ``DepositIntegration.process_sep6_request``.
         """
