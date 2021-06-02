@@ -152,6 +152,65 @@ def test_interactive_withdraw_success(client):
     assert response.status_code == 302
     assert client.session["authenticated"] is False
 
+    withdraw.refresh_from_db()
+    assert withdraw.status == Transaction.STATUS.pending_user_transfer_start
+
+
+@pytest.mark.django_db
+@patch("polaris.sep24.withdraw.rwi.after_form_validation")
+def test_interactive_withdraw_pending_anchor(mock_after_form_validation, client):
+    usd = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        sep24_enabled=True,
+        withdrawal_enabled=True,
+        distribution_seed=Keypair.random().secret,
+    )
+    withdraw = Transaction.objects.create(
+        asset=usd, kind=Transaction.KIND.withdrawal, protocol=Transaction.PROTOCOL.sep24
+    )
+
+    payload = interactive_jwt_payload(withdraw, "withdraw")
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode(
+        "ascii"
+    )
+
+    response = client.get(
+        f"{WEBAPP_PATH}"
+        f"?token={token}"
+        f"&transaction_id={withdraw.id}"
+        f"&asset_code={withdraw.asset.code}"
+    )
+    assert response.status_code == 200
+    assert client.session["authenticated"] is True
+
+    response = client.get(
+        f"{WEBAPP_PATH}"
+        f"?token={token}"
+        f"&transaction_id={withdraw.id}"
+        f"&asset_code={withdraw.asset.code}"
+    )
+    assert response.status_code == 403
+    assert "Unexpected one-time auth token" in str(response.content)
+
+    def mark_as_pending_anchor(_, transaction):
+        transaction.status = Transaction.STATUS.pending_anchor
+        transaction.save()
+
+    mock_after_form_validation.side_effect = mark_as_pending_anchor
+
+    response = client.post(
+        f"{WEBAPP_PATH}/submit"
+        f"?transaction_id={withdraw.id}"
+        f"&asset_code={withdraw.asset.code}",
+        {"amount": 200.0},
+    )
+    assert response.status_code == 302
+    assert client.session["authenticated"] is False
+
+    withdraw.refresh_from_db()
+    assert withdraw.status == Transaction.STATUS.pending_anchor
+
 
 @pytest.mark.django_db
 def test_interactive_withdraw_bad_post_data(client):

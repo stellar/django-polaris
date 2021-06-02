@@ -266,6 +266,60 @@ def test_interactive_deposit_success(client, acc1_usd_deposit_transaction_factor
     assert response.status_code == 302
     assert client.session["authenticated"] is False
 
+    deposit.refresh_from_db()
+    assert deposit.status == Transaction.STATUS.pending_user_transfer_start
+
+
+@pytest.mark.django_db
+@patch("polaris.sep24.deposit.rdi.after_form_validation")
+def test_interactive_deposit_pending_anchor(
+    mock_after_form_validation, client, acc1_usd_deposit_transaction_factory
+):
+    deposit = acc1_usd_deposit_transaction_factory()
+    deposit.amount_in = None
+    deposit.save()
+
+    payload = interactive_jwt_payload(deposit, "deposit")
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode(
+        "ascii"
+    )
+
+    response = client.get(
+        f"{WEBAPP_PATH}"
+        f"?token={token}"
+        f"&transaction_id={deposit.id}"
+        f"&asset_code={deposit.asset.code}"
+    )
+    assert response.status_code == 200
+    assert client.session["authenticated"] is True
+
+    response = client.get(
+        f"{WEBAPP_PATH}"
+        f"?token={token}"
+        f"&transaction_id={deposit.id}"
+        f"&asset_code={deposit.asset.code}"
+    )
+    assert response.status_code == 403
+    assert "Unexpected one-time auth token" in str(response.content)
+
+    def mark_as_pending_anchor(_, transaction):
+        transaction.status = Transaction.STATUS.pending_anchor
+        transaction.save()
+
+    mock_after_form_validation.side_effect = mark_as_pending_anchor
+
+    response = client.post(
+        f"{WEBAPP_PATH}/submit"
+        f"?transaction_id={deposit.id}"
+        f"&asset_code={deposit.asset.code}",
+        {"amount": 200.0},
+    )
+    assert response.status_code == 302
+    assert client.session["authenticated"] is False
+
+    deposit.refresh_from_db()
+    assert deposit.status == Transaction.STATUS.pending_anchor
+
 
 @pytest.mark.django_db
 def test_interactive_deposit_bad_post_data(client):

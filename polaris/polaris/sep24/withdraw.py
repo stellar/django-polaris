@@ -152,7 +152,12 @@ def post_interactive_withdraw(request: Request) -> Response:
             transaction_id_hex = transaction.id.hex
             padded_hex_memo = "0" * (64 - len(transaction_id_hex)) + transaction_id_hex
             transaction.memo = memo_hex_to_base64(padded_hex_memo)
-            transaction.status = Transaction.STATUS.pending_user_transfer_start
+
+            transaction.refresh_from_db()
+            if transaction.status != transaction.STATUS.pending_anchor:
+                transaction.status = Transaction.STATUS.pending_user_transfer_start
+            else:
+                logger.info(f"Transaction {transaction.id} is pending KYC approval")
             transaction.save()
             args = {"id": transaction.id, "initialLoad": "true"}
             if callback:
