@@ -141,12 +141,14 @@ def post_interactive_deposit(request: Request) -> Response:
             return redirect(f"{url}?{urlencode(args)}")
 
         else:  # Last form has been submitted
-            logger.info(
-                f"Finished data collection and processing for transaction {transaction.id}"
-            )
+            logger.info(f"Finished data collection for transaction {transaction.id}")
             invalidate_session(request)
-            transaction.status = Transaction.STATUS.pending_user_transfer_start
-            transaction.save()
+            transaction.refresh_from_db()
+            if transaction.status != transaction.STATUS.pending_anchor:
+                transaction.status = Transaction.STATUS.pending_user_transfer_start
+                transaction.save()
+            else:
+                logger.info(f"Transaction {transaction.id} is pending KYC approval")
             args = {"id": transaction.id, "initialLoad": "true"}
             if callback:
                 args["callback"] = callback

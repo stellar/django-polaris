@@ -197,11 +197,12 @@ class DepositIntegration:
         transaction status to ``pending_user_transfer_start``, indicating that the
         anchor is waiting for the user to deliver off-chain funds to the anchor. If
         the KYC information collected is still being verified, update the
-        ``Transaction.status`` column to ``pending_anchor`` here. In this case
-        Polaris will detect the status change and will not update the status again.
-        Polaris will instead wait until the anchor changes the transaction's status
-        to ``pending_user_transfer_start`` before including the transaction in calls
-        to ``DepositIntegration.poll_pending_deposits()``.
+        ``Transaction.status`` column to ``pending_anchor`` here. Make sure to save
+        this change to the database before returning. In this case Polaris will
+        detect the status change and will not update the status again. Polaris will
+        wait until the anchor changes the transaction's status to
+        ``pending_user_transfer_start`` before including the transaction in calls to
+        ``DepositIntegration.poll_pending_deposits()``.
 
         :param form: the completed ``forms.Form`` submitted by the user
         :param transaction: the ``Transaction`` database object
