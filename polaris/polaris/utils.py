@@ -208,7 +208,7 @@ SEP_9_FIELDS = {
     "organization.number_of_shareholders",
     "organization.shareholder_name",
     "organization.photo_incorporation_doc",
-    "organization.photo_proof_adress",
+    "organization.photo_proof_address",
     "organization.address_country_code",
     "organization.state_or_province",
     "organization.city",
