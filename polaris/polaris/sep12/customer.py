@@ -16,6 +16,7 @@ from polaris.utils import (
     render_error_response,
     make_memo,
     getLogger,
+    SEP_9_FIELDS,
 )
 from polaris.sep10.utils import validate_sep10_token
 from polaris.integrations import registered_customer_integration as rci
@@ -218,6 +219,45 @@ def delete(
         return Response({"status": "success"}, status=200)
 
 
+@api_view(["PUT"])
+@renderer_classes([JSONRenderer, BrowsableAPIRenderer])
+@parser_classes([MultiPartParser, FormParser, JSONParser])
+@validate_sep10_token()
+def put_verification(account: str, _client_domain: Optional[str], request) -> Response:
+    if not request.data.get("id") or not isinstance(request.data.get("id"), str):
+        return render_error_response(_("bad ID value, expected str"))
+    for key, value in request.data.items():
+        if key == "id":
+            continue
+        sep9_field, verification = key.split("_")
+        if verification != "verification" or sep9_field not in SEP_9_FIELDS:
+            return render_error_response(
+                _(
+                    "all request attributes other than 'id' must be a SEP-9 field followed "
+                    "by '_verification'"
+                )
+            )
+
+    try:
+        response_data = rci.put_verification(account, dict(request.data))
+    except ObjectDoesNotExist:
+        return render_error_response(_("customer not found"), status_code=404)
+    except ValueError as e:
+        return render_error_response(str(e), status_code=400)
+    except NotImplementedError:
+        return render_error_response(_("not implemented"), status_code=501)
+
+    try:
+        validate_response_data(response_data)
+    except ValueError:
+        logger.exception(
+            _("An exception was raised validating PUT /customer/verification response")
+        )
+        return render_error_response(_("unable to process request."), status_code=500)
+
+    return Response(response_data)
+
+
 def validate_response_data(data: Dict):
     attrs = ["fields", "id", "message", "status"]
     if not data:
@@ -247,8 +287,28 @@ def validate_fields(fields: Dict):
         )
     if len(extract_sep9_fields(fields)) < len(fields):
         raise ValueError("SEP-12 GET /customer response fields must be from SEP-9")
+    accepted_field_attrs = [
+        "type",
+        "description",
+        "choices",
+        "optional",
+        "status",
+        "error",
+    ]
     accepted_types = ["string", "binary", "number", "date"]
+    accepted_statuses = [
+        "ACCEPTED",
+        "PROCESSING",
+        "NOT_PROVIDED",
+        "REJECTED",
+        "VERIFICATION_REQUIRED",
+    ]
     for key, value in fields.items():
+        if not set(value.keys()).issubset(set(accepted_field_attrs)):
+            raise ValueError(
+                f"unexpected attribute in {key} object in SEP-12 GET /customer response, "
+                f"accepted values: {', '.join(accepted_field_attrs)}"
+            )
         if not value.get("type") or value.get("type") not in accepted_types:
             raise ValueError(
                 f"bad type value for {key} in SEP-12 GET /customer response"
@@ -266,4 +326,12 @@ def validate_fields(fields: Dict):
         elif value.get("optional") and not isinstance(value.get("optional"), bool):
             raise ValueError(
                 f"bad optional value for {key} in SEP-12 GET /customer response"
+            )
+        elif value.get("status") and value.get("status") not in accepted_statuses:
+            raise ValueError(
+                f"bad field status value for {key} in SEP-12 GET /customer response"
+            )
+        elif value.get("error") and not isinstance(value.get("error"), str):
+            raise ValueError(
+                f"bad error value for {key} in SEP-12 GET /customer response"
             )

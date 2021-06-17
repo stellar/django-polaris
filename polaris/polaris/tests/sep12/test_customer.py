@@ -389,7 +389,11 @@ def test_missing_type_field_needs_info(client):
         return_value={
             "status": "NEEDS_INFO",
             "fields": {
-                "email_address": {"description": "a description", "unknown_field": True}
+                "email_address": {
+                    "description": "a description",
+                    "type": "string",
+                    "unknown_field": True,
+                }
             },
         }
     ),
@@ -417,6 +421,94 @@ def test_no_description_needs_info(client):
         endpoint + "?" + urlencode({"account": "test source address"})
     )
     assert response.status_code == 500
+
+
+@patch(
+    "polaris.sep12.customer.rci.get",
+    Mock(
+        return_value={
+            "status": "NEEDS_INFO",
+            "fields": {
+                "email_address": {
+                    "type": "string",
+                    "description": "test",
+                    "status": "NOT_PROVIDED",
+                }
+            },
+        }
+    ),
+)
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_get_valid_field_status(client):
+    response = client.get(
+        endpoint + "?" + urlencode({"account": "test source address"})
+    )
+    assert response.status_code == 200
+
+
+@patch(
+    "polaris.sep12.customer.rci.get",
+    Mock(
+        return_value={
+            "status": "NEEDS_INFO",
+            "fields": {
+                "email_address": {
+                    "type": "string",
+                    "description": "test",
+                    "status": "invalid",
+                }
+            },
+        }
+    ),
+)
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_get_invalid_field_status(client):
+    response = client.get(
+        endpoint + "?" + urlencode({"account": "test source address"})
+    )
+    assert response.status_code == 500
+
+
+@patch(
+    "polaris.sep12.customer.rci.get",
+    Mock(
+        return_value={
+            "status": "NEEDS_INFO",
+            "fields": {
+                "email_address": {"type": "string", "description": "test", "error": 1}
+            },
+        }
+    ),
+)
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_get_bad_error_value(client):
+    response = client.get(
+        endpoint + "?" + urlencode({"account": "test source address"})
+    )
+    assert response.status_code == 500
+
+
+@patch(
+    "polaris.sep12.customer.rci.get",
+    Mock(
+        return_value={
+            "status": "NEEDS_INFO",
+            "fields": {
+                "email_address": {
+                    "type": "string",
+                    "description": "test",
+                    "error": "test error message",
+                }
+            },
+        }
+    ),
+)
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_get_valid_error_value(client):
+    response = client.get(
+        endpoint + "?" + urlencode({"account": "test source address"})
+    )
+    assert response.status_code == 200
 
 
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
