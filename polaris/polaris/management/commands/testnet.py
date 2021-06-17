@@ -179,7 +179,7 @@ class Command(BaseCommand):
         if client:
             self.add_balance(code, client_amount, accounts, client, distributor, issuer)
 
-        home_domain = input("Home domain for the issuing account (optional): ")
+        home_domain = input("Home domain for the issuing account (enter to skip): ")
         if home_domain:
             self.set_home_domain(issuer, home_domain)
 

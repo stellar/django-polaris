@@ -9,6 +9,7 @@ from stellar_sdk.operation import Payment, ChangeTrust, SetOptions
 
 from polaris.models import Asset, Transaction, utc_now
 from polaris.management.commands.testnet import Command
+from polaris.utils import load_account
 
 test_module = "polaris.management.commands.testnet"
 
@@ -44,7 +45,7 @@ def test_reset_success(mock_issue):
     )
 
     def mock_input(message):
-        if message == f"Seed for {usd.code} issuer: ":
+        if message == f"Seed for {usd.code} issuer (enter to skip): ":
             return issuer_kp.secret
         else:
             raise ValueError("unexpected input requested")
@@ -73,7 +74,7 @@ def test_reset_invalid_issuer_seed(mock_issue):
     usd = Asset.objects.create(code="USD", issuer=issuer_kp.public_key,)
 
     def mock_input(message):
-        if message == f"Seed for {usd.code} issuer: ":
+        if message == f"Seed for {usd.code} issuer (enter to skip): ":
             return "bad seed"
         else:
             raise ValueError("unexpected input requested")
@@ -92,7 +93,7 @@ def test_reset_invalid_distribution_seed(mock_issue):
     usd = Asset.objects.create(code="USD", issuer=issuer_kp.public_key,)
 
     def mock_input(message):
-        if message == f"Seed for {usd.code} issuer: ":
+        if message == f"Seed for {usd.code} issuer (enter to skip): ":
             return issuer_kp.secret
         elif message == f"Seed for {usd.code} distribution account: ":
             return "bad seed"
@@ -114,7 +115,7 @@ def test_issue_success_accounts_exist():
     client_kp = Keypair.random()
 
     def mock_input(message):
-        if message == "Home domain for the issuing account (optional): ":
+        if message == "Home domain for the issuing account (enter to skip): ":
             return "test.com"
         else:
             raise ValueError("unexpected input requested")
@@ -124,6 +125,7 @@ def test_issue_success_accounts_exist():
             call=Mock(
                 return_value={
                     "id": issuer_kp.public_key,
+                    "account_id": issuer_kp.public_key,
                     "sequence": 1,
                     "signers": [{"key": issuer_kp.public_key, "weight": 0}],
                     "thresholds": {
@@ -140,6 +142,7 @@ def test_issue_success_accounts_exist():
             call=Mock(
                 return_value={
                     "id": distribution_kp.public_key,
+                    "account_id": distribution_kp.public_key,
                     "sequence": 1,
                     "signers": [{"key": distribution_kp.public_key, "weight": 0}],
                     "thresholds": {
@@ -163,6 +166,7 @@ def test_issue_success_accounts_exist():
             call=Mock(
                 return_value={
                     "id": client_kp.public_key,
+                    "account_id": client_kp.public_key,
                     "sequence": 1,
                     "signers": [{"key": client_kp.public_key, "weight": 0}],
                     "thresholds": {
@@ -190,6 +194,7 @@ def test_issue_success_accounts_exist():
         cmd.server = Mock(
             accounts=Mock(return_value=Mock(account_id=mock_account_id)),
             fetch_base_fee=Mock(return_value=100),
+            load_account=lambda x: load_account(mock_account_id(x).call()),
         )
         cmd.http = Mock()
         cmd.issue(
