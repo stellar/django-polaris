@@ -95,7 +95,9 @@ class Command(BaseCommand):
         )
         for asset in Asset.objects.filter(issuer__isnull=False):
             print(f"\nIssuing {asset.code}")
-            issuer_seed = input(f"Seed for {asset.code} issuer: ")
+            issuer_seed = input(f"Seed for {asset.code} issuer (enter to skip): ")
+            if not issuer_seed:
+                continue
             try:
                 Keypair.from_secret(issuer_seed)
             except Ed25519SecretSeedInvalidError:
@@ -177,14 +179,14 @@ class Command(BaseCommand):
         if client:
             self.add_balance(code, client_amount, accounts, client, distributor, issuer)
 
-        home_domain = input("Home domain for the issuing account (optional): ")
+        home_domain = input("Home domain for the issuing account (enter to skip): ")
         if home_domain:
-            self.set_home_domain(issuer, accounts[issuer.public_key], home_domain)
+            self.set_home_domain(issuer, home_domain)
 
-    def set_home_domain(self, issuer: Keypair, issuer_json: Dict, home_domain: str):
+    def set_home_domain(self, issuer: Keypair, home_domain: str):
         envelope = (
             TransactionBuilder(
-                self.account_from_json(issuer_json),
+                self.server.load_account(issuer.public_key),
                 base_fee=settings.MAX_TRANSACTION_FEE_STROOPS
                 or self.server.fetch_base_fee(),
                 network_passphrase="Test SDF Network ; September 2015",
@@ -206,7 +208,7 @@ class Command(BaseCommand):
 
     def add_balance(self, code, amount, accounts, dest, src, issuer):
         tb = TransactionBuilder(
-            self.account_from_json(accounts[src.public_key]),
+            self.server.load_account(src.public_key),
             base_fee=settings.MAX_TRANSACTION_FEE_STROOPS
             or self.server.fetch_base_fee(),
             network_passphrase="Test SDF Network ; September 2015",
