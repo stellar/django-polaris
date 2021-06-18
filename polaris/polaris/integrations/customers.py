@@ -56,7 +56,17 @@ class CustomerIntegration:
         should be updated to ``pending_receiver``. Polaris will then call the
         ``execute_outgoing_transaction`` integration function for each updated transaction.
 
+        If the anchor requires verification of values passed in `params`, such as
+        ``mobile_number`` or ``email_address``, the anchor should initate the verification
+        process in this function and ensure the next call to ``GET /customer`` contains the
+        field requiring verification with a ``VERIFICATION_REQUIRED`` status. Unless the anchor
+        expects users to verify the field value in some other manner, such as opening a
+        confirmation link sent via email, client applications will eventually make a call to
+        ``PUT /customer/verification`` to return the verification codes sent as a result of the
+        initial call to ``PUT /customer``.
+
         :param params: request parameters as described in SEP-12_
+        :raises: ValueError or ObjectDoesNotExist
         """
         pass
 
@@ -94,7 +104,7 @@ class CustomerIntegration:
         """
         raise NotImplementedError()
 
-    def put_verification(self, account: str, params: Dict):
+    def put_verification(self, account: str, params: Dict) -> Dict:
         """
         .. _`endpoint specification`: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0012.md#customer-put-verification
 
@@ -120,8 +130,9 @@ class CustomerIntegration:
 
         If this function is not implemented, Polaris will respond with a 501 Not Implemented.
 
-        :param account:
-        :param params:
+        :param account: the Stellar account authenticated via SEP-10
+        :param params: the request body of the ``PUT /customer/verification`` call
+        :raises: ValueError, ObjectDoesNotExist, NotImplementedError
         """
         raise NotImplementedError()
 
