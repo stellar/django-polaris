@@ -470,14 +470,17 @@ class MyCustomerIntegration(CustomerIntegration):
                 "first_name": {
                     "description": "first name of the customer",
                     "type": "string",
+                    "status": "NOT_PROVIDED",
                 },
                 "last_name": {
                     "description": "last name of the customer",
                     "type": "string",
+                    "status": "NOT_PROVIDED",
                 },
                 "email_address": {
                     "description": "email address of the customer",
                     "type": "string",
+                    "status": "NOT_PROVIDED",
                 },
             },
         }
@@ -487,10 +490,12 @@ class MyCustomerIntegration(CustomerIntegration):
                 "bank_account_number": {
                     "description": "bank account number of the customer",
                     "type": "string",
+                    "status": "NOT_PROVIDED",
                 },
                 "bank_number": {
                     "description": "routing number of the customer",
                     "type": "string",
+                    "status": "NOT_PROVIDED",
                 },
             },
         }
@@ -500,22 +505,27 @@ class MyCustomerIntegration(CustomerIntegration):
                 "first_name": {
                     "description": "first name of the customer",
                     "type": "string",
+                    "status": "NOT_PROVIDED",
                 },
                 "last_name": {
                     "description": "last name of the customer",
                     "type": "string",
+                    "status": "NOT_PROVIDED",
                 },
                 "email_address": {
                     "description": "email address of the customer",
                     "type": "string",
+                    "status": "NOT_PROVIDED",
                 },
                 "bank_account_number": {
                     "description": "bank account number of the customer",
                     "type": "string",
+                    "status": "NOT_PROVIDED",
                 },
                 "bank_number": {
                     "description": "routing number of the customer",
                     "type": "string",
+                    "status": "NOT_PROVIDED",
                 },
             },
         }
@@ -545,10 +555,45 @@ class MyCustomerIntegration(CustomerIntegration):
                 )
 
         response_data = {"id": str(user.id)}
+        basic_info_accepted = {
+            "fields": {
+                "first_name": {
+                    "description": "first name of the customer",
+                    "type": "string",
+                    "status": "ACCEPTED",
+                },
+                "last_name": {
+                    "description": "last name of the customer",
+                    "type": "string",
+                    "status": "ACCEPTED",
+                },
+                "email": {
+                    "description": "email address of the customer",
+                    "type": "string",
+                    "status": "ACCEPTED",
+                },
+            }
+        }
         if (user.bank_number and user.bank_account_number) or (
             params.get("type") in ["sep6-deposit", "sep31-sender", "sep31-receiver"]
         ):
             response_data.update(self.accepted)
+            response_data.update(basic_info_accepted)
+            if user.bank_number and user.bank_account_number:
+                response_data["fields"].update(
+                    {
+                        "bank_account_number": {
+                            "description": "bank account number of the customer",
+                            "type": "string",
+                            "status": "ACCEPTED",
+                        },
+                        "bank_number": {
+                            "description": "routing number of the customer",
+                            "type": "string",
+                            "status": "ACCEPTED",
+                        },
+                    }
+                )
         elif params.get("type") in [None, "sep6-withdraw"]:
             response_data.update(self.needs_bank_info)
         else:
