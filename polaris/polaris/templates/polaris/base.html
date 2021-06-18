@@ -144,10 +144,13 @@
 
       // Amount symbol padding
       const amountInputElem = document.querySelector('.amount-input');
-      const icon = amountInputElem.previousElementSibling;
-      const iconWidthStr = getComputedStyle(icon).width;
-      const iconWidthFloat = parseFloat(iconWidthStr.replace(/px/, ''));
-      amountInputElem.style.paddingLeft = (iconWidthFloat + 2).toString() + 'px';
+      let icon, iconWidthStr, iconWidthFloat;
+      if (amountInputElem) {
+        icon = amountInputElem.previousElementSibling;
+        iconWidthStr = getComputedStyle(icon).width;
+        iconWidthFloat = parseFloat(iconWidthStr.replace(/px/, ''));
+        amountInputElem.style.paddingLeft = (iconWidthFloat + 2).toString() + 'px';
+      }
 
       // Disable form submit buttons after first click
       let submitButton = document.querySelector('.submit');
@@ -179,7 +182,8 @@
       if (amountInput) {
         feeTable.removeAttribute('hidden');
         amountInput.addEventListener("keyup", amountInputChange);
-        typeInput.addEventListener("input", amountInputChange);
+        if (typeInput)
+          typeInput.addEventListener("input", amountInputChange);
       }
 
       function calcFee(fee, amountIn) {

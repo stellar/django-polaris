@@ -56,7 +56,17 @@ class CustomerIntegration:
         should be updated to ``pending_receiver``. Polaris will then call the
         ``execute_outgoing_transaction`` integration function for each updated transaction.
 
+        If the anchor requires verification of values passed in `params`, such as
+        ``mobile_number`` or ``email_address``, the anchor should initate the verification
+        process in this function and ensure the next call to ``GET /customer`` contains the
+        field requiring verification with a ``VERIFICATION_REQUIRED`` status. Unless the anchor
+        expects users to verify the field value in some other manner, such as opening a
+        confirmation link sent via email, client applications will eventually make a call to
+        ``PUT /customer/verification`` to return the verification codes sent as a result of the
+        initial call to ``PUT /customer``.
+
         :param params: request parameters as described in SEP-12_
+        :raises: ValueError or ObjectDoesNotExist
         """
         pass
 
@@ -91,6 +101,38 @@ class CustomerIntegration:
 
         :param params: request parameters as described in SEP-12_
         :raises: ValueError or django.core.exceptions.ObjectDoesNotExist
+        """
+        raise NotImplementedError()
+
+    def put_verification(self, account: str, params: Dict) -> Dict:
+        """
+        .. _`endpoint specification`: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0012.md#customer-put-verification
+
+        Validate the values, typically verification codes, passed in `params` for the
+        customer identified by ``params["id"]``. See the `endpoint specification`_ for
+        more information on the request format.
+
+        Anchors may return fields from ``GET /customer`` requests with the
+        ``VERIFICATION_REQUIRED`` status if the anchor requires the user to verify a
+        SEP-9 field value provided in a previous call to ``PUT /customer``. The most
+        common field needing verification is `mobile_number`. This function will be
+        called when the client passes the verification value back to the anchor.
+
+        If the validation values are correct, return a dictionary that is identical to
+        what would be returned for a call to ``GET /customer``.
+
+        If any of the validation values are incorrect, raise a ``ValueError`` and
+        Polaris will raise a 400 Bad Request.
+
+        If the customer specified by ``params["id"]`` does not exist, or the authenticated
+        ``account`` does not match Stellar account associated with the ID, raise an
+        ``ObjectDoesNotExist`` exception. Polaris will return a 404 Not Found response.
+
+        If this function is not implemented, Polaris will respond with a 501 Not Implemented.
+
+        :param account: the Stellar account authenticated via SEP-10
+        :param params: the request body of the ``PUT /customer/verification`` call
+        :raises: ValueError, ObjectDoesNotExist, NotImplementedError
         """
         raise NotImplementedError()
 
