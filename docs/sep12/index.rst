@@ -53,3 +53,5 @@ Integrations
 .. autofunction:: polaris.integrations.CustomerIntegration.callback
 
 .. autofunction:: polaris.integrations.CustomerIntegration.more_info_url
+
+.. autofunction:: polaris.integrations.CustomerIntegration.put_verification
