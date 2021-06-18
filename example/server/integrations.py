@@ -567,7 +567,7 @@ class MyCustomerIntegration(CustomerIntegration):
                     "type": "string",
                     "status": "ACCEPTED",
                 },
-                "email": {
+                "email_address": {
                     "description": "email address of the customer",
                     "type": "string",
                     "status": "ACCEPTED",
@@ -596,6 +596,7 @@ class MyCustomerIntegration(CustomerIntegration):
                 )
         elif params.get("type") in [None, "sep6-withdraw"]:
             response_data.update(self.needs_bank_info)
+            response_data["fields"].update(basic_info_accepted["fields"])
         else:
             raise ValueError(_("invalid 'type'. see /info response for valid values."))
         return response_data
