@@ -805,3 +805,97 @@ def test_callback_reject_on_not_implemented_error():
     )
     assert response.status_code == 501
     assert response.json()["error"] == "not implemented"
+
+
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch("polaris.sep12.customer.rci.put_verification", mock_get_accepted)
+def test_verification_success():
+    client = APIClient()
+    response = client.put(
+        "/".join([endpoint, "verification"]),
+        data={"id": "123", "mobile_number_verification": 12345},
+    )
+    assert response.status_code == 200
+    assert response.json() == mock_get_accepted()
+
+
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch("polaris.sep12.customer.rci.put_verification")
+def test_verification_no_id(mock_put_verification):
+    client = APIClient()
+    response = client.put(
+        "/".join([endpoint, "verification"]), data={"mobile_number_verification": 12345}
+    )
+    assert response.status_code == 400
+    assert response.json() == {"error": "bad ID value, expected str"}
+    mock_put_verification.assert_not_called()
+
+
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch("polaris.sep12.customer.rci.put_verification")
+def test_verification_bad_id_type(mock_put_verification):
+    client = APIClient()
+    response = client.put(
+        "/".join([endpoint, "verification"]),
+        data=json.dumps({"id": 123, "mobile_number_verification": 12345}),
+        content_type="application/json",
+    )
+    assert response.status_code == 400
+    assert response.json() == {"error": "bad ID value, expected str"}
+    mock_put_verification.assert_not_called()
+
+
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch("polaris.sep12.customer.rci.put_verification")
+def test_verification_not_sep9_attr(mock_put_verification):
+    client = APIClient()
+    response = client.put(
+        "/".join([endpoint, "verification"]),
+        data={"id": "123", "notsep9_verification": 12345},
+    )
+    assert response.status_code == 400
+    assert response.json() == {
+        "error": "all request attributes other than 'id' must be a SEP-9 "
+        "field followed by '_verification'"
+    }
+    mock_put_verification.assert_not_called()
+
+
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch(
+    "polaris.sep12.customer.rci.put_verification", Mock(side_effect=ValueError("test"))
+)
+def test_verification_integration_value_error():
+    client = APIClient()
+    response = client.put(
+        "/".join([endpoint, "verification"]),
+        data={"id": "123", "mobile_number_verification": 12345},
+    )
+    assert response.status_code == 400
+    assert response.json() == {"error": "test"}
+
+
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch(
+    "polaris.sep12.customer.rci.put_verification",
+    Mock(side_effect=ObjectDoesNotExist()),
+)
+def test_verification_integration_customer_not_found():
+    client = APIClient()
+    response = client.put(
+        "/".join([endpoint, "verification"]),
+        data={"id": "123", "mobile_number_verification": 12345},
+    )
+    assert response.status_code == 404
+    assert response.json() == {"error": "customer not found"}
+
+
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_verification_integration_not_implemented():
+    client = APIClient()
+    response = client.put(
+        "/".join([endpoint, "verification"]),
+        data={"id": "123", "mobile_number_verification": 12345},
+    )
+    assert response.status_code == 501
+    assert response.json() == {"error": "not implemented"}

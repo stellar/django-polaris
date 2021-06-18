@@ -229,7 +229,7 @@ def put_verification(account: str, _client_domain: Optional[str], request) -> Re
     for key, value in request.data.items():
         if key == "id":
             continue
-        sep9_field, verification = key.split("_")
+        sep9_field, verification = key.rsplit("_", 1)
         if verification != "verification" or sep9_field not in SEP_9_FIELDS:
             return render_error_response(
                 _(
