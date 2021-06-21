@@ -141,6 +141,9 @@ def post_interactive_withdraw(request: Request) -> Response:
             )
             invalidate_session(request)
 
+            # ensure all changes from `after_form_validation()` have been saved to the db
+            transaction.refresh_from_db()
+
             # Add memo now that interactive flow is complete
             #
             # We use the transaction ID as a memo on the Stellar transaction for the
@@ -153,7 +156,6 @@ def post_interactive_withdraw(request: Request) -> Response:
             padded_hex_memo = "0" * (64 - len(transaction_id_hex)) + transaction_id_hex
             transaction.memo = memo_hex_to_base64(padded_hex_memo)
 
-            transaction.refresh_from_db()
             if transaction.status != transaction.STATUS.pending_anchor:
                 transaction.status = Transaction.STATUS.pending_user_transfer_start
             else:
