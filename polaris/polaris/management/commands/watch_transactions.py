@@ -85,6 +85,7 @@ class Command(BaseCommand):
                     receiving_anchor_account=account,
                     status=Transaction.STATUS.completed,
                 )
+                .filter(completed_at__isnull = False)
                 .order_by("-completed_at")
                 .first()
             )
