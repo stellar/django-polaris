@@ -17,7 +17,11 @@
     <form method="post" action="{{ post_url }}">
       {% csrf_token %}
 
-      {% for field in form %}
+      {% for hidden in form.hidden_fields %}
+      {{ hidden }}
+      {% endfor %}
+
+      {% for field in form.visible_fields %}
         <div class="field">
           <label>
             <div class="label">{{ field.label }}</div>
