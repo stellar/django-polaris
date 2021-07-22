@@ -208,9 +208,11 @@ Production
 ^^^^^^^^^^
 
 .. _gunicorn: https://gunicorn.org
+.. _example Nginx configuration: https://github.com/stellar/django-polaris/tree/master/example/nginx-letsencrypt.conf
 
 Polaris should only be deployed using HTTPS in production. You should do this
-by using a HTTPS web server or running Polaris behind a HTTPS reverse proxy.
+by using a HTTPS web server or running Polaris behind a HTTPS reverse proxy
+(see `example Nginx configuration`_).
 The steps below outline the settings necessary to ensure your deployment is
 secure.
 
