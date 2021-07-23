@@ -257,7 +257,6 @@ class SEP10Auth(APIView):
 
         See: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.md#token
         """
-        issued_at = time.time()
         transaction_envelope, source_account, _ = read_challenge_transaction(
             challenge_transaction=envelope_xdr,
             server_account_id=settings.SIGNING_KEY,
@@ -268,6 +267,10 @@ class SEP10Auth(APIView):
         logger.info(
             f"Challenge verified, generating SEP-10 token for account {source_account}"
         )
+        # set iat value to minimum timebound of the challenge so that the JWT returned
+        # for a given challenge is always the same.
+        # https://github.com/stellar/stellar-protocol/pull/982
+        issued_at = transaction_envelope.transaction.time_bounds.min_time
         jwt_dict = {
             "iss": os.path.join(settings.HOST_URL, "auth"),
             "sub": source_account,
