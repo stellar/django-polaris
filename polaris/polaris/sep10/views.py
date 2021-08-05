@@ -188,7 +188,7 @@ class SEP10Auth(APIView):
                 web_auth_domain=urlparse(settings.HOST_URL).netloc,
                 network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
             )
-        except InvalidSep10ChallengeError as e:
+        except (InvalidSep10ChallengeError, TypeError) as e:
             return None, render_error_response(generic_err_msg % (str(e)))
 
         client_domain = None
