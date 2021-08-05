@@ -139,7 +139,6 @@ def post_interactive_deposit(request: Request) -> Response:
                 asset.significant_decimals,
             )
             transaction.save()
-            print(transaction.amount_in, transaction.amount_fee, transaction.amount_out)
 
         rdi.after_form_validation(form, transaction)
         next_form = rdi.form_for_transaction(transaction)
