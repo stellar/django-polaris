@@ -330,6 +330,7 @@ def get_interactive_withdraw(request: Request) -> Response:
         operation=settings.OPERATION_WITHDRAWAL,
         asset=asset,
         use_fee_endpoint=registered_fee_func != calculate_fee,
+        additive_fees_enabled=settings.ADDITIVE_FEES_ENABLED,
     )
 
     return Response(content, template_name="polaris/withdraw.html")
