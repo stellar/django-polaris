@@ -42,13 +42,13 @@ class PolarisConfig(AppConfig):
                 "insecure and should only be used for local development."
             )
         if getattr(django_settings, "SECURE_PROXY_SSL_HEADER"):
-            logger.warning(
+            logger.debug(
                 "SECURE_PROXY_SSL_HEADER should only be set if Polaris is "
                 "running behind an HTTPS reverse proxy."
             )
         elif not (
             settings.LOCAL_MODE or getattr(django_settings, "SECURE_SSL_REDIRECT")
         ):
-            logger.warning(
+            logger.debug(
                 "SECURE_SSL_REDIRECT is required to redirect HTTP traffic to HTTPS"
             )
