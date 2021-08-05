@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gettext-tools 0.18.3\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2021-08-05 23:23+0000\n"
+"POT-Creation-Date: 2021-08-05 23:31+0000\n"
 "PO-Revision-Date: 2014-01-07 15:19+0900\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -573,47 +573,3 @@ msgstr "tipo inválido para %s, precisa ser um objeto"
 #| msgid "missing %{field}s in %{category}s"
 msgid "missing %(field)s in %(category)s"
 msgstr "%{field}s faltando em %{category}s"
-
-#~ msgid "An exception was raised validating GET /customer response"
-#~ msgstr "Exception raised ao validar GET /customer"
-
-#, fuzzy
-#~| msgid "An exception was raised validating GET /customer response"
-#~ msgid ""
-#~ "An exception was raised validating PUT /customer/verification response"
-#~ msgstr "Exception raised ao validar GET /customer"
-
-#~ msgid "unable to identify a user without 'id' or 'account'"
-#~ msgstr "não é possível identificar um usuário sem 'id' ou 'account'"
-
-#, fuzzy
-#~| msgid "invalid 'memo' for 'memo_type'"
-#~ msgid "missing 'memo' for 'memo_type'"
-#~ msgstr "`memo` inválido para o `memo_type`"
-
-#~ msgid "Missing id parameter in URL"
-#~ msgstr "O parâmetro id está faltando na URL"
-
-#, fuzzy
-#~| msgid "invalid 'account'"
-#~ msgid "Invalid 'amount'"
-#~ msgstr "'amount' inválido"
-
-#~ msgid "`memo` parameter is not supported"
-#~ msgstr "parâmetro `memo` não suportado"
-
-#, python-format
-#~ msgid "unsupported asset type: %s"
-#~ msgstr "Tipo de ativo não suportado: %s"
-
-#~ msgid "PATCH requests must include a transaction ID in the URI"
-#~ msgstr "Requisições PATCH devem incluir transaction ID na URI"
-
-#~ msgid "Multisig transaction's envelope was not signed by channel account"
-#~ msgstr ""
-#~ "O envelope da transação multisig não foi assinado pela conta channel"
-
-#, fuzzy
-#~| msgid "Missing id parameter in URL"
-#~ msgid "missing 'id' parameter"
-#~ msgstr "O parâmetro id está faltando na URL"
