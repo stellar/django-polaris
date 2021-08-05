@@ -115,6 +115,8 @@ def test_interactive_withdraw_success(client):
         sep24_enabled=True,
         withdrawal_enabled=True,
         distribution_seed=Keypair.random().secret,
+        withdrawal_fee_fixed=1,
+        withdrawal_fee_percent=2,
     )
     withdraw = Transaction.objects.create(
         asset=usd, kind=Transaction.KIND.withdrawal, protocol=Transaction.PROTOCOL.sep24
@@ -154,6 +156,64 @@ def test_interactive_withdraw_success(client):
 
     withdraw.refresh_from_db()
     assert withdraw.status == Transaction.STATUS.pending_user_transfer_start
+    assert withdraw.amount_in == 200
+    assert withdraw.amount_fee == 5
+    assert withdraw.amount_out == 195
+
+
+@pytest.mark.django_db
+@patch("polaris.sep24.withdraw.settings.ADDITIVE_FEES_ENABLED", True)
+def test_interactive_withdraw_success_additive_fees(client):
+    usd = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        sep24_enabled=True,
+        withdrawal_enabled=True,
+        distribution_seed=Keypair.random().secret,
+        withdrawal_fee_fixed=1,
+        withdrawal_fee_percent=2,
+    )
+    withdraw = Transaction.objects.create(
+        asset=usd, kind=Transaction.KIND.withdrawal, protocol=Transaction.PROTOCOL.sep24
+    )
+
+    payload = interactive_jwt_payload(withdraw, "withdraw")
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode(
+        "ascii"
+    )
+
+    response = client.get(
+        f"{WEBAPP_PATH}"
+        f"?token={token}"
+        f"&transaction_id={withdraw.id}"
+        f"&asset_code={withdraw.asset.code}"
+    )
+    assert response.status_code == 200
+    assert client.session["authenticated"] is True
+
+    response = client.get(
+        f"{WEBAPP_PATH}"
+        f"?token={token}"
+        f"&transaction_id={withdraw.id}"
+        f"&asset_code={withdraw.asset.code}"
+    )
+    assert response.status_code == 403
+    assert "Unexpected one-time auth token" in str(response.content)
+
+    response = client.post(
+        f"{WEBAPP_PATH}/submit"
+        f"?transaction_id={withdraw.id}"
+        f"&asset_code={withdraw.asset.code}",
+        {"amount": 200.0},
+    )
+    assert response.status_code == 302
+    assert client.session["authenticated"] is False
+
+    withdraw.refresh_from_db()
+    assert withdraw.status == Transaction.STATUS.pending_user_transfer_start
+    assert withdraw.amount_in == 205
+    assert withdraw.amount_fee == 5
+    assert withdraw.amount_out == 200
 
 
 @pytest.mark.django_db

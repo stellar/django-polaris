@@ -160,7 +160,10 @@ class Command(BaseCommand):
                             continue
                     else:
                         transaction.amount_fee = Decimal(0)
-                transaction.amount_out = transaction.amount_in - transaction.amount_fee
+                transaction.amount_out = round(
+                    transaction.amount_in - transaction.amount_fee,
+                    transaction.asset.significant_decimals,
+                )
                 # Anchors can mark transactions as pending_external if the transfer
                 # cannot be completed immediately due to external processing.
                 # poll_outgoing_transactions will check on these transfers and mark them

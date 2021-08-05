@@ -248,6 +248,13 @@ SEP6_USE_MORE_INFO_URL
 
     Ex. ``SEP6_USE_MORE_INFO_URL=1``, ``SEP6_USE_MORE_INFO_URL=True``
 
+ADDITIVE_FEES_ENABLED
+    A boolean value indicating whether or not fee amounts returned from the registered fee function should be added to ``Transaction.amount_in``, the amount the user should send to the anchor. Only used for SEP-24 transactions, specifically when a ``TransactionForm`` is submitted. If this functionality is desired for SEP-6 or SEP-31 transactions, the anchor can implement the logic themselves in the provided integration functions.
+
+    Defaults to ``False``. By default, fees are subtracted from the amount initially specified by the client application or user.
+
+    Ex. ``ADDITIVE_FEES_ENABLED=1``, ``ADDITIVE_FEES_ENABLED=True``
+
 Endpoints
 ^^^^^^^^^
 

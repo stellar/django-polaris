@@ -209,19 +209,6 @@ class MyDepositIntegration(DepositIntegration):
                 f"KYCForm was not served first for unknown account, id: "
                 f"{transaction.stellar_account}"
             )
-        if isinstance(form, TransactionForm):
-            transaction.amount_fee = calculate_fee(
-                {
-                    "amount": form.cleaned_data["amount"],
-                    "operation": transaction.kind,
-                    "asset_code": transaction.asset.code,
-                }
-            )
-            transaction.amount_out = round(
-                form.cleaned_data["amount"] - transaction.amount_fee,
-                transaction.asset.significant_decimals,
-            )
-            transaction.save()
 
     def process_sep6_request(self, params: Dict, transaction: Transaction) -> Dict:
         account = (
@@ -355,19 +342,6 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
                 f"KYCForm was not served first for unknown account, id: "
                 f"{transaction.stellar_account}"
             )
-        if isinstance(form, TransactionForm):
-            transaction.amount_fee = calculate_fee(
-                {
-                    "amount": form.cleaned_data["amount"],
-                    "operation": "withdraw",
-                    "asset_code": transaction.asset.code,
-                }
-            )
-            transaction.amount_out = round(
-                form.cleaned_data["amount"] - transaction.amount_fee,
-                transaction.asset.significant_decimals,
-            )
-            transaction.save()
 
     def process_sep6_request(self, params: Dict, transaction: Transaction) -> Dict:
         account = (
@@ -786,13 +760,14 @@ class MyRailsIntegration(RailsIntegration):
                 if not deposit.amount_in:
                     deposit.amount_in = Decimal(103)
 
-                deposit.amount_fee = calculate_fee(
-                    {
-                        "amount": deposit.amount_in,
-                        "operation": settings.OPERATION_DEPOSIT,
-                        "asset_code": deposit.asset.code,
-                    }
-                )
+                if bank_deposit.amount != deposit.amount_in or not deposit.amount_fee:
+                    deposit.amount_fee = calculate_fee(
+                        {
+                            "amount": deposit.amount_in,
+                            "operation": settings.OPERATION_DEPOSIT,
+                            "asset_code": deposit.asset.code,
+                        }
+                    )
                 deposit.amount_out = round(
                     deposit.amount_in - deposit.amount_fee,
                     deposit.asset.significant_decimals,
@@ -842,13 +817,14 @@ class MyRailsIntegration(RailsIntegration):
             operation = settings.OPERATION_WITHDRAWAL
         else:
             operation = Transaction.KIND.send
-        transaction.amount_fee = calculate_fee(
-            {
-                "amount": transaction.amount_in,
-                "operation": operation,
-                "asset_code": transaction.asset.code,
-            }
-        )
+        if not transaction.amount_fee:
+            transaction.amount_fee = calculate_fee(
+                {
+                    "amount": transaction.amount_in,
+                    "operation": operation,
+                    "asset_code": transaction.asset.code,
+                }
+            )
         transaction.amount_out = round(
             transaction.amount_in - transaction.amount_fee,
             transaction.asset.significant_decimals,

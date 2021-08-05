@@ -122,6 +122,10 @@ SEP10_CLIENT_ATTRIBUTION_DENYLIST = env_or_settings(
     "SEP10_CLIENT_ATTRIBUTION_DENYLIST", list=True, required=False
 )
 
+ADDITIVE_FEES_ENABLED = (
+    env_or_settings("ADDITIVE_FEES_ENABLED", bool=True, required=False) or False
+)
+
 # Constants
 OPERATION_DEPOSIT = "deposit"
 OPERATION_WITHDRAWAL = "withdraw"
