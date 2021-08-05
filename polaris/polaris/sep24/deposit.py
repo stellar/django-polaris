@@ -199,6 +199,7 @@ def post_interactive_deposit(request: Request) -> Response:
             operation=settings.OPERATION_DEPOSIT,
             asset=asset,
             use_fee_endpoint=registered_fee_func != calculate_fee,
+            additive_fees_enabled=settings.ADDITIVE_FEES_ENABLED,
         )
         return Response(content, template_name="polaris/deposit.html", status=400)
 
