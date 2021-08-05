@@ -7,7 +7,6 @@ from decimal import Decimal, DecimalException
 from urllib.parse import urlencode
 
 from django.urls import reverse
-from django.core.exceptions import ValidationError
 from django.shortcuts import redirect
 from django.views.decorators.clickjacking import xframe_options_exempt
 from django.utils.translation import gettext as _
@@ -125,7 +124,22 @@ def post_interactive_deposit(request: Request) -> Response:
     if form.is_valid():
         if issubclass(form.__class__, TransactionForm):
             transaction.amount_in = form.cleaned_data["amount"]
+            transaction.amount_fee = registered_fee_func(
+                {
+                    "amount": transaction.amount_in,
+                    "type": form.cleaned_data.get("type"),
+                    "operation": settings.OPERATION_DEPOSIT,
+                    "asset_code": asset.code,
+                }
+            )
+            if settings.ADDITIVE_FEES_ENABLED:
+                transaction.amount_in += transaction.amount_fee
+            transaction.amount_out = round(
+                transaction.amount_in - transaction.amount_fee,
+                asset.significant_decimals,
+            )
             transaction.save()
+            print(transaction.amount_in, transaction.amount_fee, transaction.amount_out)
 
         rdi.after_form_validation(form, transaction)
         next_form = rdi.form_for_transaction(transaction)
@@ -303,6 +317,7 @@ def get_interactive_deposit(request: Request) -> Response:
         asset=asset,
         use_fee_endpoint=registered_fee_func != calculate_fee,
         org_logo_url=toml_data.get("DOCUMENTATION", {}).get("ORG_LOGO"),
+        additive_fees_enabled=settings.ADDITIVE_FEES_ENABLED,
     )
 
     return Response(content, template_name="polaris/deposit.html")

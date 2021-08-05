@@ -45,13 +45,13 @@ class RailsIntegration:
         You could also refund a portion of the amount and continue processing the
         remaining amount. In this case, the ``transaction.status`` column should be
         assigned one of the expected statuses for this function, mentioned below, and
-        the ``amount_in`` field should be reassigned the value the anchor is accepted.
+        the ``amount_in`` field should be reassigned the value the anchor accepted.
 
         If the funds transferred to the user become available in the user's off-chain
-        account immediately, update ``Transaction.status`` to
-        ``Transaction.STATUS.completed``. If the transfer was simply initiated and is
-        pending external systems, update the status to
-        ``Transaction.STATUS.pending_external``.
+        account immediately, or the anchor cannot verify when funds have become available,
+        update ``Transaction.status`` to ``Transaction.STATUS.completed``. If the
+        transfer was simply initiated and is pending external systems, update the status
+        to ``Transaction.STATUS.pending_external``.
 
         If an exception is raised, the transaction will be left in
         its current status and may be used again as a parameter to this function.
@@ -65,7 +65,7 @@ class RailsIntegration:
         ``Transaction.required_info_update`` column. The JSON string should be in the
         format returned from ``SEP31ReceiverIntegration.info()``. You can also
         optionally save a human-readable message to
-        ``Transaction.required_info_message``. Both fields will included in the
+        ``Transaction.required_info_message``. Both fields will be included in the
         `/transaction` response requested by the sending anchor.
 
         If the SEP-31 transaction is waiting for an update, the sending anchor will

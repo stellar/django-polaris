@@ -170,6 +170,7 @@
       let amountOutTag = document.querySelector('.amount-out');
       let feeTable = document.querySelector('.fee-table');
       let op = "{{ operation }}";
+      let additiveFeesEnabled = "{{ additive_fees_enabled }}" === "True";
       let fee_fixed;
       let fee_percent;
       if (op === "deposit") {
@@ -186,22 +187,22 @@
           typeInput.addEventListener("input", amountInputChange);
       }
 
-      function calcFee(fee, amountIn) {
+      function getFeeTableStrings(fee, amountIn) {
         /*
-         * Calculates the fee based on the amount entered and returns the strings
+         * Calculates the total based on the amount entered and returns the strings
          * to be rendered in the fee table.
          */
         let feeStr;
-        let amountOutStr;
+        let totalStr;
         if (Number(amountIn) !== 0) {
-          let amountOut = amountIn - fee;
+          let total = additiveFeesEnabled ? amountIn + fee : amountIn - fee;
           feeStr = fee.toFixed({{ asset.significant_decimals }});
-          amountOutStr = amountOut.toFixed({{ asset.significant_decimals }});
+          totalStr = total.toFixed({{ asset.significant_decimals }});
         } else {
           feeStr = "0";
-          amountOutStr = "0";
+          totalStr = additiveFeesEnabled ? amountIn.toFixed({{ asset.significant_decimals }}) : "0";
         }
-        return [feeStr, amountOutStr];
+        return [feeStr, totalStr];
       }
 
       function updateFeeTableHtml(feeStr, amountOutStr) {
@@ -238,8 +239,8 @@
             response => response.json()
           ).then(json => {
             if (!json.error) {
-              let [feeStr, amountOutStr] = calcFee(json.fee, amount);
-              updateFeeTableHtml(feeStr, amountOutStr);
+              let [feeStr, totalStr] = getFeeTableStrings(json.fee, amount);
+              updateFeeTableHtml(feeStr, totalStr);
             }
           });
         }, 500);
@@ -255,7 +256,7 @@
         let amountIn = Number(amountInput.value);
         if ("{{ use_fee_endpoint }}" !== "True") {
           let fee = fee_fixed + (amountIn * (fee_percent/100));
-          let [feeStr, amountOutStr] = calcFee(fee, amountIn);
+          let [feeStr, amountOutStr] = getFeeTableStrings(fee, amountIn);
           updateFeeTableHtml(feeStr, amountOutStr);
         } else {
           callFeeEndpoint(amountIn);

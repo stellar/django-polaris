@@ -190,8 +190,11 @@ class DepositIntegration:
         data in a model not used by Polaris.
 
         Keep in mind that if a ``TransactionForm`` is submitted, Polaris will
-        update the ``Transaction.amount_in`` field with the information collected.
-        There is no need to implement that yourself.
+        update the ``Transaction.amount_in``, ``Transaction.amount_fee``, and
+        ``Transaction.amount_out`` fields with the information collected. There is no
+        need to implement that yourself here. However, not that if the amount
+        ultimately delivered to the anchor does not match the amount specified in
+        the form, the these attributes must be updated appropriately.
 
         If `form` is the last form to be served to the user, Polaris will update the
         transaction status to ``pending_user_transfer_start``, indicating that the
