@@ -259,7 +259,7 @@ def put_verification(account: str, _client_domain: Optional[str], request) -> Re
 
 
 def validate_response_data(data: Dict):
-    attrs = ["fields", "id", "message", "status"]
+    attrs = ["fields", "id", "message", "status", "provided_fields"]
     if not data:
         raise ValueError("empty response from SEP-12 get() integration")
     elif any(f not in attrs for f in data):
@@ -272,15 +272,24 @@ def validate_response_data(data: Dict):
     accepted_statuses = ["ACCEPTED", "PROCESSING", "NEEDS_INFO", "REJECTED"]
     if not data.get("status") or data.get("status") not in accepted_statuses:
         raise ValueError("invalid status in SEP-12 GET /customer response")
+    elif (
+        any([f.get("optional") is False for f in data.get("fields", {}).values()])
+        and data.get("status") == "ACCEPTED"
+    ):
+        raise ValueError(
+            "all required 'fields' must be provided before a customer can be 'ACCEPTED'"
+        )
     if data.get("fields"):
         validate_fields(data.get("fields"))
+    if data.get("provided_fields"):
+        validate_fields(data.get("provided_fields"), provided=True)
     if data.get("message") and not isinstance(data["message"], str):
         raise ValueError(
             "invalid message value in SEP-12 GET /customer response, should be str"
         )
 
 
-def validate_fields(fields: Dict):
+def validate_fields(fields: Dict, provided=False):
     if not isinstance(fields, Dict):
         raise ValueError(
             "invalid fields type in SEP-12 GET /customer response, should be dict"
@@ -299,39 +308,52 @@ def validate_fields(fields: Dict):
     accepted_statuses = [
         "ACCEPTED",
         "PROCESSING",
-        "NOT_PROVIDED",
         "REJECTED",
         "VERIFICATION_REQUIRED",
     ]
     for key, value in fields.items():
         if not set(value.keys()).issubset(set(accepted_field_attrs)):
             raise ValueError(
-                f"unexpected attribute in {key} object in SEP-12 GET /customer response, "
+                f"unexpected attribute in '{key}' object in SEP-12 GET /customer response, "
                 f"accepted values: {', '.join(accepted_field_attrs)}"
             )
         if not value.get("type") or value.get("type") not in accepted_types:
             raise ValueError(
-                f"bad type value for {key} in SEP-12 GET /customer response"
+                f"bad type value for '{key}' in SEP-12 GET /customer response"
             )
         elif not (
             value.get("description") and isinstance(value.get("description"), str)
         ):
             raise ValueError(
-                f"bad description value for {key} in SEP-12 GET /customer response"
+                f"bad description value for '{key}' in SEP-12 GET /customer response"
             )
         elif value.get("choices") and not isinstance(value.get("choices"), list):
             raise ValueError(
-                f"bad choices value for {key} in SEP-12 GET /customer response"
+                f"bad choices value for '{key}' in SEP-12 GET /customer response"
             )
         elif value.get("optional") and not isinstance(value.get("optional"), bool):
             raise ValueError(
-                f"bad optional value for {key} in SEP-12 GET /customer response"
+                f"bad optional value for '{key}' in SEP-12 GET /customer response"
             )
-        elif value.get("status") and value.get("status") not in accepted_statuses:
+        elif not provided and value.get("status"):
             raise ValueError(
-                f"bad field status value for {key} in SEP-12 GET /customer response"
+                f"'{key}' object in 'fields' object cannot have a 'status' property"
             )
-        elif value.get("error") and not isinstance(value.get("error"), str):
+        elif (
+            provided
+            and value.get("status")
+            and value.get("status") not in accepted_statuses
+        ):
             raise ValueError(
-                f"bad error value for {key} in SEP-12 GET /customer response"
+                f"bad field status value for '{key}' in SEP-12 GET /customer response"
+            )
+        elif not provided and value.get("error"):
+            raise ValueError(
+                f"'{key}' object in 'fields' object cannot have 'error' property"
+            )
+        elif (
+            provided and value.get("error") and not isinstance(value.get("error"), str)
+        ):
+            raise ValueError(
+                f"bad error value for '{key}' in SEP-12 GET /customer response"
             )

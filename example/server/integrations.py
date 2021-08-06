@@ -216,20 +216,22 @@ class MyDepositIntegration(DepositIntegration):
             .select_related("user")
             .first()
         )
-        info_needed_resp = {
-            "type": "non_interactive_customer_info_needed",
-            "fields": [
-                "first_name",
-                "last_name",
-                "email_address",
-                "bank_number",
-                "bank_account_number",
-            ],
-        }
         if not account:
-            return info_needed_resp
+            return {
+                "type": "non_interactive_customer_info_needed",
+                "fields": [
+                    "first_name",
+                    "last_name",
+                    "email_address",
+                    "bank_number",
+                    "bank_account_number",
+                ],
+            }
         elif not (account.user.bank_account_number and account.user.bank_number):
-            return info_needed_resp
+            return {
+                "type": "non_interactive_customer_info_needed",
+                "fields": ["bank_number", "bank_account_number",],
+            }
         elif params["type"] != "bank_account":
             raise ValueError(_("'type' must be 'bank_account'"))
         elif not account.confirmed:
@@ -353,32 +355,28 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
             .select_related("user")
             .first()
         )
-        info_needed_resp = {
-            "type": "non_interactive_customer_info_needed",
-            "fields": [
-                "first_name",
-                "last_name",
-                "email_address",
-                "bank_number",
-                "bank_account_number",
-            ],
-        }
         if not account:
-            return info_needed_resp
+            return {
+                "type": "non_interactive_customer_info_needed",
+                "fields": [
+                    "first_name",
+                    "last_name",
+                    "email_address",
+                    "bank_number",
+                    "bank_account_number",
+                ],
+            }
         elif not (account.user.bank_account_number and account.user.bank_number):
-            return info_needed_resp
+            return {
+                "type": "non_interactive_customer_info_needed",
+                "fields": ["bank_number", "bank_account_number",],
+            }
         elif params["type"] != "bank_account":
             raise ValueError(_("'type' must be 'bank_account'"))
         elif not params["dest"]:
             raise ValueError(_("'dest' is required"))
         elif not params["dest_extra"]:
             raise ValueError(_("'dest_extra' is required"))
-        elif params["dest"] != account.user.bank_account_number:
-            raise ValueError(_("'dest' must match bank account number for account"))
-        elif params["dest_extra"] != account.user.bank_number:
-            raise ValueError(
-                _("'dest_extra' must match bank routing number for account")
-            )
         elif not account.confirmed:
             # Here is where you would normally return something like this:
             # {
@@ -444,17 +442,14 @@ class MyCustomerIntegration(CustomerIntegration):
                 "first_name": {
                     "description": "first name of the customer",
                     "type": "string",
-                    "status": "NOT_PROVIDED",
                 },
                 "last_name": {
                     "description": "last name of the customer",
                     "type": "string",
-                    "status": "NOT_PROVIDED",
                 },
                 "email_address": {
                     "description": "email address of the customer",
                     "type": "string",
-                    "status": "NOT_PROVIDED",
                 },
             },
         }
@@ -464,12 +459,10 @@ class MyCustomerIntegration(CustomerIntegration):
                 "bank_account_number": {
                     "description": "bank account number of the customer",
                     "type": "string",
-                    "status": "NOT_PROVIDED",
                 },
                 "bank_number": {
                     "description": "routing number of the customer",
                     "type": "string",
-                    "status": "NOT_PROVIDED",
                 },
             },
         }
@@ -479,27 +472,22 @@ class MyCustomerIntegration(CustomerIntegration):
                 "first_name": {
                     "description": "first name of the customer",
                     "type": "string",
-                    "status": "NOT_PROVIDED",
                 },
                 "last_name": {
                     "description": "last name of the customer",
                     "type": "string",
-                    "status": "NOT_PROVIDED",
                 },
                 "email_address": {
                     "description": "email address of the customer",
                     "type": "string",
-                    "status": "NOT_PROVIDED",
                 },
                 "bank_account_number": {
                     "description": "bank account number of the customer",
                     "type": "string",
-                    "status": "NOT_PROVIDED",
                 },
                 "bank_number": {
                     "description": "routing number of the customer",
                     "type": "string",
-                    "status": "NOT_PROVIDED",
                 },
             },
         }
@@ -530,7 +518,7 @@ class MyCustomerIntegration(CustomerIntegration):
 
         response_data = {"id": str(user.id)}
         basic_info_accepted = {
-            "fields": {
+            "provided_fields": {
                 "first_name": {
                     "description": "first name of the customer",
                     "type": "string",
@@ -554,7 +542,7 @@ class MyCustomerIntegration(CustomerIntegration):
             response_data.update(self.accepted)
             response_data.update(basic_info_accepted)
             if user.bank_number and user.bank_account_number:
-                response_data["fields"].update(
+                response_data["provided_fields"].update(
                     {
                         "bank_account_number": {
                             "description": "bank account number of the customer",
@@ -569,8 +557,8 @@ class MyCustomerIntegration(CustomerIntegration):
                     }
                 )
         elif params.get("type") in [None, "sep6-withdraw"]:
+            response_data.update(basic_info_accepted)
             response_data.update(self.needs_bank_info)
-            response_data["fields"].update(basic_info_accepted["fields"])
         else:
             raise ValueError(_("invalid 'type'. see /info response for valid values."))
         return response_data
