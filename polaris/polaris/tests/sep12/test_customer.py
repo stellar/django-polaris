@@ -439,7 +439,31 @@ def test_no_description_needs_info(client):
     ),
 )
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-def test_get_valid_field_status(client):
+def test_get_fields_status(client):
+    response = client.get(
+        endpoint + "?" + urlencode({"account": "test source address"})
+    )
+    assert response.status_code == 500
+
+
+@patch(
+    "polaris.sep12.customer.rci.get",
+    Mock(
+        return_value={
+            "status": "NEEDS_INFO",
+            "fields": {"email_address": {"type": "string", "description": "test",}},
+            "provided_fields": {
+                "first_name": {
+                    "type": "string",
+                    "description": "first name",
+                    "status": "ACCEPTED",
+                }
+            },
+        }
+    ),
+)
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_get_provided_fields_status(client):
     response = client.get(
         endpoint + "?" + urlencode({"account": "test source address"})
     )
@@ -451,10 +475,11 @@ def test_get_valid_field_status(client):
     Mock(
         return_value={
             "status": "NEEDS_INFO",
-            "fields": {
-                "email_address": {
+            "fields": {"email_address": {"type": "string", "description": "test",}},
+            "provided_fields": {
+                "first_name": {
                     "type": "string",
-                    "description": "test",
+                    "description": "first name",
                     "status": "invalid",
                 }
             },
@@ -475,7 +500,11 @@ def test_get_invalid_field_status(client):
         return_value={
             "status": "NEEDS_INFO",
             "fields": {
-                "email_address": {"type": "string", "description": "test", "error": 1}
+                "email_address": {
+                    "type": "string",
+                    "description": "test",
+                    "error": "test error message",
+                }
             },
         }
     ),
@@ -493,10 +522,12 @@ def test_get_bad_error_value(client):
     Mock(
         return_value={
             "status": "NEEDS_INFO",
-            "fields": {
-                "email_address": {
+            "fields": {"email_address": {"type": "string", "description": "test",}},
+            "provided_fields": {
+                "first_name": {
                     "type": "string",
-                    "description": "test",
+                    "description": "first name",
+                    "status": "REJECTED",
                     "error": "test error message",
                 }
             },
