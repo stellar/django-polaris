@@ -20,12 +20,6 @@ from .views import all_fields_form_view, confirm_email, skip_confirm_email, log_
 
 
 urlpatterns = [
-    path(
-        "admin/login/",
-        views.LoginView.as_view(template_name="readonly_login.html"),
-        name="login",
-    ),
-    path("admin/", admin.site.urls),
     path("all-fields", all_fields_form_view),
     path("confirm_email", confirm_email, name="confirm_email"),
     path("skip_confirm_email", skip_confirm_email, name="skip_confirm_email"),
