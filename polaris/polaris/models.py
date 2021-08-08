@@ -363,7 +363,7 @@ class Transaction(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     """Unique, anchor-generated id for the deposit/withdrawal."""
 
-    paging_token = models.TextField(null=True)
+    paging_token = models.TextField(null=True, blank=True)
     """The token to be used as a cursor for querying before or after this transaction"""
 
     stellar_account = models.TextField(validators=[MinLengthValidator(1)])
