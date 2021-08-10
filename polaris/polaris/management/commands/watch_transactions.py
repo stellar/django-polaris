@@ -1,5 +1,6 @@
 """This module defines custom management commands for the app admin."""
 import asyncio
+from asgiref.sync import sync_to_async
 from typing import Dict, Optional, Union, List, Tuple
 from decimal import Decimal
 from base64 import b64decode
@@ -58,11 +59,11 @@ class Command(BaseCommand):
             raise e
 
     async def watch_transactions(self):  # pragma: no cover
+        assets = await sync_to_async(list)(
+            Asset.objects.exclude(distribution_seed__isnull=True)
+        )
         await asyncio.gather(
-            *[
-                self._for_account(asset.distribution_account)
-                for asset in Asset.objects.exclude(distribution_seed__isnull=True)
-            ]
+            *[self._for_account(asset.distribution_account) for asset in assets]
         )
 
     async def _for_account(self, account: str):
@@ -79,15 +80,15 @@ class Command(BaseCommand):
                 raise RuntimeError(
                     "Stellar distribution account does not exist in horizon"
                 )
-            last_completed_transaction = (
+            last_completed_transaction = await sync_to_async(
                 Transaction.objects.filter(
                     Q(kind=Transaction.KIND.withdrawal) | Q(kind=Transaction.KIND.send),
                     receiving_anchor_account=account,
                     status=Transaction.STATUS.completed,
                 )
                 .order_by("-completed_at")
-                .first()
-            )
+                .first
+            )()
 
             cursor = "0"
             if last_completed_transaction:
@@ -98,10 +99,10 @@ class Command(BaseCommand):
             )
             endpoint = server.transactions().for_account(account).cursor(cursor)
             async for response in endpoint.stream():
-                self.process_response(response, account)
+                await self.process_response(response, account)
 
     @classmethod
-    def process_response(cls, response, account):
+    async def process_response(cls, response, account):
         # We should not match valid pending transactions with ones that were
         # unsuccessful on the stellar network. If they were unsuccessful, the
         # client is also aware of the failure and will likely attempt to
@@ -126,9 +127,15 @@ class Command(BaseCommand):
         send_filters = Q(
             status=Transaction.STATUS.pending_sender, kind=Transaction.KIND.send,
         )
-        transactions = Transaction.objects.filter(
-            withdraw_filters | send_filters, memo=memo, receiving_anchor_account=account
-        ).all()
+        transactions = await sync_to_async(list)(
+            Transaction.objects.filter(
+                withdraw_filters | send_filters,
+                memo=memo,
+                receiving_anchor_account=account,
+            )
+            .select_related("asset")
+            .all()
+        )
         if not transactions:
             logger.info(f"No match found for stellar transaction {response['id']}")
             return
@@ -154,7 +161,7 @@ class Command(BaseCommand):
             envelope_xdr, network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
         ).transaction
 
-        payment_data = cls._find_matching_payment_data(
+        payment_data = await cls._find_matching_payment_data(
             response, horion_tx, op_results, transaction
         )
         if not payment_data:
@@ -173,16 +180,16 @@ class Command(BaseCommand):
         if transaction.protocol == Transaction.PROTOCOL.sep31:
             # SEP-31 uses 'pending_receiver' status
             transaction.status = Transaction.STATUS.pending_receiver
-            transaction.save()
+            await sync_to_async(transaction.save)()
         else:
             # SEP-6 and 24 uses 'pending_anchor' status
             transaction.status = Transaction.STATUS.pending_anchor
-            transaction.save()
+            await sync_to_async(transaction.save)()
         maybe_make_callback(transaction)
         return
 
     @classmethod
-    def _find_matching_payment_data(
+    async def _find_matching_payment_data(
         cls,
         response: Dict,
         horizon_tx: HorizonTransaction,
@@ -199,7 +206,7 @@ class Command(BaseCommand):
                 op, op_result, transaction.asset
             )
             if maybe_payment_data:
-                cls._update_transaction_info(
+                await cls._update_transaction_info(
                     transaction,
                     response["id"],
                     response["paging_token"],
@@ -211,13 +218,13 @@ class Command(BaseCommand):
         return matching_payment_data
 
     @classmethod
-    def _update_transaction_info(
+    async def _update_transaction_info(
         cls, transaction: Transaction, stellar_txid: str, paging_token: str, source: str
     ):
         transaction.stellar_transaction_id = stellar_txid
         transaction.from_address = source
         transaction.paging_token = paging_token
-        transaction.save()
+        await sync_to_async(transaction.save)()
 
     @classmethod
     def _check_for_payment_match(
