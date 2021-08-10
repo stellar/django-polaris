@@ -313,4 +313,4 @@ def test_transaction_bad_uuid(client):
     content = json.loads(response.content)
 
     assert response.status_code == 400
-    assert content == {"error": "[\"'NOTAREALID' is not a valid UUID.\"]"}
+    assert content == {"error": "['“NOTAREALID” is not a valid UUID.']"}

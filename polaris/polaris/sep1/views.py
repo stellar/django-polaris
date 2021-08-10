@@ -10,7 +10,7 @@ import os
 
 import toml
 from django.contrib.staticfiles import finders
-from django.utils.encoding import smart_text
+from django.utils.encoding import smart_str
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.renderers import BaseRenderer
@@ -36,7 +36,7 @@ class PolarisPlainTextRenderer(BaseRenderer):
     format = "txt"
 
     def render(self, data, media_type=None, renderer_context=None):
-        return smart_text(data, encoding=self.charset)
+        return smart_str(data, encoding=self.charset)
 
 
 @api_view(["GET"])

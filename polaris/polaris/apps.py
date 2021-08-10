@@ -5,6 +5,7 @@ from django.core.exceptions import ImproperlyConfigured
 class PolarisConfig(AppConfig):
     name = "polaris"
     verbose_name = "Django Polaris"
+    default_auto_field = "django.db.models.AutoField"
 
     def ready(self):
         """

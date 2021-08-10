@@ -91,6 +91,7 @@ DATABASES = {
         default="sqlite:///" + os.path.join(BASE_DIR, "data/db.sqlite3"),
     )
 }
+DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
 
 # Internationalization
 # https://docs.djangoproject.com/en/2.2/topics/i18n/
