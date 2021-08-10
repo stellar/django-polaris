@@ -368,7 +368,7 @@ msgstr "Requisições POST devem especificar subrecursos na URI"
 
 #: sep31/transactions.py:167
 msgid "invalid 'asset_code' and 'asset_issuer'"
-msgstr "'asset_code' e 'asset_issuer" inválidos"
+msgstr "'asset_code' e 'asset_issuer' inválidos"
 
 #: sep31/transactions.py:180
 msgid "'fields' must serialize to a JSON object"
