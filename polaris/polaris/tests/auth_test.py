@@ -67,7 +67,7 @@ def test_auth_get_success(client):
 
     tx_hash = envelope_object.hash()
     server_public_key = Keypair.from_public_key(settings.SIGNING_KEY)
-    server_public_key.verify(tx_hash, signatures[0].signature)
+    server_public_key.verify(tx_hash, signatures[0].signature.signature)
 
 
 @patch(
@@ -97,7 +97,7 @@ def test_auth_get_client_attribution_success(client):
     assert home_domain_op.data_name == f"{urlparse(settings.HOST_URL).netloc} auth"
     assert len(home_domain_op.data_value) <= 64
     assert len(base64.b64decode(home_domain_op.data_value)) == 48
-    assert home_domain_op.source == STELLAR_ACCOUNT_1
+    assert home_domain_op.source.account_id == STELLAR_ACCOUNT_1
 
     web_auth_domain_op = transaction_object.operations[1]
     assert isinstance(web_auth_domain_op, ManageData)
@@ -106,20 +106,20 @@ def test_auth_get_client_attribution_success(client):
         web_auth_domain_op.data_value
         == f"{urlparse(settings.HOST_URL).netloc}".encode()
     )
-    assert web_auth_domain_op.source == settings.SIGNING_KEY
+    assert web_auth_domain_op.source.account_id == settings.SIGNING_KEY
 
     client_domain_op = transaction_object.operations[2]
     assert isinstance(client_domain_op, ManageData)
     assert client_domain_op.data_name == "client_domain"
     assert client_domain_op.data_value == CLIENT_ATTRIBUTION_DOMAIN.encode()
-    assert client_domain_op.source == CLIENT_ATTRIBUTION_ADDRESS
+    assert client_domain_op.source.account_id == CLIENT_ATTRIBUTION_ADDRESS
 
     signatures = envelope_object.signatures
     assert len(signatures) == 1
 
     tx_hash = envelope_object.hash()
     server_public_key = Keypair.from_public_key(settings.SIGNING_KEY)
-    server_public_key.verify(tx_hash, signatures[0].signature)
+    server_public_key.verify(tx_hash, signatures[0].signature.signature)
 
 
 auth_str = "Bearer {}"

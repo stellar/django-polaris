@@ -214,37 +214,43 @@ def test_issue_success_accounts_exist():
     client_payment_tx = cmd.server.submit_transaction.mock_calls[1][1][0]
     set_home_domain_tx = cmd.server.submit_transaction.mock_calls[2][1][0]
 
-    assert distribution_payment_tx.transaction.source.public_key == issuer_kp.public_key
+    assert distribution_payment_tx.transaction.source.account_id == issuer_kp.public_key
     assert len(distribution_payment_tx.signatures) == 1
     assert len(distribution_payment_tx.transaction.operations) == 1
     assert isinstance(distribution_payment_tx.transaction.operations[0], Payment)
     assert (
-        distribution_payment_tx.transaction.operations[0].source == issuer_kp.public_key
+        distribution_payment_tx.transaction.operations[0].source.account_id
+        == issuer_kp.public_key
     )
     assert distribution_payment_tx.transaction.operations[0].amount == 99000
     assert (
-        distribution_payment_tx.transaction.operations[0].destination
+        distribution_payment_tx.transaction.operations[0].destination.account_id
         == distribution_kp.public_key
     )
 
-    assert client_payment_tx.transaction.source.public_key == distribution_kp.public_key
+    assert client_payment_tx.transaction.source.account_id == distribution_kp.public_key
     assert len(client_payment_tx.signatures) == 2
     assert len(client_payment_tx.transaction.operations) == 2
     assert isinstance(client_payment_tx.transaction.operations[0], ChangeTrust)
-    assert client_payment_tx.transaction.operations[0].source == client_kp.public_key
+    assert (
+        client_payment_tx.transaction.operations[0].source.account_id
+        == client_kp.public_key
+    )
     assert client_payment_tx.transaction.operations[0].asset == SdkAsset(
         "USD", issuer_kp.public_key
     )
     assert isinstance(client_payment_tx.transaction.operations[1], Payment)
     assert (
-        client_payment_tx.transaction.operations[1].source == distribution_kp.public_key
+        client_payment_tx.transaction.operations[1].source.account_id
+        == distribution_kp.public_key
     )
     assert client_payment_tx.transaction.operations[1].amount == 1000
     assert (
-        client_payment_tx.transaction.operations[1].destination == client_kp.public_key
+        client_payment_tx.transaction.operations[1].destination.account_id
+        == client_kp.public_key
     )
 
-    assert set_home_domain_tx.transaction.source.public_key == issuer_kp.public_key
+    assert set_home_domain_tx.transaction.source.account_id == issuer_kp.public_key
     assert len(set_home_domain_tx.signatures) == 1
     assert len(set_home_domain_tx.transaction.operations) == 1
     assert isinstance(set_home_domain_tx.transaction.operations[0], SetOptions)

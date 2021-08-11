@@ -28,7 +28,7 @@ def test_get_success(client):
     content = response.json()
     assert response.status_code == 200, json.dumps(content, indent=2)
 
-    challenge, _, _ = read_challenge_transaction(
+    read_challenge_transaction(
         challenge_transaction=content["transaction"],
         server_account_id=settings.SIGNING_KEY,
         home_domains=urlparse(settings.HOST_URL).netloc,
@@ -51,7 +51,7 @@ def test_get_invalid_account_provied(client):
 
     content = response.json()
     assert response.status_code == 400, json.dumps(content, indent=2)
-    assert content["error"] == "Invalid Ed25519 Public Key: test"
+    assert content["error"] == "This is not a valid account."
 
 
 def test_get_invalid_home_domain(client):
@@ -82,7 +82,7 @@ def test_get_success_client_attribution(mock_fetch_stellar_toml, client):
     content = response.json()
     assert response.status_code == 200, json.dumps(content, indent=2)
 
-    challenge, _, _ = read_challenge_transaction(
+    challenge = read_challenge_transaction(
         challenge_transaction=content["transaction"],
         server_account_id=settings.SIGNING_KEY,
         home_domains=urlparse(settings.HOST_URL).netloc,
@@ -102,10 +102,10 @@ def test_get_success_client_attribution(mock_fetch_stellar_toml, client):
 
     client_domain = None
     client_domain_signing_key = None
-    for op in challenge.transaction.operations:
+    for op in challenge.transaction.transaction.operations:
         if isinstance(op, ManageData) and op.data_name == "client_domain":
             client_domain = op.data_value.decode()
-            client_domain_signing_key = op.source
+            client_domain_signing_key = op.source.account_id
 
     assert client_domain == request_client_domain
     assert client_domain_signing_key == client_domain_kp.public_key
@@ -158,7 +158,7 @@ def test_get_client_attribution_optional_denied_client_domain(
     content = response.json()
     assert response.status_code == 200, json.dumps(content, indent=2)
 
-    challenge, _, _ = read_challenge_transaction(
+    challenge = read_challenge_transaction(
         challenge_transaction=content["transaction"],
         server_account_id=settings.SIGNING_KEY,
         home_domains=urlparse(settings.HOST_URL).netloc,
@@ -171,10 +171,10 @@ def test_get_client_attribution_optional_denied_client_domain(
 
     client_domain = None
     client_domain_signing_key = None
-    for op in challenge.transaction.operations:
+    for op in challenge.transaction.transaction.operations:
         if isinstance(op, ManageData) and op.data_name == "client_domain":
             client_domain = op.data_value.decode()
-            client_domain_signing_key = op.source
+            client_domain_signing_key = op.source.account_id
 
     assert client_domain is None
     assert client_domain_signing_key is None
@@ -195,7 +195,7 @@ def test_get_success_client_attribution_not_denied(mock_fetch_stellar_toml, clie
     content = response.json()
     assert response.status_code == 200, json.dumps(content, indent=2)
 
-    challenge, _, _ = read_challenge_transaction(
+    challenge = read_challenge_transaction(
         challenge_transaction=content["transaction"],
         server_account_id=settings.SIGNING_KEY,
         home_domains=urlparse(settings.HOST_URL).netloc,
@@ -215,10 +215,10 @@ def test_get_success_client_attribution_not_denied(mock_fetch_stellar_toml, clie
 
     client_domain = None
     client_domain_signing_key = None
-    for op in challenge.transaction.operations:
+    for op in challenge.transaction.transaction.operations:
         if isinstance(op, ManageData) and op.data_name == "client_domain":
             client_domain = op.data_value.decode()
-            client_domain_signing_key = op.source
+            client_domain_signing_key = op.source.account_id
 
     assert client_domain == request_client_domain
     assert client_domain_signing_key == client_domain_kp.public_key
@@ -250,7 +250,7 @@ def test_get_client_attribution_optional_not_allowed_client_domain(
     content = response.json()
     assert response.status_code == 200, json.dumps(content, indent=2)
 
-    challenge, _, _ = read_challenge_transaction(
+    challenge = read_challenge_transaction(
         challenge_transaction=content["transaction"],
         server_account_id=settings.SIGNING_KEY,
         home_domains=urlparse(settings.HOST_URL).netloc,
@@ -263,10 +263,10 @@ def test_get_client_attribution_optional_not_allowed_client_domain(
 
     client_domain = None
     client_domain_signing_key = None
-    for op in challenge.transaction.operations:
+    for op in challenge.transaction.transaction.operations:
         if isinstance(op, ManageData) and op.data_name == "client_domain":
             client_domain = op.data_value.decode()
-            client_domain_signing_key = op.source
+            client_domain_signing_key = op.source.account_id
 
     assert client_domain is None
     assert client_domain_signing_key is None
@@ -287,7 +287,7 @@ def test_get_success_client_attribution_is_allowed(mock_fetch_stellar_toml, clie
     content = response.json()
     assert response.status_code == 200, json.dumps(content, indent=2)
 
-    challenge, _, _ = read_challenge_transaction(
+    challenge = read_challenge_transaction(
         challenge_transaction=content["transaction"],
         server_account_id=settings.SIGNING_KEY,
         home_domains=urlparse(settings.HOST_URL).netloc,
@@ -307,10 +307,10 @@ def test_get_success_client_attribution_is_allowed(mock_fetch_stellar_toml, clie
 
     client_domain = None
     client_domain_signing_key = None
-    for op in challenge.transaction.operations:
+    for op in challenge.transaction.transaction.operations:
         if isinstance(op, ManageData) and op.data_name == "client_domain":
             client_domain = op.data_value.decode()
-            client_domain_signing_key = op.source
+            client_domain_signing_key = op.source.account_id
 
     assert client_domain == request_client_domain
     assert client_domain_signing_key == client_domain_kp.public_key

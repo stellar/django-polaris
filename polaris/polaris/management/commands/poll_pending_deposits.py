@@ -12,7 +12,7 @@ from stellar_sdk import Keypair, TransactionEnvelope, Asset, Claimant
 from stellar_sdk.account import Account
 from stellar_sdk.exceptions import BaseHorizonError, ConnectionError, NotFoundError
 from stellar_sdk.transaction_builder import TransactionBuilder
-from stellar_sdk.xdr.StellarXDR_type import TransactionResult
+from stellar_sdk.xdr import TransactionResult, OperationType
 
 from polaris import settings
 from polaris.utils import get_account_obj, is_pending_trust, maybe_make_callback
@@ -408,10 +408,10 @@ class PendingDeposits:
         result_xdr = response["result_xdr"]
         balance_id_hex = None
         for op_result in TransactionResult.from_xdr(result_xdr).result.results:
-            if hasattr(op_result.tr, "createClaimableBalanceResult"):
-                balance_id_hex = base64.b64decode(
-                    op_result.tr.createClaimableBalanceResult.balanceID.to_xdr()
-                ).hex()
+            if op_result.tr.type == OperationType.CREATE_CLAIMABLE_BALANCE:
+                balance_id_hex = (
+                    op_result.tr.create_claimable_balance_result.balance_id.to_xdr_bytes().hex()
+                )
         return balance_id_hex
 
     @classmethod

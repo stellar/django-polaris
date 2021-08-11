@@ -240,7 +240,7 @@ def test_get_or_create_destination_account_doesnt_exist(
         mock_requires_multisig.assert_called()
         mock_submit_transaction.assert_called_once()
         envelope = mock_submit_transaction.mock_calls[0][1][0]
-        assert envelope.transaction.source.public_key == usd.distribution_account
+        assert envelope.transaction.source.account_id == usd.distribution_account
         assert len(envelope.transaction.operations) == 1
         assert isinstance(envelope.transaction.operations[0], CreateAccount)
         assert (
@@ -296,7 +296,7 @@ def test_get_or_create_destination_account_doesnt_exist_requires_multisig(
         mock_create_channel_account.assert_not_called()
         mock_submit_transaction.assert_called_once()
         envelope = mock_submit_transaction.mock_calls[0][1][0]
-        assert envelope.transaction.source.public_key == transaction.channel_account
+        assert envelope.transaction.source.account_id == transaction.channel_account
         assert len(envelope.transaction.operations) == 1
         assert isinstance(envelope.transaction.operations[0], CreateAccount)
         assert (
@@ -748,18 +748,23 @@ def test_create_transaction_envelope(mock_fetch_base_fee, mock_get_account_obj):
     mock_get_account_obj.assert_not_called()
     mock_fetch_base_fee.assert_called_once()
     assert isinstance(envelope, TransactionEnvelope)
-    assert envelope.transaction.source.public_key == usd.distribution_account
+    assert envelope.transaction.source.account_id == usd.distribution_account
     assert isinstance(envelope.transaction.memo, TextMemo)
     assert envelope.transaction.memo.memo_text.decode() == transaction.memo
     assert envelope.network_passphrase == settings.STELLAR_NETWORK_PASSPHRASE
     assert len(envelope.transaction.operations) == 1
     assert isinstance(envelope.transaction.operations[0], Payment)
-    assert envelope.transaction.operations[0].source == usd.distribution_account
+    assert (
+        envelope.transaction.operations[0].source.account_id == usd.distribution_account
+    )
     assert Decimal(envelope.transaction.operations[0].amount) == 99
     assert envelope.transaction.operations[0].asset, SdkAsset == SdkAsset(
         usd.code, usd.issuer
     )
-    assert envelope.transaction.operations[0].destination == transaction.stellar_account
+    assert (
+        envelope.transaction.operations[0].destination.account_id
+        == transaction.stellar_account
+    )
 
 
 @pytest.mark.django_db
@@ -797,18 +802,23 @@ def test_create_transaction_envelope_claimable_balance_supported_has_trustline(
     )
     mock_fetch_base_fee.assert_called_once()
     assert isinstance(envelope, TransactionEnvelope)
-    assert envelope.transaction.source.public_key == usd.distribution_account
+    assert envelope.transaction.source.account_id == usd.distribution_account
     assert isinstance(envelope.transaction.memo, TextMemo)
     assert envelope.transaction.memo.memo_text.decode() == transaction.memo
     assert envelope.network_passphrase == settings.STELLAR_NETWORK_PASSPHRASE
     assert len(envelope.transaction.operations) == 1
     assert isinstance(envelope.transaction.operations[0], Payment)
-    assert envelope.transaction.operations[0].source == usd.distribution_account
+    assert (
+        envelope.transaction.operations[0].source.account_id == usd.distribution_account
+    )
     assert Decimal(envelope.transaction.operations[0].amount) == 99
     assert envelope.transaction.operations[0].asset, SdkAsset == SdkAsset(
         usd.code, usd.issuer
     )
-    assert envelope.transaction.operations[0].destination == transaction.stellar_account
+    assert (
+        envelope.transaction.operations[0].destination.account_id
+        == transaction.stellar_account
+    )
 
 
 @pytest.mark.django_db
@@ -843,13 +853,15 @@ def test_create_transaction_envelope_claimable_balance_supported_no_trustline(
     )
     mock_fetch_base_fee.assert_called_once()
     assert isinstance(envelope, TransactionEnvelope)
-    assert envelope.transaction.source.public_key == usd.distribution_account
+    assert envelope.transaction.source.account_id == usd.distribution_account
     assert isinstance(envelope.transaction.memo, TextMemo)
     assert envelope.transaction.memo.memo_text.decode() == transaction.memo
     assert envelope.network_passphrase == settings.STELLAR_NETWORK_PASSPHRASE
     assert len(envelope.transaction.operations) == 1
     assert isinstance(envelope.transaction.operations[0], CreateClaimableBalance)
-    assert envelope.transaction.operations[0].source == usd.distribution_account
+    assert (
+        envelope.transaction.operations[0].source.account_id == usd.distribution_account
+    )
     assert Decimal(envelope.transaction.operations[0].amount) == 99
     assert envelope.transaction.operations[0].asset, SdkAsset == SdkAsset(
         usd.code, usd.issuer

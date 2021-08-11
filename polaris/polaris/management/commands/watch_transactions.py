@@ -3,7 +3,6 @@ import asyncio
 from asgiref.sync import sync_to_async
 from typing import Dict, Optional, Union, List, Tuple
 from decimal import Decimal
-from base64 import b64decode
 
 from django.core.management.base import BaseCommand
 from django.db.models import Q
@@ -12,7 +11,14 @@ from stellar_sdk.transaction_envelope import (
     TransactionEnvelope,
     Transaction as HorizonTransaction,
 )
-from stellar_sdk.xdr import Xdr
+from stellar_sdk.xdr import (
+    PaymentResult,
+    PathPaymentStrictSendResult,
+    PathPaymentStrictReceiveResult,
+    OperationResult,
+    TransactionResult,
+)
+from stellar_sdk.xdr.utils import from_xdr_amount
 from stellar_sdk.operation import (
     Operation,
     Payment,
@@ -28,9 +34,7 @@ from polaris.utils import getLogger, maybe_make_callback
 
 logger = getLogger(__name__)
 PaymentOpResult = Union[
-    Xdr.types.PaymentResult,
-    Xdr.types.PathPaymentStrictSendResult,
-    Xdr.types.PathPaymentStrictReceiveResult,
+    PaymentResult, PathPaymentStrictSendResult, PathPaymentStrictReceiveResult
 ]
 PaymentOp = Union[Payment, PathPaymentStrictReceive, PathPaymentStrictSend]
 
@@ -152,17 +156,13 @@ class Command(BaseCommand):
             f"Matched transaction object {transaction.id} for stellar transaction {response['id']}"
         )
 
-        op_results = (
-            Xdr.StellarXDRUnpacker(b64decode(result_xdr))
-            .unpack_TransactionResult()
-            .result.results
-        )
-        horion_tx = TransactionEnvelope.from_xdr(
+        op_results = TransactionResult.from_xdr(result_xdr).result.results
+        horizon_tx = TransactionEnvelope.from_xdr(
             envelope_xdr, network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
         ).transaction
 
         payment_data = await cls._find_matching_payment_data(
-            response, horion_tx, op_results, transaction
+            response, horizon_tx, op_results, transaction
         )
         if not payment_data:
             logger.warning(f"Transaction matching memo {memo} has no payment operation")
@@ -193,7 +193,7 @@ class Command(BaseCommand):
         cls,
         response: Dict,
         horizon_tx: HorizonTransaction,
-        result_ops: List[Xdr.types.OperationResult],
+        result_ops: List[OperationResult],
         transaction: Transaction,
     ) -> Optional[Dict]:
         matching_payment_data = None
@@ -210,7 +210,8 @@ class Command(BaseCommand):
                     transaction,
                     response["id"],
                     response["paging_token"],
-                    ops[idx].source or horizon_tx.source.public_key,
+                    getattr(ops[idx].source, "account_id", None)
+                    or horizon_tx.source.account_id,
                 )
                 matching_payment_data = maybe_payment_data
                 break
@@ -242,24 +243,23 @@ class Command(BaseCommand):
 
     @classmethod
     def _cast_operation_and_result(
-        cls, operation: Operation, op_result: Xdr.types.OperationResult
+        cls, operation: Operation, op_result: OperationResult
     ) -> Tuple[Optional[PaymentOp], Optional[PaymentOpResult]]:
-        code = operation.type_code()
         op_xdr_obj = operation.to_xdr_object()
-        if code == Xdr.const.PAYMENT:
+        if isinstance(operation, Payment):
             return (
                 Payment.from_xdr_object(op_xdr_obj),
-                op_result.tr.paymentResult,
+                op_result.tr.payment_result,
             )
-        elif code == Xdr.const.PATH_PAYMENT_STRICT_SEND:
+        elif isinstance(operation, PathPaymentStrictSend):
             return (
                 PathPaymentStrictSend.from_xdr_object(op_xdr_obj),
-                op_result.tr.pathPaymentStrictSendResult,
+                op_result.tr.path_payment_strict_send_result,
             )
-        elif code == Xdr.const.PATH_PAYMENT_STRICT_RECEIVE:
+        elif isinstance(operation, PathPaymentStrictReceive):
             return (
                 PathPaymentStrictReceive.from_xdr_object(op_xdr_obj),
-                op_result.tr.pathPaymentStrictReceiveResult,
+                op_result.tr.path_payment_strict_receive_result,
             )
         else:
             return None, None
@@ -269,7 +269,7 @@ class Command(BaseCommand):
         cls, operation: PaymentOp, op_result: PaymentOpResult
     ) -> Dict:
         values = {
-            "destination": operation.destination,
+            "destination": operation.destination.account_id,
             "amount": None,
             "code": None,
             "issuer": None,
@@ -285,9 +285,7 @@ class Command(BaseCommand):
             # this method of fetching amounts gives the "raw" amount, so
             # we need to divide by Operation._ONE: 10000000
             # (Stellar uses 7 decimals places of precision)
-            values["amount"] = str(
-                Decimal(op_result.success.last.amount) / Operation._ONE
-            )
+            values["amount"] = from_xdr_amount(op_result.success.last.amount.int64)
             values["code"] = operation.dest_asset.code
             values["issuer"] = operation.dest_asset.issuer
         elif isinstance(operation, PathPaymentStrictReceive):
