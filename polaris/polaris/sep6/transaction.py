@@ -1,6 +1,3 @@
-"""This module defines the logic for the `/transaction` endpoint."""
-from typing import Optional
-
 from django.utils.translation import gettext as _
 from django.views.decorators.clickjacking import xframe_options_exempt
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
@@ -15,6 +12,7 @@ from rest_framework.renderers import (
 
 from polaris.shared import endpoints
 from polaris.sep10.utils import validate_sep10_token
+from polaris.sep10.token import SEP10Token
 from polaris.utils import (
     render_error_response,
     getLogger,
@@ -43,44 +41,38 @@ def more_info(request: Request) -> Response:
 @api_view(["GET"])
 @renderer_classes([JSONRenderer, BrowsableAPIRenderer])
 @validate_sep10_token()
-def transactions(
-    account: str, _client_domain: Optional[str], request: Request,
-) -> Response:
+def transactions(token: SEP10Token, request: Request) -> Response:
     """
     Definition of the /transactions endpoint, in accordance with SEP-0006.
     See: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#transaction-history
     """
-    if account != request.GET.get("account"):
+    if token.account != request.GET.get("account"):
         return render_error_response(
             _("The account specified does not match authorization token"),
             status_code=403,
         )
-    return endpoints.transactions(request, account, sep6=True)
+    return endpoints.transactions(request, token.account, sep6=True)
 
 
 @api_view(["GET"])
 @renderer_classes([JSONRenderer, BrowsableAPIRenderer])
 @validate_sep10_token()
-def transaction(
-    account: str, _client_domain: Optional[str], request: Request,
-) -> Response:
+def transaction(token: SEP10Token, request: Request) -> Response:
     """
     Definition of the /transaction endpoint, in accordance with SEP-0006.
     See: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#single-historical-transaction
     """
-    return endpoints.transaction(request, account, sep6=True)
+    return endpoints.transaction(request, token.account, sep6=True)
 
 
 @api_view(["PATCH"])
 @renderer_classes([JSONRenderer, BrowsableAPIRenderer])
 @validate_sep10_token()
-def patch_transaction(
-    account: str, _client_domain: Optional[str], request: Request, transaction_id: str
-):
+def patch_transaction(token: SEP10Token, request: Request, transaction_id: str):
     try:
         t = Transaction.objects.get(
             id=transaction_id,
-            stellar_account=account,
+            stellar_account=token.account,
             protocol=Transaction.PROTOCOL.sep6,
         )
     except (ValidationError, ObjectDoesNotExist):

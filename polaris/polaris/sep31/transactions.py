@@ -13,6 +13,7 @@ from rest_framework.parsers import JSONParser
 
 from polaris.locale.utils import _is_supported_language, activate_lang_for_request
 from polaris.sep10.utils import validate_sep10_token
+from polaris.sep10.token import SEP10Token
 from polaris.models import Transaction, Asset
 from polaris.integrations import registered_sep31_receiver_integration
 from polaris.sep31.serializers import SEP31TransactionSerializer
@@ -34,22 +35,21 @@ class TransactionsAPIView(APIView):
     @staticmethod
     @validate_sep10_token()
     def get(
-        account: str,
-        _client_domain: Optional[str],
-        _request: Request,
-        transaction_id: str = None,
+        token: SEP10Token, _request: Request, transaction_id: str = None,
     ) -> Response:
         if not transaction_id:
             return render_error_response(
                 _("GET requests must include a transaction ID in the URI"),
             )
-        elif not registered_sep31_receiver_integration.valid_sending_anchor(account):
+        elif not registered_sep31_receiver_integration.valid_sending_anchor(
+            token.account
+        ):
             return render_error_response(_("invalid sending account."), status_code=403)
         elif not transaction_id:
             return render_error_response(_("missing 'id' in URI"))
         try:
             t = Transaction.objects.filter(
-                id=transaction_id, stellar_account=account,
+                id=transaction_id, stellar_account=token.account,
             ).first()
         except ValidationError:  # bad id parameter
             return render_error_response(_("transaction not found"), status_code=404)
@@ -60,17 +60,16 @@ class TransactionsAPIView(APIView):
     @staticmethod
     @validate_sep10_token()
     def patch(
-        account: str,
-        _client_domain: Optional[str],
-        request: Request,
-        transaction_id: str = None,
+        token: SEP10Token, request: Request, transaction_id: str = None,
     ) -> Response:
-        if not registered_sep31_receiver_integration.valid_sending_anchor(account):
+        if not registered_sep31_receiver_integration.valid_sending_anchor(
+            token.account
+        ):
             return render_error_response(_("invalid sending account"), status_code=403)
         try:
             transaction = Transaction.objects.filter(
                 id=transaction_id,
-                stellar_account=account,
+                stellar_account=token.account,
                 protocol=Transaction.PROTOCOL.sep31,
             ).get()
         except (ValidationError, ObjectDoesNotExist):
@@ -98,13 +97,15 @@ class TransactionsAPIView(APIView):
     @staticmethod
     @validate_sep10_token()
     def post(
-        account: str, client_domain: Optional[str], request: Request, **kwargs,
+        token: SEP10Token, request: Request, **kwargs,
     ):
         if kwargs:
             return render_error_response(
                 _("POST requests should not specify subresources in the URI")
             )
-        elif not registered_sep31_receiver_integration.valid_sending_anchor(account):
+        elif not registered_sep31_receiver_integration.valid_sending_anchor(
+            token.account
+        ):
             return render_error_response("invalid sending account", status_code=403)
 
         try:
@@ -133,13 +134,13 @@ class TransactionsAPIView(APIView):
             protocol=Transaction.PROTOCOL.sep31,
             kind=Transaction.KIND.send,
             status=Transaction.STATUS.pending_sender,
-            stellar_account=account,
+            stellar_account=token.account,
             asset=params["asset"],
             amount_in=params["amount"],
             memo=transaction_memo,
             memo_type=Transaction.MEMO_TYPES.hash,
             receiving_anchor_account=params["asset"].distribution_account,
-            client_domain=client_domain,
+            client_domain=token.client_domain,
         )
 
         error_data = registered_sep31_receiver_integration.process_post_request(

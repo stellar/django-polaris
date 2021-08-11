@@ -1,4 +1,4 @@
-from typing import Dict, Optional
+from typing import Dict
 
 from django.utils.translation import gettext as _
 from django.core.validators import URLValidator
@@ -19,6 +19,7 @@ from polaris.utils import (
     SEP_9_FIELDS,
 )
 from polaris.sep10.utils import validate_sep10_token
+from polaris.sep10.token import SEP10Token
 from polaris.integrations import registered_customer_integration as rci
 
 
@@ -31,8 +32,8 @@ class CustomerAPIView(APIView):
 
     @staticmethod
     @validate_sep10_token()
-    def get(account: str, _client_domain: Optional[str], request: Request) -> Response:
-        if request.GET.get("account") and account != request.GET.get("account"):
+    def get(token: SEP10Token, request: Request) -> Response:
+        if request.GET.get("account") and token.account != request.GET.get("account"):
             return render_error_response(
                 _("The account specified does not match authorization token"),
                 status_code=403,
@@ -58,7 +59,7 @@ class CustomerAPIView(APIView):
             response_data = rci.get(
                 {
                     "id": request.GET.get("id"),
-                    "sep10_client_account": account,
+                    "sep10_client_account": token.account,
                     "account": request.GET.get("account"),
                     "memo": request.GET.get("memo"),
                     "memo_type": request.GET.get("memo_type"),
@@ -85,7 +86,7 @@ class CustomerAPIView(APIView):
 
     @staticmethod
     @validate_sep10_token()
-    def put(account: str, _client_domain: Optional[str], request: Request) -> Response:
+    def put(token: SEP10Token, request: Request) -> Response:
         if request.data.get("id"):
             if not isinstance(request.data.get("id"), str):
                 return render_error_response(_("bad ID value, expected str"))
@@ -99,7 +100,7 @@ class CustomerAPIView(APIView):
                         "requests with 'id' cannot also have 'account', 'memo', or 'memo_type'"
                     )
                 )
-        elif account != request.data.get("account"):
+        elif token.account != request.data.get("account"):
             return render_error_response(
                 _("The account specified does not match authorization token"),
                 status_code=403,
@@ -115,7 +116,7 @@ class CustomerAPIView(APIView):
             customer_id = rci.put(
                 {
                     "id": request.data.get("id"),
-                    "account": account,
+                    "account": token.account,
                     "memo": request.data.get("memo"),
                     "memo_type": request.data.get("memo_type"),
                     "type": request.data.get("type"),
@@ -140,7 +141,7 @@ class CustomerAPIView(APIView):
 @renderer_classes([JSONRenderer, BrowsableAPIRenderer])
 @parser_classes([MultiPartParser, FormParser, JSONParser])
 @validate_sep10_token()
-def callback(account: str, _client_domain: Optional[str], request: Request) -> Response:
+def callback(token: SEP10Token, request: Request) -> Response:
     if request.data.get("id"):
         if not isinstance(request.data.get("id"), str):
             return render_error_response(_("bad ID value, expected str"))
@@ -154,7 +155,7 @@ def callback(account: str, _client_domain: Optional[str], request: Request) -> R
                     "requests with 'id' cannot also have 'account', 'memo', or 'memo_type'"
                 )
             )
-    elif account != request.data.get("account"):
+    elif token.account != request.data.get("account"):
         return render_error_response(
             _("The account specified does not match authorization token"),
             status_code=403,
@@ -179,7 +180,7 @@ def callback(account: str, _client_domain: Optional[str], request: Request) -> R
         rci.callback(
             {
                 "id": request.data.get("id"),
-                "account": account,
+                "account": token.account,
                 "memo": request.data.get("memo"),
                 "memo_type": request.data.get("memo_type"),
                 "url": callback_url,
@@ -199,13 +200,8 @@ def callback(account: str, _client_domain: Optional[str], request: Request) -> R
 @renderer_classes([JSONRenderer, BrowsableAPIRenderer])
 @parser_classes([MultiPartParser, FormParser, JSONParser])
 @validate_sep10_token()
-def delete(
-    account_from_auth: str,
-    _client_domain: Optional[str],
-    request: Request,
-    account: str,
-) -> Response:
-    if account_from_auth != account:
+def delete(token: SEP10Token, request: Request, account: str,) -> Response:
+    if token.account != account:
         return render_error_response(_("account not found"), status_code=404)
     try:
         make_memo(request.data.get("memo"), request.data.get("memo_type"))
@@ -223,7 +219,7 @@ def delete(
 @renderer_classes([JSONRenderer, BrowsableAPIRenderer])
 @parser_classes([MultiPartParser, FormParser, JSONParser])
 @validate_sep10_token()
-def put_verification(account: str, _client_domain: Optional[str], request) -> Response:
+def put_verification(token: SEP10Token, request) -> Response:
     if not request.data.get("id") or not isinstance(request.data.get("id"), str):
         return render_error_response(_("bad ID value, expected str"))
     for key, value in request.data.items():
@@ -239,7 +235,7 @@ def put_verification(account: str, _client_domain: Optional[str], request) -> Re
             )
 
     try:
-        response_data = rci.put_verification(account, dict(request.data))
+        response_data = rci.put_verification(token.account, dict(request.data))
     except ObjectDoesNotExist:
         return render_error_response(_("customer not found"), status_code=404)
     except ValueError as e:

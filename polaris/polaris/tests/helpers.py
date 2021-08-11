@@ -1,6 +1,7 @@
 """Helper functions to use across tests."""
 import json
 import time
+from unittest.mock import Mock
 
 from polaris import settings
 from stellar_sdk.keypair import Keypair
@@ -9,12 +10,16 @@ from stellar_sdk.transaction_envelope import TransactionEnvelope
 
 def mock_check_auth_success(request, func, **kwargs):
     """Mocks `sep10.utils.check_auth`, for success."""
-    return func("test source address", None, request, **kwargs)
+    return func(
+        Mock(account="test source address", client_domain=None), request, **kwargs
+    )
 
 
 def mock_check_auth_success_client_domain(request, func, **kwargs):
     """Mocks `sep10.utils.check_auth`, for success."""
-    return func("test source address", "test.com", request, **kwargs)
+    return func(
+        Mock(account="test source address", client_domain="test.com"), request, **kwargs
+    )
 
 
 def sep10(client, address, seed):

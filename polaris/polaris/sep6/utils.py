@@ -1,4 +1,4 @@
-from typing import Dict, Optional
+from typing import Dict
 
 from polaris.utils import getLogger
 from polaris.utils import SEP_9_FIELDS

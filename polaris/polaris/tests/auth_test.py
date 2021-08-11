@@ -14,6 +14,7 @@ from stellar_sdk.operation import ManageData
 from polaris import settings
 from polaris.tests.conftest import STELLAR_ACCOUNT_1
 from polaris.sep10.utils import check_auth
+from polaris.sep10.token import SEP10Token
 
 endpoint = "/auth"
 
@@ -158,7 +159,11 @@ def test_auth_post_success_account_exists(client):
     mock_request.headers["Authorization"] = auth_str.format(content["token"])
     mock_view_function = Mock()
     check_auth(mock_request, mock_view_function)
-    mock_view_function.assert_called_once_with(CLIENT_ADDRESS, None, mock_request)
+    mock_view_function.assert_called_once()
+    token = mock_view_function.mock_calls[0][1][0]
+    assert isinstance(token, SEP10Token)
+    assert token.account == CLIENT_ADDRESS
+    assert mock_view_function.mock_calls[0][1][1] is mock_request
 
 
 @patch(
@@ -187,7 +192,11 @@ def test_auth_post_success_account_does_not_exist(client):
     mock_request.headers["Authorization"] = auth_str.format(content["token"])
     mock_view_function = Mock()
     check_auth(mock_request, mock_view_function)
-    mock_view_function.assert_called_once_with(CLIENT_ADDRESS, None, mock_request)
+    mock_view_function.assert_called_once()
+    token = mock_view_function.mock_calls[0][1][0]
+    assert isinstance(token, SEP10Token)
+    assert token.account == CLIENT_ADDRESS
+    assert mock_view_function.mock_calls[0][1][1] is mock_request
 
 
 @patch(
@@ -227,9 +236,11 @@ def test_auth_post_success_client_attribution(client):
     mock_request.headers["Authorization"] = auth_str.format(content["token"])
     mock_view_function = Mock()
     check_auth(mock_request, mock_view_function)
-    mock_view_function.assert_called_once_with(
-        CLIENT_ADDRESS, CLIENT_ATTRIBUTION_DOMAIN, mock_request
-    )
+    mock_view_function.assert_called_once()
+    token = mock_view_function.mock_calls[0][1][0]
+    assert isinstance(token, SEP10Token)
+    assert token.account == CLIENT_ADDRESS
+    assert mock_view_function.mock_calls[0][1][1] is mock_request
 
 
 @patch("polaris.sep10.views.settings.SEP10_CLIENT_ATTRIBUTION_REQUIRED", True)
@@ -270,9 +281,11 @@ def test_auth_post_success_client_attribution_required(client):
     mock_request.headers["Authorization"] = auth_str.format(content["token"])
     mock_view_function = Mock()
     check_auth(mock_request, mock_view_function)
-    mock_view_function.assert_called_once_with(
-        CLIENT_ADDRESS, CLIENT_ATTRIBUTION_DOMAIN, mock_request
-    )
+    mock_view_function.assert_called_once()
+    token = mock_view_function.mock_calls[0][1][0]
+    assert isinstance(token, SEP10Token)
+    assert token.account == CLIENT_ADDRESS
+    assert mock_view_function.mock_calls[0][1][1] is mock_request
 
 
 @patch("polaris.sep10.views.settings.SEP10_CLIENT_ATTRIBUTION_REQUIRED", True)
@@ -349,9 +362,11 @@ def test_auth_post_success_client_attribution_required_allowlist_provided(client
     mock_request.headers["Authorization"] = auth_str.format(content["token"])
     mock_view_function = Mock()
     check_auth(mock_request, mock_view_function)
-    mock_view_function.assert_called_once_with(
-        CLIENT_ADDRESS, CLIENT_ATTRIBUTION_DOMAIN, mock_request
-    )
+    mock_view_function.assert_called_once()
+    token = mock_view_function.mock_calls[0][1][0]
+    assert isinstance(token, SEP10Token)
+    assert token.account == CLIENT_ADDRESS
+    assert mock_view_function.mock_calls[0][1][1] is mock_request
 
 
 @patch(

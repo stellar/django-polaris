@@ -1,9 +1,3 @@
-"""
-This module implements the logic for the `/transactions/withdraw` endpoint.
-This lets a user withdraw some asset from their Stellar account into a
-non-Stellar-based account.
-"""
-from typing import Optional
 from decimal import Decimal, DecimalException
 from urllib.parse import urlencode
 
@@ -38,6 +32,7 @@ from polaris.sep24.utils import (
     interactive_args_validation,
 )
 from polaris.sep10.utils import validate_sep10_token
+from polaris.sep10.token import SEP10Token
 from polaris.models import Asset, Transaction
 from polaris.integrations.forms import TransactionForm
 from polaris.locale.utils import validate_language, activate_lang_for_request
@@ -316,7 +311,7 @@ def get_interactive_withdraw(request: Request) -> Response:
 @validate_sep10_token()
 @renderer_classes([JSONRenderer, BrowsableAPIRenderer])
 @parser_classes([MultiPartParser, FormParser, JSONParser])
-def withdraw(account: str, client_domain: Optional[str], request: Request,) -> Response:
+def withdraw(token: SEP10Token, request: Request,) -> Response:
     """
     POST /transactions/withdraw/interactive
 
@@ -354,7 +349,7 @@ def withdraw(account: str, client_domain: Optional[str], request: Request,) -> R
             return render_error_response(_("invalid 'amount'"))
 
     try:
-        rwi.save_sep9_fields(account, sep9_fields, lang)
+        rwi.save_sep9_fields(token.account, sep9_fields, lang)
     except ValueError as e:
         # The anchor found a validation error in the sep-9 fields POSTed by
         # the wallet. The error string returned should be in the language
@@ -364,7 +359,7 @@ def withdraw(account: str, client_domain: Optional[str], request: Request,) -> R
     transaction_id = create_transaction_id()
     Transaction.objects.create(
         id=transaction_id,
-        stellar_account=account,
+        stellar_account=token.account,
         asset=asset,
         kind=Transaction.KIND.withdrawal,
         status=Transaction.STATUS.incomplete,
@@ -374,14 +369,14 @@ def withdraw(account: str, client_domain: Optional[str], request: Request,) -> R
         more_info_url=request.build_absolute_uri(
             f"{reverse('more_info')}?id={transaction_id}"
         ),
-        client_domain=client_domain,
+        client_domain=token.client_domain,
     )
     logger.info(f"Created withdrawal transaction {transaction_id}")
 
     url = interactive_url(
         request,
         str(transaction_id),
-        account,
+        token.account,
         asset_code,
         settings.OPERATION_WITHDRAWAL,
         amount,

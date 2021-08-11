@@ -1,5 +1,5 @@
 from decimal import Decimal, DecimalException
-from typing import Dict, Tuple, Optional
+from typing import Dict, Tuple
 
 from django.utils.translation import gettext as _
 from django.core.validators import URLValidator
@@ -25,12 +25,12 @@ from polaris.utils import (
 from polaris.shared.endpoints import SEP6_MORE_INFO_PATH
 from polaris.sep6.utils import validate_403_response
 from polaris.sep10.utils import validate_sep10_token
+from polaris.sep10.token import SEP10Token
 from polaris.integrations import (
     registered_deposit_integration as rdi,
     registered_fee_func,
     calculate_fee,
 )
-
 
 logger = getLogger(__name__)
 
@@ -39,29 +39,29 @@ logger = getLogger(__name__)
 @renderer_classes([JSONRenderer, BrowsableAPIRenderer])
 @parser_classes([MultiPartParser, FormParser, JSONParser])
 @validate_sep10_token()
-def deposit(account: str, client_domain: Optional[str], request: Request,) -> Response:
+def deposit(token: SEP10Token, request: Request) -> Response:
     args = parse_request_args(request)
     if "error" in args:
         return args["error"]
-    args["account"] = account
+    args["account"] = token.account
 
     transaction_id = create_transaction_id()
     transaction = Transaction(
         id=transaction_id,
-        stellar_account=account,
+        stellar_account=token.account,
         asset=args["asset"],
         kind=Transaction.KIND.deposit,
         status=Transaction.STATUS.pending_user_transfer_start,
         memo=args["memo"],
         memo_type=args["memo_type"] or Transaction.MEMO_TYPES.text,
-        to_address=account,
+        to_address=token.account,
         protocol=Transaction.PROTOCOL.sep6,
         more_info_url=request.build_absolute_uri(
             f"{SEP6_MORE_INFO_PATH}?id={transaction_id}"
         ),
         claimable_balance_supported=args["claimable_balance_supported"],
         on_change_callback=args["on_change_callback"],
-        client_domain=client_domain,
+        client_domain=token.client_domain,
     )
 
     try:

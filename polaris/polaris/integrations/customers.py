@@ -1,4 +1,4 @@
-from typing import Dict, Optional, List, Dict
+from typing import Optional, List, Dict
 
 
 class CustomerIntegration:

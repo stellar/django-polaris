@@ -1,8 +1,3 @@
-"""
-This module implements the logic for the `/transactions/deposit` endpoints.
-This lets a user initiate a deposit of an asset into their Stellar account.
-"""
-from typing import Optional
 from decimal import Decimal, DecimalException
 from urllib.parse import urlencode
 
@@ -34,6 +29,7 @@ from polaris.utils import (
     make_memo,
 )
 from polaris.sep10.utils import validate_sep10_token
+from polaris.sep10.token import SEP10Token
 from polaris.sep24.utils import (
     check_authentication,
     interactive_url,
@@ -303,7 +299,7 @@ def get_interactive_deposit(request: Request) -> Response:
 @renderer_classes([JSONRenderer, BrowsableAPIRenderer])
 @parser_classes([MultiPartParser, FormParser, JSONParser])
 @validate_sep10_token()
-def deposit(account: str, client_domain: Optional[str], request: Request) -> Response:
+def deposit(token: SEP10Token, request: Request) -> Response:
     """
     POST /transactions/deposit/interactive
 
@@ -383,11 +379,11 @@ def deposit(account: str, client_domain: Optional[str], request: Request) -> Res
     transaction_id = create_transaction_id()
     Transaction.objects.create(
         id=transaction_id,
-        stellar_account=account,
+        stellar_account=token.account,
         asset=asset,
         kind=Transaction.KIND.deposit,
         status=Transaction.STATUS.incomplete,
-        to_address=account,
+        to_address=token.account,
         protocol=Transaction.PROTOCOL.sep24,
         claimable_balance_supported=claimable_balance_supported,
         memo=request.data.get("memo"),
@@ -395,14 +391,14 @@ def deposit(account: str, client_domain: Optional[str], request: Request) -> Res
         more_info_url=request.build_absolute_uri(
             f"{reverse('more_info')}?id={transaction_id}"
         ),
-        client_domain=client_domain,
+        client_domain=token.client_domain,
     )
     logger.info(f"Created deposit transaction {transaction_id}")
 
     url = interactive_url(
         request,
         str(transaction_id),
-        account,
+        token.account,
         asset_code,
         settings.OPERATION_DEPOSIT,
         amount,
