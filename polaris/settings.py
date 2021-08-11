@@ -48,7 +48,6 @@ POLARIS_ACTIVE_SEPS = ["sep-1", "sep-6", "sep-10", "sep-12", "sep-24", "sep-31"]
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
-    "polaris.middleware.PolarisSameSiteMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.middleware.locale.LocaleMiddleware",

@@ -1,8 +1,8 @@
-from typing import Dict, Optional
+from typing import Dict, Optional, List, Dict
 
 
 class CustomerIntegration:
-    def more_info_url(self, account: str) -> str:
+    def more_info_url(self, account: str, *args: List, **kwargs: Dict) -> str:
         """
         .. _SEP-6 Customer Information Status: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#4-customer-information-status
 
@@ -14,7 +14,7 @@ class CustomerIntegration:
         """
         pass
 
-    def get(self, params: Dict) -> Dict:
+    def get(self, params: Dict, *args: List, **kwargs: Dict) -> Dict:
         """
         .. _`SEP-12 GET /customer`: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0012.md#customer-get
         .. _ObjectDoesNotExist: https://docs.djangoproject.com/en/3.1/ref/exceptions/#objectdoesnotexist
@@ -34,7 +34,7 @@ class CustomerIntegration:
         """
         pass
 
-    def put(self, params: Dict) -> str:
+    def put(self, params: Dict, *args: List, **kwargs: Dict) -> str:
         """
         Update or create a record of the customer information passed. This information can
         then later be queried for when a client requests a deposit or withdraw on behalf of
@@ -70,7 +70,14 @@ class CustomerIntegration:
         """
         pass
 
-    def delete(self, account: str, memo: Optional[str], memo_type: Optional[str]):
+    def delete(
+        self,
+        account: str,
+        memo: Optional[str],
+        memo_type: Optional[str],
+        *args: List,
+        **kwargs: Dict
+    ):
         """
         Delete the record of the customer specified by `account`, `memo`, and `memo_type`.
         If such a record does not exist, raise a ``ObjectDoesNotExist`` exception for Polaris
@@ -82,7 +89,7 @@ class CustomerIntegration:
         """
         pass
 
-    def callback(self, params: Dict):
+    def callback(self, params: Dict, *args: List, **kwargs: Dict):
         """
         Save the URL provided in association with the user identified by the parameters sent
         in the request. The anchor is responsible for making POST requests containing the
@@ -104,7 +111,9 @@ class CustomerIntegration:
         """
         raise NotImplementedError()
 
-    def put_verification(self, account: str, params: Dict) -> Dict:
+    def put_verification(
+        self, account: str, params: Dict, *args: List, **kwargs: Dict
+    ) -> Dict:
         """
         .. _`endpoint specification`: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0012.md#customer-put-verification
 

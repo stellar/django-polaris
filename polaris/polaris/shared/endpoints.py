@@ -17,8 +17,6 @@ from polaris.shared.serializers import TransactionSerializer
 from polaris.integrations import (
     registered_deposit_integration as rdi,
     registered_withdrawal_integration as rwi,
-    registered_scripts_func,
-    scripts,
 )
 
 
@@ -64,15 +62,6 @@ def more_info(request: Request, sep6: bool = False) -> Response:
         )
     if content:
         context.update(content)
-
-    if registered_scripts_func is not scripts:
-        logger.warning(
-            "DEPRECATED: the `scripts` Polaris integration function will be "
-            "removed in Polaris 2.0 in favor of allowing the anchor to override "
-            "and extend Polaris' Django templates. See the Template Extensions "
-            "documentation for more information."
-        )
-    context["scripts"] = registered_scripts_func(content)
 
     # more_info.html will update the 'callback' parameter value to 'success' after
     # making the callback. If the page is then reloaded, the callback is not included

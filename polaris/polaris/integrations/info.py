@@ -1,8 +1,10 @@
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 from polaris.models import Asset
 
 
-def default_info_func(asset: Asset, lang: Optional[str]) -> Dict:
+def default_info_func(
+    asset: Asset, lang: Optional[str], *args: List, **kwargs: Dict
+) -> Dict:
     """
     .. _/info response: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#response-2
 

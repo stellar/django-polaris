@@ -1,4 +1,4 @@
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 
 from polaris.models import Asset, Transaction
 
@@ -8,7 +8,7 @@ class SEP31ReceiverIntegration:
     The container class for SEP31 integrations
     """
 
-    def info(self, asset: Asset, lang: str = None) -> Dict:
+    def info(self, asset: Asset, lang: str = None, *args: List, **kwargs: Dict) -> Dict:
         """
         .. _info response: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0031.md#response
 

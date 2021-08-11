@@ -43,11 +43,9 @@ from polaris.integrations.forms import TransactionForm
 from polaris.locale.utils import validate_language, activate_lang_for_request
 from polaris.integrations import (
     registered_withdrawal_integration as rwi,
-    registered_scripts_func,
     registered_fee_func,
     calculate_fee,
     registered_toml_func,
-    scripts,
 )
 
 logger = getLogger(__name__)
@@ -187,14 +185,6 @@ def post_interactive_withdraw(request: Request) -> Response:
             )
             or {}
         )
-        if registered_scripts_func is not scripts:
-            logger.warning(
-                "DEPRECATED: the `scripts` Polaris integration function will be "
-                "removed in Polaris 2.0 in favor of allowing the anchor to override "
-                "and extend Polaris' Django templates. See the Template Extensions "
-                "documentation for more information."
-            )
-        template_scripts = registered_scripts_func({"form": form, **content})
 
         url_args = {"transaction_id": transaction.id, "asset_code": asset.code}
         if callback:
@@ -209,7 +199,6 @@ def post_interactive_withdraw(request: Request) -> Response:
             form=form,
             post_url=post_url,
             get_url=get_url,
-            scripts=template_scripts,
             operation=settings.OPERATION_WITHDRAWAL,
             asset=asset,
             use_fee_endpoint=registered_fee_func != calculate_fee,
@@ -302,18 +291,6 @@ def get_interactive_withdraw(request: Request) -> Response:
     elif content is None:
         content = {}
 
-    if registered_scripts_func is not scripts:
-        logger.warning(
-            "DEPRECATED: the `scripts` Polaris integration function will be "
-            "removed in Polaris 2.0 in favor of allowing the anchor to override "
-            "and extend Polaris' Django templates. See the Template Extensions "
-            "documentation for more information."
-        )
-    if form:
-        template_scripts = registered_scripts_func({"form": form, **content})
-    else:
-        template_scripts = registered_scripts_func(content)
-
     url_args = {"transaction_id": transaction.id, "asset_code": asset.code}
     if callback:
         url_args["callback"] = callback
@@ -326,7 +303,6 @@ def get_interactive_withdraw(request: Request) -> Response:
         form=form,
         post_url=post_url,
         get_url=get_url,
-        scripts=template_scripts,
         operation=settings.OPERATION_WITHDRAWAL,
         asset=asset,
         use_fee_endpoint=registered_fee_func != calculate_fee,

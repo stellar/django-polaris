@@ -264,15 +264,6 @@
       }
     </script>
 
-    {# Rendered via Polaris javascript integrations #}
-    {% for script in scripts %}
-      {% if script.path %}
-      <script src="/static/{{ script.path }}" {% if script.is_async %}async{% endif %} ></script>
-      {% elif script.url %}
-      <script src="{{ script.url }}" {% if script.is_async %}async{% endif %}></script>
-      {% endif %}
-    {% endfor %}
-
     {# Rendered via custom extra_body template #}
     {% block "extra_body" %}
     {% endblock %}

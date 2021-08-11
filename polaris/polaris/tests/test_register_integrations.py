@@ -29,7 +29,6 @@ def test_init_success_all_integrations():
         customer=customer,
         rails=rails,
         fee=callable,
-        scripts=callable,
         sep6_info=callable,
         toml=callable,
     )
@@ -44,7 +43,6 @@ def test_init_success_all_integrations():
             integrations.registered_fee_func,
             integrations.registered_info_func,
             integrations.registered_toml_func,
-            integrations.registered_scripts_func,
         ]
     )
 
@@ -57,7 +55,6 @@ def test_invalid_integration_params():
         "customer",
         "rails",
         "fee",
-        "scripts",
         "sep6_info",
         "toml",
     ]:
