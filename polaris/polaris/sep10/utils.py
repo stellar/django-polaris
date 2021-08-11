@@ -49,7 +49,7 @@ def validate_jwt_request(request: Request) -> Tuple[str, Optional[str]]:
     """
     # While the SEP 24 spec calls the authorization header "Authorization", django middleware
     # renames this as "HTTP_AUTHORIZATION". We check this header for the JWT.
-    jwt_header = request.META.get("HTTP_AUTHORIZATION")
+    jwt_header = request.headers.get("Authorization")
     if not jwt_header:
         raise ValueError("JWT must be passed as 'Authorization' header")
     bad_format_error = ValueError(

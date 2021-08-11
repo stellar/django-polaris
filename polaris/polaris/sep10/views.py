@@ -277,8 +277,7 @@ class SEP10Auth(APIView):
             "jti": challenge.transaction.hash().hex(),
             "client_domain": client_domain,
         }
-        encoded_jwt = jwt.encode(jwt_dict, settings.SERVER_JWT_KEY, algorithm="HS256")
-        return encoded_jwt.decode("ascii")
+        return jwt.encode(jwt_dict, settings.SERVER_JWT_KEY, algorithm="HS256")
 
     @staticmethod
     def _get_client_signing_key(client_domain):

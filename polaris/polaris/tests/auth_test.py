@@ -123,7 +123,7 @@ def test_auth_get_client_attribution_success(client):
 
 
 auth_str = "Bearer {}"
-mock_request = Mock(META={})
+mock_request = Mock(headers={})
 account_exists = Mock(
     load_ed25519_public_key_signers=Mock(
         return_value=[Ed25519PublicKeySigner(CLIENT_ADDRESS)]
@@ -155,7 +155,7 @@ def test_auth_post_success_account_exists(client):
 
     content = json.loads(response.content)
     assert content["token"]
-    mock_request.META["HTTP_AUTHORIZATION"] = auth_str.format(content["token"])
+    mock_request.headers["Authorization"] = auth_str.format(content["token"])
     mock_view_function = Mock()
     check_auth(mock_request, mock_view_function)
     mock_view_function.assert_called_once_with(CLIENT_ADDRESS, None, mock_request)
@@ -184,7 +184,7 @@ def test_auth_post_success_account_does_not_exist(client):
 
     content = json.loads(response.content)
     assert content["token"]
-    mock_request.META["HTTP_AUTHORIZATION"] = auth_str.format(content["token"])
+    mock_request.headers["Authorization"] = auth_str.format(content["token"])
     mock_view_function = Mock()
     check_auth(mock_request, mock_view_function)
     mock_view_function.assert_called_once_with(CLIENT_ADDRESS, None, mock_request)
@@ -224,7 +224,7 @@ def test_auth_post_success_client_attribution(client):
         content["token"], settings.SERVER_JWT_KEY, algorithms=["HS256"]
     )
     assert jwt_contents["client_domain"] == CLIENT_ATTRIBUTION_DOMAIN
-    mock_request.META["HTTP_AUTHORIZATION"] = auth_str.format(content["token"])
+    mock_request.headers["Authorization"] = auth_str.format(content["token"])
     mock_view_function = Mock()
     check_auth(mock_request, mock_view_function)
     mock_view_function.assert_called_once_with(
@@ -267,7 +267,7 @@ def test_auth_post_success_client_attribution_required(client):
         content["token"], settings.SERVER_JWT_KEY, algorithms=["HS256"]
     )
     assert jwt_contents["client_domain"] == CLIENT_ATTRIBUTION_DOMAIN
-    mock_request.META["HTTP_AUTHORIZATION"] = auth_str.format(content["token"])
+    mock_request.headers["Authorization"] = auth_str.format(content["token"])
     mock_view_function = Mock()
     check_auth(mock_request, mock_view_function)
     mock_view_function.assert_called_once_with(
@@ -346,7 +346,7 @@ def test_auth_post_success_client_attribution_required_allowlist_provided(client
         content["token"], settings.SERVER_JWT_KEY, algorithms=["HS256"]
     )
     assert jwt_contents["client_domain"] == CLIENT_ATTRIBUTION_DOMAIN
-    mock_request.META["HTTP_AUTHORIZATION"] = auth_str.format(content["token"])
+    mock_request.headers["Authorization"] = auth_str.format(content["token"])
     mock_view_function = Mock()
     check_auth(mock_request, mock_view_function)
     mock_view_function.assert_called_once_with(
