@@ -8,6 +8,7 @@ watchdog = "<0.10"
 
 [packages]
 gunicorn = "*"
+psycopg2-binary = ">=2.9, <3.0"
 django-polaris = {path = "/code", editable = true}
 
 [requires]
