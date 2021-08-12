@@ -6,18 +6,6 @@
 
 {% block "content" %}
 <section class="section receipt">
-    {% if instructions is not none %}
-    {# instructions came from Polaris' instructions_for_pending_deposit() #}
-    <div class="info-item">
-        <div class="info-label">
-            {% trans "instructions" %}
-        </div>
-        <div class="field-value">
-            {{ instructions|safe }}
-        </div>
-    </div>
-    {% endif %}
-
     {# Instructions, if present, came from the anchor's more_info extension #}
     {# Note that the anchor's block must detect if instructions are necessary #}
     {# The anchor must determine the appropriate instructions (or none) from their own context #}

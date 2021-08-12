@@ -54,10 +54,6 @@ def more_info(request: Request, sep6: bool = False) -> Response:
             template=Template.MORE_INFO,
             transaction=request_transaction,
         )
-        if request_transaction.status == Transaction.STATUS.pending_user_transfer_start:
-            context.update(
-                instructions=rdi.instructions_for_pending_deposit(request_transaction)
-            )
     else:
         content = rwi.content_for_template(
             request=request,

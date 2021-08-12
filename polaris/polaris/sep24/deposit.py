@@ -384,6 +384,7 @@ def deposit(token: SEP10Token, request: Request) -> Response:
 
     try:
         rdi.save_sep9_fields(
+            token=token,
             request=request,
             stellar_account=stellar_account,
             fields=sep9_fields,

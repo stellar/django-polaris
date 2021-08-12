@@ -367,6 +367,7 @@ def withdraw(token: SEP10Token, request: Request,) -> Response:
 
     try:
         rwi.save_sep9_fields(
+            token=token,
             request=request,
             stellar_account=token.account,
             fields=sep9_fields,

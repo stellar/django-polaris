@@ -229,24 +229,6 @@ class DepositIntegration:
         """
         pass
 
-    def instructions_for_pending_deposit(
-        self, transaction: Transaction, *args: List, **kwargs: Dict
-    ) -> str:
-        """
-        **DEPRECATED**: This function will be removed in Polaris version 2.0 in favor
-        of allowing the anchor to override and extend Polaris' Django templates.
-        See the :doc:`Template Extensions</templates/index>` documentation for more information.
-
-        For pending deposits, its common to show instructions to the user for how
-        to initiate the external transfer. Use this function to return text or HTML
-        instructions to be rendered in response to `/transaction/more_info`.
-
-        :param transaction: the transaction database object to be serialized and
-            rendered in the response.
-        :return: the text or HTML to render in the instructions template section
-        """
-        pass
-
     def interactive_url(
         self,
         request: Request,
@@ -269,6 +251,7 @@ class DepositIntegration:
 
     def save_sep9_fields(
         self,
+        token: SEP10Token,
         request: Request,
         stellar_account: str,
         fields: Dict,
