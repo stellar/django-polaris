@@ -133,4 +133,4 @@ class SEP10Token:
         """
         The decoded contents of the JWT string
         """
-        return self.raw
+        return self._raw
