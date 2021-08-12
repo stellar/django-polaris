@@ -74,8 +74,6 @@ def register_integrations(
     :param rails: the ``RailsIntegration`` subclass instance to be used by
         Polaris
     :param toml: a function that returns stellar.toml data as a dictionary
-    :param scripts: a function that returns a list of script tags as
-        strings
     :param fee: a function that returns the fee that would be charged
     :param sep6_info: a function that returns the /info `fields` or `types`
         values for an Asset
