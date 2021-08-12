@@ -53,215 +53,23 @@
       {% block "footer" %}
       {% endblock %}
     </div>
+    <script type="text/javascript" src="{% static 'polaris/scripts/styleHelpers.js' %}"></script>
+    <script type="text/javascript" src="{% static 'polaris/scripts/disableSubmitOnClick.js' %}"></script>
+    <script type="text/javascript" src="{% static 'polaris/scripts/dynamicAmountPadding.js' %}"></script>
+    <script type="text/javascript" src="{% static 'polaris/scripts/feeTable.js' %}"></script>
     <script type="text/javascript">
-      "use strict";
-      function _instanceof(left, right) { if (right != null && typeof Symbol !== "undefined" && right[Symbol.hasInstance]) { return !!right[Symbol.hasInstance](left); } else { return left instanceof right; } }
-
-      {% comment %}
-      Manually babel-ized helper. Generic helper to wait until conditions are right.
-      {% endcomment %}
-      var waitFor = function waitFor(predicate) {
-        var pollInterval = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 500;
-        return new Promise(function (resolve) {
-          var check = function check() {
-            var result = predicate();
-            if (_instanceof(result, Promise)) {
-              result.then(function (isFinished) {
-                if (isFinished) {
-                  resolve();
-                  return;
-                }
-                setTimeout(check, pollInterval);
-              });
-            } else {
-              if (result) {
-                resolve();
-                return;
-              }
-              setTimeout(check, pollInterval);
-            }
-          };
-          check();
-        });
-      };
-
-      // Date/time pickers
-      if (
-        document.querySelector('input.date') !== null ||
-        document.querySelector('input.date-time') !== null ||
-        document.querySelector('input.time') !== null
-      ) {
-        var datepickerScript = document.createElement('script');
-        datepickerScript.src = "https://unpkg.com/flatpickr@4.6.3/dist/flatpickr.min.js";
-        datepickerScript.async = true;
-        document.body.append(datepickerScript)
-
-        var datepickerScript = document.createElement('script');
-        datepickerScript.src = "https://unpkg.com/flatpickr@4.6.3/dist/l10n/{{ LANGUAGE_CODE }}.js";
-        datepickerScript.async = true;
-        document.body.append(datepickerScript)
-
-        var datepickerScript = document.createElement('link');
-        datepickerScript.href = "https://unpkg.com/flatpickr@4.6.3/dist/flatpickr.min.css";
-        datepickerScript.rel = "stylesheet";
-        document.head.append(datepickerScript)
-
-        waitFor(function() {return !!window.flatpickr}).then(function () {
-          window.flatpickr.localize(window.flatpickr.l10ns['{{ LANGUAGE_CODE }}']);
-          window.flatpickr('input.date');
-          window.flatpickr('input.date-time', {enableTime: true});
-          window.flatpickr('input.time', {noCalendar: true, enableTime: true});
-        })
-      }
-
-      // File picker
-      document.querySelectorAll('.file-upload-field').forEach(function(f) {
-        f.addEventListener('change', function(e) {
-          var filename = e.target.value.replace(/.*(\/|\\)/, '') || 'Select a file';
-          e.target.parentElement.setAttribute('data-text', filename);
-        })
-      })
-
-      // Card inputs
-      if (document.querySelector('.cc-number') !== null) {
-        {% comment %} https://github.com/nosir/cleave.js {% endcomment %}
-        var cleaveScript = document.createElement('script');
-        cleaveScript.src = "https://unpkg.com/cleave.js@1.5.3/dist/cleave.min.js";
-        cleaveScript.async = true;
-        document.body.append(cleaveScript)
-
-        waitFor(function() { return window.Cleave }).then(function() {
-          new Cleave('.cc-number', { creditCard: true })
-          new Cleave('.cc-expiration', { date: true, datePattern: ['m', 'y'] })
-          new Cleave('.cc-cvv', {
-            numeral: true,
-            numeralThousandsGroupStyle: 'none',
-            numericOnly: true,
-
-          })
-        })
-      }
-
-      // Amount symbol padding
-      const amountInputElem = document.querySelector('.amount-input');
-      let icon, iconWidthStr, iconWidthFloat;
-      if (amountInputElem) {
-        icon = amountInputElem.previousElementSibling;
-        iconWidthStr = getComputedStyle(icon).width;
-        iconWidthFloat = parseFloat(iconWidthStr.replace(/px/, ''));
-        amountInputElem.style.paddingLeft = (iconWidthFloat + 2).toString() + 'px';
-      }
-
-      // Disable form submit buttons after first click
-      let submitButton = document.querySelector('.submit');
-      let anchorForm = document.querySelector('form');
-      if (anchorForm) {
-        anchorForm.addEventListener('submit', (e) => {
-          submitButton.disabled = true;
-        });
-      }
-
-      // Show fee and amount user will receive when amount field
-      // changes, if present.
-
-      let amountInput = document.querySelector('.amount-input');
-      let typeInput = document.querySelector('#id_type');
-      let feeTag = document.querySelector('.fee');
-      let amountOutTag = document.querySelector('.amount-out');
-      let feeTable = document.querySelector('.fee-table');
-      let op = "{{ operation }}";
-      let additiveFeesEnabled = "{{ additive_fees_enabled }}" === "True";
-      let fee_fixed;
-      let fee_percent;
-      if (op === "deposit") {
-        fee_fixed = {{ asset.deposit_fee_fixed|default:0 }}
-        fee_percent = {{ asset.deposit_fee_percent|default:0 }}
-      } else {
-        fee_fixed = {{ asset.withdrawal_fee_fixed|default:0 }}
-        fee_percent = {{ asset.withdrawal_fee_percent|default:0 }}
-      }
-      if (amountInput) {
-        feeTable.removeAttribute('hidden');
-        amountInput.addEventListener("keyup", amountInputChange);
-        if (typeInput)
-          typeInput.addEventListener("input", amountInputChange);
-      }
-
-      function getFeeTableStrings(fee, amountIn) {
-        /*
-         * Calculates the total based on the amount entered and returns the strings
-         * to be rendered in the fee table.
-         */
-        let feeStr;
-        let totalStr;
-        if (Number(amountIn) !== 0) {
-          let total = additiveFeesEnabled ? amountIn + fee : amountIn - fee;
-          feeStr = fee.toFixed({{ asset.significant_decimals }});
-          totalStr = total.toFixed({{ asset.significant_decimals }});
-        } else {
-          feeStr = "0";
-          totalStr = additiveFeesEnabled ? amountIn.toFixed({{ asset.significant_decimals }}) : "0";
-        }
-        return [feeStr, totalStr];
-      }
-
-      function updateFeeTableHtml(feeStr, amountOutStr) {
-        feeTag.innerHTML = "{{ asset.symbol }} " + feeStr;
-        amountOutTag.innerHTML = "{{ asset.symbol }} " + amountOutStr;
-      }
-
-      let timeout; // timeout must persist outside function scope
-      function callFeeEndpoint(amount) {
-        /*
-         * Calls the anchor's /fee endpoint.
-         *
-         * Note that this function may return prior to receiving a response from
-         * the server and updating the fee table's HTML.
-         *
-         * If typeInput is present but no value has been selected, this function
-         * will return without making the API call and updating the html.
-         *
-         * Uses timeouts to ensure a call to the /fee endpoint is only made once
-         * every 500 milliseconds.
-         */
-        clearTimeout(timeout)
-        timeout = setTimeout(() => {
-          let params = new URLSearchParams({
-            "operation": op,
-            "asset_code": "{{ asset.code }}",
-            "amount": amount
-          });
-          if (typeInput) {
-            if (!typeInput.value) return;
-            params.append('type', typeInput.value);
-          }
-          fetch("/sep24/fee?" + params.toString()).then(
-            response => response.json()
-          ).then(json => {
-            if (!json.error) {
-              let [feeStr, totalStr] = getFeeTableStrings(json.fee, amount);
-              updateFeeTableHtml(feeStr, totalStr);
-            }
-          });
-        }, 500);
-      }
-
-      function amountInputChange(e) {
-        if (isNaN(amountInput.value)) return;
-        if (typeInput && !typeInput.value) {
-          return;
-        }
-        let fee_fixed;
-        let fee_percent;
-        let amountIn = Number(amountInput.value);
-        if ("{{ use_fee_endpoint }}" !== "True") {
-          let fee = fee_fixed + (amountIn * (fee_percent/100));
-          let [feeStr, amountOutStr] = getFeeTableStrings(fee, amountIn);
-          updateFeeTableHtml(feeStr, amountOutStr);
-        } else {
-          callFeeEndpoint(amountIn);
-        }
-      }
+      feeTable({
+        operation: "{{ operation }}",
+        additiveFeesEnabled: "{{ additive_fees_enabled }}" === "True",
+        depositFeeFixed: {{ asset.deposit_fee_fixed|default:0 }},
+        depositFeePercent: {{ asset.deposit_fee_percent|default:0 }},
+        withdrawalFeeFixed: {{ asset.withdrawal_fee_fixed|default:0 }},
+        withdrawalFeePercent: {{ asset.withdrawal_fee_percent|default:0 }},
+        significantDecimals: {{ asset.significant_decimals }},
+        symbol: "{{ asset.symbol }}",
+        assetCode: "{{ asset.code }}",
+        useFeeEndpoint: "{{ use_fee_endpoint }}" === "True"
+      });
     </script>
 
     {# Rendered via Polaris javascript integrations #}
