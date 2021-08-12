@@ -47,8 +47,6 @@ Add the following to your ``MIDDLEWARE`` list. Make sure ``WhiteNoiseMiddleware`
         ...
     ]
 
-:doc:`PolarisSameSiteMiddleware </middleware/index>` can also be used if your anchor service should support wallets that use iframes to open interactive URL's. Popups are the recommend strategy per SEP-24, but wallet application may still use iframes, so it can't hurt to add it.
-
 Polaris allows developers to specify their environment variables in a ``.env`` file or through the Django settings file. By default Polaris looks in the same directory as your ``BASE_DIR`` setting, but will use the ``POLARIS_ENV_PATH`` if ``.env`` cannot be found using ``BASE_DIR``. Alternatively, you may specify all environment variables directly in your settings file, but all Polaris-specific settings must be prepended with ``POLARIS_``. You can also use the `environ` package installed with Polaris to configure your settings.py variables with values stored in your environment.
 ::
 

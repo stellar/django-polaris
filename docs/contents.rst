@@ -16,7 +16,6 @@ django-polaris documentation contents
     models/index
     forms/index
     templates/index
-    middleware/index
     internationalization/index
     CLI commands <deployment/index>
     Multisignature Assets <multisignature_assets/index>

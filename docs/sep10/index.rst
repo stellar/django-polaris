@@ -52,3 +52,9 @@ Integrations
 ------------
 
 There are no integrations for SEP-10. It just works.
+
+API Reference
+-------------
+
+.. autoclass:: polaris.sep10.token.SEP10Token
+    :members:

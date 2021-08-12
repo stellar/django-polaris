@@ -13,6 +13,13 @@ from polaris import settings
 
 
 class SEP10Token:
+    """
+    An object representing the authenticated session of the client.
+
+    This object will be passed to every integration function that is called
+    within the a request containing the JWT in the `Authorization` header.
+    """
+
     _REQUIRED_FIELDS = {"iss", "sub", "iat", "exp"}
 
     def __init__(self, jwt: Union[str, Dict]):
@@ -63,11 +70,67 @@ class SEP10Token:
         ):
             raise ValueError("'client_domain' must be a hostname")
 
-        self.account = jwt["sub"]
-        self.issuer = jwt["iss"]
-        self.issued_at = iat
-        self.expires_at = exp
-        self.memo = jwt.get("memo")
-        self.memo_type = jwt.get("memo_type")
-        self.client_domain = jwt.get("client_domain")
-        self.raw = jwt
+        self._raw = jwt
+
+    @property
+    def account(self) -> str:
+        """
+        The principal that is the subject of the JWT, RFC7519, Section 4.1.2 —
+        the public key of the authenticating Stellar account (G...)
+        """
+        return self._raw["sub"]
+
+    @property
+    def issuer(self) -> str:
+        """
+        The principal that issued a token, RFC7519, Section 4.1.1 — a Uniform
+        Resource Identifier (URI) for the issuer
+        (https://example.com or https://example.com/G...)
+        """
+        return self._raw["iss"]
+
+    @property
+    def issued_at(self) -> datetime:
+        """
+        The time at which the JWT was issued RFC7519, Section 4.1.6 -
+        represented as a UTC datetime object
+        """
+        return datetime.fromtimestamp(self._raw["iat"], tz=utc)
+
+    @property
+    def expires_at(self) -> datetime:
+        """
+        The expiration time on or after which the JWT will not accepted for
+        processing, RFC7519, Section 4.1.4 — represented as a UTC datetime object
+        """
+        return datetime.fromtimestamp(self._raw["exp"], tz=utc)
+
+    @property
+    def memo(self) -> str:
+        """
+        The memo provided in the challenge at the request of the client - usually
+        specified to identify the user of a shared Stellar account
+        """
+        return self._raw.get("memo")
+
+    @property
+    def memo_type(self) -> str:
+        """
+        The memo type provided in the challenge, one of `text`, `id` or `hash`
+        """
+        return self._raw.get("memo_type")
+
+    @property
+    def client_domain(self):
+        """
+        A nonstandard JWT claim containing the client's home domain, included if
+        the challenge transaction contained a ``client_domain`` ManageData operation
+        """
+        return self._raw.get("client_domain")
+
+    @property
+    def raw(self) -> dict:
+        """
+        The decoded contents of the JWT string
+        """
+        return self.raw
