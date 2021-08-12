@@ -1,6 +1,9 @@
 from typing import Dict, Optional, List
 
+from rest_framework.request import Request
+
 from polaris.models import Asset, Transaction
+from polaris.sep10.token import SEP10Token
 
 
 class SEP31ReceiverIntegration:
@@ -8,7 +11,14 @@ class SEP31ReceiverIntegration:
     The container class for SEP31 integrations
     """
 
-    def info(self, asset: Asset, lang: str = None, *args: List, **kwargs: Dict) -> Dict:
+    def info(
+        self,
+        request: Request,
+        asset: Asset,
+        lang: str = None,
+        *args: List,
+        **kwargs: Dict
+    ) -> Dict:
         """
         .. _info response: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0031.md#response
 
@@ -58,13 +68,20 @@ class SEP31ReceiverIntegration:
                 }
             }
 
+        :param request: the ``rest_framework.request.Request`` instance
         :param asset: the ``Asset`` object for the field values returned
         :param lang: the ISO 639-1 language code of the user
         """
         pass
 
     def process_post_request(
-        self, params: Dict, transaction: Transaction
+        self,
+        token: SEP10Token,
+        request: Request,
+        params: Dict,
+        transaction: Transaction,
+        *args: List,
+        **kwargs: Dict
     ) -> Optional[Dict]:
         """
         .. _customer-info-needed: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0031.md#customer-info-needed-400-bad-request
@@ -133,12 +150,22 @@ class SEP31ReceiverIntegration:
                 "error": "invalid 'sender_bank_account' format"
             }
 
+        :param token: The ``SEP10Token`` instance representing the authenticated session
+        :param request: The ``rest_framework.request.Request`` instance
         :param params: The parameters included in the `/transaction` request
         :param transaction: the ``Transaction`` object representing the transaction being processed
         """
         pass
 
-    def process_patch_request(self, params: Dict, transaction: Transaction):
+    def process_patch_request(
+        self,
+        token: SEP10Token,
+        request: Request,
+        params: Dict,
+        transaction: Transaction,
+        *args: List,
+        **kwargs: Dict
+    ):
         """
         Use the `params` passed in the request to update `transaction` or any
         related data.
@@ -158,17 +185,28 @@ class SEP31ReceiverIntegration:
         ``RailsIntegration.execute_outgoing_transaction`` function for more
         information on the lifecycle of a transaction.
 
+        :param token: The ``SEP10Token`` instance representing the authenticated session
+        :param request: the ``rest_framework.request.Request`` instance
         :param params: the request body of the `PATCH /transaction` request
         :param transaction: the ``Transaction`` object that should be updated
         """
         pass
 
-    def valid_sending_anchor(self, public_key: str) -> bool:
+    def valid_sending_anchor(
+        self,
+        token: SEP10Token,
+        request: Request,
+        public_key: str,
+        *args: List,
+        **kwargs: Dict
+    ) -> bool:
         """
         Return ``True`` if `public_key` is a known anchor's stellar account address,
         and ``False`` otherwise. This function ensures that only registered sending
         anchors can make requests to protected endpoints.
 
+        :param token: The ``SEP10Token`` instance representing the authenticated session
+        :param request: the ``rest_framework.request.Request`` instance
         :param public_key: the public key of the sending anchor's stellar account
         """
         pass

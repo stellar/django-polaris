@@ -8,7 +8,7 @@ from polaris.models import Transaction
 INFO_PATH = "/sep6/info"
 
 
-def good_info_integration(asset, lang):
+def good_info_integration(request, asset, lang):
     """
     From the SEP
     """
@@ -120,7 +120,7 @@ def test_good_info_response(client, usd_asset_factory):
     }
 
 
-def bad_fields_type_integration(asset, lang):
+def bad_fields_type_integration(request, asset, lang):
     return {"fields": "not a dict"}
 
 
@@ -130,7 +130,7 @@ def test_bad_fields_type(client, usd_asset_factory):
     server_error(client, usd_asset_factory)
 
 
-def bad_types_type(asset, lang):
+def bad_types_type(request, asset, lang):
     return {"types": "not a dict"}
 
 
@@ -140,7 +140,7 @@ def test_bad_types_type(client, usd_asset_factory):
     server_error(client, usd_asset_factory)
 
 
-def bad_nested_fields_no_description(asset, lang):
+def bad_nested_fields_no_description(request, asset, lang):
     return {"types": {"cash": {"fields": {"key": {"optional": True}}}}}
 
 
@@ -150,7 +150,7 @@ def test_bad_nested_fields_no_description(client, usd_asset_factory):
     server_error(client, usd_asset_factory)
 
 
-def bad_nested_fields_extra_key(asset, lang):
+def bad_nested_fields_extra_key(request, asset, lang):
     return {
         "types": {
             "cash": {
@@ -176,7 +176,7 @@ def server_error(client, usd_asset_factory):
     assert content == {"error": "unable to process the request"}
 
 
-def unsupported_lang(asset, lang):
+def unsupported_lang(request, asset, lang):
     raise ValueError()
 
 

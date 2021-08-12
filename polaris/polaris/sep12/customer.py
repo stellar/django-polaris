@@ -57,15 +57,16 @@ class CustomerAPIView(APIView):
 
         try:
             response_data = rci.get(
-                {
+                token=token,
+                request=request,
+                params={
                     "id": request.GET.get("id"),
-                    "sep10_client_account": token.account,
                     "account": request.GET.get("account"),
                     "memo": request.GET.get("memo"),
                     "memo_type": request.GET.get("memo_type"),
                     "type": request.GET.get("type"),
                     "lang": request.GET.get("lang"),
-                }
+                },
             )
         except ValueError as e:
             return render_error_response(str(e), status_code=400)
@@ -114,14 +115,16 @@ class CustomerAPIView(APIView):
 
         try:
             customer_id = rci.put(
-                {
+                token=token,
+                request=request,
+                params={
                     "id": request.data.get("id"),
                     "account": token.account,
                     "memo": request.data.get("memo"),
                     "memo_type": request.data.get("memo_type"),
                     "type": request.data.get("type"),
                     **extract_sep9_fields(request.data),
-                }
+                },
             )
         except ValueError as e:
             return render_error_response(str(e), status_code=400)
@@ -178,13 +181,15 @@ def callback(token: SEP10Token, request: Request) -> Response:
 
     try:
         rci.callback(
-            {
+            token=token,
+            request=request,
+            params={
                 "id": request.data.get("id"),
                 "account": token.account,
                 "memo": request.data.get("memo"),
                 "memo_type": request.data.get("memo_type"),
                 "url": callback_url,
-            }
+            },
         )
     except ValueError as e:
         return render_error_response(str(e), status_code=400)
@@ -208,7 +213,13 @@ def delete(token: SEP10Token, request: Request, account: str,) -> Response:
     except ValueError:
         return render_error_response(_("invalid 'memo' for 'memo_type'"))
     try:
-        rci.delete(account, request.data.get("memo"), request.data.get("memo_type"))
+        rci.delete(
+            token=token,
+            request=request,
+            account=account,
+            memo=request.data.get("memo"),
+            memo_type=request.data.get("memo_type"),
+        )
     except ObjectDoesNotExist:
         return render_error_response(_("account not found"), status_code=404)
     else:
@@ -235,7 +246,12 @@ def put_verification(token: SEP10Token, request) -> Response:
             )
 
     try:
-        response_data = rci.put_verification(token.account, dict(request.data))
+        response_data = rci.put_verification(
+            token=token,
+            request=request,
+            account=token.account,
+            params=dict(request.data),
+        )
     except ObjectDoesNotExist:
         return render_error_response(_("customer not found"), status_code=404)
     except ValueError as e:

@@ -4,6 +4,7 @@ from unittest.mock import patch, Mock
 from typing import Dict
 
 from stellar_sdk import Keypair
+from rest_framework.request import Request
 
 from polaris.models import Transaction, Asset
 from polaris.tests.helpers import (
@@ -11,12 +12,21 @@ from polaris.tests.helpers import (
     mock_check_auth_success_client_domain,
 )
 from polaris.integrations import DepositIntegration
+from polaris.sep10.token import SEP10Token
 
 DEPOSIT_PATH = "/sep6/deposit"
 
 
 class GoodDepositIntegration(DepositIntegration):
-    def process_sep6_request(self, params: Dict, transaction: Transaction) -> Dict:
+    def process_sep6_request(
+        self,
+        token: SEP10Token,
+        request: Request,
+        params: Dict,
+        transaction: Transaction,
+        *args,
+        **kwargs
+    ) -> Dict:
         if params.get("type") not in [None, "good_type"]:
             raise ValueError("invalid 'type'")
         transaction.save()
@@ -188,7 +198,15 @@ def test_deposit_bad_type(
 
 
 class MissingHowDepositIntegration(DepositIntegration):
-    def process_sep6_request(self, params: Dict, transaction: Transaction) -> Dict:
+    def process_sep6_request(
+        self,
+        token: SEP10Token,
+        request: Request,
+        params: Dict,
+        transaction: Transaction,
+        *args,
+        **kwargs
+    ) -> Dict:
         return {}
 
 
@@ -210,7 +228,15 @@ def test_deposit_missing_integration_response(
 
 
 class BadExtraInfoDepositIntegration(DepositIntegration):
-    def process_sep6_request(self, params: Dict, transaction: Transaction) -> Dict:
+    def process_sep6_request(
+        self,
+        token: SEP10Token,
+        request: Request,
+        params: Dict,
+        transaction: Transaction,
+        *args,
+        **kwargs
+    ) -> Dict:
         transaction.save()
         return {"how": "test", "extra_info": "not a dict"}
 
@@ -262,7 +288,15 @@ def test_deposit_transaction_created(
 
 
 class GoodInfoNeededDepositIntegration(DepositIntegration):
-    def process_sep6_request(self, params: Dict, transaction: Transaction) -> Dict:
+    def process_sep6_request(
+        self,
+        token: SEP10Token,
+        request: Request,
+        params: Dict,
+        transaction: Transaction,
+        *args,
+        **kwargs
+    ) -> Dict:
         return {
             "type": "non_interactive_customer_info_needed",
             "fields": ["first_name", "last_name"],
@@ -290,7 +324,15 @@ def test_deposit_non_interactive_customer_info_needed(
 
 
 class BadTypeInfoNeededDepositIntegration(DepositIntegration):
-    def process_sep6_request(self, params: Dict, transaction: Transaction) -> Dict:
+    def process_sep6_request(
+        self,
+        token: SEP10Token,
+        request: Request,
+        params: Dict,
+        transaction: Transaction,
+        *args,
+        **kwargs
+    ) -> Dict:
         return {"type": "bad type"}
 
 
@@ -312,7 +354,15 @@ def test_deposit_bad_integration_bad_type(
 
 
 class MissingFieldsInfoNeededDepositIntegration(DepositIntegration):
-    def process_sep6_request(self, params: Dict, transaction: Transaction) -> Dict:
+    def process_sep6_request(
+        self,
+        token: SEP10Token,
+        request: Request,
+        params: Dict,
+        transaction: Transaction,
+        *args,
+        **kwargs
+    ) -> Dict:
         return {"type": "non_interactive_customer_info_needed"}
 
 
@@ -336,7 +386,15 @@ def test_deposit_missing_fields_integration(
 
 
 class BadFieldsInfoNeededDepositIntegration(DepositIntegration):
-    def process_sep6_request(self, params: Dict, transaction: Transaction) -> Dict:
+    def process_sep6_request(
+        self,
+        token: SEP10Token,
+        request: Request,
+        params: Dict,
+        transaction: Transaction,
+        *args,
+        **kwargs
+    ) -> Dict:
         return {
             "type": "non_interactive_customer_info_needed",
             "fields": ["not in sep 9"],
@@ -361,7 +419,15 @@ def test_deposit_bad_fields_integration(
 
 
 class GoodCustomerInfoStatusDepositIntegration(DepositIntegration):
-    def process_sep6_request(self, params: Dict, transaction: Transaction) -> Dict:
+    def process_sep6_request(
+        self,
+        token: SEP10Token,
+        request: Request,
+        params: Dict,
+        transaction: Transaction,
+        *args,
+        **kwargs
+    ) -> Dict:
         return {"type": "customer_info_status", "status": "pending"}
 
 
@@ -385,7 +451,15 @@ def test_deposit_good_integration_customer_info(
 
 
 class BadStatusCustomerInfoStatusDepositIntegration(DepositIntegration):
-    def process_sep6_request(self, params: Dict, transaction: Transaction) -> Dict:
+    def process_sep6_request(
+        self,
+        token: SEP10Token,
+        request: Request,
+        params: Dict,
+        transaction: Transaction,
+        *args,
+        **kwargs
+    ) -> Dict:
         return {"type": "customer_info_status", "status": "approved"}
 
 
@@ -418,7 +492,15 @@ def test_deposit_bad_auth(client):
 
 
 class BadSaveDepositIntegration(DepositIntegration):
-    def process_sep6_request(self, params: Dict, transaction: Transaction) -> Dict:
+    def process_sep6_request(
+        self,
+        token: SEP10Token,
+        request: Request,
+        params: Dict,
+        transaction: Transaction,
+        *args,
+        **kwargs
+    ) -> Dict:
         transaction.save()
         return {
             "type": "non_interactive_customer_info_needed",
@@ -542,8 +624,8 @@ def test_good_amount(mock_deposit, client, usd_asset_factory):
         },
     )
     assert response.status_code == 200
-    args, _ = mock_deposit.process_sep6_request.call_args[0]
-    assert args.get("amount") == asset.deposit_max_amount - 1
+    kwargs = mock_deposit.process_sep6_request.call_args_list[0][1]
+    assert kwargs.get("params", {}).get("amount") == asset.deposit_max_amount - 1
 
 
 @pytest.mark.django_db

@@ -1,8 +1,11 @@
 from typing import List, Dict
+
+from rest_framework.request import Request
+
 from polaris.models import Asset
 
 
-def get_stellar_toml(*args: List, **kwargs: Dict):
+def get_stellar_toml(request: Request, *args: List, **kwargs: Dict):
     """
     .. _SEP-1: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0001.md
     .. _`Account Info`: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0001.md#account-information

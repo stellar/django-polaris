@@ -8,6 +8,7 @@ from rest_framework.request import Request
 from polaris.models import Transaction, Asset
 from polaris.integrations.forms import TransactionForm
 from polaris.templates import Template
+from polaris.sep10.token import SEP10Token
 
 
 class DepositIntegration:
@@ -41,6 +42,7 @@ class DepositIntegration:
 
     def form_for_transaction(
         self,
+        request: Request,
         transaction: Transaction,
         post_data: Optional[QueryDict] = None,
         amount: Optional[Decimal] = None,
@@ -94,6 +96,7 @@ class DepositIntegration:
         in order to continue, such as confirming their email address. Once the user is
         confirmed, ``form_for_transaction()`` should return the next form.
 
+        :param request: the ``rest_framework.request.Request`` object
         :param transaction: the ``Transaction`` database object
         :param post_data: the data sent in the POST request as a dictionary
         :param amount: a ``Decimal`` object the wallet may pass in the GET request.
@@ -114,6 +117,7 @@ class DepositIntegration:
 
     def content_for_template(
         self,
+        request: Request,
         template: Template,
         form: Optional[forms.Form] = None,
         transaction: Optional[Transaction] = None,
@@ -175,6 +179,7 @@ class DepositIntegration:
         Finally, if neither are present, Polaris will default to its default image.
         All images will be rendered in a 100 x 150px sized box.
 
+        :param request: a ``rest_framework.request.Request`` instance
         :param template: a ``polaris.templates.Template`` enum value
             for the template to be rendered in the response
         :param form: the form to be rendered in the template
@@ -183,7 +188,12 @@ class DepositIntegration:
         pass
 
     def after_form_validation(
-        self, form: forms.Form, transaction: Transaction, *args: List, **kwargs: Dict
+        self,
+        request: Request,
+        form: forms.Form,
+        transaction: Transaction,
+        *args: List,
+        **kwargs: Dict
     ):
         """
         Use this function to process the data collected with `form` and to update
@@ -213,6 +223,7 @@ class DepositIntegration:
         ``pending_user_transfer_start`` before including the transaction in calls to
         ``DepositIntegration.poll_pending_deposits()``.
 
+        :param request: the ``rest_framework.request.Request`` object
         :param form: the completed ``forms.Form`` submitted by the user
         :param transaction: the ``Transaction`` database object
         """
@@ -258,6 +269,7 @@ class DepositIntegration:
 
     def save_sep9_fields(
         self,
+        request: Request,
         stellar_account: str,
         fields: Dict,
         language_code: str,
@@ -301,7 +313,13 @@ class DepositIntegration:
         pass
 
     def process_sep6_request(
-        self, params: Dict, transaction: Transaction, *args: List, **kwargs: Dict
+        self,
+        token: SEP10Token,
+        request: Request,
+        params: Dict,
+        transaction: Transaction,
+        *args: List,
+        **kwargs: Dict
     ) -> Dict:
         """
         .. _deposit: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#deposit
@@ -362,6 +380,8 @@ class DepositIntegration:
               "status": "denied",
             }
 
+        :param token: the ``SEP10Token`` object representing the authenticated session
+        :param request: a ``rest_framwork.request.Request`` object
         :param params: the request parameters as described in /deposit_
         :param transaction: an unsaved ``Transaction`` object representing the transaction
             to be processed
@@ -409,7 +429,13 @@ class DepositIntegration:
         pass
 
     def patch_transaction(
-        self, params: Dict, transaction: Transaction, *args: List, **kwargs: Dict
+        self,
+        token: SEP10Token,
+        request: Request,
+        params: Dict,
+        transaction: Transaction,
+        *args: List,
+        **kwargs: Dict
     ):
         """
         .. _`GET /info response`: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#response-2
@@ -440,6 +466,8 @@ class DepositIntegration:
         transaction's status back to ``pending_anchor`` as well as clear the ``required_info_updates``
         and ``required_info_message`` fields.
 
+        :param token: the ``SEP10Token`` object representing the authenticated session
+        :param request: a ``rest_framwork.request.Request`` object
         :param params: The request parameters as described in the `PATCH /transactions`_ endpoint.
         :param transaction: A ``Transaction`` object for which updated was provided.
         """
@@ -456,6 +484,7 @@ class WithdrawalIntegration:
 
     def form_for_transaction(
         self,
+        request: Request,
         transaction: Transaction,
         post_data: Optional[QueryDict] = None,
         amount: Optional[Decimal] = None,
@@ -467,6 +496,7 @@ class WithdrawalIntegration:
 
         Same as ``DepositIntegration.form_for_transaction``
 
+        :param request: a ``rest_framwork.request.Request`` object
         :param transaction: the ``Transaction`` database object
         :param post_data: the data included in the POST request body as a dictionary
         :param amount: a ``Decimal`` object the wallet may pass in the GET request.
@@ -484,6 +514,7 @@ class WithdrawalIntegration:
 
     def content_for_template(
         self,
+        request: Request,
         template: Template,
         form: Optional[forms.Form] = None,
         transaction: Optional[Transaction] = None,
@@ -502,6 +533,7 @@ class WithdrawalIntegration:
 
             The template used to show transaction details
 
+        :param request: a ``rest_framework.request.Request`` instance
         :param template: a ``polaris.templates.Template`` enum value
             for the template to be rendered in the response
         :param form: the form to be rendered in the template
@@ -510,12 +542,18 @@ class WithdrawalIntegration:
         pass
 
     def after_form_validation(
-        self, form: forms.Form, transaction: Transaction, *args: List, **kwargs: Dict
+        self,
+        request: Request,
+        form: forms.Form,
+        transaction: Transaction,
+        *args: List,
+        **kwargs: Dict
     ):
         """
         Same as ``DepositIntegration.after_form_validation``, except
         `transaction.to_address` should be saved here when present in `form`.
 
+        :param request: a ``rest_framework.request.Request`` instance
         :param form: the completed ``forms.Form`` submitted by the user
         :param transaction: the ``Transaction`` database object
         """
@@ -541,6 +579,7 @@ class WithdrawalIntegration:
 
     def save_sep9_fields(
         self,
+        request: Request,
         stellar_account: str,
         fields: Dict,
         language_code: str,
@@ -555,7 +594,13 @@ class WithdrawalIntegration:
         pass
 
     def process_sep6_request(
-        self, params: Dict, transaction: Transaction, *args: List, **kwargs: Dict
+        self,
+        token: SEP10Token,
+        request: Request,
+        params: Dict,
+        transaction: Transaction,
+        *args: List,
+        **kwargs: Dict
     ) -> Dict:
         """
         .. _/withdraw: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#withdraw
@@ -585,7 +630,13 @@ class WithdrawalIntegration:
         )
 
     def patch_transaction(
-        self, params: Dict, transaction: Transaction, *args: List, **kwargs: Dict
+        self,
+        token: SEP10Token,
+        request: Request,
+        params: Dict,
+        transaction: Transaction,
+        *args: List,
+        **kwargs: Dict
     ):
         """
         Same as ``DepositIntegration.patch_transaction``

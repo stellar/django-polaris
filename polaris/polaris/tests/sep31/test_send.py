@@ -442,7 +442,7 @@ def test_bad_field_value_in_response():
         )
 
 
-def bad_process_send_request(args, transaction):
+def bad_process_send_request(token, request, params, transaction):
     transaction.save()
     return {
         "error": "customer_info_needed",

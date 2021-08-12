@@ -1,11 +1,15 @@
 from typing import Dict, List
 from decimal import Decimal
 
+from rest_framework.request import Request
+
 from polaris import settings
 from polaris.models import Asset
 
 
-def calculate_fee(fee_params: Dict, *args: List, **kwargs: Dict) -> Decimal:
+def calculate_fee(
+    fee_params: Dict, request: Request = None, *_args: List, **_kwargs: Dict
+) -> Decimal:
     """
     .. _`/fee`: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md#fee
 

@@ -65,7 +65,9 @@ def deposit(token: SEP10Token, request: Request) -> Response:
     )
 
     try:
-        integration_response = rdi.process_sep6_request(args, transaction)
+        integration_response = rdi.process_sep6_request(
+            token=token, request=request, params=args, transaction=transaction
+        )
     except ValueError as e:
         return render_error_response(str(e))
     except APIException as e:
@@ -73,7 +75,7 @@ def deposit(token: SEP10Token, request: Request) -> Response:
 
     try:
         response, status_code = validate_response(
-            args, integration_response, transaction
+            token, request, args, integration_response, transaction
         )
     except (ValueError, KeyError) as e:
         logger.error(str(e))
@@ -94,13 +96,20 @@ def deposit(token: SEP10Token, request: Request) -> Response:
 
 
 def validate_response(
-    args: Dict, integration_response: Dict, transaction: Transaction
+    token: SEP10Token,
+    request: Request,
+    args: Dict,
+    integration_response: Dict,
+    transaction: Transaction,
 ) -> Tuple[Dict, int]:
     """
     Validate /deposit response returned from integration function
     """
     if "type" in integration_response:
-        return validate_403_response(integration_response, transaction), 403
+        return (
+            validate_403_response(token, request, integration_response, transaction),
+            403,
+        )
 
     asset = args["asset"]
     if not (

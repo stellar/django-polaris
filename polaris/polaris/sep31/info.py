@@ -24,7 +24,7 @@ def info(request: Request) -> Response:
     for asset in Asset.objects.filter(sep31_enabled=True):
         try:
             fields_and_types = registered_sep31_receiver_integration.info(
-                asset, request.GET.get("lang")
+                request=request, asset=asset, lang=request.GET.get("lang")
             )
         except ValueError:
             return render_error_response("unsupported 'lang'")

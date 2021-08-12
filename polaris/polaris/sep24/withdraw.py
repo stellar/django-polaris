@@ -82,7 +82,9 @@ def post_interactive_withdraw(request: Request) -> Response:
     callback = args_or_error["callback"]
     amount = args_or_error["amount"]
 
-    form = rwi.form_for_transaction(transaction, post_data=request.data)
+    form = rwi.form_for_transaction(
+        request=request, transaction=transaction, post_data=request.data
+    )
     if not form:
         logger.error(
             "Initial form_for_transaction() call returned None " f"for {transaction.id}"
@@ -114,12 +116,13 @@ def post_interactive_withdraw(request: Request) -> Response:
         if issubclass(form.__class__, TransactionForm):
             transaction.amount_in = form.cleaned_data["amount"]
             transaction.amount_fee = registered_fee_func(
-                {
+                request=request,
+                fee_params={
                     "amount": transaction.amount_in,
                     "type": form.cleaned_data.get("type"),
                     "operation": settings.OPERATION_WITHDRAWAL,
                     "asset_code": asset.code,
-                }
+                },
             )
             if settings.ADDITIVE_FEES_ENABLED:
                 transaction.amount_in += transaction.amount_fee
@@ -129,10 +132,13 @@ def post_interactive_withdraw(request: Request) -> Response:
             )
             transaction.save()
 
-        rwi.after_form_validation(form, transaction)
-        next_form = rwi.form_for_transaction(transaction)
+        rwi.after_form_validation(request=request, form=form, transaction=transaction)
+        next_form = rwi.form_for_transaction(request=request, transaction=transaction)
         if next_form or rwi.content_for_template(
-            Template.WITHDRAW, form=next_form, transaction=transaction
+            request=request,
+            template=Template.WITHDRAW,
+            form=next_form,
+            transaction=transaction,
         ):
             args = {"transaction_id": transaction.id, "asset_code": asset.code}
             if amount:
@@ -176,7 +182,10 @@ def post_interactive_withdraw(request: Request) -> Response:
     else:
         content = (
             rwi.content_for_template(
-                Template.WITHDRAW, form=form, transaction=transaction
+                request=request,
+                template=Template.WITHDRAW,
+                form=form,
+                transaction=transaction,
             )
             or {}
         )
@@ -187,7 +196,7 @@ def post_interactive_withdraw(request: Request) -> Response:
         if amount:
             url_args["amount"] = amount
 
-        toml_data = registered_toml_func()
+        toml_data = registered_toml_func(request)
         post_url = f"{reverse('post_interactive_withdraw')}?{urlencode(url_args)}"
         get_url = f"{reverse('get_interactive_withdraw')}?{urlencode(url_args)}"
         content.update(
@@ -260,13 +269,21 @@ def get_interactive_withdraw(request: Request) -> Response:
         transaction.on_change_callback = args_or_error["on_change_callback"]
         transaction.save()
 
-    url = rwi.interactive_url(request, transaction, asset, amount, callback)
+    url = rwi.interactive_url(
+        request=request,
+        transaction=transaction,
+        asset=asset,
+        amount=amount,
+        callback=callback,
+    )
     if url:  # The anchor uses a standalone interactive flow
         return redirect(url)
 
-    form = rwi.form_for_transaction(transaction, amount=amount)
+    form = rwi.form_for_transaction(
+        request=request, transaction=transaction, amount=amount
+    )
     content = rwi.content_for_template(
-        Template.WITHDRAW, form=form, transaction=transaction
+        request=request, template=Template.WITHDRAW, form=form, transaction=transaction
     )
     if not (form or content):
         logger.error("The anchor did not provide content, unable to serve page.")
@@ -349,7 +366,12 @@ def withdraw(token: SEP10Token, request: Request,) -> Response:
             return render_error_response(_("invalid 'amount'"))
 
     try:
-        rwi.save_sep9_fields(token.account, sep9_fields, lang)
+        rwi.save_sep9_fields(
+            request=request,
+            stellar_account=token.account,
+            fields=sep9_fields,
+            language_code=lang,
+        )
     except ValueError as e:
         # The anchor found a validation error in the sep-9 fields POSTed by
         # the wallet. The error string returned should be in the language

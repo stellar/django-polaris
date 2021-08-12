@@ -50,7 +50,9 @@ def more_info(request: Request, sep6: bool = False) -> Response:
     }
     if request_transaction.kind == Transaction.KIND.deposit:
         content = rdi.content_for_template(
-            Template.MORE_INFO, transaction=request_transaction
+            request=request,
+            template=Template.MORE_INFO,
+            transaction=request_transaction,
         )
         if request_transaction.status == Transaction.STATUS.pending_user_transfer_start:
             context.update(
@@ -58,7 +60,9 @@ def more_info(request: Request, sep6: bool = False) -> Response:
             )
     else:
         content = rwi.content_for_template(
-            Template.MORE_INFO, transaction=request_transaction
+            request=request,
+            template=Template.MORE_INFO,
+            transaction=request_transaction,
         )
     if content:
         context.update(content)
@@ -189,12 +193,13 @@ def fee(request: Request, sep6: bool = False) -> Response:
         return Response(
             {
                 "fee": registered_fee_func(
-                    {
+                    request=request,
+                    fee_params={
                         "operation": operation,
                         "type": op_type,
                         "asset_code": asset_code,
                         "amount": amount,
-                    }
+                    },
                 )
             }
         )

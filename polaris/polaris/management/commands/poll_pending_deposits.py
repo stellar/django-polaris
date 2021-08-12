@@ -165,7 +165,7 @@ class PendingDeposits:
                 if registered_fee_func is calculate_fee:
                     try:
                         transaction.amount_fee = calculate_fee(
-                            {
+                            fee_params={
                                 "amount": transaction.amount_in,
                                 "operation": settings.OPERATION_DEPOSIT,
                                 "asset_code": transaction.asset.code,
@@ -471,7 +471,7 @@ class PendingDeposits:
     @staticmethod
     def get_channel_keypair(transaction) -> Keypair:
         if not transaction.channel_account:
-            rdi.create_channel_account(transaction)
+            rdi.create_channel_account(transaction=transaction)
         return Keypair.from_secret(transaction.channel_seed)
 
     @classmethod

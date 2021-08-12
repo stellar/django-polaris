@@ -86,7 +86,9 @@ def post_interactive_deposit(request: Request) -> Response:
     callback = args_or_error["callback"]
     amount = args_or_error["amount"]
 
-    form = rdi.form_for_transaction(transaction, post_data=request.data)
+    form = rdi.form_for_transaction(
+        request=request, transaction=transaction, post_data=request.data
+    )
     if not form:
         logger.error(
             "Initial form_for_transaction() call returned None in "
@@ -119,12 +121,13 @@ def post_interactive_deposit(request: Request) -> Response:
         if issubclass(form.__class__, TransactionForm):
             transaction.amount_in = form.cleaned_data["amount"]
             transaction.amount_fee = registered_fee_func(
-                {
+                request=request,
+                fee_params={
                     "amount": transaction.amount_in,
                     "type": form.cleaned_data.get("type"),
                     "operation": settings.OPERATION_DEPOSIT,
                     "asset_code": asset.code,
-                }
+                },
             )
             if settings.ADDITIVE_FEES_ENABLED:
                 transaction.amount_in += transaction.amount_fee
@@ -134,10 +137,13 @@ def post_interactive_deposit(request: Request) -> Response:
             )
             transaction.save()
 
-        rdi.after_form_validation(form, transaction)
-        next_form = rdi.form_for_transaction(transaction)
+        rdi.after_form_validation(request=request, form=form, transaction=transaction)
+        next_form = rdi.form_for_transaction(request=request, transaction=transaction)
         if next_form or rdi.content_for_template(
-            Template.DEPOSIT, form=next_form, transaction=transaction
+            request=request,
+            template=Template.DEPOSIT,
+            form=next_form,
+            transaction=transaction,
         ):
             args = {"transaction_id": transaction.id, "asset_code": asset.code}
             if amount:
@@ -164,7 +170,10 @@ def post_interactive_deposit(request: Request) -> Response:
     else:
         content = (
             rdi.content_for_template(
-                Template.DEPOSIT, form=form, transaction=transaction
+                request=request,
+                template=Template.DEPOSIT,
+                form=form,
+                transaction=transaction,
             )
             or {}
         )
@@ -246,13 +255,21 @@ def get_interactive_deposit(request: Request) -> Response:
         transaction.on_change_callback = args_or_error["on_change_callback"]
         transaction.save()
 
-    url = rdi.interactive_url(request, transaction, asset, amount, callback)
+    url = rdi.interactive_url(
+        request=request,
+        transaction=transaction,
+        asset=asset,
+        amount=amount,
+        callback=callback,
+    )
     if url:  # The anchor uses a standalone interactive flow
         return redirect(url)
 
-    form = rdi.form_for_transaction(transaction, amount=amount)
+    form = rdi.form_for_transaction(
+        request=request, transaction=transaction, amount=amount
+    )
     content = rdi.content_for_template(
-        Template.DEPOSIT, form=form, transaction=transaction
+        request=request, template=Template.DEPOSIT, form=form, transaction=transaction
     )
     if not (form or content):
         logger.error("The anchor did not provide content, unable to serve page.")
@@ -278,7 +295,7 @@ def get_interactive_deposit(request: Request) -> Response:
     if amount:
         url_args["amount"] = amount
 
-    toml_data = registered_toml_func()
+    toml_data = registered_toml_func(request=request)
     post_url = f"{reverse('post_interactive_deposit')}?{urlencode(url_args)}"
     get_url = f"{reverse('get_interactive_deposit')}?{urlencode(url_args)}"
     content.update(
@@ -367,7 +384,10 @@ def deposit(token: SEP10Token, request: Request) -> Response:
 
     try:
         rdi.save_sep9_fields(
-            stellar_account, sep9_fields, lang,
+            request=request,
+            stellar_account=stellar_account,
+            fields=sep9_fields,
+            language_code=lang,
         )
     except ValueError as e:
         # The anchor found a validation error in the sep-9 fields POSTed by

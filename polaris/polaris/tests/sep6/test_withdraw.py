@@ -4,6 +4,7 @@ from typing import Dict
 from unittest.mock import patch, Mock
 
 from stellar_sdk.keypair import Keypair
+from rest_framework.request import Request
 
 from polaris.tests.conftest import USD_DISTRIBUTION_SEED
 from polaris.tests.helpers import (
@@ -12,13 +13,22 @@ from polaris.tests.helpers import (
 )
 from polaris.integrations import WithdrawalIntegration
 from polaris.models import Transaction, Asset
+from polaris.sep10.token import SEP10Token
 
 
 WITHDRAW_PATH = "/sep6/withdraw"
 
 
 class GoodWithdrawalIntegration(WithdrawalIntegration):
-    def process_sep6_request(self, params: Dict, transaction: Transaction) -> Dict:
+    def process_sep6_request(
+        self,
+        token: SEP10Token,
+        request: Request,
+        params: Dict,
+        transaction: Transaction,
+        *args,
+        **kwargs
+    ) -> Dict:
         if params.get("type") == "bad type":
             raise ValueError()
         transaction.save()
@@ -205,7 +215,15 @@ def test_withdraw_bad_type(client, acc1_usd_withdrawal_transaction_factory):
 
 
 class MissingHowDepositIntegration(WithdrawalIntegration):
-    def process_sep6_request(self, params: Dict, transaction: Transaction) -> Dict:
+    def process_sep6_request(
+        self,
+        token: SEP10Token,
+        request: Request,
+        params: Dict,
+        transaction: Transaction,
+        *args,
+        **kwargs
+    ) -> Dict:
         return {}
 
 
@@ -232,7 +250,15 @@ def test_withdraw_empty_integration_response(client, usd_asset_factory):
 
 
 class BadExtraInfoWithdrawalIntegration(WithdrawalIntegration):
-    def process_sep6_request(self, params: Dict, transaction: Transaction) -> Dict:
+    def process_sep6_request(
+        self,
+        token: SEP10Token,
+        request: Request,
+        params: Dict,
+        transaction: Transaction,
+        *args,
+        **kwargs
+    ) -> Dict:
         return {"extra_info": "not a dict"}
 
 
@@ -335,7 +361,15 @@ def test_withdrawal_transaction_created(
 
 
 class GoodInfoNeededWithdrawalIntegration(WithdrawalIntegration):
-    def process_sep6_request(self, params: Dict, transaction: Transaction) -> Dict:
+    def process_sep6_request(
+        self,
+        token: SEP10Token,
+        request: Request,
+        params: Dict,
+        transaction: Transaction,
+        *args,
+        **kwargs
+    ) -> Dict:
         return {
             "type": "non_interactive_customer_info_needed",
             "fields": ["first_name", "last_name"],
@@ -372,7 +406,15 @@ def test_deposit_bad_auth(client):
 
 
 class BadSaveWithdrawalIntegration(WithdrawalIntegration):
-    def process_sep6_request(self, params: Dict, transaction: Transaction) -> Dict:
+    def process_sep6_request(
+        self,
+        token: SEP10Token,
+        request: Request,
+        params: Dict,
+        transaction: Transaction,
+        *args,
+        **kwargs
+    ) -> Dict:
         transaction.save()
         return {
             "type": "non_interactive_customer_info_needed",
@@ -449,8 +491,8 @@ def test_good_amount(mock_deposit, client, usd_asset_factory):
         },
     )
     assert response.status_code == 200
-    args, _ = mock_deposit.process_sep6_request.call_args[0]
-    assert args.get("amount") == asset.deposit_max_amount - 1
+    kwargs = mock_deposit.process_sep6_request.call_args_list[0][1]
+    assert kwargs.get("params", {}).get("amount") == asset.deposit_max_amount - 1
 
 
 @pytest.mark.django_db

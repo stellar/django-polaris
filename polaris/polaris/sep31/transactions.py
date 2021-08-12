@@ -35,14 +35,14 @@ class TransactionsAPIView(APIView):
     @staticmethod
     @validate_sep10_token()
     def get(
-        token: SEP10Token, _request: Request, transaction_id: str = None,
+        token: SEP10Token, request: Request, transaction_id: str = None,
     ) -> Response:
         if not transaction_id:
             return render_error_response(
                 _("GET requests must include a transaction ID in the URI"),
             )
         elif not registered_sep31_receiver_integration.valid_sending_anchor(
-            token.account
+            token=token, request=request, public_key=token.account
         ):
             return render_error_response(_("invalid sending account."), status_code=403)
         elif not transaction_id:
@@ -63,7 +63,7 @@ class TransactionsAPIView(APIView):
         token: SEP10Token, request: Request, transaction_id: str = None,
     ) -> Response:
         if not registered_sep31_receiver_integration.valid_sending_anchor(
-            token.account
+            token=token, request=request, public_key=token.account
         ):
             return render_error_response(_("invalid sending account"), status_code=403)
         try:
@@ -79,7 +79,10 @@ class TransactionsAPIView(APIView):
         try:
             validate_patch_request_fields(request.data.get("fields"), transaction)
             registered_sep31_receiver_integration.process_patch_request(
-                params=request.data.get("fields"), transaction=transaction,
+                token=token,
+                request=request,
+                params=request.data.get("fields"),
+                transaction=transaction,
             )
         except ValueError as e:
             return render_error_response(str(e))
@@ -97,14 +100,14 @@ class TransactionsAPIView(APIView):
     @staticmethod
     @validate_sep10_token()
     def post(
-        token: SEP10Token, request: Request, **kwargs,
+        token: SEP10Token, request: Request, **kwargs: Dict,
     ):
         if kwargs:
             return render_error_response(
                 _("POST requests should not specify subresources in the URI")
             )
         elif not registered_sep31_receiver_integration.valid_sending_anchor(
-            token.account
+            token=token, request=request, public_key=token.account
         ):
             return render_error_response("invalid sending account", status_code=403)
 
@@ -144,7 +147,7 @@ class TransactionsAPIView(APIView):
         )
 
         error_data = registered_sep31_receiver_integration.process_post_request(
-            params, transaction
+            token=token, request=request, params=params, transaction=transaction
         )
         try:
             response_data = process_post_response(error_data, transaction)

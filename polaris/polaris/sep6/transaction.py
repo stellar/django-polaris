@@ -88,7 +88,9 @@ def patch_transaction(token: SEP10Token, request: Request, transaction_id: str):
         return render_error_response(_("unable to process request"), status_code=500)
     integration = rdi if t.kind == Transaction.KIND.deposit else rwi
     try:
-        integration.patch_transaction(params=request.data, transaction=t)
+        integration.patch_transaction(
+            token=token, request=request, params=request.data, transaction=t
+        )
     except ValueError as e:
         return render_error_response(str(e))
     except NotImplementedError:

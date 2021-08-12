@@ -1,9 +1,12 @@
 from typing import Dict, Optional, List
+
+from rest_framework.request import Request
+
 from polaris.models import Asset
 
 
 def default_info_func(
-    asset: Asset, lang: Optional[str], *args: List, **kwargs: Dict
+    request: Request, asset: Asset, lang: Optional[str], *args: List, **kwargs: Dict
 ) -> Dict:
     """
     .. _/info response: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#response-2
@@ -52,6 +55,7 @@ def default_info_func(
                 }
             }
 
+    :param request: a ``rest_framework.request.Request`` object
     :param asset: ``Asset`` object for which to return the `fields` and `types`
         key-value pairs
     :param lang: the language code the client requested for the `description`

@@ -342,7 +342,7 @@ def test_interactive_deposit_pending_anchor(
     assert response.status_code == 403
     assert "Unexpected one-time auth token" in str(response.content)
 
-    def mark_as_pending_anchor(_, transaction):
+    def mark_as_pending_anchor(transaction, **_kwargs):
         transaction.status = Transaction.STATUS.pending_anchor
         transaction.save()
 
