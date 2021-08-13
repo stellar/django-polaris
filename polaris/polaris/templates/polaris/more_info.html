@@ -27,7 +27,7 @@
 
     <div class="info-item">
         <div class="info-label">
-            {% trans "kind" %}
+            {% trans "transaction type" %}
         </div>
         <div class="field-value">
             {% if transaction.kind == "deposit" %}
@@ -40,7 +40,7 @@
 
     <div class="info-item">
         <div class="info-label">
-            {% trans "ID" %}
+            {% trans "Transaction ID" %}
         </div>
         <div class="field-value">
             {{ transaction.id }}
@@ -50,9 +50,9 @@
     <div class="info-item">
         <div class="info-label">
             {% if transaction.status == "incomplete" or transaction.status == "pending_user_transfer_start" %}
-              {% trans "amount to be received" %}
+              {% trans "send amount" %}
             {% else %}
-              {% trans "amount received" %}
+              {% trans "amount sent" %}
             {% endif %}
         </div>
         <div class="field-value">
@@ -62,7 +62,7 @@
 
     <div class="info-item">
         <div class="info-label">
-            {% trans "fee" %}
+            {% trans "fees" %}
         </div>
         <div class="field-value">
             {{ amount_fee }}
@@ -71,18 +71,10 @@
 
     <div class="info-item">
         <div class="info-label">
-            {% if transaction.kind == "deposit" %}
-                {% if transaction.status != "completed" and transaction.amount_out %}
-                    {% trans "amount to be deposited" %}
-                {% else %}
-                    {% trans "amount deposited" %}
-                {% endif %}
+            {% if transaction.status != "completed" and transaction.amount_out %}
+                {% trans "receive amount" %}
             {% else %}
-                {% if transaction.status != "completed" and transaction.amount_out %}
-                    {% trans "amount to be withdrawn" %}
-                {% else %}
-                    {% trans "amount withdrawn" %}
-                {% endif %}
+                {% trans "amount received" %}
             {% endif %}
         </div>
         <div class="field-value">
@@ -92,7 +84,7 @@
 
     <div class="info-item">
         <div class="info-label">
-            {% trans "status" %}
+            {% trans " transaction status" %}
         </div>
         <div class="field-value">
             {{ transaction.message }}
@@ -101,7 +93,7 @@
 
     <div class="info-item">
         <div class="info-label">
-            {% trans "start" %}
+            {% trans "started" %}
         </div>
         <div class="field-value">
             {{ transaction.started_at|localtime }}
