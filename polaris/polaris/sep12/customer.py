@@ -75,7 +75,7 @@ class CustomerAPIView(APIView):
             validate_response_data(response_data)
         except ValueError:
             logger.exception(
-                _("An exception was raised validating GET /customer response")
+                "An exception was raised validating GET /customer response"
             )
             return render_error_response(
                 _("unable to process request."), status_code=500
@@ -251,7 +251,7 @@ def put_verification(account: str, _client_domain: Optional[str], request) -> Re
         validate_response_data(response_data)
     except ValueError:
         logger.exception(
-            _("An exception was raised validating PUT /customer/verification response")
+            "An exception was raised validating PUT /customer/verification response"
         )
         return render_error_response(_("unable to process request."), status_code=500)
 

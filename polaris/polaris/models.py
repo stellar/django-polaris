@@ -218,7 +218,7 @@ class Asset(TimeStampedModel):
     )
     """Optional maximum amount. No limit if not specified."""
 
-    distribution_seed = EncryptedTextField(null=True)
+    distribution_seed = EncryptedTextField(null=True, blank=True)
     """
     The distribution stellar account secret key.
     The value is stored in the database using Fernet symmetric encryption,
@@ -363,7 +363,7 @@ class Transaction(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     """Unique, anchor-generated id for the deposit/withdrawal."""
 
-    paging_token = models.TextField(null=True)
+    paging_token = models.TextField(null=True, blank=True)
     """The token to be used as a cursor for querying before or after this transaction"""
 
     stellar_account = models.TextField(validators=[MinLengthValidator(1)])
@@ -502,7 +502,7 @@ class Transaction(models.Model):
     started_at = models.DateTimeField(default=utc_now)
     """Start date and time of transaction."""
 
-    completed_at = models.DateTimeField(null=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
     """
     Completion date and time of transaction. Assigned null for in-progress 
     transactions.
@@ -555,7 +555,7 @@ class Transaction(models.Model):
     refunded = models.BooleanField(default=False)
     """True if the transaction was refunded, false otherwise."""
 
-    protocol = models.CharField(choices=PROTOCOL, null=True, max_length=5)
+    protocol = models.CharField(choices=PROTOCOL, null=True, max_length=5, blank=True)
     """Either 'sep6', 'sep24', or 'sep31'"""
 
     pending_signatures = models.BooleanField(default=False)
