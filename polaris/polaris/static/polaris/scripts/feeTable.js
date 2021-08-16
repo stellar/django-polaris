@@ -98,8 +98,6 @@ function feeTable({
     if (typeInput && !typeInput.value) {
       return;
     }
-    let fee_fixed;
-    let fee_percent;
     let amountIn = Number(amountInput.value);
     if (!useFeeEndpoint) {
       let fee = fee_fixed + (amountIn * (fee_percent / 100));
