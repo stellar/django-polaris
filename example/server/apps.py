@@ -12,6 +12,7 @@ class AnchorConfig(AppConfig):
             MyCustomerIntegration,
             MySEP31ReceiverIntegration,
             MyRailsIntegration,
+            calculate_fee,
             fee_integration,
             info_integration,
         )
@@ -19,7 +20,7 @@ class AnchorConfig(AppConfig):
         register_integrations(
             deposit=MyDepositIntegration(),
             withdrawal=MyWithdrawalIntegration(),
-            fee=fee_integration,
+            fee=calculate_fee,
             sep6_info=info_integration,
             customer=MyCustomerIntegration(),
             sep31_receiver=MySEP31ReceiverIntegration(),
