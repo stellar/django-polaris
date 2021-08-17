@@ -50,6 +50,8 @@ def deposit(account: str, client_domain: Optional[str], request: Request,) -> Re
         id=transaction_id,
         stellar_account=account,
         asset=args["asset"],
+        amount_in=args.get("amount"),
+        amount_expected=args.get("amount"),
         kind=Transaction.KIND.deposit,
         status=Transaction.STATUS.pending_user_transfer_start,
         memo=args["memo"],

@@ -46,11 +46,13 @@ def test_deposit_success(client, acc1_usd_deposit_transaction_factory):
     """`POST /transactions/deposit/interactive` succeeds with no optional arguments."""
     deposit = acc1_usd_deposit_transaction_factory()
     response = client.post(
-        DEPOSIT_PATH, {"asset_code": "USD", "account": deposit.stellar_account},
+        DEPOSIT_PATH,
+        {"asset_code": "USD", "account": deposit.stellar_account, "amount": 100},
     )
     content = json.loads(response.content)
     t = Transaction.objects.first()
     assert content["type"] == "interactive_customer_info_needed"
+    assert "100" in content["url"]
     assert t.amount_in is None
     assert t.amount_out is None
     assert t.amount_fee is None
@@ -284,6 +286,7 @@ def test_interactive_deposit_success(client, acc1_usd_deposit_transaction_factor
     deposit.refresh_from_db()
     assert deposit.status == Transaction.STATUS.pending_user_transfer_start
     assert deposit.amount_in == 200
+    assert deposit.amount_expected == 200
     assert deposit.amount_fee == 7
     assert deposit.amount_out == 193
 
@@ -332,6 +335,7 @@ def test_interactive_deposit_success_additive_fees(
     deposit.refresh_from_db()
     assert deposit.status == Transaction.STATUS.pending_user_transfer_start
     assert deposit.amount_in == 207
+    assert deposit.amount_expected == 207
     assert deposit.amount_fee == 7
     assert deposit.amount_out == 200
 

@@ -54,6 +54,8 @@ def withdraw(account: str, client_domain: Optional[str], request: Request,) -> R
         id=transaction_id,
         stellar_account=account,
         asset=args["asset"],
+        amount_in=args.get("amount"),
+        amount_expected=args.get("amount"),
         kind=Transaction.KIND.withdrawal,
         status=Transaction.STATUS.pending_user_transfer_start,
         receiving_anchor_account=args["asset"].distribution_account,
