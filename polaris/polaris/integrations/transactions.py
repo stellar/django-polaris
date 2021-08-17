@@ -377,7 +377,7 @@ class DepositIntegration:
         ``False``, which will cause the ``poll_pending_deposits`` process to submit it to the
         network along with the other transactions deemed ready by the anchor.
 
-        If ``transaction.stellar_account`` doesn't exist on Stellar and the transaction has a
+        If ``transaction.to_address`` doesn't exist on Stellar and the transaction has a
         ``channel_account``, ``transaction.channel_account`` will also be used to create and
         fund the destination account for the deposit payment to the user. So the channel
         account will be used one or `potentially` two Stellar transactions.

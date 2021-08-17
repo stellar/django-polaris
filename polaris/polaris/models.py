@@ -573,7 +573,7 @@ class Transaction(models.Model):
     channel_seed = EncryptedTextField(null=True, blank=True)
     """
     A keypair of the account used when sending SEP-6 or SEP-24 deposit 
-    transactions to Transaction.stellar_account, if present. 
+    transactions to Transaction.to_address, if present. 
     This is only used for transactions requiring signatures Polaris cannot
     add itself.
     """
