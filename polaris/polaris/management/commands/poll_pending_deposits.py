@@ -201,7 +201,7 @@ class PendingDeposits:
         """
         try:
             account, json_resp = get_account_obj(
-                Keypair.from_public_key(transaction.stellar_account)
+                Keypair.from_public_key(transaction.to_address)
             )
             return account, is_pending_trust(transaction, json_resp)
         except RuntimeError:  # account does not exist
@@ -230,7 +230,7 @@ class PendingDeposits:
                 or settings.HORIZON_SERVER.fetch_base_fee(),
             )
             transaction_envelope = builder.append_create_account_op(
-                destination=transaction.stellar_account,
+                destination=transaction.to_address,
                 starting_balance=settings.ACCOUNT_STARTING_BALANCE,
             ).build()
             transaction_envelope.sign(source_account_kp)
@@ -244,7 +244,7 @@ class PendingDeposits:
                 )
 
             account, _ = get_account_obj(
-                Keypair.from_public_key(transaction.stellar_account)
+                Keypair.from_public_key(transaction.to_address)
             )
             return account, True
         except BaseHorizonError as e:
@@ -355,7 +355,7 @@ class PendingDeposits:
             or settings.HORIZON_SERVER.fetch_base_fee(),
         )
         payment_op_kwargs = {
-            "destination": transaction.stellar_account,
+            "destination": transaction.to_address,
             "asset_code": transaction.asset.code,
             "asset_issuer": transaction.asset.issuer,
             "amount": str(payment_amount),
@@ -363,10 +363,10 @@ class PendingDeposits:
         }
         if transaction.claimable_balance_supported:
             _, json_resp = get_account_obj(
-                Keypair.from_public_key(transaction.stellar_account)
+                Keypair.from_public_key(transaction.to_address)
             )
             if is_pending_trust(transaction, json_resp):
-                claimant = Claimant(destination=transaction.stellar_account)
+                claimant = Claimant(destination=transaction.to_address)
                 asset = Asset(
                     code=transaction.asset.code, issuer=transaction.asset.issuer
                 )

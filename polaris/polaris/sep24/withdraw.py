@@ -20,6 +20,8 @@ from rest_framework.renderers import (
     BrowsableAPIRenderer,
 )
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+from stellar_sdk.keypair import Keypair
+from stellar_sdk.exceptions import Ed25519PublicKeyInvalidError
 
 from polaris import settings
 from polaris.templates import Template
@@ -349,6 +351,7 @@ def withdraw(account: str, client_domain: Optional[str], request: Request,) -> R
     """
     lang = request.data.get("lang")
     asset_code = request.data.get("asset_code")
+    source_account = request.data.get("account")
     sep9_fields = extract_sep9_fields(request.data)
     if lang:
         err_resp = validate_language(lang)
@@ -377,6 +380,12 @@ def withdraw(account: str, client_domain: Optional[str], request: Request,) -> R
         if not (asset.withdrawal_min_amount <= amount <= asset.withdrawal_max_amount):
             return render_error_response(_("invalid 'amount'"))
 
+    if source_account:
+        try:
+            Keypair.from_public_key(source_account)
+        except Ed25519PublicKeyInvalidError:
+            return render_error_response(_("invalid 'account'"))
+
     try:
         rwi.save_sep9_fields(account, sep9_fields, lang)
     except ValueError as e:
@@ -399,6 +408,7 @@ def withdraw(account: str, client_domain: Optional[str], request: Request,) -> R
             f"{reverse('more_info')}?id={transaction_id}"
         ),
         client_domain=client_domain,
+        from_address=source_account,
     )
     logger.info(f"Created withdrawal transaction {transaction_id}")
 

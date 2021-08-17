@@ -335,7 +335,7 @@ def deposit(account: str, client_domain: Optional[str], request: Request) -> Res
     returns the URL entry-point for the interactive flow.
     """
     asset_code = request.data.get("asset_code")
-    stellar_account = request.data.get("account")
+    destination_account = request.data.get("account")
     lang = request.data.get("lang")
     sep9_fields = extract_sep9_fields(request.data)
     claimable_balance_supported = request.data.get("claimable_balance_supported")
@@ -361,7 +361,7 @@ def deposit(account: str, client_domain: Optional[str], request: Request) -> Res
         activate_lang_for_request(lang)
 
     # Verify that the request is valid.
-    if not all([asset_code, stellar_account]):
+    if not all([asset_code, destination_account]):
         return render_error_response(
             _("`asset_code` and `account` are required parameters")
         )
@@ -389,13 +389,13 @@ def deposit(account: str, client_domain: Optional[str], request: Request) -> Res
             return render_error_response(_("invalid 'amount'"))
 
     try:
-        Keypair.from_public_key(stellar_account)
+        Keypair.from_public_key(destination_account)
     except Ed25519PublicKeyInvalidError:
         return render_error_response(_("invalid 'account'"))
 
     try:
         rdi.save_sep9_fields(
-            stellar_account, sep9_fields, lang,
+            account, sep9_fields, lang,
         )
     except ValueError as e:
         # The anchor found a validation error in the sep-9 fields POSTed by
@@ -411,7 +411,7 @@ def deposit(account: str, client_domain: Optional[str], request: Request) -> Res
         asset=asset,
         kind=Transaction.KIND.deposit,
         status=Transaction.STATUS.incomplete,
-        to_address=account,
+        to_address=destination_account,
         protocol=Transaction.PROTOCOL.sep24,
         claimable_balance_supported=claimable_balance_supported,
         memo=request.data.get("memo"),
