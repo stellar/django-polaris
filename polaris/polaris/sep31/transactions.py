@@ -136,6 +136,7 @@ class TransactionsAPIView(APIView):
             stellar_account=account,
             asset=params["asset"],
             amount_in=params["amount"],
+            amount_expected=params["amount"],
             memo=transaction_memo,
             memo_type=Transaction.MEMO_TYPES.hash,
             receiving_anchor_account=params["asset"].distribution_account,

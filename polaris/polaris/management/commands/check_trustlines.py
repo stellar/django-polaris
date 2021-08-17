@@ -8,7 +8,7 @@ from stellar_sdk.exceptions import BaseRequestError, NotFoundError, ConnectionEr
 
 from polaris import settings
 from polaris.models import Transaction
-from polaris.utils import getLogger, maybe_make_callback
+from polaris.utils import getLogger
 from polaris.integrations import registered_deposit_integration as rdi
 from polaris.management.commands.poll_pending_deposits import PendingDeposits
 

@@ -30,9 +30,12 @@ def test_withdraw_success(client):
         withdrawal_enabled=True,
         distribution_seed=Keypair.random().secret,
     )
-    response = client.post(WITHDRAW_PATH, {"asset_code": usd.code}, follow=True)
+    response = client.post(
+        WITHDRAW_PATH, {"asset_code": usd.code, "amount": "100"}, follow=True
+    )
     content = response.json()
     assert content["type"] == "interactive_customer_info_needed"
+    assert "100" in content["url"]
     assert content.get("id")
 
     t = Transaction.objects.filter(id=content.get("id")).first()
@@ -157,6 +160,7 @@ def test_interactive_withdraw_success(client):
     withdraw.refresh_from_db()
     assert withdraw.status == Transaction.STATUS.pending_user_transfer_start
     assert withdraw.amount_in == 200
+    assert withdraw.amount_expected == 200
     assert withdraw.amount_fee == 5
     assert withdraw.amount_out == 195
 
@@ -212,6 +216,7 @@ def test_interactive_withdraw_success_additive_fees(client):
     withdraw.refresh_from_db()
     assert withdraw.status == Transaction.STATUS.pending_user_transfer_start
     assert withdraw.amount_in == 205
+    assert withdraw.amount_expected == 205
     assert withdraw.amount_fee == 5
     assert withdraw.amount_out == 200
 

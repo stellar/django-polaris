@@ -301,12 +301,14 @@ class DepositIntegration:
         failure response is returned, Polaris will return a 500 error to the user.
 
         If you'd like the user to send ``Transaction.amount_in`` `plus the fee amount`,
-        add the amount charged as a fee to ``Transaction.amount_in`` here. While not
-        required per SEP-6, it is encouraged to also populate ``Transaction.amount_fee``
-        and ``Transaction.amount_out`` here as well. Note that the amount sent over the
-        Stellar Network could differ from the amount specified in this API call, so fees
-        and the amount delievered may have to be recalculated in
-        ``RailsIntegration.execute_outgoing_transaction()``.
+        add the amount charged as a fee to ``Transaction.amount_in`` and
+        ``Transaction.amount_expected``. here. While not required per SEP-6, it is
+        encouraged to also populate ``Transaction.amount_fee`` and ``Transaction.amount_out``
+        here as well.
+
+        Note that the amount sent over the Stellar Network could differ from
+        the amount specified in this API call, so fees and the amount delievered may have to
+        be recalculated in ``RailsIntegration.execute_outgoing_transaction()``.
 
         Polaris responds to requests with the standard status code according the SEP. However,
         if you would like to return a custom error code in the range of 400-599 you may raise
