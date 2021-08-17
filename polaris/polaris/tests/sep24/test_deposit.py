@@ -64,7 +64,7 @@ def test_deposit_success(client, acc1_usd_deposit_transaction_factory):
     assert t.from_address is None
     assert t.to_address == deposit.stellar_account
     assert t.memo is None
-    assert t.claimable_balance_support is False
+    assert t.claimable_balance_supported is False
 
 
 @pytest.mark.django_db
