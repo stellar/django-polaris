@@ -49,7 +49,22 @@ def test_deposit_success(client, acc1_usd_deposit_transaction_factory):
         DEPOSIT_PATH, {"asset_code": "USD", "account": deposit.stellar_account},
     )
     content = json.loads(response.content)
+    t = Transaction.objects.first()
     assert content["type"] == "interactive_customer_info_needed"
+    assert t.amount_in is None
+    assert t.amount_out is None
+    assert t.amount_fee is None
+    assert t.kind == Transaction.KIND.deposit
+    assert t.protocol == Transaction.PROTOCOL.sep24
+    assert t.status == Transaction.STATUS.incomplete
+    assert t.stellar_account == "test source address"
+    assert t.asset == deposit.asset
+    assert t.started_at
+    assert t.completed_at is None
+    assert t.from_address is None
+    assert t.to_address == deposit.stellar_account
+    assert t.memo is None
+    assert t.claimable_balance_support is False
 
 
 @pytest.mark.django_db

@@ -9,7 +9,8 @@ from rest_framework.response import Response
 from rest_framework.decorators import api_view, renderer_classes, parser_classes
 from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 from rest_framework.renderers import JSONRenderer, BrowsableAPIRenderer
-from stellar_sdk.exceptions import MemoInvalidException
+from stellar_sdk.exceptions import MemoInvalidException, Ed25519PublicKeyInvalidError
+from stellar_sdk.keypair import Keypair
 
 from polaris import settings
 from polaris.utils import (
@@ -42,7 +43,8 @@ def withdraw(account: str, client_domain: Optional[str], request: Request,) -> R
     args = parse_request_args(request)
     if "error" in args:
         return args["error"]
-    args["account"] = account
+    elif not args.get("account"):
+        args["account"] = account
 
     transaction_id = create_transaction_id()
     transaction_id_hex = transaction_id.hex
@@ -63,6 +65,7 @@ def withdraw(account: str, client_domain: Optional[str], request: Request,) -> R
         ),
         on_change_callback=args["on_change_callback"],
         client_domain=client_domain,
+        from_address=args.get("account"),
     )
 
     # All request arguments are validated in parse_request_args()
@@ -98,6 +101,12 @@ def withdraw(account: str, client_domain: Optional[str], request: Request,) -> R
 
 
 def parse_request_args(request: Request) -> Dict:
+    if request.GET.get("account"):
+        try:
+            Keypair.from_public_key(request.GET.get("account"))
+        except Ed25519PublicKeyInvalidError:
+            return {"error": render_error_response(_("invalid 'account'"))}
+
     asset = Asset.objects.filter(
         code=request.GET.get("asset_code"), sep6_enabled=True, withdrawal_enabled=True
     ).first()
@@ -154,6 +163,7 @@ def parse_request_args(request: Request) -> Dict:
             }
 
     args = {
+        "account": request.GET.get("account"),
         "asset": asset,
         "memo_type": memo_type,
         "memo": request.GET.get("memo"),
