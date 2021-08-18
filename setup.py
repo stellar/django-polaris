@@ -6,7 +6,7 @@ with open("README.rst") as f:
 
 setup(
     name="django-polaris",
-    version="1.5.1",
+    version="1.5.2",
     description="An extendable Django server for Stellar Ecosystem Proposals",
     long_description=long_description,
     long_description_content_type="text/x-rst",

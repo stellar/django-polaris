@@ -173,6 +173,7 @@
       let additiveFeesEnabled = "{{ additive_fees_enabled }}" === "True";
       let fee_fixed;
       let fee_percent;
+      let timeout; // timeout must persist outside function scope
       if (op === "deposit") {
         fee_fixed = {{ asset.deposit_fee_fixed|default:0 }}
         fee_percent = {{ asset.deposit_fee_percent|default:0 }}
@@ -185,6 +186,8 @@
         amountInput.addEventListener("keyup", amountInputChange);
         if (typeInput)
           typeInput.addEventListener("input", amountInputChange);
+        if (amountInput.value)
+          amountInputChange();
       }
 
       function getFeeTableStrings(fee, amountIn) {
@@ -210,7 +213,6 @@
         amountOutTag.innerHTML = "{{ asset.symbol }} " + amountOutStr;
       }
 
-      let timeout; // timeout must persist outside function scope
       function callFeeEndpoint(amount) {
         /*
          * Calls the anchor's /fee endpoint.
