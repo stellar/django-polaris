@@ -117,6 +117,7 @@ def test_good_info_response(client, usd_asset_factory):
         "fee": {"enabled": True, "authentication_required": True},
         "transactions": {"enabled": True, "authentication_required": True},
         "transaction": {"enabled": True, "authentication_required": True},
+        "features": {"account_creation": True, "claimable_balances": True},
     }
 
 

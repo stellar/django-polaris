@@ -35,6 +35,10 @@ def _get_expected_response():
             },
             "fee": {
                 "enabled": true
+            },
+            "features": {
+                "account_creation": true,
+                "claimable_balances": true
             }
         }
     """
