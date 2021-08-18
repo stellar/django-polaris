@@ -13,6 +13,13 @@
   font-size: 15/16 + rem;
   color: $light_-2;
   padding: 0.25rem 0 0.5rem 0.25rem;
+
+}
+
+.label {
+  .required {
+    color: red;
+  }
 }
 
 .button {
