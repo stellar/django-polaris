@@ -552,31 +552,3 @@ msgstr "tipe tidak valid untuk %s, harus berupa objek"
 #, python-format
 msgid "missing %(field)s in %(category)s"
 msgstr "%(field)s pada %(category)s tidak ditemukan"
-
-#~ msgid "kind"
-#~ msgstr "jenis"
-
-#~ msgid "ID"
-#~ msgstr "ID"
-
-#~ msgid "amount to be received"
-#~ msgstr "jumlah yang akan diterima"
-
-#~ msgid "fee"
-#~ msgstr "biaya"
-
-#, fuzzy
-#~| msgid "amount deposited"
-#~ msgid "amount to be deposited"
-#~ msgstr "jumlah yang disetorkan"
-
-#, fuzzy
-#~| msgid "amount withdrawn"
-#~ msgid "amount to be withdrawn"
-#~ msgstr "jumlah yang ditarik"
-
-#~ msgid "amount withdrawn"
-#~ msgstr "jumlah yang ditarik"
-
-#~ msgid "status"
-#~ msgstr "status"

@@ -550,27 +550,3 @@ msgstr "tipo inválido para %s, precisa ser um objeto"
 #| msgid "missing %(field)s in %(category)s"
 msgid "missing %(field)s in %(category)s"
 msgstr "%{field}s faltando em %{category}s"
-
-#~ msgid "kind"
-#~ msgstr "tipo"
-
-#~ msgid "ID"
-#~ msgstr "ID"
-
-#~ msgid "amount to be received"
-#~ msgstr "valor a ser recebido"
-
-#~ msgid "fee"
-#~ msgstr "taxa"
-
-#~ msgid "amount to be deposited"
-#~ msgstr "valor a ser depositado"
-
-#~ msgid "amount to be withdrawn"
-#~ msgstr "valor a ser sacado"
-
-#~ msgid "amount withdrawn"
-#~ msgstr "valor sacado"
-
-#~ msgid "status"
-#~ msgstr "estado"
