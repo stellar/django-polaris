@@ -122,7 +122,7 @@ msgstr "stellar está executando a transação"
 #, fuzzy
 #| msgid "unable to process the request"
 msgid "unable to decode jwt"
-msgstr "não foi possível processar a requisição"
+msgstr "não foi possível decodificar o jwt"
 
 #: sep10/utils.py:75
 msgid "jwt has incorrect 'issuer'"
@@ -456,10 +456,8 @@ msgid "instructions"
 msgstr "instruções"
 
 #: templates/polaris/more_info.html:30
-#, fuzzy
-#| msgid "transaction not found"
 msgid "transaction type"
-msgstr "transação não encontrada"
+msgstr "tipo da transação"
 
 #: templates/polaris/more_info.html:34
 msgid "deposit"
@@ -470,48 +468,38 @@ msgid "withdrawal"
 msgstr "saque"
 
 #: templates/polaris/more_info.html:43
-#, fuzzy
-#| msgid "Transaction More Info"
 msgid "Transaction ID"
-msgstr "transação não encontrada"
+msgstr "ID da transação"
 
 #: templates/polaris/more_info.html:53
-#, fuzzy
 #| msgid "invalid 'amount'"
 msgid "send amount"
-msgstr "'amount' inválido"
+msgstr "Valor a enviar"
 
 #: templates/polaris/more_info.html:55
-#, fuzzy
 #| msgid "amount deposited"
 msgid "amount sent"
-msgstr "valor depositado"
+msgstr "valor enviado"
 
 #: templates/polaris/more_info.html:65
 msgid "fees"
-msgstr ""
+msgstr "taxas"
 
 #: templates/polaris/more_info.html:75
-#, fuzzy
-#| msgid "invalid 'amount'"
 msgid "receive amount"
-msgstr "'amount' inválido"
+msgstr "Valor a receber"
 
 #: templates/polaris/more_info.html:77
 msgid "amount received"
 msgstr "valor recebido"
 
 #: templates/polaris/more_info.html:87
-#, fuzzy
-#| msgid "transaction not found"
 msgid " transaction status"
-msgstr "transação não encontrada"
+msgstr "status da transação"
 
 #: templates/polaris/more_info.html:96
-#, fuzzy
-#| msgid "start"
 msgid "started"
-msgstr "começar"
+msgstr "iniciado"
 
 #: templates/polaris/more_info.html:106
 msgid "completed"
