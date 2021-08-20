@@ -8,7 +8,7 @@ from stellar_sdk.exceptions import BaseRequestError, NotFoundError, ConnectionEr
 
 from polaris import settings
 from polaris.models import Transaction
-from polaris.utils import getLogger, maybe_make_callback
+from polaris.utils import getLogger
 from polaris.integrations import registered_deposit_integration as rdi
 from polaris.management.commands.poll_pending_deposits import PendingDeposits
 
@@ -99,18 +99,16 @@ class Command(BaseCommand):
                     id__in=[t.id for t in still_process_transactions]
                 ).update(pending_execution_attempt=False)
                 break
-            if accounts.get(transaction.stellar_account):
-                account = accounts[transaction.stellar_account]
+            if accounts.get(transaction.to_address):
+                account = accounts[transaction.to_address]
             else:
                 try:
                     account = (
-                        server.accounts().account_id(transaction.stellar_account).call()
+                        server.accounts().account_id(transaction.to_address).call()
                     )
-                    accounts[transaction.stellar_account] = account
+                    accounts[transaction.to_address] = account
                 except BaseRequestError:
-                    logger.exception(
-                        f"Failed to load account {transaction.stellar_account}"
-                    )
+                    logger.exception(f"Failed to load account {transaction.to_address}")
                     transaction.pending_execution_attempt = False
                     transaction.save()
                     continue

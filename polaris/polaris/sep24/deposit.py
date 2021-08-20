@@ -120,6 +120,7 @@ def post_interactive_deposit(request: Request) -> Response:
     if form.is_valid():
         if issubclass(form.__class__, TransactionForm):
             transaction.amount_in = form.cleaned_data["amount"]
+            transaction.amount_expected = form.cleaned_data["amount"]
             transaction.amount_fee = registered_fee_func(
                 request=request,
                 fee_params={
@@ -131,6 +132,7 @@ def post_interactive_deposit(request: Request) -> Response:
             )
             if settings.ADDITIVE_FEES_ENABLED:
                 transaction.amount_in += transaction.amount_fee
+                transaction.amount_expected += transaction.amount_fee
             transaction.amount_out = round(
                 transaction.amount_in - transaction.amount_fee,
                 asset.significant_decimals,
@@ -324,7 +326,7 @@ def deposit(token: SEP10Token, request: Request) -> Response:
     returns the URL entry-point for the interactive flow.
     """
     asset_code = request.data.get("asset_code")
-    stellar_account = request.data.get("account")
+    destination_account = request.data.get("account")
     lang = request.data.get("lang")
     sep9_fields = extract_sep9_fields(request.data)
     claimable_balance_supported = request.data.get("claimable_balance_supported")
@@ -350,7 +352,7 @@ def deposit(token: SEP10Token, request: Request) -> Response:
         activate_lang_for_request(lang)
 
     # Verify that the request is valid.
-    if not all([asset_code, stellar_account]):
+    if not all([asset_code, destination_account]):
         return render_error_response(
             _("`asset_code` and `account` are required parameters")
         )
@@ -378,7 +380,7 @@ def deposit(token: SEP10Token, request: Request) -> Response:
             return render_error_response(_("invalid 'amount'"))
 
     try:
-        Keypair.from_public_key(stellar_account)
+        Keypair.from_public_key(destination_account)
     except Ed25519PublicKeyInvalidError:
         return render_error_response(_("invalid 'account'"))
 
@@ -386,7 +388,7 @@ def deposit(token: SEP10Token, request: Request) -> Response:
         rdi.save_sep9_fields(
             token=token,
             request=request,
-            stellar_account=stellar_account,
+            stellar_account=token.account,
             fields=sep9_fields,
             language_code=lang,
         )
@@ -404,7 +406,7 @@ def deposit(token: SEP10Token, request: Request) -> Response:
         asset=asset,
         kind=Transaction.KIND.deposit,
         status=Transaction.STATUS.incomplete,
-        to_address=token.account,
+        to_address=destination_account,
         protocol=Transaction.PROTOCOL.sep24,
         claimable_balance_supported=claimable_balance_supported,
         memo=request.data.get("memo"),

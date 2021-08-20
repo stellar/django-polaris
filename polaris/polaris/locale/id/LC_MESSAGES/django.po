@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gettext-tools 0.18.3\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2021-08-05 23:31+0000\n"
+"POT-Creation-Date: 2021-08-18 23:18+0000\n"
 "PO-Revision-Date: 2021-01-20 22:42+0800\n"
 "Last-Translator: oon arfiandwi <oon.arfiandwi@gmail.com>\n"
 "Language-Team: Indonesian <>\n"
@@ -191,8 +191,8 @@ msgid "requests with 'id' cannot also have 'account', 'memo', or 'memo_type'"
 msgstr ""
 
 #: sep12/customer.py:55 sep12/customer.py:112 sep12/customer.py:167
-#: sep12/customer.py:213 sep24/deposit.py:373 sep6/deposit.py:188
-#: sep6/withdraw.py:121
+#: sep12/customer.py:213 sep24/deposit.py:375 sep6/deposit.py:195
+#: sep6/withdraw.py:132
 msgid "invalid 'memo' for 'memo_type'"
 msgstr "'memo' tidak valid untuk 'memo_type'"
 
@@ -240,8 +240,8 @@ msgstr ""
 msgid "customer not found"
 msgstr "transaksi tidak ditemukan"
 
-#: sep24/deposit.py:104 sep24/deposit.py:277 sep24/withdraw.py:100
-#: sep24/withdraw.py:292
+#: sep24/deposit.py:104 sep24/deposit.py:279 sep24/withdraw.py:102
+#: sep24/withdraw.py:296
 msgid ""
 "The anchor did not provide content, is the interactive flow already complete?"
 msgstr "Anchor tidak menyediakan konten, apakah alur interaktif sudah lengkap?"
@@ -251,19 +251,19 @@ msgid "The anchor did not provide form content, unable to serve page."
 msgstr ""
 "Anchor tidak menyediakan konten formulir, tidak dapat melayani halaman."
 
-#: sep24/deposit.py:119 sep24/withdraw.py:115
+#: sep24/deposit.py:119 sep24/withdraw.py:117
 msgid "Unable to validate form submission."
 msgstr "Tidak dapat melakukan validasi pengiriman formulir."
 
-#: sep24/deposit.py:283 sep24/withdraw.py:106 sep24/withdraw.py:298
+#: sep24/deposit.py:285 sep24/withdraw.py:108 sep24/withdraw.py:302
 msgid "The anchor did not provide content, unable to serve page."
 msgstr "Anchor tidak menyediakan konten, tidak dapat melayani halaman."
 
-#: sep24/deposit.py:347 sep6/deposit.py:196
+#: sep24/deposit.py:349 sep6/deposit.py:203
 msgid "'claimable_balance_supported' value must be 'true' or 'false'"
 msgstr "nilai 'claimable_balance_supported' harus 'true' atau 'false'"
 
-#: sep24/deposit.py:353
+#: sep24/deposit.py:355
 msgid ""
 "unexpected data type for 'claimable_balance_supprted'. Expected string or "
 "boolean."
@@ -271,27 +271,28 @@ msgstr ""
 "tipe data tidak diharapkan untuk 'claimable_balance_supprted'. Diharapkan "
 "string atau boolean."
 
-#: sep24/deposit.py:366
+#: sep24/deposit.py:368
 msgid "`asset_code` and `account` are required parameters"
 msgstr "`asset_code` dan `account` adalah parameter wajib"
 
-#: sep24/deposit.py:378
+#: sep24/deposit.py:380
 #, python-format
 msgid "unknown asset: %s"
 msgstr "aset tidak dikenal: %s"
 
-#: sep24/deposit.py:380 sep24/withdraw.py:369
+#: sep24/deposit.py:382 sep24/withdraw.py:374
 #, python-format
 msgid "invalid operation for asset %s"
 msgstr "operasi tidak valid untuk aset %s"
 
-#: sep24/deposit.py:387 sep24/deposit.py:389 sep24/utils.py:231
-#: sep24/withdraw.py:376 sep24/withdraw.py:378 sep31/transactions.py:171
-#: sep31/transactions.py:173 sep6/deposit.py:220 sep6/withdraw.py:146
+#: sep24/deposit.py:389 sep24/deposit.py:391 sep24/utils.py:231
+#: sep24/withdraw.py:381 sep24/withdraw.py:383 sep31/transactions.py:172
+#: sep31/transactions.py:174 sep6/deposit.py:227 sep6/withdraw.py:157
 msgid "invalid 'amount'"
 msgstr "'amount' tidak valid"
 
-#: sep24/deposit.py:394
+#: sep24/deposit.py:396 sep24/withdraw.py:389 sep6/deposit.py:173
+#: sep6/withdraw.py:110
 msgid "invalid 'account'"
 msgstr "'account' tidak valid"
 
@@ -315,7 +316,7 @@ msgstr "Transaksi untuk akun tidak ditemukan"
 msgid "Session is not authenticated"
 msgstr "Sesi tidak terotentikasi"
 
-#: sep24/utils.py:178 sep6/deposit.py:208 sep6/withdraw.py:134
+#: sep24/utils.py:178 sep6/deposit.py:215 sep6/withdraw.py:145
 msgid "invalid callback URL provided"
 msgstr ""
 
@@ -323,7 +324,7 @@ msgstr ""
 msgid "no 'transaction_id' provided"
 msgstr "tidak ada 'transaction_id' yang tersedia"
 
-#: sep24/utils.py:206 sep6/deposit.py:172 sep6/withdraw.py:105
+#: sep24/utils.py:206 sep6/deposit.py:179 sep6/withdraw.py:116
 msgid "invalid 'asset_code'"
 msgstr "'asset_code' tidak valid"
 
@@ -331,12 +332,12 @@ msgstr "'asset_code' tidak valid"
 msgid "Transaction with ID and asset_code not found"
 msgstr "Transaksi dengan ID dan asset_code tidak ditemukan"
 
-#: sep24/withdraw.py:359
+#: sep24/withdraw.py:364
 msgid "'asset_code' is required"
 msgstr "'asset_code' wajib ada"
 
-#: sep31/info.py:36 sep31/transactions.py:153 sep6/deposit.py:81
-#: sep6/deposit.py:90 sep6/info.py:42 sep6/withdraw.py:83 sep6/withdraw.py:94
+#: sep31/info.py:36 sep31/transactions.py:154 sep6/deposit.py:83
+#: sep6/deposit.py:92 sep6/info.py:43 sep6/withdraw.py:88 sep6/withdraw.py:99
 msgid "unable to process the request"
 msgstr "tidak dapat memroses permintaan"
 
@@ -369,37 +370,37 @@ msgstr "pembaruan tidak diperlukan"
 msgid "POST requests should not specify subresources in the URI"
 msgstr "Permintaan POST tidak boleh menentukan sub-sumber di URI"
 
-#: sep31/transactions.py:167
+#: sep31/transactions.py:168
 msgid "invalid 'asset_code' and 'asset_issuer'"
 msgstr "'asset_code' dan 'asset_issuer' tidak valid"
 
-#: sep31/transactions.py:180
+#: sep31/transactions.py:181
 msgid "'fields' must serialize to a JSON object"
 msgstr "'fields' harus diserialisasi ke objek JSON"
 
-#: sep31/transactions.py:186
+#: sep31/transactions.py:187
 msgid "'transaction' value in 'fields' must be a dict"
 msgstr "Nilai 'transaction' dalam 'fields' harus berupa dict"
 
-#: sep31/transactions.py:191
+#: sep31/transactions.py:192
 msgid "'sender_id' and 'receiver_id' values must be strings"
 msgstr "Nilai 'sender_id' dan 'receiver_id' harus berupa string"
 
-#: sep6/deposit.py:183 sep6/withdraw.py:116
+#: sep6/deposit.py:190 sep6/withdraw.py:127
 msgid "invalid 'memo_type'"
 msgstr "'memo_type' tidak valid"
 
-#: sep6/deposit.py:226 sep6/withdraw.py:152
+#: sep6/deposit.py:233 sep6/withdraw.py:163
 #, fuzzy, python-format
 #| msgid "Asset amount must be within bounds [%(min)s, %(max)s]"
 msgid "'amount' must be within [%s, %s]"
 msgstr "Jumlah aset harus dalam batas [%(min)s, %(max)s]"
 
-#: sep6/withdraw.py:124
+#: sep6/withdraw.py:135
 msgid "'type' is required"
 msgstr "'type' wajib ada"
 
-#: sep6/withdraw.py:126
+#: sep6/withdraw.py:137
 msgid "'dest' is required"
 msgstr "'dest' wajib ada"
 
@@ -458,8 +459,10 @@ msgid "instructions"
 msgstr "instruksi"
 
 #: templates/polaris/more_info.html:30
-msgid "kind"
-msgstr "jenis"
+#, fuzzy
+#| msgid "transaction not found"
+msgid "transaction type"
+msgstr "transaksi tidak ditemukan"
 
 #: templates/polaris/more_info.html:34
 msgid "deposit"
@@ -470,50 +473,50 @@ msgid "withdrawal"
 msgstr "penarikan"
 
 #: templates/polaris/more_info.html:43
-msgid "ID"
-msgstr "ID"
+#, fuzzy
+#| msgid "Transaction More Info"
+msgid "Transaction ID"
+msgstr "Info Transaksi Lebih Lanjut"
 
 #: templates/polaris/more_info.html:53
-msgid "amount to be received"
-msgstr "jumlah yang akan diterima"
+#, fuzzy
+#| msgid "invalid 'amount'"
+msgid "send amount"
+msgstr "'amount' tidak valid"
 
 #: templates/polaris/more_info.html:55
+#, fuzzy
+#| msgid "amount deposited"
+msgid "amount sent"
+msgstr "jumlah yang disetorkan"
+
+#: templates/polaris/more_info.html:65
+msgid "fees"
+msgstr ""
+
+#: templates/polaris/more_info.html:75
+#, fuzzy
+#| msgid "invalid 'amount'"
+msgid "receive amount"
+msgstr "'amount' tidak valid"
+
+#: templates/polaris/more_info.html:77
 msgid "amount received"
 msgstr "jumlah yang diterima"
 
-#: templates/polaris/more_info.html:65
-msgid "fee"
-msgstr "biaya"
-
-#: templates/polaris/more_info.html:76
+#: templates/polaris/more_info.html:87
 #, fuzzy
-#| msgid "amount deposited"
-msgid "amount to be deposited"
-msgstr "jumlah yang disetorkan"
+#| msgid "transaction not found"
+msgid " transaction status"
+msgstr "transaksi tidak ditemukan"
 
-#: templates/polaris/more_info.html:78
-msgid "amount deposited"
-msgstr "jumlah yang disetorkan"
-
-#: templates/polaris/more_info.html:82
+#: templates/polaris/more_info.html:96
 #, fuzzy
-#| msgid "amount withdrawn"
-msgid "amount to be withdrawn"
-msgstr "jumlah yang ditarik"
-
-#: templates/polaris/more_info.html:84
-msgid "amount withdrawn"
-msgstr "jumlah yang ditarik"
-
-#: templates/polaris/more_info.html:95
-msgid "status"
-msgstr "status"
-
-#: templates/polaris/more_info.html:104
-msgid "start"
+#| msgid "start"
+msgid "started"
 msgstr "mulai"
 
-#: templates/polaris/more_info.html:114
+#: templates/polaris/more_info.html:106
 msgid "completed"
 msgstr "selesai"
 

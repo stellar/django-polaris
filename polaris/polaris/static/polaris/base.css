@@ -496,6 +496,9 @@ template {
   color: #ffffff;
   padding: 0.25rem 0 0.5rem 0.25rem; }
 
+.label .required {
+  color: red; }
+
 .button {
   display: block;
   cursor: pointer;
@@ -574,14 +577,14 @@ template {
     .control input[type="email"]:invalid:not(:placeholder-shown) {
       color: #e64755;
       box-shadow: 0 0 0.25rem rgba(230, 71, 85, 0.6), 0 0 0.125rem #e64755; }
-    .control input.amount-input[type="text"],
-    .control input.amount-input[type="number"],
-    .control input.amount-input[type="date"],
-    .control input.amount-input[type="datetime-local"],
-    .control input.amount-input[type="time"],
-    .control input.amount-input[type="password"],
-    .control input.amount-input[type="tel"],
-    .control input.amount-input[type="email"] {
+    .control input[type="text"].amount-input,
+    .control input[type="number"].amount-input,
+    .control input[type="date"].amount-input,
+    .control input[type="datetime-local"].amount-input,
+    .control input[type="time"].amount-input,
+    .control input[type="password"].amount-input,
+    .control input[type="tel"].amount-input,
+    .control input[type="email"].amount-input {
       padding-left: 2.25rem; }
   .control select,
   .control textarea {

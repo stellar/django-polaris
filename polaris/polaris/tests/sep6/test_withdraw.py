@@ -341,7 +341,12 @@ def test_withdrawal_transaction_created(
     distribution_address = Keypair.from_secret(USD_DISTRIBUTION_SEED).public_key
     response = client.get(
         WITHDRAW_PATH,
-        {"asset_code": withdraw.asset.code, "type": "good type", "dest": "test",},
+        {
+            "asset_code": withdraw.asset.code,
+            "type": "good type",
+            "dest": "test",
+            "amount": "100",
+        },
     )
     assert response.status_code == 200
     t = (
@@ -353,7 +358,8 @@ def test_withdrawal_transaction_created(
     assert t.memo_type == Transaction.MEMO_TYPES.hash
     assert t.receiving_anchor_account == distribution_address
     assert t.stellar_account == "test source address"
-    assert not t.amount_in
+    assert t.amount_in == 100
+    assert t.amount_expected == 100
     assert t.asset == withdraw.asset
     assert t.kind == Transaction.KIND.withdrawal
     assert t.status == Transaction.STATUS.pending_user_transfer_start

@@ -271,6 +271,7 @@ def test_deposit_transaction_created(
         {
             "asset_code": deposit.asset.code,
             "account": deposit.stellar_account,
+            "amount": "100",
             "memo_type": "id",
             "memo": 123,
         },
@@ -279,8 +280,9 @@ def test_deposit_transaction_created(
     assert t
     assert t.memo_type == Transaction.MEMO_TYPES.id
     assert t.stellar_account == "test source address"
-    assert not t.amount_in
-    assert t.to_address == "test source address"
+    assert t.amount_in == 100
+    assert t.amount_expected == 100
+    assert t.to_address == deposit.stellar_account
     assert t.asset == deposit.asset
     assert t.kind == Transaction.KIND.deposit
     assert t.status == Transaction.STATUS.pending_user_transfer_start
@@ -519,6 +521,7 @@ def test_saved_transaction_on_failure_response(client, usd_asset_factory):
             "asset_code": asset.code,
             "type": "bank_account",
             "dest": "test bank account number",
+            "account": Keypair.random().public_key,
         },
     )
     assert response.status_code == 500

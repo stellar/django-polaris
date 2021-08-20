@@ -28,6 +28,7 @@ def info(request: Request) -> Response:
         "fee": {"enabled": True, "authentication_required": True},
         "transactions": {"enabled": True, "authentication_required": True},
         "transaction": {"enabled": True, "authentication_required": True},
+        "features": {"account_creation": True, "claimable_balances": True},
     }
     for asset in Asset.objects.filter(sep6_enabled=True):
         try:

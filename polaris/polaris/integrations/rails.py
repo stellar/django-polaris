@@ -97,10 +97,10 @@ class RailsIntegration:
         the account the funds originated from.
 
         Also ensure the amount deposited to the anchor's account matches each
-        transaction's ``amount_in`` field. Client applications may send an amount
+        transaction's ``amount_expected`` field. Client applications may send an amount
         that differs from the amount originally specified prior.
 
-        If ``amount_in`` differs from the amount deposited, assign the amount
+        If ``amount_expected`` differs from the amount deposited, assign the amount
         deposited to ``amount_in`` and update ``amount_fee`` to appropriately.
 
         Any changes to the a transaction object must be saved to the database

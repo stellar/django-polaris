@@ -164,11 +164,13 @@ def test_get_ready_deposits_custom_fee_func_used(mock_rri):
 @patch(f"{test_module}.get_account_obj")
 def test_get_or_create_destination_account_exists(mock_get_account_obj):
     usd = Asset.objects.create(code="USD", issuer=Keypair.random().public_key)
+    destination = Keypair.random().public_key
     transaction = Transaction.objects.create(
         asset=usd,
         status=Transaction.STATUS.pending_user_transfer_start,
         kind=Transaction.KIND.deposit,
-        stellar_account=Keypair.random().public_key,
+        stellar_account=destination,
+        to_address=destination,
     )
     account_obj = Account(transaction.stellar_account, 1)
     mock_get_account_obj.return_value = (
@@ -183,15 +185,62 @@ def test_get_or_create_destination_account_exists(mock_get_account_obj):
 
 @pytest.mark.django_db
 @patch(f"{test_module}.get_account_obj")
-def test_get_or_create_destination_account_exists_pending_trust(mock_get_account_obj):
+def test_get_or_create_destination_account_exists_different_destination(
+    mock_get_account_obj,
+):
     usd = Asset.objects.create(code="USD", issuer=Keypair.random().public_key)
     transaction = Transaction.objects.create(
         asset=usd,
         status=Transaction.STATUS.pending_user_transfer_start,
         kind=Transaction.KIND.deposit,
         stellar_account=Keypair.random().public_key,
+        to_address=Keypair.random().public_key,
+    )
+    account_obj = Account(transaction.to_address, 1)
+    mock_get_account_obj.return_value = (
+        account_obj,
+        {"balances": [{"asset_code": "USD", "asset_issuer": usd.issuer}]},
+    )
+    assert PendingDeposits.get_or_create_destination_account(transaction) == (
+        account_obj,
+        False,
+    )
+
+
+@pytest.mark.django_db
+@patch(f"{test_module}.get_account_obj")
+def test_get_or_create_destination_account_exists_pending_trust(mock_get_account_obj):
+    usd = Asset.objects.create(code="USD", issuer=Keypair.random().public_key)
+    destination = Keypair.random().public_key
+    transaction = Transaction.objects.create(
+        asset=usd,
+        status=Transaction.STATUS.pending_user_transfer_start,
+        kind=Transaction.KIND.deposit,
+        stellar_account=destination,
+        to_address=destination,
     )
     account_obj = Account(transaction.stellar_account, 1)
+    mock_get_account_obj.return_value = (account_obj, {"balances": []})
+    assert PendingDeposits.get_or_create_destination_account(transaction) == (
+        account_obj,
+        True,
+    )
+
+
+@pytest.mark.django_db
+@patch(f"{test_module}.get_account_obj")
+def test_get_or_create_destination_account_exists_pending_trust_different_account(
+    mock_get_account_obj,
+):
+    usd = Asset.objects.create(code="USD", issuer=Keypair.random().public_key)
+    transaction = Transaction.objects.create(
+        asset=usd,
+        status=Transaction.STATUS.pending_user_transfer_start,
+        kind=Transaction.KIND.deposit,
+        stellar_account=Keypair.random().public_key,
+        to_address=Keypair.random().public_key,
+    )
+    account_obj = Account(transaction.to_address, 1)
     mock_get_account_obj.return_value = (account_obj, {"balances": []})
     assert PendingDeposits.get_or_create_destination_account(transaction) == (
         account_obj,
@@ -211,19 +260,21 @@ def test_get_or_create_destination_account_doesnt_exist(
         issuer=Keypair.random().public_key,
         distribution_seed=Keypair.random().secret,
     )
+    destination = Keypair.random().public_key
     transaction = Transaction.objects.create(
         asset=usd,
         status=Transaction.STATUS.pending_user_transfer_start,
         kind=Transaction.KIND.deposit,
-        stellar_account=Keypair.random().public_key,
+        stellar_account=destination,
+        to_address=destination,
     )
     mock_fetch_base_fee.return_value = 100
     mock_requires_multisig.return_value = False
-    stellar_account_obj = Account(transaction.stellar_account, 1)
+    stellar_account_obj = Account(transaction.to_address, 1)
     distribution_account_obj = Account(usd.distribution_account, 1)
 
     def mock_get_account_obj_func(kp: Keypair):
-        if kp.public_key == transaction.stellar_account:
+        if kp.public_key == transaction.to_address:
             if mock_submit_transaction.called:
                 return stellar_account_obj, {"balances": []}
             else:
@@ -243,10 +294,55 @@ def test_get_or_create_destination_account_doesnt_exist(
         assert envelope.transaction.source.account_id == usd.distribution_account
         assert len(envelope.transaction.operations) == 1
         assert isinstance(envelope.transaction.operations[0], CreateAccount)
-        assert (
-            envelope.transaction.operations[0].destination
-            == transaction.stellar_account
+        assert envelope.transaction.operations[0].destination == transaction.to_address
+
+
+@pytest.mark.django_db
+@patch(f"{test_module}.PendingDeposits.requires_multisig")
+@patch(f"{test_module}.settings.HORIZON_SERVER.fetch_base_fee")
+@patch(f"{test_module}.settings.HORIZON_SERVER.submit_transaction")
+def test_get_or_create_destination_account_doesnt_exist_different_destination(
+    mock_submit_transaction, mock_fetch_base_fee, mock_requires_multisig
+):
+    usd = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        distribution_seed=Keypair.random().secret,
+    )
+    transaction = Transaction.objects.create(
+        asset=usd,
+        status=Transaction.STATUS.pending_user_transfer_start,
+        kind=Transaction.KIND.deposit,
+        stellar_account=Keypair.random().public_key,
+        to_address=Keypair.random().public_key,
+    )
+    mock_fetch_base_fee.return_value = 100
+    mock_requires_multisig.return_value = False
+    stellar_account_obj = Account(transaction.to_address, 1)
+    distribution_account_obj = Account(usd.distribution_account, 1)
+
+    def mock_get_account_obj_func(kp: Keypair):
+        if kp.public_key == transaction.to_address:
+            if mock_submit_transaction.called:
+                return stellar_account_obj, {"balances": []}
+            else:
+                raise RuntimeError()
+        elif kp.public_key == usd.distribution_account:
+            return distribution_account_obj, None
+
+    with patch(f"{test_module}.get_account_obj", mock_get_account_obj_func):
+        assert PendingDeposits.get_or_create_destination_account(transaction) == (
+            stellar_account_obj,
+            True,
         )
+        mock_fetch_base_fee.assert_called()
+        mock_requires_multisig.assert_called()
+        mock_submit_transaction.assert_called_once()
+        envelope = mock_submit_transaction.mock_calls[0][1][0]
+        assert envelope.transaction.source.account_id == usd.distribution_account
+        assert len(envelope.transaction.operations) == 1
+        assert isinstance(envelope.transaction.operations[0], CreateAccount)
+        assert envelope.transaction.operations[0].destination == transaction.to_address
 
 
 @pytest.mark.django_db
@@ -265,20 +361,22 @@ def test_get_or_create_destination_account_doesnt_exist_requires_multisig(
         issuer=Keypair.random().public_key,
         distribution_seed=Keypair.random().secret,
     )
+    destination = Keypair.random().public_key
     transaction = Transaction.objects.create(
         asset=usd,
         status=Transaction.STATUS.pending_user_transfer_start,
         kind=Transaction.KIND.deposit,
-        stellar_account=Keypair.random().public_key,
+        stellar_account=destination,
+        to_address=destination,
         channel_seed=Keypair.random().secret,
     )
     mock_fetch_base_fee.return_value = 100
     mock_requires_multisig.return_value = True
-    stellar_account_obj = Account(transaction.stellar_account, 1)
+    stellar_account_obj = Account(transaction.to_address, 1)
     channel_account_obj = Account(transaction.channel_account, 1)
 
     def mock_get_account_obj_func(kp: Keypair):
-        if kp.public_key == transaction.stellar_account:
+        if kp.public_key == transaction.to_address:
             if mock_submit_transaction.called:
                 return stellar_account_obj, {"balances": []}
             else:
@@ -299,10 +397,61 @@ def test_get_or_create_destination_account_doesnt_exist_requires_multisig(
         assert envelope.transaction.source.account_id == transaction.channel_account
         assert len(envelope.transaction.operations) == 1
         assert isinstance(envelope.transaction.operations[0], CreateAccount)
-        assert (
-            envelope.transaction.operations[0].destination
-            == transaction.stellar_account
+        assert envelope.transaction.operations[0].destination == transaction.to_address
+
+
+@pytest.mark.django_db
+@patch(f"{test_module}.PendingDeposits.requires_multisig")
+@patch(f"{test_module}.settings.HORIZON_SERVER.fetch_base_fee")
+@patch(f"{test_module}.settings.HORIZON_SERVER.submit_transaction")
+@patch(f"{test_module}.rdi.create_channel_account")
+def test_get_or_create_destination_account_doesnt_exist_requires_multisig_different_destination(
+    mock_create_channel_account,
+    mock_submit_transaction,
+    mock_fetch_base_fee,
+    mock_requires_multisig,
+):
+    usd = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        distribution_seed=Keypair.random().secret,
+    )
+    transaction = Transaction.objects.create(
+        asset=usd,
+        status=Transaction.STATUS.pending_user_transfer_start,
+        kind=Transaction.KIND.deposit,
+        stellar_account=Keypair.random().public_key,
+        to_address=Keypair.random().public_key,
+        channel_seed=Keypair.random().secret,
+    )
+    mock_fetch_base_fee.return_value = 100
+    mock_requires_multisig.return_value = True
+    stellar_account_obj = Account(transaction.to_address, 1)
+    channel_account_obj = Account(transaction.channel_account, 1)
+
+    def mock_get_account_obj_func(kp: Keypair):
+        if kp.public_key == transaction.to_address:
+            if mock_submit_transaction.called:
+                return stellar_account_obj, {"balances": []}
+            else:
+                raise RuntimeError()
+        elif kp.public_key == transaction.channel_account:
+            return channel_account_obj, None
+
+    with patch(f"{test_module}.get_account_obj", mock_get_account_obj_func):
+        assert PendingDeposits.get_or_create_destination_account(transaction) == (
+            stellar_account_obj,
+            True,
         )
+        mock_fetch_base_fee.assert_called()
+        mock_requires_multisig.assert_called()
+        mock_create_channel_account.assert_not_called()
+        mock_submit_transaction.assert_called_once()
+        envelope = mock_submit_transaction.mock_calls[0][1][0]
+        assert envelope.transaction.source.account_id == transaction.channel_account
+        assert len(envelope.transaction.operations) == 1
+        assert isinstance(envelope.transaction.operations[0], CreateAccount)
+        assert envelope.transaction.operations[0].destination == transaction.to_address
 
 
 @pytest.mark.django_db
@@ -736,6 +885,7 @@ def test_create_transaction_envelope(mock_fetch_base_fee, mock_get_account_obj):
         status=Transaction.STATUS.pending_user_transfer_start,
         kind=Transaction.KIND.deposit,
         stellar_account=Keypair.random().public_key,
+        to_address=Keypair.random().public_key,
         amount_in=100,
         amount_fee=1,
         memo_type=Transaction.MEMO_TYPES.text,
@@ -763,7 +913,7 @@ def test_create_transaction_envelope(mock_fetch_base_fee, mock_get_account_obj):
     )
     assert (
         envelope.transaction.operations[0].destination.account_id
-        == transaction.stellar_account
+        == transaction.to_address
     )
 
 
@@ -783,6 +933,7 @@ def test_create_transaction_envelope_claimable_balance_supported_has_trustline(
         status=Transaction.STATUS.pending_user_transfer_start,
         kind=Transaction.KIND.deposit,
         stellar_account=Keypair.random().public_key,
+        to_address=Keypair.random().public_key,
         amount_in=100,
         amount_fee=1,
         memo_type=Transaction.MEMO_TYPES.text,
@@ -798,7 +949,7 @@ def test_create_transaction_envelope_claimable_balance_supported_has_trustline(
     envelope = PendingDeposits.create_deposit_envelope(transaction, source_account)
 
     mock_get_account_obj.assert_called_once_with(
-        Keypair.from_public_key(transaction.stellar_account)
+        Keypair.from_public_key(transaction.to_address)
     )
     mock_fetch_base_fee.assert_called_once()
     assert isinstance(envelope, TransactionEnvelope)
@@ -817,7 +968,7 @@ def test_create_transaction_envelope_claimable_balance_supported_has_trustline(
     )
     assert (
         envelope.transaction.operations[0].destination.account_id
-        == transaction.stellar_account
+        == transaction.to_address
     )
 
 
@@ -837,6 +988,7 @@ def test_create_transaction_envelope_claimable_balance_supported_no_trustline(
         status=Transaction.STATUS.pending_user_transfer_start,
         kind=Transaction.KIND.deposit,
         stellar_account=Keypair.random().public_key,
+        to_address=Keypair.random().public_key,
         amount_in=100,
         amount_fee=1,
         memo_type=Transaction.MEMO_TYPES.text,
@@ -849,7 +1001,7 @@ def test_create_transaction_envelope_claimable_balance_supported_no_trustline(
     envelope = PendingDeposits.create_deposit_envelope(transaction, source_account)
 
     mock_get_account_obj.assert_called_once_with(
-        Keypair.from_public_key(transaction.stellar_account)
+        Keypair.from_public_key(transaction.to_address)
     )
     mock_fetch_base_fee.assert_called_once()
     assert isinstance(envelope, TransactionEnvelope)
@@ -870,7 +1022,7 @@ def test_create_transaction_envelope_claimable_balance_supported_no_trustline(
     assert isinstance(envelope.transaction.operations[0].claimants[0], Claimant)
     assert (
         envelope.transaction.operations[0].claimants[0].destination
-        == transaction.stellar_account
+        == transaction.to_address
     )
 
 

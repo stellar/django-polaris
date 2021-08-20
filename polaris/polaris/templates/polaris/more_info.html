@@ -1,7 +1,7 @@
 {% extends "./base.html" %} {% load i18n %} {% load tz %} {% load static %}
 
 {% block "title" %}
-<title>{% trans "Transaction More Info" %}</title>
+<title>{% if title %} {{ title|safe }} {% else %} {% trans "Transaction More Info" %} {% endif %}</title>
 {% endblock %}
 
 {% block "content" %}
@@ -72,7 +72,7 @@
 
     <div class="info-item">
         <div class="info-label">
-            {% trans " transaction status" %}
+            {% trans "transaction status" %}
         </div>
         <div class="field-value">
             {{ transaction.message }}

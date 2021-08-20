@@ -51,7 +51,8 @@ def test_process_response_success(client):
     transaction = Transaction.objects.create(
         asset=asset,
         stellar_account=Keypair.random().public_key,
-        amount_in=10000,
+        amount_in=9000,
+        amount_expected=9000,
         kind=Transaction.KIND.withdrawal,
         status=Transaction.STATUS.pending_user_transfer_start,
         memo=SUCCESS_PAYMENT_TRANSACTION_JSON["memo"],
@@ -68,6 +69,7 @@ def test_process_response_success(client):
     assert transaction.paging_token
     assert transaction.status == Transaction.STATUS.pending_anchor
     assert transaction.amount_in == 10000
+    assert transaction.amount_expected == 9000
 
 
 @pytest.mark.django_db

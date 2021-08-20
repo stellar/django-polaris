@@ -10,7 +10,8 @@ from rest_framework.response import Response
 from rest_framework.renderers import JSONRenderer, BrowsableAPIRenderer
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.exceptions import APIException
-from stellar_sdk.exceptions import MemoInvalidException
+from stellar_sdk.exceptions import MemoInvalidException, Ed25519PublicKeyInvalidError
+from stellar_sdk.keypair import Keypair
 
 from polaris import settings
 from polaris.models import Asset, Transaction
@@ -43,18 +44,19 @@ def deposit(token: SEP10Token, request: Request) -> Response:
     args = parse_request_args(request)
     if "error" in args:
         return args["error"]
-    args["account"] = token.account
 
     transaction_id = create_transaction_id()
     transaction = Transaction(
         id=transaction_id,
         stellar_account=token.account,
         asset=args["asset"],
+        amount_in=args.get("amount"),
+        amount_expected=args.get("amount"),
         kind=Transaction.KIND.deposit,
         status=Transaction.STATUS.pending_user_transfer_start,
         memo=args["memo"],
         memo_type=args["memo_type"] or Transaction.MEMO_TYPES.text,
-        to_address=token.account,
+        to_address=args["account"],
         protocol=Transaction.PROTOCOL.sep6,
         more_info_url=request.build_absolute_uri(
             f"{SEP6_MORE_INFO_PATH}?id={transaction_id}"
@@ -174,6 +176,11 @@ def validate_response(
 
 
 def parse_request_args(request: Request) -> Dict:
+    try:
+        Keypair.from_public_key(request.GET.get("account"))
+    except Ed25519PublicKeyInvalidError:
+        return {"error": render_error_response(_("invalid 'account'"))}
+
     asset = Asset.objects.filter(
         code=request.GET.get("asset_code"), sep6_enabled=True, deposit_enabled=True
     ).first()
@@ -237,6 +244,7 @@ def parse_request_args(request: Request) -> Dict:
             }
 
     args = {
+        "account": request.GET.get("account"),
         "asset": asset,
         "memo_type": memo_type,
         "memo": request.GET.get("memo"),

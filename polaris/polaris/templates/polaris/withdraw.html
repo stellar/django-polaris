@@ -23,8 +23,13 @@
 
             {% for field in form.visible_fields %}
             <div class="field">
-                <label class="label"> {{ field.label }}</label>
-                <div class="control"> {{ field }} </div>
+                <div class="label">
+                    {{ field.label }}
+                    {% if field.field.required %}
+                        <span class="required">*</span>
+                    {% endif %}
+                </div>
+                <div class="control">{{ field }}</div>
 
                 {% if field.errors %}
                 <p class="help is-danger">

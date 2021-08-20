@@ -14,6 +14,8 @@ from rest_framework.renderers import (
     BrowsableAPIRenderer,
 )
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+from stellar_sdk.keypair import Keypair
+from stellar_sdk.exceptions import Ed25519PublicKeyInvalidError
 
 from polaris import settings
 from polaris.templates import Template
@@ -115,6 +117,7 @@ def post_interactive_withdraw(request: Request) -> Response:
     elif form.is_valid():
         if issubclass(form.__class__, TransactionForm):
             transaction.amount_in = form.cleaned_data["amount"]
+            transaction.amount_expected = form.cleaned_data["amount"]
             transaction.amount_fee = registered_fee_func(
                 request=request,
                 fee_params={
@@ -126,6 +129,7 @@ def post_interactive_withdraw(request: Request) -> Response:
             )
             if settings.ADDITIVE_FEES_ENABLED:
                 transaction.amount_in += transaction.amount_fee
+                transaction.amount_expected += transaction.amount_fee
             transaction.amount_out = round(
                 transaction.amount_in - transaction.amount_fee,
                 asset.significant_decimals,
@@ -337,6 +341,7 @@ def withdraw(token: SEP10Token, request: Request,) -> Response:
     """
     lang = request.data.get("lang")
     asset_code = request.data.get("asset_code")
+    source_account = request.data.get("account")
     sep9_fields = extract_sep9_fields(request.data)
     if lang:
         err_resp = validate_language(lang)
@@ -364,6 +369,12 @@ def withdraw(token: SEP10Token, request: Request,) -> Response:
             return render_error_response(_("invalid 'amount'"))
         if not (asset.withdrawal_min_amount <= amount <= asset.withdrawal_max_amount):
             return render_error_response(_("invalid 'amount'"))
+
+    if source_account:
+        try:
+            Keypair.from_public_key(source_account)
+        except Ed25519PublicKeyInvalidError:
+            return render_error_response(_("invalid 'account'"))
 
     try:
         rwi.save_sep9_fields(
@@ -393,6 +404,7 @@ def withdraw(token: SEP10Token, request: Request,) -> Response:
             f"{reverse('more_info')}?id={transaction_id}"
         ),
         client_domain=token.client_domain,
+        from_address=source_account,
     )
     logger.info(f"Created withdrawal transaction {transaction_id}")
 

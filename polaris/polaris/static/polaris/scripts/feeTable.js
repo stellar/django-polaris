@@ -20,6 +20,7 @@ function feeTable({
   let op = operation;
   let fee_fixed;
   let fee_percent;
+  let timeout; // timeout must persist outside function scope
   if (op === "deposit") {
     fee_fixed = depositFeeFixed;
     fee_percent = depositFeePercent;
@@ -32,6 +33,9 @@ function feeTable({
     amountInput.addEventListener("keyup", amountInputChange);
     if (typeInput)
       typeInput.addEventListener("input", amountInputChange);
+    if (amountInput.value)
+      // calculate value if the value is pre-filled
+      amountInputChange();
   }
 
   function getFeeTableStrings(fee, amountIn) {
@@ -57,7 +61,6 @@ function feeTable({
     amountOutTag.innerHTML = symbol + " " + amountOutStr;
   }
 
-  let timeout; // timeout must persist outside function scope
   function callFeeEndpoint(amount) {
     /*
      * Calls the anchor's /fee endpoint.
@@ -98,8 +101,6 @@ function feeTable({
     if (typeInput && !typeInput.value) {
       return;
     }
-    let fee_fixed;
-    let fee_percent;
     let amountIn = Number(amountInput.value);
     if (!useFeeEndpoint) {
       let fee = fee_fixed + (amountIn * (fee_percent / 100));
