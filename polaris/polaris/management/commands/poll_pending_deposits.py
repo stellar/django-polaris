@@ -2,20 +2,31 @@ import sys
 import signal
 import time
 import datetime
-import base64
+import asyncio
 from decimal import Decimal
 from typing import Tuple, List, Optional
 
 import django.db.transaction
 from django.core.management import BaseCommand
-from stellar_sdk import Keypair, TransactionEnvelope, Asset, Claimant
+from stellar_sdk import Keypair, TransactionEnvelope, Asset, Claimant, Server
+from stellar_sdk.client.aiohttp_client import AiohttpClient
 from stellar_sdk.account import Account
-from stellar_sdk.exceptions import BaseHorizonError, ConnectionError, NotFoundError
+from stellar_sdk.exceptions import (
+    BaseHorizonError,
+    ConnectionError,
+    NotFoundError,
+    BaseRequestError,
+)
 from stellar_sdk.transaction_builder import TransactionBuilder
 from stellar_sdk.xdr import TransactionResult, OperationType
+from asgiref.sync import sync_to_async
 
 from polaris import settings
-from polaris.utils import get_account_obj, is_pending_trust, maybe_make_callback
+from polaris.utils import (
+    is_pending_trust,
+    maybe_make_callback,
+    maybe_make_callback_async,
+)
 from polaris.integrations import (
     registered_deposit_integration as rdi,
     registered_rails_integration as rri,
@@ -23,11 +34,60 @@ from polaris.integrations import (
     calculate_fee,
 )
 from polaris.models import Transaction
-from polaris.utils import getLogger, make_memo
+from polaris.utils import getLogger, make_memo, load_account
 
 logger = getLogger(__name__)
+
 TERMINATE = False
+"""
+SIGINT and SIGTERM signals to this process set TERMINATE to True,
+and once all pending tasks complete, the process exits.
+Only relevant if the --loop option is specified.
+"""
+
 DEFAULT_INTERVAL = 10
+"""
+The default amount of time to sleep before querying for transactions again
+Only used if the --loop option is specified.
+"""
+
+SOURCE_ACCOUNT_LOCKS = {}
+"""
+A dict shared by all concurrently running tasks containing locks per source 
+account of transactions submitted by this process. Effectively serializes
+transaction submission per source account, ensuring sequence numbers are 
+always valid.
+"""
+
+DESTINATION_ACCOUNT_JSON_CACHE = {}
+"""
+DO NOT USE FOR CONSTRUCTING ``Account`` objects for ``TransactionBuilder``.
+
+Only used for PendingDeposits.check_trustline() to detect if a trustline has been 
+established for a pending deposit's requested asset. Ensures depoist requests to the 
+same destination account do not require more than one request to fetch the account's 
+json.
+"""
+
+
+async def get_account_obj_async(kp, server):
+    try:
+        logger.debug(f"calling accounts endpoint for account {kp.public_key}")
+        json_resp = await server.accounts().account_id(account_id=kp.public_key).call()
+        logger.debug(f"got response from accounts endpoint for {kp.public_key}")
+    except NotFoundError:
+        logger.debug(
+            f"Got 404 response from accounts endpoint for account {kp.public_key}"
+        )
+        raise RuntimeError(f"account {kp.public_key} does not exist")
+    else:
+        return load_account(json_resp), json_resp
+
+
+def get_lock_for_source_account(account: str):
+    if account not in SOURCE_ACCOUNT_LOCKS:
+        SOURCE_ACCOUNT_LOCKS[account] = asyncio.Lock()
+    return SOURCE_ACCOUNT_LOCKS[account]
 
 
 class Command(BaseCommand):
@@ -48,9 +108,8 @@ class Command(BaseCommand):
 
     @staticmethod
     def sleep(seconds):  # pragma: no cover
-        module = sys.modules[__name__]
         for _ in range(seconds):
-            if module.TERMINATE:
+            if TERMINATE:
                 break
             time.sleep(1)
 
@@ -76,68 +135,142 @@ class Command(BaseCommand):
         periodically after sleeping for the number of seconds specified by
         --interval.
         """
-        module = sys.modules[__name__]
         if options.get("loop"):
             while True:
-                if module.TERMINATE:
+                if TERMINATE:
                     break
-                self.execute_deposits()
+                asyncio.run(self.process_deposits())
                 self.sleep(options.get("interval") or DEFAULT_INTERVAL)
         else:
-            self.execute_deposits()
+            asyncio.run(self.process_deposits())
 
     @classmethod
-    def execute_deposits(cls):
-        module = sys.modules[__name__]
-        ready_transactions = PendingDeposits.get_ready_deposits()
-        for i, transaction in enumerate(ready_transactions):
-            if module.TERMINATE:
-                still_processing_transactions = ready_transactions[i:]
-                Transaction.objects.filter(
-                    id__in=[t.id for t in still_processing_transactions]
-                ).update(pending_execution_attempt=False)
-                break
+    async def process_deposits(cls):
+        """
+        The entry-point for the command's functionality. Queries for transactions in three states:
+        - Transactions that have become available in the anchor off-chain account
+        - Multi-sig transactions that have all signatures collected
+        - Transactions waiting for the client application to establish a trustline for the request asset
 
-            if PendingDeposits.requires_trustline(transaction):
-                continue
+        All transactions retreived have ``Transaction.pending_execution_attempt`` set to True to ensure
+        they are not retreived by other invocation of this command.
 
-            try:
-                requires_multisig = PendingDeposits.requires_multisig(transaction)
-            except NotFoundError:
-                PendingDeposits.handle_error(
-                    transaction,
-                    f"{transaction.asset.code} distribution account "
-                    f"{transaction.asset.distribution_account} does not exist",
-                )
-                continue
-            except ConnectionError:
-                PendingDeposits.handle_error(
-                    transaction,
-                    f"Unable to connect to horizon to fetch {transaction.asset.code} "
-                    "distribution account signers",
-                )
-                continue
-            if requires_multisig:
-                PendingDeposits.save_as_pending_signatures(transaction)
-                continue
-
-            PendingDeposits.handle_submit(transaction)
-
-        if not module.TERMINATE:
-            PendingDeposits.execute_ready_multisig_deposits()
+        Tasks are queued for execution on the event loop for every transaction retreived. All tasks
+        ensure that ``Transaction.pending_execution_attempt`` is set to False by the end of execution.
+        """
+        ready_transactions = await sync_to_async(PendingDeposits.get_ready_deposits)()
+        ready_multisig_transactions = await sync_to_async(
+            PendingDeposits.get_ready_multisig_deposits
+        )()
+        pending_trust_transactions = await sync_to_async(
+            PendingDeposits.get_pending_trust_transactions
+        )()
+        async with Server(settings.HORIZON_URI, client=AiohttpClient()) as server:
+            results = await asyncio.gather(
+                *[
+                    PendingDeposits.process_deposit(t, server)
+                    for t in ready_transactions
+                ],
+                *[
+                    PendingDeposits.handle_submit(t, server)
+                    for t in ready_multisig_transactions
+                ],
+                *[
+                    PendingDeposits.check_trustline(t, server)
+                    for t in pending_trust_transactions
+                ],
+            )
+            logger.debug(f"asyncio gathered results {results}")
+            logger.debug(asyncio.all_tasks())
 
 
 class PendingDeposits:
     @classmethod
+    async def process_deposit(cls, transaction, server):
+        """
+        Evaluate `transaction` and determine if it is ready for submission to the
+        Stellar Network. The transaction could be in one of the following states:
+
+        - The destination account does not exist or does not have a trustline to
+        the asset and the initiating client application does not support claimable
+        balances.
+
+            If the account exists, or after it has been created, the transaction is
+            placed in the `pending_trust` status. If the account doesn't exist and
+            the distribution account requires multiple signatures, Polaris requests
+            a channel account from the Anchor and submits a create account operation
+            using the channel account as the source instead of the distribution
+            account.
+
+        - The distribution account that will submit the transaction requires
+        multiple signatures that have not been collected.
+
+            In this case Transaction.pending_signatures is set to True, and the
+            the anchor is expected collect signatures and set the column back to
+            False.
+
+        - The transaction is ready to be submitted
+
+            In this case, the transaction is submitted to the Stellar Network and
+            updated as complete after success.
+        """
+        logger.debug(f"processing transaction {transaction.id}")
+        if await cls.requires_trustline(transaction, server):
+            logger.debug(f"transaction {transaction.id} requires trustline")
+            return
+
+        logger.debug(f"transaction {transaction.id} is not pending trust")
+        try:
+            requires_multisig = await cls.requires_multisig(transaction, server)
+        except NotFoundError:
+            await sync_to_async(cls.handle_error)(
+                transaction,
+                f"{transaction.asset.code} distribution account "
+                f"{transaction.asset.distribution_account} does not exist",
+            )
+            await maybe_make_callback_async(transaction)
+            return
+        except ConnectionError:
+            await sync_to_async(cls.handle_error)(
+                transaction,
+                f"Unable to connect to horizon to fetch {transaction.asset.code} "
+                "distribution account signers",
+            )
+            await maybe_make_callback_async(transaction)
+            return
+        if requires_multisig:
+            await cls.save_as_pending_signatures(transaction, server)
+            return
+        logger.debug(f"transaction {transaction.id} does not require multisig")
+
+        await cls.handle_submit(transaction, server)
+
+    @classmethod
     def get_ready_deposits(cls) -> List[Transaction]:
-        pending_deposits = Transaction.objects.filter(
-            status__in=[
-                Transaction.STATUS.pending_user_transfer_start,
-                Transaction.STATUS.pending_external,
-            ],
-            kind=Transaction.KIND.deposit,
-            pending_execution_attempt=False,
-        ).select_for_update()
+        """
+        Polaris' API server processes deposit request and places the associated Transaction
+        object in the `pending_user_transfer_start` status when all information necessary to
+        submit the payment operation on Stellar has been collected.
+
+        This function queries for these transaction, in addition to the Transaction objects
+        that have been identified as pending external rails, and passes them to the
+        DepositIntegration.poll_pending_deposits() integration function. Anchors return the
+        transactions that are now available in their off-chain account and therefore ready
+        for submission to the Stellar Network. Finally, this function performs various
+        validations to ensure the transaction is truly ready and returns them.
+        """
+        pending_deposits = (
+            Transaction.objects.filter(
+                status__in=[
+                    Transaction.STATUS.pending_user_transfer_start,
+                    Transaction.STATUS.pending_external,
+                ],
+                kind=Transaction.KIND.deposit,
+                pending_execution_attempt=False,
+            )
+            .select_related("asset")
+            .select_for_update()
+        )
         with django.db.transaction.atomic():
             ready_transactions = rri.poll_pending_deposits(pending_deposits)
             Transaction.objects.filter(
@@ -147,12 +280,15 @@ class PendingDeposits:
         for transaction in ready_transactions:
             # refresh from DB to pull pending_execution_attempt value and to ensure invalid
             # values were not assigned to the transaction in rri.poll_pending_deposits()
+            asset = transaction.asset
             transaction.refresh_from_db()
+            transaction.asset = asset
             if transaction.kind != transaction.KIND.deposit:
                 cls.handle_error(
                     transaction,
                     "poll_pending_deposits() returned a non-deposit transaction",
                 )
+                maybe_make_callback(transaction)
                 continue
             if transaction.amount_in is None:
                 cls.handle_error(
@@ -160,6 +296,7 @@ class PendingDeposits:
                     "poll_pending_deposits() did not assign a value to the "
                     "amount_in field of a Transaction object returned",
                 )
+                maybe_make_callback(transaction)
                 continue
             elif transaction.amount_fee is None:
                 if registered_fee_func is calculate_fee:
@@ -173,16 +310,80 @@ class PendingDeposits:
                         )
                     except ValueError as e:
                         cls.handle_error(transaction, str(e))
+                        maybe_make_callback(transaction)
                         continue
                 else:
                     transaction.amount_fee = Decimal(0)
                 transaction.save()
             verified_ready_transactions.append(transaction)
+        logger.debug(f"{len(verified_ready_transactions)} are ready for deposit")
         return verified_ready_transactions
 
+    @staticmethod
+    def get_pending_trust_transactions():
+        """
+        If the destination account does not have a trustline to the requested
+        asset and the client application that initiated the request does not
+        support claimable balances, Polaris places the transaction in the
+        `pending_trust` status.
+
+        This function retrieves those transactions and ensure other processes
+        do not retreive the same transactions for processing by updating
+        Transaction.pending_execution_attempt to True.
+
+        The returned transactions will be submitted if their destination
+        accounts now have a trustline to the asset.
+        """
+        with django.db.transaction.atomic():
+            transactions = list(
+                Transaction.objects.filter(
+                    kind=Transaction.KIND.deposit,
+                    status=Transaction.STATUS.pending_trust,
+                    pending_execution_attempt=False,
+                )
+                .select_related("asset")
+                .select_for_update()
+            )
+            Transaction.objects.filter(id__in=[t.id for t in transactions]).update(
+                pending_execution_attempt=True
+            )
+            return transactions
+
+    @staticmethod
+    def get_ready_multisig_deposits():
+        """
+        If the anchor's distribution account requires multiple signatures before
+        submitting to Stellar, Polaris generates the envelope and updates
+        Transaction.pending_signatures to True.
+
+        Polaris then expects the anchor to collect the necessary signatures and
+        set Transaction.pending_signatures back to False. This function checks if
+        any transaction is in this state and returns it for submission to the
+        Stellar Network.
+
+        Multisig transactions are therefore identified by a non-null envelope_xdr
+        column and a 'pending_anchor' status. The status check is important
+        because all successfully submitted transactions have their envelope_xdr
+        column set after submission and status set to 'completed'.
+        """
+        with django.db.transaction.atomic():
+            multisig_transactions = list(
+                Transaction.objects.filter(
+                    kind=Transaction.KIND.deposit,
+                    status=Transaction.STATUS.pending_anchor,
+                    pending_signatures=False,
+                    envelope_xdr__isnull=False,
+                    pending_execution_attempt=False,
+                ).select_for_update()
+            )
+            Transaction.objects.filter(
+                id__in=[t.id for t in multisig_transactions]
+            ).update(pending_execution_attempt=True)
+            return multisig_transactions
+
     @classmethod
-    def get_or_create_destination_account(
-        cls, transaction: Transaction,
+    async def get_or_create_destination_account(
+        cls, transaction: Transaction, server: Server
     ) -> Tuple[Account, bool]:
         """
         Returns:
@@ -199,14 +400,19 @@ class PendingDeposits:
 
         On failure to create the destination account, a RuntimeError exception is raised.
         """
+        logger.debug(f"checking if account for transaction {transaction.id} exists")
         try:
-            account, json_resp = get_account_obj(
-                Keypair.from_public_key(transaction.to_address)
+            account, json_resp = await get_account_obj_async(
+                Keypair.from_public_key(transaction.to_address), server
             )
+            logger.debug(f"account for transaction {transaction.id} exists")
             return account, is_pending_trust(transaction, json_resp)
         except RuntimeError:  # account does not exist
+            logger.debug(f"account for transaction {transaction.id} does not exist")
             try:
-                requires_multisig = PendingDeposits.requires_multisig(transaction)
+                requires_multisig = await PendingDeposits.requires_multisig(
+                    transaction, server
+                )
             except NotFoundError:
                 logger.error(
                     f"{transaction.asset.code} distribution account "
@@ -214,37 +420,52 @@ class PendingDeposits:
                 )
                 raise RuntimeError("the distribution account does not exist")
             if requires_multisig:
-                source_account_kp = cls.get_channel_keypair(transaction)
-                source_account, _ = get_account_obj(source_account_kp)
+                source_account_kp = await sync_to_async(cls.get_channel_keypair)(
+                    transaction
+                )
             else:
                 source_account_kp = Keypair.from_secret(
                     transaction.asset.distribution_seed
                 )
-                source_account, _ = get_account_obj(source_account_kp)
 
-            builder = TransactionBuilder(
-                source_account=source_account,
-                network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
-                # this transaction contains one operation so base_fee will be multiplied by 1
-                base_fee=settings.MAX_TRANSACTION_FEE_STROOPS
-                or settings.HORIZON_SERVER.fetch_base_fee(),
+            logger.debug(
+                f"requesting lock to create account for transaction {transaction.id}"
             )
-            transaction_envelope = builder.append_create_account_op(
-                destination=transaction.to_address,
-                starting_balance=settings.ACCOUNT_STARTING_BALANCE,
-            ).build()
-            transaction_envelope.sign(source_account_kp)
+            async with get_lock_for_source_account(
+                transaction.asset.distribution_account
+            ):
+                logger.debug(
+                    f"locked for transaction {transaction.id} to create destination account"
+                )
+                source_account, _ = await get_account_obj_async(
+                    source_account_kp, server
+                )
+                builder = TransactionBuilder(
+                    source_account=source_account,
+                    network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
+                    # this transaction contains one operation so base_fee will be multiplied by 1
+                    base_fee=settings.MAX_TRANSACTION_FEE_STROOPS
+                    or settings.HORIZON_SERVER.fetch_base_fee(),
+                )
+                transaction_envelope = builder.append_create_account_op(
+                    destination=transaction.to_address,
+                    starting_balance=settings.ACCOUNT_STARTING_BALANCE,
+                ).build()
+                transaction_envelope.sign(source_account_kp)
 
-            try:
-                settings.HORIZON_SERVER.submit_transaction(transaction_envelope)
-            except BaseHorizonError as e:  # pragma: no cover
-                raise RuntimeError(
-                    "Horizon error when submitting create account "
-                    f"to horizon: {e.message}"
+                try:
+                    await server.submit_transaction(transaction_envelope)
+                except BaseHorizonError as e:  # pragma: no cover
+                    raise RuntimeError(
+                        "Horizon error when submitting create account "
+                        f"to horizon: {e.message}"
+                    )
+                logger.debug(
+                    f"unlocking after creating destination account for transaction {transaction.id}"
                 )
 
-            account, _ = get_account_obj(
-                Keypair.from_public_key(transaction.to_address)
+            account, _ = await get_account_obj_async(
+                Keypair.from_public_key(transaction.to_address), server
             )
             return account, True
         except BaseHorizonError as e:
@@ -255,7 +476,68 @@ class PendingDeposits:
             raise RuntimeError("Failed to connect to Horizon")
 
     @classmethod
-    def submit(cls, transaction: Transaction) -> bool:
+    async def check_trustline(cls, transaction: Transaction, server: Server):
+        """
+        Load the destination account json to determine if a trustline has been
+        established. If a trustline for the requested asset is found, a the
+        transaction is scheduled for processing. If not, the transaction is
+        updated to no longer be pending an execution attempt.
+        """
+        if transaction.to_address not in DESTINATION_ACCOUNT_JSON_CACHE:
+            DESTINATION_ACCOUNT_JSON_CACHE[transaction.to_address] = {
+                "lock": asyncio.Lock()
+            }
+        logger.debug(
+            f"requesting lock to fetch destination account json transaction {transaction.id}"
+        )
+        async with DESTINATION_ACCOUNT_JSON_CACHE[transaction.to_address]["lock"]:
+            logger.debug(
+                f"locked to fetch destination account json transaction {transaction.id}"
+            )
+            # Ensure all check_trustline() tasks don't make requests for the same account
+            if "account" not in DESTINATION_ACCOUNT_JSON_CACHE[transaction.to_address]:
+                try:
+                    account = (
+                        await server.accounts()
+                        .account_id(transaction.to_address)
+                        .call()
+                    )
+                except BaseRequestError:
+                    logger.exception(f"Failed to load account {transaction.to_address}")
+                    transaction.pending_execution_attempt = False
+                    await sync_to_async(transaction.save)()
+                    return
+                DESTINATION_ACCOUNT_JSON_CACHE[transaction.to_address][
+                    "account"
+                ] = account
+            else:
+                account = DESTINATION_ACCOUNT_JSON_CACHE[transaction.to_address][
+                    "account"
+                ]
+            logger.debug(
+                f"unlocked after fetching destination account json transaction {transaction.id}"
+            )
+        trustline_found = False
+        for balance in account["balances"]:
+            if balance.get("asset_type") == "native":
+                continue
+            if (
+                balance["asset_code"] == transaction.asset.code
+                and balance["asset_issuer"] == transaction.asset.issuer
+            ):
+                logger.debug(
+                    f"creating task for processing transaction {transaction.id}"
+                )
+                trustline_found = True
+                break
+        if trustline_found:
+            await cls.process_deposit(transaction, server)
+        else:
+            transaction.pending_execution_attempt = False
+            await sync_to_async(transaction.save)()
+
+    @classmethod
+    async def submit(cls, transaction: Transaction, server: Server) -> bool:
         valid_statuses = [
             Transaction.STATUS.pending_user_transfer_start,
             Transaction.STATUS.pending_external,
@@ -269,43 +551,61 @@ class PendingDeposits:
             )
 
         transaction.status = Transaction.STATUS.pending_anchor
-        transaction.save()
+        await sync_to_async(transaction.save)()
         logger.info(f"Initiating Stellar deposit for {transaction.id}")
-        maybe_make_callback(transaction)
+        await maybe_make_callback_async(transaction)
 
+        envelope = None
         if transaction.envelope_xdr:
             try:
                 envelope = TransactionEnvelope.from_xdr(
                     transaction.envelope_xdr, settings.STELLAR_NETWORK_PASSPHRASE
                 )
             except Exception:
-                cls.handle_error(transaction, "Failed to decode transaction envelope")
+                await sync_to_async(cls.handle_error)(
+                    transaction, "Failed to decode transaction envelope"
+                )
+                await maybe_make_callback_async(transaction)
                 return False
-        else:
-            distribution_acc, _ = get_account_obj(
-                Keypair.from_public_key(transaction.asset.distribution_account)
+
+        logger.debug(f"requesting lock to submit deposit transaction {transaction.id}")
+        async with get_lock_for_source_account(transaction.asset.distribution_account):
+            logger.debug(
+                f"locked to submit deposit transaction for transaction {transaction.id}"
             )
-            envelope = cls.create_deposit_envelope(transaction, distribution_acc)
-            envelope.sign(transaction.asset.distribution_seed)
+            if not envelope:
+                distribution_acc, _ = await get_account_obj_async(
+                    Keypair.from_public_key(transaction.asset.distribution_account),
+                    server,
+                )
+                envelope = await cls.create_deposit_envelope(
+                    transaction, distribution_acc, server
+                )
+                envelope.sign(transaction.asset.distribution_seed)
 
-        transaction.status = Transaction.STATUS.pending_stellar
-        transaction.save()
-        logger.info(f"Transaction {transaction.id} now pending_stellar")
-        maybe_make_callback(transaction)
+            transaction.status = Transaction.STATUS.pending_stellar
+            await sync_to_async(transaction.save)()
+            logger.info(f"Transaction {transaction.id} now pending_stellar")
+            await maybe_make_callback_async(transaction)
 
-        try:
-            response = settings.HORIZON_SERVER.submit_transaction(envelope)
-        except (BaseHorizonError, ConnectionError) as e:
-            message = getattr(e, "message", str(e))
-            cls.handle_error(transaction, f"{e.__class__.__name__}: {message}")
-            return False
+            try:
+                response = await server.submit_transaction(envelope)
+            except (BaseHorizonError, ConnectionError) as e:
+                message = getattr(e, "message", str(e))
+                await sync_to_async(cls.handle_error)(
+                    transaction, f"{e.__class__.__name__}: {message}"
+                )
+                await maybe_make_callback_async(transaction)
+                return False
+            logger.debug(f"unlocking after submitting transaction {transaction.id}")
 
         if not response.get("successful"):
-            cls.handle_error(
+            await sync_to_async(cls.handle_error)(
                 transaction,
                 "Stellar transaction failed when submitted to horizon: "
                 f"{response['result_xdr']}",
             )
+            await maybe_make_callback_async(transaction)
             return False
         elif transaction.claimable_balance_supported:
             transaction.claimable_balance_id = cls.get_balance_id(response)
@@ -320,29 +620,33 @@ class PendingDeposits:
             transaction.asset.significant_decimals,
         )
         transaction.pending_execution_attempt = False
-        transaction.save()
+        await sync_to_async(transaction.save)()
         logger.info(f"Transaction {transaction.id} completed.")
-        maybe_make_callback(transaction)
+        await maybe_make_callback_async(transaction)
         return True
 
     @classmethod
-    def handle_submit(cls, transaction: Transaction):
+    async def handle_submit(cls, transaction: Transaction, server):
+        logger.debug(f"calling submit() for transaction {transaction.id}")
         try:
-            success = PendingDeposits.submit(transaction)
+            success = await PendingDeposits.submit(transaction, server)
         except Exception as e:
             logger.exception("submit() threw an unexpected exception")
-            cls.handle_error(transaction, str(e))
+            await sync_to_async(cls.handle_error)(transaction, str(e))
+            await maybe_make_callback_async(transaction)
             return
 
         if success:
-            transaction.refresh_from_db()
+            await sync_to_async(transaction.refresh_from_db)()
             try:
-                rdi.after_deposit(transaction)
+                await sync_to_async(rdi.after_deposit)(transaction)
             except Exception:
                 logger.exception("after_deposit() threw an unexpected exception")
 
     @staticmethod
-    def create_deposit_envelope(transaction, source_account) -> TransactionEnvelope:
+    async def create_deposit_envelope(
+        transaction, source_account, server
+    ) -> TransactionEnvelope:
         payment_amount = round(
             Decimal(transaction.amount_in) - Decimal(transaction.amount_fee),
             transaction.asset.significant_decimals,
@@ -352,7 +656,7 @@ class PendingDeposits:
             network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
             # only one operation, so base_fee will be multipled by 1
             base_fee=settings.MAX_TRANSACTION_FEE_STROOPS
-            or settings.HORIZON_SERVER.fetch_base_fee(),
+            or await server.fetch_base_fee(),
         )
         payment_op_kwargs = {
             "destination": transaction.to_address,
@@ -362,8 +666,8 @@ class PendingDeposits:
             "source": transaction.asset.distribution_account,
         }
         if transaction.claimable_balance_supported:
-            _, json_resp = get_account_obj(
-                Keypair.from_public_key(transaction.to_address)
+            _, json_resp = await get_account_obj_async(
+                Keypair.from_public_key(transaction.to_address), server
             )
             if is_pending_trust(transaction, json_resp):
                 claimant = Claimant(destination=transaction.to_address)
@@ -415,13 +719,14 @@ class PendingDeposits:
         return balance_id_hex
 
     @classmethod
-    def requires_trustline(cls, transaction: Transaction) -> bool:
+    async def requires_trustline(cls, transaction: Transaction, server: Server) -> bool:
         try:
-            _, pending_trust = PendingDeposits.get_or_create_destination_account(
-                transaction
+            _, pending_trust = await PendingDeposits.get_or_create_destination_account(
+                transaction, server
             )
         except RuntimeError as e:
-            cls.handle_error(transaction, str(e))
+            await sync_to_async(cls.handle_error)(transaction, str(e))
+            await maybe_make_callback_async(transaction)
             return True
 
         if pending_trust and not transaction.claimable_balance_supported:
@@ -430,43 +735,48 @@ class PendingDeposits:
             )
             transaction.status = Transaction.STATUS.pending_trust
             transaction.pending_execution_attempt = False
-            transaction.save()
-            maybe_make_callback(transaction)
+            await sync_to_async(transaction.save)()
+            await maybe_make_callback_async(transaction)
             return True
 
         return False
 
     @staticmethod
-    def requires_multisig(transaction: Transaction) -> bool:
-        master_signer = None
-        if transaction.asset.distribution_account_master_signer:
-            master_signer = transaction.asset.distribution_account_master_signer
-        thresholds = transaction.asset.distribution_account_thresholds
+    async def requires_multisig(transaction: Transaction, server: Server) -> bool:
+        logger.debug(f"checking if transaction {transaction.id} requires multisig")
+        master_signer = await transaction.asset.get_distribution_account_master_signer_async(
+            server=server
+        )
+        thresholds = await transaction.asset.get_distribution_account_thresholds_async(
+            server=server
+        )
         return (
-            not master_signer or master_signer["weight"] < thresholds["med_threshold"]
+            not master_signer
+            or master_signer["weight"] == 0
+            or master_signer["weight"] < thresholds["med_threshold"]
         )
 
     @classmethod
-    def save_as_pending_signatures(cls, transaction):
-        channel_kp = cls.get_channel_keypair(transaction)
+    async def save_as_pending_signatures(cls, transaction, server):
+        channel_kp = await sync_to_async(cls.get_channel_keypair)(transaction)
         try:
-            channel_account, _ = get_account_obj(channel_kp)
+            channel_account, _ = await get_account_obj_async(channel_kp, server)
         except (RuntimeError, ConnectionError) as e:
             transaction.status = Transaction.STATUS.error
             transaction.status_message = str(e)
             logger.error(transaction.status_message)
         else:
             # Create the initial envelope XDR with the channel signature
-            envelope = PendingDeposits.create_deposit_envelope(
-                transaction, channel_account
+            envelope = await PendingDeposits.create_deposit_envelope(
+                transaction, channel_account, server
             )
             envelope.sign(channel_kp)
             transaction.envelope_xdr = envelope.to_xdr()
             transaction.pending_signatures = True
             transaction.status = Transaction.STATUS.pending_anchor
         transaction.pending_execution_attempt = False
-        transaction.save()
-        maybe_make_callback(transaction)
+        await sync_to_async(transaction.save)()
+        await maybe_make_callback_async(transaction)
 
     @staticmethod
     def get_channel_keypair(transaction) -> Keypair:
@@ -475,57 +785,9 @@ class PendingDeposits:
         return Keypair.from_secret(transaction.channel_seed)
 
     @classmethod
-    def execute_ready_multisig_deposits(cls):
-        """
-        PendingDeposits.get_ready_deposits() returns transactions whose funds
-        have been received off chain. However, if the anchor's distribution
-        account requires multiple signatures before submitting to Stellar,
-        Polaris generates the envelope and updates Transaction.pending_signatures
-        to True.
-
-        Polaris then expects the anchor to collect the necessary signatures and
-        set Transaction.pending_signatures back to False. This function checks if
-        any transaction is in this state and submits it to Stellar.
-
-        Multisig transactions are therefore identified by a non-null envelope_xdr
-        column and a 'pending_anchor' status. The status check is important
-        because all successfully submitted transactions have their envelope_xdr
-        column set after submission and status set to 'completed'.
-        """
-        module = sys.modules[__name__]
-        with django.db.transaction.atomic():
-            multisig_transactions = list(
-                Transaction.objects.filter(
-                    kind=Transaction.KIND.deposit,
-                    status=Transaction.STATUS.pending_anchor,
-                    pending_signatures=False,
-                    envelope_xdr__isnull=False,
-                    pending_execution_attempt=False,
-                ).select_for_update()
-            )
-            ids = []
-            for t in multisig_transactions:
-                t.pending_execution_attempt = True
-                ids.append(t.id)
-            Transaction.objects.filter(id__in=ids).update(
-                pending_execution_attempt=True
-            )
-
-        for i, transaction in enumerate(multisig_transactions):
-            if module.TERMINATE:
-                still_processing_transactions = multisig_transactions[i:]
-                Transaction.objects.filter(
-                    id__in=[t.id for t in still_processing_transactions]
-                ).update(pending_execution_attempt=False)
-                break
-
-            cls.handle_submit(transaction)
-
-    @classmethod
     def handle_error(cls, transaction, message):
         transaction.status_message = message
         transaction.status = Transaction.STATUS.error
         transaction.pending_execution_attempt = False
         transaction.save()
         logger.error(message)
-        maybe_make_callback(transaction)

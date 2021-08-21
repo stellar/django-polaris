@@ -7,10 +7,8 @@ from decimal import Decimal
 from django.core.management.base import BaseCommand
 from django.db.models import Q
 from stellar_sdk.exceptions import NotFoundError
-from stellar_sdk.transaction_envelope import (
-    TransactionEnvelope,
-    Transaction as HorizonTransaction,
-)
+from stellar_sdk.transaction import Transaction as HorizonTransaction
+from stellar_sdk.transaction_envelope import TransactionEnvelope
 from stellar_sdk.xdr import (
     PaymentResult,
     PathPaymentStrictSendResult,
@@ -30,7 +28,7 @@ from stellar_sdk.client.aiohttp_client import AiohttpClient
 
 from polaris import settings
 from polaris.models import Asset, Transaction
-from polaris.utils import getLogger, maybe_make_callback
+from polaris.utils import getLogger, maybe_make_callback_async
 
 logger = getLogger(__name__)
 PaymentOpResult = Union[
@@ -185,7 +183,7 @@ class Command(BaseCommand):
             # SEP-6 and 24 uses 'pending_anchor' status
             transaction.status = Transaction.STATUS.pending_anchor
             await sync_to_async(transaction.save)()
-        maybe_make_callback(transaction)
+        await maybe_make_callback_async(transaction)
         return
 
     @classmethod
