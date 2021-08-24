@@ -277,11 +277,9 @@ class Asset(TimeStampedModel):
                 master_signer = signer
         return master_signer
 
-    async def get_distribution_account_data_async(self, refresh=False, server=None):
+    async def get_distribution_account_data_async(self, refresh=False):
         if refresh or self.distribution_account not in ASSET_DISTRIBUTION_ACCOUNT_MAP:
-            if not server:
-                server = Server(settings.HORIZON_URI, client=AiohttpClient())
-            async with server:
+            async with Server(settings.HORIZON_URI, client=AiohttpClient()) as server:
                 account_json = (
                     await server.accounts().account_id(self.distribution_account).call()
                 )
@@ -290,21 +288,19 @@ class Asset(TimeStampedModel):
         else:
             return ASSET_DISTRIBUTION_ACCOUNT_MAP[self.distribution_account]
 
-    async def get_distributiion_account_signers_async(self, refresh=False, server=None):
+    async def get_distributiion_account_signers_async(self, refresh=False):
         if refresh or self.distribution_account not in ASSET_DISTRIBUTION_ACCOUNT_MAP:
             account_json = await self.get_distribution_account_data_async(
-                refresh=refresh, server=server
+                refresh=refresh
             )
         else:
             account_json = ASSET_DISTRIBUTION_ACCOUNT_MAP[self.distribution_account]
         return account_json["signers"]
 
-    async def get_distribution_account_thresholds_async(
-        self, refresh=False, server=None
-    ):
+    async def get_distribution_account_thresholds_async(self, refresh=False):
         if refresh or self.distribution_account not in ASSET_DISTRIBUTION_ACCOUNT_MAP:
             account_json = await self.get_distribution_account_data_async(
-                refresh=refresh, server=server
+                refresh=refresh
             )
         else:
             account_json = ASSET_DISTRIBUTION_ACCOUNT_MAP[self.distribution_account]
@@ -315,7 +311,7 @@ class Asset(TimeStampedModel):
     ):
         if refresh or self.distribution_account not in ASSET_DISTRIBUTION_ACCOUNT_MAP:
             account_json = await self.get_distribution_account_data_async(
-                refresh=refresh, server=server
+                refresh=refresh
             )
         else:
             account_json = ASSET_DISTRIBUTION_ACCOUNT_MAP[self.distribution_account]

@@ -2,7 +2,6 @@
 This module sets up the test configuration. It defines fixtures needed to test various Django
 models, such as the transactions and assets.
 """
-import json
 import pytest
 import datetime
 from typing import Optional, List
@@ -42,13 +41,6 @@ def fixture_usd_asset_factory():
             code="USD",
             issuer=USD_ISSUER_ACCOUNT,
             distribution_seed=USD_DISTRIBUTION_SEED,
-            distribution_account_signers=[signer],
-            distribution_account_thresholds={
-                "low_threshold": 0,
-                "med_threshold": 1,
-                "high_threshold": 1,
-            },
-            distribution_account_master_signer=signer,
             significant_decimals=2,
             # Deposit Info
             deposit_enabled=True,
@@ -67,6 +59,16 @@ def fixture_usd_asset_factory():
             send_fee_percent=0,
             send_min_amount=0.1,
             send_max_amount=1000,
+        )
+        usd_asset.get_distribution_account_data = Mock(
+            return_value={
+                "signers": [signer],
+                "thresholds": {
+                    "low_threshold": 0,
+                    "med_threshold": 1,
+                    "high_threshold": 1,
+                },
+            }
         )
         for p in protocols:
             setattr(usd_asset, p + "_enabled", True)
@@ -97,13 +99,6 @@ def fixture_eth_asset_factory():
             code="ETH",
             issuer=ETH_ISSUER_ACCOUNT,
             distribution_seed=ETH_DISTRIBUTION_SEED,
-            distribution_account_signers=[signer],
-            distribution_account_thresholds={
-                "low_threshold": 0,
-                "med_threshold": 1,
-                "high_threshold": 1,
-            },
-            distribution_account_master_signer=signer,
             # Deposit Info
             deposit_enabled=True,
             deposit_fee_fixed=0.002,
@@ -121,6 +116,16 @@ def fixture_eth_asset_factory():
             send_fee_percent=0,
             send_min_amount=0.1,
             send_max_amount=1000,
+        )
+        eth_asset.get_distribution_account_data = Mock(
+            return_value={
+                "signers": [signer],
+                "thresholds": {
+                    "low_threshold": 0,
+                    "med_threshold": 1,
+                    "high_threshold": 1,
+                },
+            }
         )
         for p in protocols:
             setattr(eth_asset, p + "_enabled", True)
@@ -273,7 +278,7 @@ def acc2_eth_deposit_transaction_factory(eth_asset_factory):
         stellar_account: str = STELLAR_ACCOUNT_2,
         protocol: str = Transaction.PROTOCOL.sep24,
     ):
-        eth_asset = eth_asset_factory(protocols=protocol)
+        eth_asset = eth_asset_factory(protocols=[protocol])
         return Transaction.objects.create(
             stellar_account=stellar_account,
             asset=eth_asset,

@@ -125,6 +125,15 @@ def get_account_obj(kp):
         return load_account(json_resp), json_resp
 
 
+async def get_account_obj_async(kp, server):
+    try:
+        json_resp = await server.accounts().account_id(account_id=kp.public_key).call()
+    except NotFoundError:
+        raise RuntimeError(f"account {kp.public_key} does not exist")
+    else:
+        return load_account(json_resp), json_resp
+
+
 def is_pending_trust(transaction, json_resp):
     pending_trust = True
     for balance in json_resp["balances"]:
