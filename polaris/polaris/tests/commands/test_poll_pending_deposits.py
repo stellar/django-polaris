@@ -1,4 +1,3 @@
-import os
 import asyncio
 from collections import defaultdict
 from unittest.mock import patch, Mock, MagicMock
@@ -33,11 +32,6 @@ test_module = "polaris.management.commands.poll_pending_deposits"
 
 # marks all async functions to be run in event loops and use the database
 pytestmark = [pytest.mark.django_db, pytest.mark.asyncio]
-
-
-@pytest.fixture(autouse=True)
-def allow_unsafe_db_access():
-    os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 
 
 class AsyncMock(MagicMock):
@@ -172,10 +166,13 @@ def test_get_ready_deposits_custom_fee_func_used(mock_rri):
     assert transaction.amount_fee == Decimal(0)
 
 
+@pytest.mark.django_db(transaction=True)
 async def test_get_or_create_destination_account_exists():
-    usd = Asset.objects.create(code="USD", issuer=Keypair.random().public_key)
+    usd = await sync_to_async(Asset.objects.create)(
+        code="USD", issuer=Keypair.random().public_key
+    )
     destination = Keypair.random().public_key
-    transaction = Transaction.objects.create(
+    transaction = await sync_to_async(Transaction.objects.create)(
         asset=usd,
         status=Transaction.STATUS.pending_user_transfer_start,
         kind=Transaction.KIND.deposit,
@@ -200,6 +197,7 @@ async def test_get_or_create_destination_account_exists():
             ) == (account_obj, False,)
 
 
+@pytest.mark.django_db(transaction=True)
 async def test_get_or_create_destination_account_exists_different_destination():
     usd = await sync_to_async(Asset.objects.create)(
         code="USD", issuer=Keypair.random().public_key
@@ -229,6 +227,7 @@ async def test_get_or_create_destination_account_exists_different_destination():
             ) == (account_obj, False,)
 
 
+@pytest.mark.django_db(transaction=True)
 async def test_get_or_create_destination_account_exists_pending_trust():
     usd = await sync_to_async(Asset.objects.create)(
         code="USD", issuer=Keypair.random().public_key
@@ -256,6 +255,7 @@ async def test_get_or_create_destination_account_exists_pending_trust():
             ) == (account_obj, True,)
 
 
+@pytest.mark.django_db(transaction=True)
 async def test_get_or_create_destination_account_exists_pending_trust_different_account():
     usd = await sync_to_async(Asset.objects.create)(
         code="USD", issuer=Keypair.random().public_key
@@ -282,6 +282,7 @@ async def test_get_or_create_destination_account_exists_pending_trust_different_
             ) == (account_obj, True,)
 
 
+@pytest.mark.django_db(transaction=True)
 async def test_get_or_create_destination_account_doesnt_exist():
     usd = await sync_to_async(Asset.objects.create)(
         code="USD",
@@ -341,6 +342,7 @@ async def test_get_or_create_destination_account_doesnt_exist():
                 )
 
 
+@pytest.mark.django_db(transaction=True)
 async def test_get_or_create_destination_account_doesnt_exist_different_destination():
     usd = await sync_to_async(Asset.objects.create)(
         code="USD",
@@ -399,6 +401,7 @@ async def test_get_or_create_destination_account_doesnt_exist_different_destinat
                 )
 
 
+@pytest.mark.django_db(transaction=True)
 async def test_get_or_create_destination_account_doesnt_exist_requires_multisig():
     usd = await sync_to_async(Asset.objects.create)(
         code="USD",
@@ -467,6 +470,7 @@ async def test_get_or_create_destination_account_doesnt_exist_requires_multisig(
                     )
 
 
+@pytest.mark.django_db(transaction=True)
 async def test_get_or_create_destination_account_doesnt_exist_requires_multisig_different_destination():
     usd = await sync_to_async(Asset.objects.create)(
         code="USD",
@@ -534,6 +538,7 @@ async def test_get_or_create_destination_account_doesnt_exist_requires_multisig_
                     )
 
 
+@pytest.mark.django_db(transaction=True)
 async def test_submit_sucess():
     usd = await sync_to_async(Asset.objects.create)(
         code="USD",
@@ -611,6 +616,7 @@ async def test_submit_sucess():
                     assert mock_maybe_make_callback.call_count == 3
 
 
+@pytest.mark.django_db(transaction=True)
 async def test_submit_request_failed_bad_request():
     usd = await sync_to_async(Asset.objects.create)(
         code="USD",
@@ -688,6 +694,7 @@ async def test_submit_request_failed_bad_request():
                     assert mock_maybe_make_callback.call_count == 3
 
 
+@pytest.mark.django_db(transaction=True)
 async def test_submit_request_failed_connection_failed():
     usd = await sync_to_async(Asset.objects.create)(
         code="USD",
@@ -762,6 +769,7 @@ async def test_submit_request_failed_connection_failed():
                     assert mock_maybe_make_callback.call_count == 3
 
 
+@pytest.mark.django_db(transaction=True)
 async def test_submit_request_unsuccessful():
     usd = await sync_to_async(Asset.objects.create)(
         code="USD",
@@ -841,6 +849,7 @@ async def test_submit_request_unsuccessful():
                     assert mock_maybe_make_callback.call_count == 3
 
 
+@pytest.mark.django_db(transaction=True)
 async def test_submit_multisig_success():
     usd = await sync_to_async(Asset.objects.create)(
         code="USD",
@@ -910,6 +919,7 @@ async def test_submit_multisig_success():
                     assert mock_maybe_make_callback.call_count == 3
 
 
+@pytest.mark.django_db(transaction=True)
 async def test_handle_submit_success():
     usd = await sync_to_async(Asset.objects.create)(
         code="USD", issuer=Keypair.random().public_key
@@ -938,6 +948,7 @@ async def test_handle_submit_success():
                 mock_rdi.after_deposit.assert_called_once_with(transaction)
 
 
+@pytest.mark.django_db(transaction=True)
 async def test_handle_submit_unsuccessful():
     usd = await sync_to_async(Asset.objects.create)(
         code="USD", issuer=Keypair.random().public_key
@@ -965,6 +976,7 @@ async def test_handle_submit_unsuccessful():
                 mock_rdi.after_deposit.assert_not_called()
 
 
+@pytest.mark.django_db(transaction=True)
 async def test_handle_submit_success_after_deposit_exception():
     usd = await sync_to_async(Asset.objects.create)(
         code="USD", issuer=Keypair.random().public_key
@@ -995,6 +1007,7 @@ async def test_handle_submit_success_after_deposit_exception():
                     mock_logger.exception.assert_called_once()
 
 
+@pytest.mark.django_db(transaction=True)
 async def test_handle_submit_unexpected_exception():
     usd = await sync_to_async(Asset.objects.create)(
         code="USD", issuer=Keypair.random().public_key
@@ -1035,6 +1048,7 @@ async def test_handle_submit_unexpected_exception():
                         mock_maybe_make_callback.assert_called_once()
 
 
+@pytest.mark.django_db(transaction=True)
 async def test_create_transaction_envelope():
     usd = await sync_to_async(Asset.objects.create)(
         code="USD",
@@ -1087,6 +1101,7 @@ async def test_create_transaction_envelope():
             )
 
 
+@pytest.mark.django_db(transaction=True)
 async def test_create_transaction_envelope_claimable_balance_supported_has_trustline():
     usd = await sync_to_async(Asset.objects.create)(
         code="USD",
@@ -1145,6 +1160,7 @@ async def test_create_transaction_envelope_claimable_balance_supported_has_trust
             )
 
 
+@pytest.mark.django_db(transaction=True)
 async def test_create_transaction_envelope_claimable_balance_supported_no_trustline():
     usd = await sync_to_async(Asset.objects.create)(
         code="USD",
@@ -1204,6 +1220,7 @@ async def test_create_transaction_envelope_claimable_balance_supported_no_trustl
             )
 
 
+@pytest.mark.django_db(transaction=True)
 async def test_requires_trustline_has_trustline():
     usd = await sync_to_async(Asset.objects.create)(
         code="USD", issuer=Keypair.random().public_key,
@@ -1242,6 +1259,7 @@ async def test_requires_trustline_has_trustline():
                 assert transaction.pending_execution_attempt is True
 
 
+@pytest.mark.django_db(transaction=True)
 async def test_requires_trustline_no_trustline():
     usd = await sync_to_async(Asset.objects.create)(
         code="USD", issuer=Keypair.random().public_key
@@ -1278,6 +1296,7 @@ async def test_requires_trustline_no_trustline():
                 assert transaction.pending_execution_attempt is False
 
 
+@pytest.mark.django_db(transaction=True)
 async def test_requires_trustline_create_fails():
     usd = await sync_to_async(Asset.objects.create)(
         code="USD", issuer=Keypair.random().public_key,
@@ -1314,6 +1333,7 @@ async def test_requires_trustline_create_fails():
                 assert transaction.pending_execution_attempt is False
 
 
+@pytest.mark.django_db(transaction=True)
 async def test_requires_multisig_single_master_signer():
     usd = await sync_to_async(Asset.objects.create)(
         code="USD",
@@ -1343,6 +1363,7 @@ async def test_requires_multisig_single_master_signer():
         assert await PendingDeposits.requires_multisig(transaction) is False
 
 
+@pytest.mark.django_db(transaction=True)
 async def test_requires_multisig_single_master_signer_zero_weight():
     usd = await sync_to_async(Asset.objects.create)(
         code="USD",
@@ -1372,6 +1393,7 @@ async def test_requires_multisig_single_master_signer_zero_weight():
         assert await PendingDeposits.requires_multisig(transaction) is True
 
 
+@pytest.mark.django_db(transaction=True)
 async def test_requires_multisig_single_master_signer_insufficient_weight():
     usd = await sync_to_async(Asset.objects.create)(
         code="USD",
@@ -1401,6 +1423,7 @@ async def test_requires_multisig_single_master_signer_insufficient_weight():
         assert await PendingDeposits.requires_multisig(transaction) is True
 
 
+@pytest.mark.django_db(transaction=True)
 async def test_requires_multisig_fetch_account_single_master_signer():
     usd = await sync_to_async(Asset.objects.create)(
         code="USD",
@@ -1425,6 +1448,7 @@ async def test_requires_multisig_fetch_account_single_master_signer():
         assert await PendingDeposits.requires_multisig(transaction) is False
 
 
+@pytest.mark.django_db(transaction=True)
 async def test_save_as_pending_signatures():
     usd = await sync_to_async(Asset.objects.create)(
         code="USD", issuer=Keypair.random().public_key,
@@ -1480,6 +1504,7 @@ async def test_save_as_pending_signatures():
                     )
 
 
+@pytest.mark.django_db(transaction=True)
 async def test_save_as_pending_signatures_channel_account_not_found():
     usd = await sync_to_async(Asset.objects.create)(
         code="USD", issuer=Keypair.random().public_key,
@@ -1519,6 +1544,7 @@ async def test_save_as_pending_signatures_channel_account_not_found():
                     mock_create_deposit_envelope.assert_not_called()
 
 
+@pytest.mark.django_db(transaction=True)
 async def test_save_as_pending_signatures_connection_failed():
     usd = await sync_to_async(Asset.objects.create)(
         code="USD", issuer=Keypair.random().public_key,
@@ -1558,6 +1584,7 @@ async def test_save_as_pending_signatures_connection_failed():
                     mock_create_deposit_envelope.assert_not_called()
 
 
+@pytest.mark.django_db(transaction=True)
 async def test_process_deposit_success():
     usd = await sync_to_async(Asset.objects.create)(
         code="USD", issuer=Keypair.random().public_key,
@@ -1591,6 +1618,7 @@ async def test_process_deposit_success():
                     handle_submit.assert_called_once_with(transaction, server, {})
 
 
+@pytest.mark.django_db(transaction=True)
 async def test_process_deposit_requires_trustline():
     usd = await sync_to_async(Asset.objects.create)(
         code="USD", issuer=Keypair.random().public_key,
@@ -1624,6 +1652,7 @@ async def test_process_deposit_requires_trustline():
                     handle_submit.assert_not_called()
 
 
+@pytest.mark.django_db(transaction=True)
 async def test_process_deposit_requires_multisig():
     usd = await sync_to_async(Asset.objects.create)(
         code="USD", issuer=Keypair.random().public_key,
@@ -1666,6 +1695,7 @@ async def test_process_deposit_requires_multisig():
                         handle_submit.assert_not_called()
 
 
+@pytest.mark.django_db(transaction=True)
 async def test_process_deposit_requires_multisig_raises_not_found():
     usd = await sync_to_async(Asset.objects.create)(
         code="USD", issuer=Keypair.random().public_key,
@@ -1714,6 +1744,7 @@ async def test_process_deposit_requires_multisig_raises_not_found():
                         )
 
 
+@pytest.mark.django_db(transaction=True)
 async def test_process_deposit_requires_multisig_raises_connection_error():
     usd = await sync_to_async(Asset.objects.create)(
         code="USD", issuer=Keypair.random().public_key,
@@ -1762,6 +1793,7 @@ async def test_process_deposit_requires_multisig_raises_connection_error():
                         )
 
 
+@pytest.mark.django_db(transaction=True)
 async def test_check_trustlines_single_transaction_success():
     usd = await sync_to_async(Asset.objects.create)(
         code="USD", issuer=Keypair.random().public_key
@@ -1798,6 +1830,7 @@ async def test_check_trustlines_single_transaction_success():
                 assert transaction.pending_execution_attempt is False
 
 
+@pytest.mark.django_db(transaction=True)
 async def test_check_trustlines_single_transaction_success_different_destination():
     usd = await sync_to_async(Asset.objects.create)(
         code="USD", issuer=Keypair.random().public_key
@@ -1833,6 +1866,7 @@ async def test_check_trustlines_single_transaction_success_different_destination
                 assert transaction.pending_execution_attempt is False
 
 
+@pytest.mark.django_db(transaction=True)
 async def test_check_trustlines_horizon_connection_error():
     usd = await sync_to_async(Asset.objects.create)(
         code="USD", issuer=Keypair.random().public_key
@@ -1861,6 +1895,7 @@ async def test_check_trustlines_horizon_connection_error():
                 process_deposit.assert_not_called()
 
 
+@pytest.mark.django_db(transaction=True)
 async def test_check_trustlines_skip_xlm():
     usd = await sync_to_async(Asset.objects.create)(
         code="USD", issuer=Keypair.random().public_key
@@ -1899,6 +1934,7 @@ async def test_check_trustlines_skip_xlm():
                 process_deposit.assert_called_once_with(transaction, server, {})
 
 
+@pytest.mark.django_db(transaction=True)
 async def test_still_pending_trust_transaction():
     usd = await sync_to_async(Asset.objects.create)(
         code="USD", issuer=Keypair.random().public_key
@@ -1914,7 +1950,7 @@ async def test_still_pending_trust_transaction():
     account_json = {
         "id": 1,
         "sequence": 1,
-        "balances": [{"asset_type": "native"},],
+        "balances": [{"asset_type": "native"}],
         "thresholds": {"low_threshold": 1, "med_threshold": 1, "high_threshold": 1},
         "signers": [{"key": transaction.stellar_account, "weight": 1}],
     }
