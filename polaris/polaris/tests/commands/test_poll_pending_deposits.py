@@ -1087,18 +1087,13 @@ async def test_create_transaction_envelope():
             assert envelope.network_passphrase == settings.STELLAR_NETWORK_PASSPHRASE
             assert len(envelope.transaction.operations) == 1
             assert isinstance(envelope.transaction.operations[0], Payment)
-            assert (
-                envelope.transaction.operations[0].source.account_id
-                == usd.distribution_account
+            op = Payment.from_xdr_object(
+                envelope.transaction.operations[0].to_xdr_object()
             )
-            assert Decimal(envelope.transaction.operations[0].amount) == 99
-            assert envelope.transaction.operations[0].asset, SdkAsset == SdkAsset(
-                usd.code, usd.issuer
-            )
-            assert (
-                envelope.transaction.operations[0].destination.account_id
-                == transaction.to_address
-            )
+            assert op.source.account_id == usd.distribution_account
+            assert Decimal(op.amount) == 99
+            assert op.asset, SdkAsset == SdkAsset(usd.code, usd.issuer)
+            assert op.destination.account_id == transaction.to_address
 
 
 @pytest.mark.django_db(transaction=True)
@@ -1146,18 +1141,13 @@ async def test_create_transaction_envelope_claimable_balance_supported_has_trust
             assert envelope.network_passphrase == settings.STELLAR_NETWORK_PASSPHRASE
             assert len(envelope.transaction.operations) == 1
             assert isinstance(envelope.transaction.operations[0], Payment)
-            assert (
-                envelope.transaction.operations[0].source.account_id
-                == usd.distribution_account
+            op = Payment.from_xdr_object(
+                envelope.transaction.operations[0].to_xdr_object()
             )
-            assert Decimal(envelope.transaction.operations[0].amount) == 99
-            assert envelope.transaction.operations[0].asset, SdkAsset == SdkAsset(
-                usd.code, usd.issuer
-            )
-            assert (
-                envelope.transaction.operations[0].destination.account_id
-                == transaction.to_address
-            )
+            assert op.source.account_id == usd.distribution_account
+            assert Decimal(op.amount) == 99
+            assert op.asset, SdkAsset == SdkAsset(usd.code, usd.issuer)
+            assert op.destination.account_id == transaction.to_address
 
 
 @pytest.mark.django_db(transaction=True)
@@ -1204,20 +1194,15 @@ async def test_create_transaction_envelope_claimable_balance_supported_no_trustl
             assert isinstance(
                 envelope.transaction.operations[0], CreateClaimableBalance
             )
-            assert (
-                envelope.transaction.operations[0].source.account_id
-                == usd.distribution_account
+            op = CreateClaimableBalance.from_xdr_object(
+                envelope.transaction.operations[0].to_xdr_object()
             )
-            assert Decimal(envelope.transaction.operations[0].amount) == 99
-            assert envelope.transaction.operations[0].asset, SdkAsset == SdkAsset(
-                usd.code, usd.issuer
-            )
-            assert len(envelope.transaction.operations[0].claimants) == 1
-            assert isinstance(envelope.transaction.operations[0].claimants[0], Claimant)
-            assert (
-                envelope.transaction.operations[0].claimants[0].destination
-                == transaction.to_address
-            )
+            assert op.source.account_id == usd.distribution_account
+            assert Decimal(op.amount) == 99
+            assert op.asset, SdkAsset == SdkAsset(usd.code, usd.issuer)
+            assert len(op.claimants) == 1
+            assert isinstance(op.claimants[0], Claimant)
+            assert op.claimants[0].destination == transaction.to_address
 
 
 @pytest.mark.django_db(transaction=True)
