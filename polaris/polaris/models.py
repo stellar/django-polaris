@@ -9,6 +9,8 @@ from cryptography.fernet import Fernet
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from stellar_sdk import Server
+from stellar_sdk.client.aiohttp_client import AiohttpClient
 
 from django.core.exceptions import ValidationError
 from django.core.validators import (
@@ -24,6 +26,8 @@ from model_utils import Choices
 from stellar_sdk.keypair import Keypair
 from stellar_sdk.transaction_envelope import TransactionEnvelope
 from stellar_sdk.exceptions import SdkError
+
+from polaris import settings
 
 
 # Used for loading the distribution signers data onto an Asset obj
@@ -93,18 +97,6 @@ class EncryptedTextField(models.TextField):
 
 
 class Asset(TimeStampedModel):
-    def __init__(self, *args, **kwargs):
-        self._distribution_account_signers = kwargs.pop(
-            "distribution_account_signers", None
-        )
-        self._distribution_account_master_signer = kwargs.pop(
-            "distribution_account_master_signer", None
-        )
-        self._distribution_account_thresholds = kwargs.pop(
-            "distribution_account_thresholds", None
-        )
-        super().__init__(*args, **kwargs)
-
     code = models.TextField()
     """The asset code as defined on the Stellar network."""
 
@@ -248,59 +240,86 @@ class Asset(TimeStampedModel):
             return None
         return Keypair.from_secret(str(self.distribution_seed)).public_key
 
-    @property
-    def distribution_account_master_signer(self):
-        if self.distribution_account and not self._distribution_account_loaded():
-            self.load_distribution_account_data()
-        return self._distribution_account_master_signer
-
-    @property
-    def distribution_account_thresholds(self):
-        if self.distribution_account and not self._distribution_account_loaded():
-            self.load_distribution_account_data()
-        return self._distribution_account_thresholds
-
-    @property
-    def distribution_account_signers(self):
-        if self.distribution_account and not self._distribution_account_loaded():
-            self.load_distribution_account_data()
-        return self._distribution_account_signers
-
-    def _distribution_account_loaded(self):
-        """
-        Returns a boolean indicating if `load_distribution_account_data()`
-        has been called for this model instance. Note that
-        _distribution_account_master_signer is not included in this check,
-        since accounts could remove the master signer and add others.
-        """
-        return self.distribution_account and all(
-            f is not None
-            for f in [
-                self._distribution_account_signers,
-                self._distribution_account_thresholds,
-            ]
-        )
-
-    def load_distribution_account_data(self):
-        from polaris import settings
-
-        if (self.code, self.issuer) in ASSET_DISTRIBUTION_ACCOUNT_MAP:
-            account_json = ASSET_DISTRIBUTION_ACCOUNT_MAP[(self.code, self.issuer)]
-        else:
+    def get_distribution_account_data(self, refresh=False):
+        if refresh or self.distribution_account not in ASSET_DISTRIBUTION_ACCOUNT_MAP:
             account_json = (
                 settings.HORIZON_SERVER.accounts()
                 .account_id(self.distribution_account)
                 .call()
             )
-            ASSET_DISTRIBUTION_ACCOUNT_MAP[(self.code, self.issuer)] = account_json
+            ASSET_DISTRIBUTION_ACCOUNT_MAP[self.distribution_account] = account_json
+            return account_json
+        else:
+            return ASSET_DISTRIBUTION_ACCOUNT_MAP[self.distribution_account]
 
-        self._distribution_account_signers = account_json["signers"]
-        self._distribution_account_thresholds = account_json["thresholds"]
-        self._distribution_account_master_signer = None
-        for s in account_json["signers"]:
-            if s["key"] == self.distribution_account:
-                self._distribution_account_master_signer = s
-                break
+    def get_distributiion_account_signers(self, refresh=False):
+        if refresh or self.distribution_account not in ASSET_DISTRIBUTION_ACCOUNT_MAP:
+            account_json = self.get_distribution_account_data(refresh=refresh)
+        else:
+            account_json = ASSET_DISTRIBUTION_ACCOUNT_MAP[self.distribution_account]
+        return account_json["signers"]
+
+    def get_distribution_account_thresholds(self, refresh=False):
+        if refresh or self.distribution_account not in ASSET_DISTRIBUTION_ACCOUNT_MAP:
+            account_json = self.get_distribution_account_data(refresh=refresh)
+        else:
+            account_json = ASSET_DISTRIBUTION_ACCOUNT_MAP[self.distribution_account]
+        return account_json["thresholds"]
+
+    def get_distribution_account_master_signer(self, refresh=False):
+        if refresh or self.distribution_account not in ASSET_DISTRIBUTION_ACCOUNT_MAP:
+            account_json = self.get_distribution_account_data(refresh=refresh)
+        else:
+            account_json = ASSET_DISTRIBUTION_ACCOUNT_MAP[self.distribution_account]
+        master_signer = None
+        for signer in account_json["signers"]:
+            if signer["key"] == self.distribution_account:
+                master_signer = signer
+        return master_signer
+
+    async def get_distribution_account_data_async(self, refresh=False):
+        if refresh or self.distribution_account not in ASSET_DISTRIBUTION_ACCOUNT_MAP:
+            async with Server(settings.HORIZON_URI, client=AiohttpClient()) as server:
+                account_json = (
+                    await server.accounts().account_id(self.distribution_account).call()
+                )
+            ASSET_DISTRIBUTION_ACCOUNT_MAP[self.distribution_account] = account_json
+            return account_json
+        else:
+            return ASSET_DISTRIBUTION_ACCOUNT_MAP[self.distribution_account]
+
+    async def get_distributiion_account_signers_async(self, refresh=False):
+        if refresh or self.distribution_account not in ASSET_DISTRIBUTION_ACCOUNT_MAP:
+            account_json = await self.get_distribution_account_data_async(
+                refresh=refresh
+            )
+        else:
+            account_json = ASSET_DISTRIBUTION_ACCOUNT_MAP[self.distribution_account]
+        return account_json["signers"]
+
+    async def get_distribution_account_thresholds_async(self, refresh=False):
+        if refresh or self.distribution_account not in ASSET_DISTRIBUTION_ACCOUNT_MAP:
+            account_json = await self.get_distribution_account_data_async(
+                refresh=refresh
+            )
+        else:
+            account_json = ASSET_DISTRIBUTION_ACCOUNT_MAP[self.distribution_account]
+        return account_json["thresholds"]
+
+    async def get_distribution_account_master_signer_async(
+        self, refresh=False, server=None
+    ):
+        if refresh or self.distribution_account not in ASSET_DISTRIBUTION_ACCOUNT_MAP:
+            account_json = await self.get_distribution_account_data_async(
+                refresh=refresh
+            )
+        else:
+            account_json = ASSET_DISTRIBUTION_ACCOUNT_MAP[self.distribution_account]
+        master_signer = None
+        for signer in account_json["signers"]:
+            if signer["key"] == self.distribution_account:
+                master_signer = signer
+        return master_signer
 
     class Meta:
         app_label = "polaris"
