@@ -31,7 +31,7 @@ poll_pending_deposits
 
 This process handles all of the transaction submission logic for deposit transactions. Polaris periodically queries the database for transactions in one of the following scenarios and processes them accordingly.
 
-A transaction is in ``pending_user_transfer_start` or ``pending_external``.
+A transaction is in ``pending_user_transfer_start`` or ``pending_external``.
 
     Polaris passes these transaction the ``RailsIntegration.poll_pending_deposits`` integration function, and the anchor is expected to return ``Transaction`` objects whose funds have been received off-chain. Polaris then checks if each transaction is in one of the secenarios outlined below, and if not, submits the return transactions them to the Stellar network. See the ``poll_pending_deposits()`` integration function for more details.
 
