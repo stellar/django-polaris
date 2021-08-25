@@ -44,7 +44,7 @@ setup(
         "django-model-utils",
         "djangorestframework",
         "whitenoise",
-        "psycopg2-binary",
+        "psycopg2-binary<2.9",
         "stellar-sdk~=2.13",
         "django-cors-headers",
         "toml",
