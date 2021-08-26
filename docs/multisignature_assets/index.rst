@@ -69,7 +69,7 @@ Using channel accounts, Polaris supports the following process for multisignatur
 6. The anchor funds a Stellar account using another Stellar account that doesn't require multiple signatures
 7. Polaris uses the channel account as the transaction's source account when building and saving the envelope XDR
 8. The anchor collects signatures on the transaction and updates it as 'ready for submission'
-9. Polaris retrieves multisig transactions ready to be submitted in poll_pending_deposits and submits them
+9. Polaris retrieves multisig transactions ready to be submitted in process_pending_deposits and submits them
 10. Multisig transactions **succeed** assuming it has proper signatures
 
 Currently, multisignature asset support is only relevant in the context of SEP-6 and 24 deposit transactions. Withdraw transaction flows don't involve the anchor making any Stellar transaction using an asset's distribution account, and SEP-31 outbound payments are not yet supported in Polaris.

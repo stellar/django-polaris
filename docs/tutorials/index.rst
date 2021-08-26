@@ -283,24 +283,18 @@ Write the following to a ``docker-compose.yml`` file within the project's root d
         volumes:
           - ./data:/home/data
         command: python app/manage.py execute_outgoing_transactions --loop
-      check_trustlines:
-        container_name: "test-check_trustlines"
-        build: .
-        volumes:
-          - ./data:/home/data
-        command: python app/manage.py check_trustlines --loop
       watch_transaction:
         container_name: "test-watch_transactions"
         build: .
         volumes:
           - ./data:/home/data
         command: python app/manage.py watch_transactions
-      poll_pending_deposits:
-        container_name: "test-poll_pending_deposits"
+      process_pending_deposits:
+        container_name: "test-process_pending_deposits"
         build: .
         volumes:
           - ./data:/home/data
-        command: python app/manage.py poll_pending_deposits --loop
+        command: python app/manage.py process_pending_deposits --loop
 
 You'll notice we're also running the ``watch_transaction`` process. This Polaris CLI command streams payment transactions from every anchored asset's distribution account and updates the transaction's status to ``pending_anchor``. The ``execute_outgoing_transactions`` command then periodically queries for ``pending_anchor`` transactions so the funds withdrawn from Stellar can be sent off-chain to the user.
 

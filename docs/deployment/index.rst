@@ -26,7 +26,7 @@ poll_outgoing_transactions
 
 Polaris periodically queries for transactions in ``pending_external`` and passes them to the ``RailsIntegration.poll_outgoing_transactions``. The anchor is expected to update the transactions' status depending on if the transfer has been successful or not.
 
-poll_pending_deposits
+process_pending_deposits
 ^^^^^^^^^^^^^^^^^^^^^
 
 This process handles all of the transaction submission logic for deposit transactions. Polaris periodically queries the database for transactions in one of the following scenarios and processes them accordingly.

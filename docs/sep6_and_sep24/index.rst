@@ -244,25 +244,66 @@ parameter can also be included in the URL.
 Running the Service
 ===================
 
-In addition to the web server, SEP-6 and SEP-24 require five additional processes to be run in order to work. See the :doc:`CLI Commands </deployment/index>` for more information on all Polaris commands.
+In addition to the web server, SEP-6 and SEP-24 require four additional processes to be run in order to work. See the :doc:`CLI Commands </deployment/index>` for more information on all Polaris commands.
 
-Polling Pending Deposits
-------------------------
+Processing Pending Deposits
+---------------------------
+
+The ``process_pending_deposits`` command processes deposits transactions in one of the states defined below.
+
+You can invoke the command like so:
+::
+
+    python manage.py poll_pending_deposits --loop --interval 10
+
+This process will continue indefinitely, calling the associated integration
+function, sleeping for 10 seconds, and then calling it again. You can also configure a
+job scheduling service such as Jenkins or CircleCI to periodically invoke the above
+command without the ``--loop`` and ``--interval`` argument.
+
+Waiting for the user to deliver funds off-chain
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 When a user initiates a deposit transaction, the anchor must wait for the user
 to send the deposit amount to the anchor's bank account. When this happens, the
 anchor should notice and deposit the same amount of the tokenized asset into the
 user's stellar account.
 
-Polaris provides the ``poll_pending_deposits()`` integration function for this
-purpose, which will be run periodically via the ``poll_pending_deposits`` command-line
-tool:
-::
+Polaris provides the ``DepositIntegration.poll_pending_deposits()`` integration function
+for this purpose. Polaris will query for transactions whose funds may have been delivered
+to the anchor's off-chain account and calls the integration function mentioned to receive the
+transactions whose funds have indeed arrived off-chain. If the transaction is not in one of
+the other states described below, it is then submitted to the Stellar network.
 
-    python manage.py poll_pending_deposits --loop --interval 10
+Waiting for the user to establish a trustline
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-This process will continue indefinitely, calling the associated integration
-function, sleeping for 10 seconds, and then calling it again.
+Sometimes, a user will initiate a deposit to an account that does not exist yet,
+or the user's account won't have a trustline to the asset's issuer account. In
+these cases, the transaction database object gets assigned the ``pending_trust``
+status.
+
+This command then queries for these transactions and checks if a trustline has been
+established. If it has, and the transaction is not in the state desribed below, it is
+submitted to the Stellar network.
+
+Waiting for the anchor to collect transaction signatures
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Polaris provides support for distribution accounts with multisignature configurations.
+If an asset's distribution account requires multiple signatures, Polaris saves the
+transaction envelope to ``Transaction.envelope_xdr`` and sets ``Transaction.pending_signatures``
+to ``True``.
+
+Anchors are expected to query for these transactions and add signatures to the envelope.
+When all signatures required have been collected, the anchor must set
+``Transaction.pending_signatures`` back to ``False``. Note that there is no integration
+function for this, instead the anchor is expected to define their own process for detecting
+and collecting signatures on these transactions.
+
+Finally, this command will detect transactions that are no longer pending signatures and
+submits them to the network.
+
 
 Watching for Withdrawals
 ------------------------
@@ -283,7 +324,7 @@ Run the process like so:
     python manage.py watch_transactions
 
 Executing Outgoing Transactions
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+-------------------------------
 
 The ``execute_outgoing_transactions`` CLI tool polls the database for transactions
 in the ``pending_anchor`` status and passes them to the
@@ -300,7 +341,7 @@ This process will continue indefinitely, calling the associated integration
 function, sleeping for 10 seconds, and then calling it again.
 
 Poll Outgoing Transactions
-^^^^^^^^^^^^^^^^^^^^^^^^^^
+--------------------------
 
 And finally, once a payment to the user has been initiated by the anchor, this CLI tool
 periodically calls ``RailsIntegration.poll_outgoing_transactions()`` so the anchor can
@@ -316,20 +357,3 @@ Run the process like so:
 
     python manage.py poll_outgoing_transactions --loop --interval 60
 
-Checking Trustlines
--------------------
-
-Sometimes, a user will initiate a deposit to an account that does not exist yet,
-or the user's account won't have a trustline to the asset's issuer account. In
-these cases, the transaction database object gets assigned the ``pending_trust``
-status.
-
-``check_trustlines`` is a command line tool that periodically checks if the
-transactions with this status now have a trustline to the relevant asset. If one
-does, Polaris will submit the transaction to the stellar network and call the
-``after_deposit`` integration function once its completed.
-
-``check_trustlines`` has the same arguments as ``poll_pending_deposits``:
-::
-
-    python manage.py check_trustlines --loop --interval 60
