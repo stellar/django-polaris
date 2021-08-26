@@ -59,6 +59,10 @@ Whenever a template is rendered and displayed to the user, its rendered using a 
 
 Using this function in conjunction with template extensions, you can define template blocks that use context variables passed from ``content_for_template()``. This gives anchors complete control of the interactive UX.
 
+.. warning::
+
+    Any content returned from ``content_for_template()`` that originates from user input should be validiated and sanitized.
+
 Outlined below are the default key-value pairs passed as `context`_ objects to each template. In addition to the attributes listed in each ``Template`` section, Polaris also passes the key-value pairs returned from ``content_for_template()``.
 
 ``Template.DEPOSIT``
