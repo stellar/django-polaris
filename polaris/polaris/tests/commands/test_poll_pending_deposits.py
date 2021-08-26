@@ -1809,7 +1809,9 @@ async def test_check_trustlines_single_transaction_success():
 
                 await PendingDeposits.check_trustline(transaction, server, {})
 
-                get_account_obj.assert_called_once_with(transaction.to_address, server)
+                get_account_obj.assert_called_once_with(
+                    Keypair.from_public_key(transaction.to_address), server
+                )
                 process_deposit.assert_called_once_with(transaction, server, {})
                 await sync_to_async(transaction.refresh_from_db)()
                 assert transaction.pending_execution_attempt is False
@@ -1845,7 +1847,9 @@ async def test_check_trustlines_single_transaction_success_different_destination
 
                 await PendingDeposits.check_trustline(transaction, server, {})
 
-                get_account_obj.assert_called_once_with(transaction.to_address, server)
+                get_account_obj.assert_called_once_with(
+                    Keypair.from_public_key(transaction.to_address), server
+                )
                 process_deposit.assert_called_once_with(transaction, server, {})
                 await sync_to_async(transaction.refresh_from_db)()
                 assert transaction.pending_execution_attempt is False
