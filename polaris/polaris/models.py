@@ -638,7 +638,7 @@ class Transaction(models.Model):
     """
     An internal column used to ensure transactions are not retrieved from the database 
     and executed by different processes running the same command, specifically 
-    process_pending_deposits, check_trustlines or execute_outgoing_transactions.
+    process_pending_deposits and execute_outgoing_transactions.
     """
 
     client_domain = models.TextField(null=True, blank=True)
