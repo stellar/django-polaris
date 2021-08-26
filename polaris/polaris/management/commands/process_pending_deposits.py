@@ -371,6 +371,10 @@ class PendingDeposits:
             Transaction.objects.filter(
                 id__in=[t.id for t in multisig_transactions]
             ).update(pending_execution_attempt=True)
+            for t in multisig_transactions:
+                logger.debug(
+                    f"Detected multisig transaction {t.id} is ready to be submitted"
+                )
             return multisig_transactions
 
     @classmethod
@@ -506,6 +510,9 @@ class PendingDeposits:
                 trustline_found = True
                 break
         if trustline_found:
+            logger.debug(
+                f"detected transaction {transaction.id} is no longer pending trust"
+            )
             await cls.process_deposit(transaction, server, locks)
         else:
             transaction.pending_execution_attempt = False
@@ -527,7 +534,7 @@ class PendingDeposits:
 
         transaction.status = Transaction.STATUS.pending_anchor
         await sync_to_async(transaction.save)()
-        logger.info(f"Initiating Stellar deposit for {transaction.id}")
+        logger.debug(f"initiating Stellar deposit for {transaction.id}")
         await maybe_make_callback_async(transaction)
 
         envelope = None
@@ -560,7 +567,7 @@ class PendingDeposits:
 
             transaction.status = Transaction.STATUS.pending_stellar
             await sync_to_async(transaction.save)()
-            logger.info(f"Transaction {transaction.id} now pending_stellar")
+            logger.debug(f"transaction {transaction.id} now pending_stellar")
             await maybe_make_callback_async(transaction)
 
             try:
@@ -596,7 +603,7 @@ class PendingDeposits:
         )
         transaction.pending_execution_attempt = False
         await sync_to_async(transaction.save)()
-        logger.info(f"Transaction {transaction.id} completed.")
+        logger.info(f"transaction {transaction.id} completed.")
         await maybe_make_callback_async(transaction)
         return True
 
@@ -707,7 +714,7 @@ class PendingDeposits:
             return True
 
         if pending_trust and not transaction.claimable_balance_supported:
-            logger.info(
+            logger.debug(
                 f"destination account is pending_trust for transaction {transaction.id}"
             )
             transaction.status = Transaction.STATUS.pending_trust
