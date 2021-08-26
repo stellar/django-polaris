@@ -56,7 +56,7 @@ Only used if the --loop option is specified.
 
 class Command(BaseCommand):
     """
-    The poll_pending_deposits command handler.
+    The process_pending_deposits command handler.
     """
 
     def __init__(self, *args, **kwargs):
@@ -66,7 +66,7 @@ class Command(BaseCommand):
 
     @staticmethod
     def exit_gracefully(*_):  # pragma: no cover
-        logger.info("Exiting poll_pending_deposits...")
+        logger.info("Exiting process_pending_deposits...")
         module = sys.modules[__name__]
         module.TERMINATE = True
 
@@ -364,7 +364,9 @@ class PendingDeposits:
                     pending_signatures=False,
                     envelope_xdr__isnull=False,
                     pending_execution_attempt=False,
-                ).select_for_update()
+                )
+                .select_related("asset")
+                .select_for_update()
             )
             Transaction.objects.filter(
                 id__in=[t.id for t in multisig_transactions]
@@ -485,7 +487,9 @@ class PendingDeposits:
         updated to no longer be pending an execution attempt.
         """
         try:
-            _, account = await get_account_obj_async(transaction.to_address, server)
+            _, account = await get_account_obj_async(
+                Keypair.from_public_key(transaction.to_address), server
+            )
         except BaseRequestError:
             logger.exception(f"Failed to load account {transaction.to_address}")
             transaction.pending_execution_attempt = False

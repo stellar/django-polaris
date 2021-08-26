@@ -154,7 +154,7 @@ class RailsIntegration:
                 ).update(pending_execution_attempt=True)
 
         This is done to ensure the same ``Transaction`` object is not retrieved
-        from the database by multiple invocations of the poll_pending_deposits
+        from the database by multiple invocations of the process_pending_deposits
         command and submitted to Stellar as unique transactions.
 
         This differs from the majority of other queries Polaris makes, which

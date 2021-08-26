@@ -26,9 +26,9 @@ from asgiref.sync import sync_to_async
 
 from polaris import settings
 from polaris.models import Asset, Transaction
-from polaris.management.commands.poll_pending_deposits import PendingDeposits
+from polaris.management.commands.process_pending_deposits import PendingDeposits
 
-test_module = "polaris.management.commands.poll_pending_deposits"
+test_module = "polaris.management.commands.process_pending_deposits"
 
 # marks all async functions to be run in event loops and use the database
 pytestmark = [pytest.mark.django_db, pytest.mark.asyncio]

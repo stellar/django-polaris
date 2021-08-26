@@ -395,7 +395,7 @@ class DepositIntegration:
 
         Once the transaction's signatures have been collected and the updated XDR written to
         ``transaction.envelope_xdr``, ``transaction.pending_signatures`` should be updated to
-        ``False``, which will cause the ``poll_pending_deposits`` process to submit it to the
+        ``False``, which will cause the ``process_pending_deposits`` process to submit it to the
         network along with the other transactions deemed ready by the anchor.
 
         If ``transaction.to_address`` doesn't exist on Stellar and the transaction has a
