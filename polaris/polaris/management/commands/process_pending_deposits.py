@@ -306,7 +306,6 @@ class PendingDeposits:
                     transaction.amount_fee = Decimal(0)
                 transaction.save()
             verified_ready_transactions.append(transaction)
-        logger.debug(f"{len(verified_ready_transactions)} are ready for deposit")
         return verified_ready_transactions
 
     @staticmethod
