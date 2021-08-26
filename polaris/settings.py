@@ -55,6 +55,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
 ]
 
+SESSION_COOKIE_SECURE = True
 ROOT_URLCONF = "polaris.urls"
 APPEND_SLASH = False
 

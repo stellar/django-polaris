@@ -49,6 +49,7 @@ def more_info(request: Request, sep6: bool = False) -> Response:
         "amount_fee": serializer.data.get("amount_fee"),
         "transaction": request_transaction,
         "asset_code": request_transaction.asset.code,
+        "asset": request_transaction.asset,
     }
     if request_transaction.kind == Transaction.KIND.deposit:
         content = rdi.content_for_template(

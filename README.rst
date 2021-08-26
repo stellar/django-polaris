@@ -210,6 +210,9 @@ Production
 .. _gunicorn: https://gunicorn.org
 .. _example Nginx configuration: https://github.com/stellar/django-polaris/tree/master/example/nginx-letsencrypt.conf
 
+HTTPS
+-----
+
 Polaris should only be deployed using HTTPS in production. You should do this
 by using a HTTPS web server or running Polaris behind a HTTPS reverse proxy
 (see `example Nginx configuration`_).
@@ -228,6 +231,32 @@ And if you're running Polaris behind a HTTPS proxy:
 
 This tells Django what header to check and what value it should be in
 order to consider the incoming request secure.
+
+If you're running SEP-24, add the following::
+::
+
+    SESSION_COOKIE_SECURE = True
+
+Polaris requires this setting to be ``True`` for SEP-24 deployments if not in
+``LOCAL_MODE``.
+
+Rate Limiting
+-------------
+
+.. _`custom middleware`: https://docs.djangoproject.com/en/3.2/topics/http/middleware/#writing-your-own-middleware
+
+It is highly encouraged to employ a rate limiting strategy when running Polaris to ensure the service
+remains available for all client applications. Many endpoints retrieve and create database records on
+each request, and some endpoints make outgoing web requests to Horizon or a client application's callback
+endpoint.
+
+Rate limiting can be particularly important for SEP-6 or SEP-24 deposit requests because the anchor is
+expected to poll their off-chain rails to detect if any of the funds from pending transactions initiated
+in these requests have arrived in the anchor's account, which can be a resource-intensive process.
+
+Rate limiting can be deployed using a number of strategies that often depend on the anchor's deployment
+infrastructure. Optionally, the anchor could also implement a rate limiting policy using Django
+`custom middleware`_ support.
 
 Local Development
 ^^^^^^^^^^^^^^^^^

@@ -36,11 +36,6 @@ class PolarisConfig(AppConfig):
         from django.conf import settings as django_settings
 
         logger = getLogger(__name__)
-        if settings.LOCAL_MODE:
-            logger.warning(
-                "Polaris is in local mode. This makes the SEP-24 interactive flow "
-                "insecure and should only be used for local development."
-            )
         if getattr(django_settings, "SECURE_PROXY_SSL_HEADER"):
             logger.debug(
                 "SECURE_PROXY_SSL_HEADER should only be set if Polaris is "

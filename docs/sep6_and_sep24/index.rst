@@ -30,6 +30,14 @@ Add the SEPs to ``POLARIS_ACTIVE_SEPS`` in in your settings file.
 
     POLARIS_ACTIVE_SEPS = ["sep-1", "sep-6", "sep-24", ...]
 
+If you're running SEP-24, add the following::
+::
+
+    SESSION_COOKIE_SECURE = True
+
+Polaris requires this setting to be ``True`` for SEP-24 deployments if not in
+``LOCAL_MODE``.
+
 .. _static_assets:
 
 Static Assets

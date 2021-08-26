@@ -8,7 +8,7 @@ from decimal import Decimal, DecimalException
 from rest_framework import status
 from rest_framework.request import Request
 from rest_framework.response import Response
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ValidationError, ImproperlyConfigured
 from django.utils.translation import gettext as _
 from django.urls import reverse
 from django.conf import settings as django_settings
@@ -280,14 +280,25 @@ def check_middleware():
     Ensures the Django app running Polaris has the correct middleware
     configuration. Polaris requires SessionMiddleware to be installed.
     """
-    err_msg = "{} is not installed in settings.MIDDLEWARE"
     session_middleware_path = "django.contrib.sessions.middleware.SessionMiddleware"
     if session_middleware_path not in django_settings.MIDDLEWARE:
-        raise ValueError(err_msg.format(session_middleware_path))
+        raise ImproperlyConfigured(
+            f"{session_middleware_path} is not installed in settings.MIDDLEWARE"
+        )
+    if not settings.LOCAL_MODE and not getattr(
+        django_settings, "SESSION_COOKIE_SECURE", False
+    ):
+        raise ImproperlyConfigured(
+            "the SESSION_COOKIE_SECURE setting must be set to True"
+        )
 
 
 def check_protocol():
     if settings.LOCAL_MODE:
+        logger.warning(
+            "Polaris is in local mode. This makes the SEP-24 interactive flow "
+            "insecure and should only be used for local development."
+        )
         if getattr(django_settings, "SECURE_SSL_REDIRECT"):
             logger.warning(
                 "Using SECURE_SSL_REDIRECT while in local mode does not make "
