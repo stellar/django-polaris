@@ -42,16 +42,22 @@ if (
 ) {
   var datepickerScript = document.createElement('script');
   datepickerScript.src = "https://unpkg.com/flatpickr@4.6.3/dist/flatpickr.min.js";
+  datepickerScript.integrity = "sha512-/0FOmq5fA1cCPM7zk0sx/43nQD5dhBFtS3SqDE2ZAMsxVG2mg3lKNObZL7t5IUP3m1mGJSwkrhFNdjJwKKOo5Q==";
+  datepickerScript.crossOrigin = "anonymous";
   datepickerScript.async = true;
   document.body.append(datepickerScript)
 
   var datepickerScript = document.createElement('script');
-  datepickerScript.src = "https://unpkg.com/flatpickr@4.6.3/dist/l10n/{{ LANGUAGE_CODE }}.js";
+  datepickerScript.src = "https://unpkg.com/flatpickr@4.6.3/dist/l10n/index.js"
+  datepickerScript.integrity = "sha512-vTbjTzhS5w7Za0eGC5792DwB1dMy3RhB1iimHK6bLzON2E9GP5cqLNPhTauI9hMUf+zhPyyFB5gOLyBWcuBxJg==";
+  datepickerScript.crossOrigin = "anonymous";
   datepickerScript.async = true;
   document.body.append(datepickerScript)
 
   var datepickerScript = document.createElement('link');
   datepickerScript.href = "https://unpkg.com/flatpickr@4.6.3/dist/flatpickr.min.css";
+  datepickerScript.integrity = "sha512-mYrP18xfFU3QxE2Mx9Rlm2D8WO4gVJa3v2tlCYW9lELMIsu77EPCOfD4Uumj7AJTeSnoherQQgCi6j11n0Vigg==";
+  datepickerScript.crossOrigin = "anonymous";
   datepickerScript.rel = "stylesheet";
   document.head.append(datepickerScript)
 
@@ -83,6 +89,8 @@ if (document.querySelector('.cc-number') !== null) {
   // https: //github.com/nosir/cleave.js
   var cleaveScript = document.createElement('script');
   cleaveScript.src = "https://unpkg.com/cleave.js@1.5.3/dist/cleave.min.js";
+  cleaveScript.integrity = "sha512-PFVTH0oUSWMIcRnMyDfB0J4f6/BDdO9ZQmekhpT1k+XX3IKe2oKW92bMbB2tH0R0SmvHopeVBUuKkSL/HE04Cg==";
+  cleaveScript.crossOrigin = "anonymous";
   cleaveScript.async = true;
   document.body.append(cleaveScript)
 
