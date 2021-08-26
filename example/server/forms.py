@@ -47,7 +47,6 @@ class WithdrawForm(TransactionForm):
         ),
         label=_("Bank"),
     )
-    date = forms.DateField(label="Date")
 
 
 class AllFieldsForm(forms.Form):
