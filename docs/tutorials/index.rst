@@ -105,7 +105,7 @@ Add Polaris' endpoints to ``urls.py`` in the ``app`` inner directory:
 
     If you want to keep the admin panel for internal use, another option is to make the ``/admin`` path only accessible
     via a private network. This can be accomplished by configuring a proxy server accordingly or simply deploying a
-    second instance of the server process on the private network.
+    second instance of the server process on a private network.
 
 Specify environment variables
 -----------------------------
