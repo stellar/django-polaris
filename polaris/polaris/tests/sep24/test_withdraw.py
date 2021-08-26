@@ -126,9 +126,7 @@ def test_interactive_withdraw_success(client):
     )
 
     payload = interactive_jwt_payload(withdraw, "withdraw")
-    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode(
-        "ascii"
-    )
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256")
 
     response = client.get(
         f"{WEBAPP_PATH}"
@@ -182,9 +180,7 @@ def test_interactive_withdraw_success_additive_fees(client):
     )
 
     payload = interactive_jwt_payload(withdraw, "withdraw")
-    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode(
-        "ascii"
-    )
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256")
 
     response = client.get(
         f"{WEBAPP_PATH}"
@@ -236,9 +232,7 @@ def test_interactive_withdraw_pending_anchor(mock_after_form_validation, client)
     )
 
     payload = interactive_jwt_payload(withdraw, "withdraw")
-    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode(
-        "ascii"
-    )
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256")
 
     response = client.get(
         f"{WEBAPP_PATH}"
@@ -258,7 +252,7 @@ def test_interactive_withdraw_pending_anchor(mock_after_form_validation, client)
     assert response.status_code == 403
     assert "Unexpected one-time auth token" in str(response.content)
 
-    def mark_as_pending_anchor(_, transaction):
+    def mark_as_pending_anchor(transaction, **_kwargs):
         transaction.status = Transaction.STATUS.pending_anchor
         transaction.save()
 
@@ -294,9 +288,7 @@ def test_interactive_withdraw_bad_post_data(client):
     )
 
     payload = interactive_jwt_payload(withdraw, "withdraw")
-    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode(
-        "ascii"
-    )
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256")
 
     response = client.get(
         f"{WEBAPP_PATH}"
@@ -388,7 +380,7 @@ def test_interactive_withdraw_bad_issuer(client):
     withdraw = Transaction.objects.create(asset=usd)
     payload = interactive_jwt_payload(withdraw, "withdraw")
     payload["iss"] = "bad iss"
-    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode()
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256")
 
     response = client.get(f"{WEBAPP_PATH}?token={token}")
     assert "Invalid token issuer" in str(response.content)
@@ -408,9 +400,7 @@ def test_interactive_withdraw_past_exp(client):
 
     payload = interactive_jwt_payload(withdraw, "withdraw")
     payload["exp"] = time.time()
-    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode(
-        "ascii"
-    )
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256")
 
     response = client.get(f"{WEBAPP_PATH}?token={token}")
     assert "Token is not yet valid or is expired" in str(response.content)
@@ -431,9 +421,7 @@ def test_interactive_withdraw_no_transaction(client):
     payload = interactive_jwt_payload(withdraw, "withdraw")
     withdraw.delete()  # remove from database
 
-    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode(
-        "ascii"
-    )
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256")
 
     response = client.get(f"{WEBAPP_PATH}?token={token}")
     assert "Transaction for account not found" in str(response.content)
@@ -461,9 +449,7 @@ def test_interactive_withdraw_get_no_content_tx_incomplete(
     mock_form_for_transaction.return_value = None
     mock_content_for_transaction.return_value = None
     payload = interactive_jwt_payload(withdraw, "withdraw")
-    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode(
-        "ascii"
-    )
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256")
     response = client.get(
         f"{WEBAPP_PATH}"
         f"?token={token}"
@@ -497,9 +483,7 @@ def test_interactive_withdraw_get_no_content_tx_complete(
     mock_form_for_transaction.return_value = None
     mock_content_for_transaction.return_value = None
     payload = interactive_jwt_payload(withdraw, "withdraw")
-    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode(
-        "ascii"
-    )
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256")
     response = client.get(
         f"{WEBAPP_PATH}"
         f"?token={token}"
@@ -535,9 +519,7 @@ def test_interactive_withdraw_post_no_content_tx_incomplete(
     mock_form_for_transaction.return_value = None
     mock_content_for_template.return_value = {"test": "value"}
     payload = interactive_jwt_payload(withdraw, "withdraw")
-    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode(
-        "ascii"
-    )
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256")
     response = client.get(
         f"{WEBAPP_PATH}"
         f"?token={token}"
@@ -577,9 +559,7 @@ def test_interactive_withdraw_post_no_content_tx_complete(
     mock_form_for_transaction.return_value = None
     mock_content_for_template.return_value = {"test": "value"}
     payload = interactive_jwt_payload(withdraw, "withdraw")
-    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode(
-        "ascii"
-    )
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256")
     response = client.get(
         f"{WEBAPP_PATH}"
         f"?token={token}"
@@ -625,9 +605,7 @@ def test_withdraw_interactive_complete(mock_interactive_url, client):
         kind=Transaction.KIND.withdrawal,
     )
     payload = interactive_jwt_payload(withdraw, "withdraw")
-    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode(
-        "ascii"
-    )
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256")
     mock_interactive_url.return_value = "https://test.com/customFlow"
 
     response = client.get(
@@ -669,9 +647,7 @@ def test_withdraw_interactive_complete_not_found(mock_interactive_url, client):
         kind=Transaction.KIND.withdrawal,
     )
     payload = interactive_jwt_payload(withdraw, "withdraw")
-    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode(
-        "ascii"
-    )
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256")
     mock_interactive_url.return_value = "https://test.com/customFlow"
 
     response = client.get(

@@ -1,15 +1,23 @@
-from typing import Dict, Optional
+from typing import Dict
+
+from rest_framework.request import Request
 
 from polaris.utils import getLogger
 from polaris.utils import SEP_9_FIELDS
 from polaris.integrations import registered_customer_integration as rci
 from polaris.models import Transaction
+from polaris.sep10.token import SEP10Token
 
 
 logger = getLogger(__name__)
 
 
-def validate_403_response(integration_response: Dict, transaction: Transaction) -> Dict:
+def validate_403_response(
+    token: SEP10Token,
+    request: Request,
+    integration_response: Dict,
+    transaction: Transaction,
+) -> Dict:
     """
     Ensures the response returned from `process_sep6_request()` matches the definitions
     described in SEP-6. This function can be used for both /deposit and /withdraw
@@ -43,7 +51,9 @@ def validate_403_response(integration_response: Dict, transaction: Transaction) 
             logger.error("Invalid 'status' returned from process_sep6_request()")
             raise ValueError()
         response["status"] = integration_response["status"]
-        more_info_url = rci.more_info_url(transaction.stellar_account)
+        more_info_url = rci.more_info_url(
+            token=token, request=request, account=transaction.stellar_account
+        )
         if more_info_url:
             response["more_info_url"] = more_info_url
 

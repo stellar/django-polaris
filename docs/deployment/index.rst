@@ -9,7 +9,7 @@ Implementing SEP 6, 24, or 31 requires more than a web server. Anchors must also
 
 To support these requirements, Polaris deployments must also include additional services to run alongside the web server. The SDF currently deploys Polaris using its CLI commands. Each command either periodically checks external state or constantly streams events from an external data source.
 
-With the exception of ``watch_transactions`` and ``testnet``, every CLI command can be run once or repeatedly on some interval using the ``--loop`` and ``--interval <seconds>`` arguments. These commands should either be run by a job scheduler like Jenkins and CircleCI or run with the ``--loop`` argument.
+With the exception of ``watch_transactions`` and ``testnet``, every CLI command can be run once or repeatedly on some interval using the ``--loop`` and ``--interval <seconds>`` arguments. These commands should either be run by a job scheduler like Jenkins and CircleCI or run with the ``--loop`` argument. If you choose to deploy Polaris using the ``--loop`` strategy, ensure the processes are managed and kept persistent using a process-control system like ``supervisorctl``.
 
 watch_transactions
 ^^^^^^^^^^^^^^^^^^
@@ -26,17 +26,23 @@ poll_outgoing_transactions
 
 Polaris periodically queries for transactions in ``pending_external`` and passes them to the ``RailsIntegration.poll_outgoing_transactions``. The anchor is expected to update the transactions' status depending on if the transfer has been successful or not.
 
-poll_pending_deposits
-^^^^^^^^^^^^^^^^^^^^^
+process_pending_deposits
+^^^^^^^^^^^^^^^^^^^^^^^^
 
-Polaris periodically queries for transactions in ``pending_user_transfer_start`` and ``pending_external`` and passes them to the ``RailsIntegration.poll_pending_deposits`` integration function. ``Transaction`` objects that represent funds that have been received off-chain should be returned so Polaris can submit them to the Stellar network. See the ``poll_pending_deposits()`` integration function for more details.
+This process handles all of the transaction submission logic for deposit transactions. Polaris periodically queries the database for transactions in one of the following scenarios and processes them accordingly.
 
-check_trustlines
-^^^^^^^^^^^^^^^^
+A transaction is in ``pending_user_transfer_start`` or ``pending_external``.
 
-And finally, Polaris periodically checks for transactions whose accounts don't have trustlines for the asset the account is requesting using the ``pending_trust`` status. Polaris will update ``Transaction.status`` for each transaction that has a trustline to the relevant asset.
+    Polaris passes these transaction the ``RailsIntegration.poll_pending_deposits`` integration function, and the anchor is expected to return ``Transaction`` objects whose funds have been received off-chain. Polaris then checks if each transaction is in one of the secenarios outlined below, and if not, submits the return transactions them to the Stellar network. See the ``poll_pending_deposits()`` integration function for more details.
 
-If you choose to deploy Polaris using this strategy, ensure the processes are managed and kept persistent using a process-control system like ``supervisorctl``.
+A transaction's destination account does not have a trustline to the requested asset.
+
+    Polaris checks if the trustline has been established. If it has, and the transaction's source account doesn't require multiple signatures, Polaris will submit the transaction to the Stellar Network.
+
+A transaction's source account requires multiple signatures before submission to the network.
+
+    In this case, ``Transaction.pending_signatures`` is set to ``True`` and the anchor is expected to collect signatures, save the transaction envelope to ``Transaction.envelope_xdr``, and set ``Transaction.pending_signatures`` back to ``False``. Polaris will then query for these transactions and submit them to the Stellar network.
+
 
 Testnet Resets
 --------------

@@ -6,8 +6,6 @@ on behalf of a user who holds a Stellar account.
 See: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.md
 """
 import os
-import binascii
-import time
 import jwt
 import toml
 from urllib.parse import urlparse
@@ -181,7 +179,7 @@ class SEP10Auth(APIView):
         logger.info("Validating challenge transaction")
         generic_err_msg = gettext("error while validating challenge: %s")
         try:
-            tx_envelope, account_id, _ = read_challenge_transaction(
+            challenge = read_challenge_transaction(
                 challenge_transaction=envelope_xdr,
                 server_account_id=settings.SIGNING_KEY,
                 home_domains=settings.SEP10_HOME_DOMAINS,
@@ -192,7 +190,7 @@ class SEP10Auth(APIView):
             return None, render_error_response(generic_err_msg % (str(e)))
 
         client_domain = None
-        for operation in tx_envelope.transaction.operations:
+        for operation in challenge.transaction.transaction.operations:
             if (
                 isinstance(operation, ManageData)
                 and operation.data_name == "client_domain"
@@ -201,7 +199,7 @@ class SEP10Auth(APIView):
                 break
 
         try:
-            account = settings.HORIZON_SERVER.load_account(account_id)
+            account = settings.HORIZON_SERVER.load_account(challenge.client_account_id)
         except NotFoundError:
             logger.info("Account does not exist, using client's master key to verify")
             try:
@@ -212,8 +210,8 @@ class SEP10Auth(APIView):
                     web_auth_domain=urlparse(settings.HOST_URL).netloc,
                     network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
                 )
-                if (client_domain and len(tx_envelope.signatures) != 3) or (
-                    not client_domain and len(tx_envelope.signatures) != 2
+                if (client_domain and len(challenge.transaction.signatures) != 3) or (
+                    not client_domain and len(challenge.transaction.signatures) != 2
                 ):
                     raise InvalidSep10ChallengeError(
                         gettext(
@@ -223,7 +221,7 @@ class SEP10Auth(APIView):
                     )
             except InvalidSep10ChallengeError as e:
                 logger.info(
-                    f"Missing or invalid signature(s) for {account_id}: {str(e)}"
+                    f"Missing or invalid signature(s) for {challenge.client_account_id}: {str(e)}"
                 )
                 return None, render_error_response(generic_err_msg % (str(e)))
             else:
@@ -257,7 +255,7 @@ class SEP10Auth(APIView):
 
         See: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.md#token
         """
-        transaction_envelope, source_account, _ = read_challenge_transaction(
+        challenge = read_challenge_transaction(
             challenge_transaction=envelope_xdr,
             server_account_id=settings.SIGNING_KEY,
             home_domains=settings.SEP10_HOME_DOMAINS,
@@ -265,22 +263,21 @@ class SEP10Auth(APIView):
             network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
         )
         logger.info(
-            f"Challenge verified, generating SEP-10 token for account {source_account}"
+            f"Challenge verified, generating SEP-10 token for account {challenge.client_account_id}"
         )
         # set iat value to minimum timebound of the challenge so that the JWT returned
         # for a given challenge is always the same.
         # https://github.com/stellar/stellar-protocol/pull/982
-        issued_at = transaction_envelope.transaction.time_bounds.min_time
+        issued_at = challenge.transaction.transaction.time_bounds.min_time
         jwt_dict = {
             "iss": os.path.join(settings.HOST_URL, "auth"),
-            "sub": source_account,
+            "sub": challenge.client_account_id,
             "iat": issued_at,
             "exp": issued_at + 24 * 60 * 60,
-            "jti": transaction_envelope.hash().hex(),
+            "jti": challenge.transaction.hash().hex(),
             "client_domain": client_domain,
         }
-        encoded_jwt = jwt.encode(jwt_dict, settings.SERVER_JWT_KEY, algorithm="HS256")
-        return encoded_jwt.decode("ascii")
+        return jwt.encode(jwt_dict, settings.SERVER_JWT_KEY, algorithm="HS256")
 
     @staticmethod
     def _get_client_signing_key(client_domain):

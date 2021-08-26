@@ -204,8 +204,7 @@ def test_interactive_deposit_bad_issuer(client, acc1_usd_deposit_transaction_fac
 
     payload = interactive_jwt_payload(deposit, "deposit")
     payload["iss"] = "bad iss"
-    encoded_token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256")
-    token = encoded_token.decode("ascii")
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256")
 
     response = client.get(f"{WEBAPP_PATH}?token={token}")
     assert "Invalid token issuer" in str(response.content)
@@ -218,9 +217,7 @@ def test_interactive_deposit_past_exp(client, acc1_usd_deposit_transaction_facto
 
     payload = interactive_jwt_payload(deposit, "deposit")
     payload["exp"] = time.time()
-    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode(
-        "ascii"
-    )
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256")
 
     response = client.get(f"{WEBAPP_PATH}?token={token}")
     assert "Token is not yet valid or is expired" in str(response.content)
@@ -236,9 +233,7 @@ def test_interactive_deposit_no_transaction(
     payload = interactive_jwt_payload(deposit, "deposit")
     deposit.delete()  # remove from database
 
-    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode(
-        "ascii"
-    )
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256")
 
     response = client.get(f"{WEBAPP_PATH}?token={token}")
     assert "Transaction for account not found" in str(response.content)
@@ -252,9 +247,7 @@ def test_interactive_deposit_success(client, acc1_usd_deposit_transaction_factor
     deposit.save()
 
     payload = interactive_jwt_payload(deposit, "deposit")
-    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode(
-        "ascii"
-    )
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256")
 
     response = client.get(
         f"{WEBAPP_PATH}"
@@ -301,9 +294,7 @@ def test_interactive_deposit_success_additive_fees(
     deposit.save()
 
     payload = interactive_jwt_payload(deposit, "deposit")
-    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode(
-        "ascii"
-    )
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256")
 
     response = client.get(
         f"{WEBAPP_PATH}"
@@ -350,9 +341,7 @@ def test_interactive_deposit_pending_anchor(
     deposit.save()
 
     payload = interactive_jwt_payload(deposit, "deposit")
-    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode(
-        "ascii"
-    )
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256")
 
     response = client.get(
         f"{WEBAPP_PATH}"
@@ -372,7 +361,7 @@ def test_interactive_deposit_pending_anchor(
     assert response.status_code == 403
     assert "Unexpected one-time auth token" in str(response.content)
 
-    def mark_as_pending_anchor(_, transaction):
+    def mark_as_pending_anchor(transaction, **_kwargs):
         transaction.status = Transaction.STATUS.pending_anchor
         transaction.save()
 
@@ -405,9 +394,7 @@ def test_interactive_deposit_bad_post_data(client):
     )
 
     payload = interactive_jwt_payload(deposit, "deposit")
-    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode(
-        "ascii"
-    )
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256")
 
     response = client.get(
         f"{WEBAPP_PATH}"
@@ -439,9 +426,7 @@ def test_interactive_auth_new_transaction(client, acc1_usd_deposit_transaction_f
     deposit.save()
 
     payload = interactive_jwt_payload(deposit, "deposit")
-    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode(
-        "ascii"
-    )
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256")
 
     response = client.get(
         f"{WEBAPP_PATH}"
@@ -479,9 +464,7 @@ def test_interactive_deposit_get_no_content_tx_incomplete(
     mock_form_for_transaction.return_value = None
     mock_content_for_transaction.return_value = None
     payload = interactive_jwt_payload(deposit, "deposit")
-    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode(
-        "ascii"
-    )
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256")
     response = client.get(
         f"{WEBAPP_PATH}"
         f"?token={token}"
@@ -514,9 +497,7 @@ def test_interactive_deposit_get_no_content_tx_complete(
     mock_form_for_transaction.return_value = None
     mock_content_for_transaction.return_value = None
     payload = interactive_jwt_payload(deposit, "deposit")
-    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode(
-        "ascii"
-    )
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256")
     response = client.get(
         f"{WEBAPP_PATH}"
         f"?token={token}"
@@ -549,9 +530,7 @@ def test_interactive_deposit_post_no_content_tx_incomplete(
     mock_form_for_transaction.return_value = None
     mock_content_for_template.return_value = {"test": "value"}
     payload = interactive_jwt_payload(deposit, "deposit")
-    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode(
-        "ascii"
-    )
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256")
     response = client.get(
         f"{WEBAPP_PATH}"
         f"?token={token}"
@@ -590,9 +569,7 @@ def test_interactive_deposit_post_no_content_tx_complete(
     mock_form_for_transaction.return_value = None
     mock_content_for_template.return_value = {"test": "value"}
     payload = interactive_jwt_payload(deposit, "deposit")
-    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode(
-        "ascii"
-    )
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256")
     response = client.get(
         f"{WEBAPP_PATH}"
         f"?token={token}"
@@ -627,9 +604,7 @@ def test_deposit_interactive_complete(mock_interactive_url, client):
         asset=usd, status=Transaction.STATUS.incomplete
     )
     payload = interactive_jwt_payload(deposit, "deposit")
-    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode(
-        "ascii"
-    )
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256")
     mock_interactive_url.return_value = "https://test.com/customFlow"
 
     response = client.get(
@@ -668,9 +643,7 @@ def test_deposit_interactive_complete_not_found(mock_interactive_url, client):
         asset=usd, status=Transaction.STATUS.incomplete
     )
     payload = interactive_jwt_payload(deposit, "deposit")
-    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256").decode(
-        "ascii"
-    )
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256")
     mock_interactive_url.return_value = "https://test.com/customFlow"
 
     response = client.get(

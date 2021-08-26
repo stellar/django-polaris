@@ -232,7 +232,7 @@ STELLAR_NETWORK_PASSHRASE
     Ex. ``STELLAR_NETWORK_PASSPHRASE="Public Global Stellar Network ; September 2015"``
 
 CALLBACK_REQUEST_TIMEOUT
-    An integer for the number of seconds to wait before canceling a server-side callback request to ``Transaction.on_change_callback`` if present. Only used for SEP-6 and SEP-24. Polaris makes server-side requests to ``Transaction.on_change_callback`` from CLI commands such as ``poll_pending_deposits`` and ``execute_outgoing_transactions``. Server-side callbacks requests are not made from the API server.
+    An integer for the number of seconds to wait before canceling a server-side callback request to ``Transaction.on_change_callback`` if present. Only used for SEP-6 and SEP-24. Polaris makes server-side requests to ``Transaction.on_change_callback`` from CLI commands such as ``process_pending_deposits`` and ``execute_outgoing_transactions``. Server-side callbacks requests are not made from the API server.
 
     Defaults to 3 seconds.
 
@@ -387,20 +387,26 @@ Now you're ready to add your asset to Polaris. Run the following commands:
     $ docker-compose build
     $ docker-compose up server
 
-Go to http://localhost:8000/admin and login with the default credentials (root, password).
+Use another process to run the following:
+::
 
-Go to the Assets menu, and click "Add Asset"
+    $ docker exec -it server python manage.py shell
+
+Once you enter the python console, create the asset database object:
+::
+
+    from polaris.models import Asset
+
+    Asset.objects.create(...)
 
 Enter the code, issuer, and distribution seed for the asset. Enable the SEPs you want to test.
 
-Click `Save`.
-
-Finally, kill the current ``docker-compose`` process and run a new one:
+Finally, exit the python console, kill the current ``docker-compose`` process, and run a new one:
 ::
 
     $ docker-compose up
 
-You should now have a anchor server running on port 8000.
+This will run all processes, and you should now have a anchor server running on port 8000.
 When you make changes locally, the docker containers will restart with the updated code.
 
 Testing

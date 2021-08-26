@@ -35,9 +35,9 @@ def test_success_update(mock_patch_transaction, client):
     assert transaction.required_info_updates is None
     assert transaction.required_info_message is None
     assert transaction.status == Transaction.STATUS.pending_anchor
-    mock_patch_transaction.assert_called_once_with(
-        params=params, transaction=transaction
-    )
+    mock_patch_transaction.assert_called_once()
+    assert mock_patch_transaction.call_args_list[0][1].get("params") == params
+    assert mock_patch_transaction.call_args_list[0][1].get("transaction") == transaction
 
 
 @pytest.mark.django_db

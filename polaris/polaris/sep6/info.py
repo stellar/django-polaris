@@ -32,7 +32,9 @@ def info(request: Request) -> Response:
     }
     for asset in Asset.objects.filter(sep6_enabled=True):
         try:
-            fields_and_types = registered_info_func(asset, request.GET.get("lang"))
+            fields_and_types = registered_info_func(
+                request=request, asset=asset, lang=request.GET.get("lang")
+            )
         except ValueError:
             return render_error_response("unsupported 'lang'")
         try:

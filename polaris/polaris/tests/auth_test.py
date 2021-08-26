@@ -14,6 +14,7 @@ from stellar_sdk.operation import ManageData
 from polaris import settings
 from polaris.tests.conftest import STELLAR_ACCOUNT_1
 from polaris.sep10.utils import check_auth
+from polaris.sep10.token import SEP10Token
 
 endpoint = "/auth"
 
@@ -67,7 +68,7 @@ def test_auth_get_success(client):
 
     tx_hash = envelope_object.hash()
     server_public_key = Keypair.from_public_key(settings.SIGNING_KEY)
-    server_public_key.verify(tx_hash, signatures[0].signature)
+    server_public_key.verify(tx_hash, signatures[0].signature.signature)
 
 
 @patch(
@@ -97,7 +98,7 @@ def test_auth_get_client_attribution_success(client):
     assert home_domain_op.data_name == f"{urlparse(settings.HOST_URL).netloc} auth"
     assert len(home_domain_op.data_value) <= 64
     assert len(base64.b64decode(home_domain_op.data_value)) == 48
-    assert home_domain_op.source == STELLAR_ACCOUNT_1
+    assert home_domain_op.source.account_id == STELLAR_ACCOUNT_1
 
     web_auth_domain_op = transaction_object.operations[1]
     assert isinstance(web_auth_domain_op, ManageData)
@@ -106,24 +107,24 @@ def test_auth_get_client_attribution_success(client):
         web_auth_domain_op.data_value
         == f"{urlparse(settings.HOST_URL).netloc}".encode()
     )
-    assert web_auth_domain_op.source == settings.SIGNING_KEY
+    assert web_auth_domain_op.source.account_id == settings.SIGNING_KEY
 
     client_domain_op = transaction_object.operations[2]
     assert isinstance(client_domain_op, ManageData)
     assert client_domain_op.data_name == "client_domain"
     assert client_domain_op.data_value == CLIENT_ATTRIBUTION_DOMAIN.encode()
-    assert client_domain_op.source == CLIENT_ATTRIBUTION_ADDRESS
+    assert client_domain_op.source.account_id == CLIENT_ATTRIBUTION_ADDRESS
 
     signatures = envelope_object.signatures
     assert len(signatures) == 1
 
     tx_hash = envelope_object.hash()
     server_public_key = Keypair.from_public_key(settings.SIGNING_KEY)
-    server_public_key.verify(tx_hash, signatures[0].signature)
+    server_public_key.verify(tx_hash, signatures[0].signature.signature)
 
 
 auth_str = "Bearer {}"
-mock_request = Mock(META={})
+mock_request = Mock(headers={})
 account_exists = Mock(
     load_ed25519_public_key_signers=Mock(
         return_value=[Ed25519PublicKeySigner(CLIENT_ADDRESS)]
@@ -155,10 +156,14 @@ def test_auth_post_success_account_exists(client):
 
     content = json.loads(response.content)
     assert content["token"]
-    mock_request.META["HTTP_AUTHORIZATION"] = auth_str.format(content["token"])
+    mock_request.headers["Authorization"] = auth_str.format(content["token"])
     mock_view_function = Mock()
     check_auth(mock_request, mock_view_function)
-    mock_view_function.assert_called_once_with(CLIENT_ADDRESS, None, mock_request)
+    mock_view_function.assert_called_once()
+    token = mock_view_function.mock_calls[0][1][0]
+    assert isinstance(token, SEP10Token)
+    assert token.account == CLIENT_ADDRESS
+    assert mock_view_function.mock_calls[0][1][1] is mock_request
 
 
 @patch(
@@ -184,10 +189,14 @@ def test_auth_post_success_account_does_not_exist(client):
 
     content = json.loads(response.content)
     assert content["token"]
-    mock_request.META["HTTP_AUTHORIZATION"] = auth_str.format(content["token"])
+    mock_request.headers["Authorization"] = auth_str.format(content["token"])
     mock_view_function = Mock()
     check_auth(mock_request, mock_view_function)
-    mock_view_function.assert_called_once_with(CLIENT_ADDRESS, None, mock_request)
+    mock_view_function.assert_called_once()
+    token = mock_view_function.mock_calls[0][1][0]
+    assert isinstance(token, SEP10Token)
+    assert token.account == CLIENT_ADDRESS
+    assert mock_view_function.mock_calls[0][1][1] is mock_request
 
 
 @patch(
@@ -224,12 +233,14 @@ def test_auth_post_success_client_attribution(client):
         content["token"], settings.SERVER_JWT_KEY, algorithms=["HS256"]
     )
     assert jwt_contents["client_domain"] == CLIENT_ATTRIBUTION_DOMAIN
-    mock_request.META["HTTP_AUTHORIZATION"] = auth_str.format(content["token"])
+    mock_request.headers["Authorization"] = auth_str.format(content["token"])
     mock_view_function = Mock()
     check_auth(mock_request, mock_view_function)
-    mock_view_function.assert_called_once_with(
-        CLIENT_ADDRESS, CLIENT_ATTRIBUTION_DOMAIN, mock_request
-    )
+    mock_view_function.assert_called_once()
+    token = mock_view_function.mock_calls[0][1][0]
+    assert isinstance(token, SEP10Token)
+    assert token.account == CLIENT_ADDRESS
+    assert mock_view_function.mock_calls[0][1][1] is mock_request
 
 
 @patch("polaris.sep10.views.settings.SEP10_CLIENT_ATTRIBUTION_REQUIRED", True)
@@ -267,12 +278,14 @@ def test_auth_post_success_client_attribution_required(client):
         content["token"], settings.SERVER_JWT_KEY, algorithms=["HS256"]
     )
     assert jwt_contents["client_domain"] == CLIENT_ATTRIBUTION_DOMAIN
-    mock_request.META["HTTP_AUTHORIZATION"] = auth_str.format(content["token"])
+    mock_request.headers["Authorization"] = auth_str.format(content["token"])
     mock_view_function = Mock()
     check_auth(mock_request, mock_view_function)
-    mock_view_function.assert_called_once_with(
-        CLIENT_ADDRESS, CLIENT_ATTRIBUTION_DOMAIN, mock_request
-    )
+    mock_view_function.assert_called_once()
+    token = mock_view_function.mock_calls[0][1][0]
+    assert isinstance(token, SEP10Token)
+    assert token.account == CLIENT_ADDRESS
+    assert mock_view_function.mock_calls[0][1][1] is mock_request
 
 
 @patch("polaris.sep10.views.settings.SEP10_CLIENT_ATTRIBUTION_REQUIRED", True)
@@ -346,12 +359,14 @@ def test_auth_post_success_client_attribution_required_allowlist_provided(client
         content["token"], settings.SERVER_JWT_KEY, algorithms=["HS256"]
     )
     assert jwt_contents["client_domain"] == CLIENT_ATTRIBUTION_DOMAIN
-    mock_request.META["HTTP_AUTHORIZATION"] = auth_str.format(content["token"])
+    mock_request.headers["Authorization"] = auth_str.format(content["token"])
     mock_view_function = Mock()
     check_auth(mock_request, mock_view_function)
-    mock_view_function.assert_called_once_with(
-        CLIENT_ADDRESS, CLIENT_ATTRIBUTION_DOMAIN, mock_request
-    )
+    mock_view_function.assert_called_once()
+    token = mock_view_function.mock_calls[0][1][0]
+    assert isinstance(token, SEP10Token)
+    assert token.account == CLIENT_ADDRESS
+    assert mock_view_function.mock_calls[0][1][1] is mock_request
 
 
 @patch(

@@ -1,5 +1,5 @@
 from decimal import Decimal, DecimalException
-from typing import Dict, Tuple, Optional
+from typing import Dict, Tuple
 
 from django.utils.translation import gettext as _
 from django.core.validators import URLValidator
@@ -22,6 +22,7 @@ from polaris.utils import (
     memo_hex_to_base64,
 )
 from polaris.sep6.utils import validate_403_response
+from polaris.sep10.token import SEP10Token
 from polaris.sep10.utils import validate_sep10_token
 from polaris.shared.endpoints import SEP6_MORE_INFO_PATH
 from polaris.locale.utils import validate_language, activate_lang_for_request
@@ -39,12 +40,10 @@ logger = getLogger(__name__)
 @parser_classes([MultiPartParser, FormParser, JSONParser])
 @renderer_classes([JSONRenderer, BrowsableAPIRenderer])
 @validate_sep10_token()
-def withdraw(account: str, client_domain: Optional[str], request: Request,) -> Response:
+def withdraw(token: SEP10Token, request: Request) -> Response:
     args = parse_request_args(request)
     if "error" in args:
         return args["error"]
-    elif not args.get("account"):
-        args["account"] = account
 
     transaction_id = create_transaction_id()
     transaction_id_hex = transaction_id.hex
@@ -52,7 +51,7 @@ def withdraw(account: str, client_domain: Optional[str], request: Request,) -> R
     transaction_memo = memo_hex_to_base64(padded_hex_memo)
     transaction = Transaction(
         id=transaction_id,
-        stellar_account=account,
+        stellar_account=token.account,
         asset=args["asset"],
         amount_in=args.get("amount"),
         amount_expected=args.get("amount"),
@@ -66,7 +65,7 @@ def withdraw(account: str, client_domain: Optional[str], request: Request,) -> R
             f"{SEP6_MORE_INFO_PATH}?id={transaction_id}"
         ),
         on_change_callback=args["on_change_callback"],
-        client_domain=client_domain,
+        client_domain=token.client_domain,
         from_address=args.get("account"),
     )
 
@@ -75,12 +74,14 @@ def withdraw(account: str, client_domain: Optional[str], request: Request,) -> R
     # which argument was invalid, the anchor is responsible for raising
     # an exception with a translated message.
     try:
-        integration_response = rwi.process_sep6_request(args, transaction)
+        integration_response = rwi.process_sep6_request(
+            token=token, request=request, params=args, transaction=transaction
+        )
     except ValueError as e:
         return render_error_response(str(e))
     try:
         response, status_code = validate_response(
-            args, integration_response, transaction
+            token, request, args, integration_response, transaction
         )
     except ValueError as e:
         logger.error(str(e))
@@ -188,10 +189,17 @@ def parse_request_args(request: Request) -> Dict:
 
 
 def validate_response(
-    args: Dict, integration_response: Dict, transaction: Transaction
+    token: SEP10Token,
+    request: Request,
+    args: Dict,
+    integration_response: Dict,
+    transaction: Transaction,
 ) -> Tuple[Dict, int]:
     if "type" in integration_response:
-        return validate_403_response(integration_response, transaction), 403
+        return (
+            validate_403_response(token, request, integration_response, transaction),
+            403,
+        )
 
     asset = args["asset"]
     response = {

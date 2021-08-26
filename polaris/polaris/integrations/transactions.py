@@ -1,4 +1,4 @@
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 from decimal import Decimal
 
 from django import forms
@@ -8,6 +8,7 @@ from rest_framework.request import Request
 from polaris.models import Transaction, Asset
 from polaris.integrations.forms import TransactionForm
 from polaris.templates import Template
+from polaris.sep10.token import SEP10Token
 
 
 class DepositIntegration:
@@ -18,7 +19,7 @@ class DepositIntegration:
     :func:`polaris.integrations.register_integrations`.
     """
 
-    def after_deposit(self, transaction: Transaction):
+    def after_deposit(self, transaction: Transaction, *args: List, **kwargs: Dict):
         """
         Use this function to perform any post-processing of `transaction` after
         its been executed on the Stellar network. This could include actions such
@@ -41,9 +42,12 @@ class DepositIntegration:
 
     def form_for_transaction(
         self,
+        request: Request,
         transaction: Transaction,
         post_data: Optional[QueryDict] = None,
         amount: Optional[Decimal] = None,
+        *args: List,
+        **kwargs: Dict
     ) -> Optional[forms.Form]:
         """
         This function should return the next form to render for the user given the
@@ -92,6 +96,7 @@ class DepositIntegration:
         in order to continue, such as confirming their email address. Once the user is
         confirmed, ``form_for_transaction()`` should return the next form.
 
+        :param request: the ``rest_framework.request.Request`` object
         :param transaction: the ``Transaction`` database object
         :param post_data: the data sent in the POST request as a dictionary
         :param amount: a ``Decimal`` object the wallet may pass in the GET request.
@@ -112,9 +117,12 @@ class DepositIntegration:
 
     def content_for_template(
         self,
+        request: Request,
         template: Template,
         form: Optional[forms.Form] = None,
         transaction: Optional[Transaction] = None,
+        *args: List,
+        **kwargs: Dict
     ) -> Optional[Dict]:
         """
         Return a dictionary containing page content to be used in the template passed for the
@@ -171,6 +179,7 @@ class DepositIntegration:
         Finally, if neither are present, Polaris will default to its default image.
         All images will be rendered in a 100 x 150px sized box.
 
+        :param request: a ``rest_framework.request.Request`` instance
         :param template: a ``polaris.templates.Template`` enum value
             for the template to be rendered in the response
         :param form: the form to be rendered in the template
@@ -178,7 +187,14 @@ class DepositIntegration:
         """
         pass
 
-    def after_form_validation(self, form: forms.Form, transaction: Transaction):
+    def after_form_validation(
+        self,
+        request: Request,
+        form: forms.Form,
+        transaction: Transaction,
+        *args: List,
+        **kwargs: Dict
+    ):
         """
         Use this function to process the data collected with `form` and to update
         the state of the interactive flow so that the next call to
@@ -207,24 +223,9 @@ class DepositIntegration:
         ``pending_user_transfer_start`` before including the transaction in calls to
         ``DepositIntegration.poll_pending_deposits()``.
 
+        :param request: the ``rest_framework.request.Request`` object
         :param form: the completed ``forms.Form`` submitted by the user
         :param transaction: the ``Transaction`` database object
-        """
-        pass
-
-    def instructions_for_pending_deposit(self, transaction: Transaction) -> str:
-        """
-        **DEPRECATED**: This function will be removed in Polaris version 2.0 in favor
-        of allowing the anchor to override and extend Polaris' Django templates.
-        See the :doc:`Template Extensions</templates/index>` documentation for more information.
-
-        For pending deposits, its common to show instructions to the user for how
-        to initiate the external transfer. Use this function to return text or HTML
-        instructions to be rendered in response to `/transaction/more_info`.
-
-        :param transaction: the transaction database object to be serialized and
-            rendered in the response.
-        :return: the text or HTML to render in the instructions template section
         """
         pass
 
@@ -235,6 +236,8 @@ class DepositIntegration:
         asset: Asset,
         amount: Optional[Decimal],
         callback: Optional[str],
+        *args: List,
+        **kwargs: Dict
     ) -> Optional[str]:
         """
         Override this function to provide the wallet a non-Polaris endpoint
@@ -248,11 +251,15 @@ class DepositIntegration:
 
     def save_sep9_fields(
         self,
+        token: SEP10Token,
+        request: Request,
         stellar_account: str,
         fields: Dict,
         language_code: str,
         account_memo: Optional[str] = None,
         account_memo_type: Optional[str] = None,
+        *args: List,
+        **kwargs: Dict
     ):
         """
         Save the `fields` passed for the user identified by `stellar_account` to pre-populate
@@ -288,7 +295,15 @@ class DepositIntegration:
         """
         pass
 
-    def process_sep6_request(self, params: Dict, transaction: Transaction) -> Dict:
+    def process_sep6_request(
+        self,
+        token: SEP10Token,
+        request: Request,
+        params: Dict,
+        transaction: Transaction,
+        *args: List,
+        **kwargs: Dict
+    ) -> Dict:
         """
         .. _deposit: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#deposit
         .. _Deposit no additional information needed: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#1-success-no-additional-information-needed
@@ -350,6 +365,8 @@ class DepositIntegration:
               "status": "denied",
             }
 
+        :param token: the ``SEP10Token`` object representing the authenticated session
+        :param request: a ``rest_framwork.request.Request`` object
         :param params: the request parameters as described in /deposit_
         :param transaction: an unsaved ``Transaction`` object representing the transaction
             to be processed
@@ -358,7 +375,9 @@ class DepositIntegration:
             "`process_sep6_request` must be implemented if SEP-6 is active"
         )
 
-    def create_channel_account(self, transaction: Transaction):
+    def create_channel_account(
+        self, transaction: Transaction, *args: List, **kwargs: Dict
+    ):
         """
         Create a temporary, per-deposit-transaction-object Stellar account using a different
         Stellar account `that does not require multiple signatures`, and save the secret key
@@ -376,13 +395,13 @@ class DepositIntegration:
 
         Once the transaction's signatures have been collected and the updated XDR written to
         ``transaction.envelope_xdr``, ``transaction.pending_signatures`` should be updated to
-        ``False``, which will cause the ``poll_pending_deposits`` process to submit it to the
+        ``False``, which will cause the ``process_pending_deposits`` process to submit it to the
         network along with the other transactions deemed ready by the anchor.
 
         If ``transaction.to_address`` doesn't exist on Stellar and the transaction has a
         ``channel_account``, ``transaction.channel_account`` will also be used to create and
         fund the destination account for the deposit payment to the user. So the channel
-        account will be used one or `potentially` two Stellar transactions.
+        account will be used for one or `potentially` two Stellar transactions.
 
         Once the deposit payment has been made on Stellar, Polaris will call ``after_deposit()``,
         which is where the anchor should merge the funds within ``transaction.channel_account``
@@ -394,7 +413,15 @@ class DepositIntegration:
         """
         pass
 
-    def patch_transaction(self, params: Dict, transaction: Transaction):
+    def patch_transaction(
+        self,
+        token: SEP10Token,
+        request: Request,
+        params: Dict,
+        transaction: Transaction,
+        *args: List,
+        **kwargs: Dict
+    ):
         """
         .. _`GET /info response`: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#response-2
         .. _`GET /deposit`: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#deposit
@@ -424,6 +451,8 @@ class DepositIntegration:
         transaction's status back to ``pending_anchor`` as well as clear the ``required_info_updates``
         and ``required_info_message`` fields.
 
+        :param token: the ``SEP10Token`` object representing the authenticated session
+        :param request: a ``rest_framwork.request.Request`` object
         :param params: The request parameters as described in the `PATCH /transactions`_ endpoint.
         :param transaction: A ``Transaction`` object for which updated was provided.
         """
@@ -440,15 +469,19 @@ class WithdrawalIntegration:
 
     def form_for_transaction(
         self,
+        request: Request,
         transaction: Transaction,
         post_data: Optional[QueryDict] = None,
         amount: Optional[Decimal] = None,
+        *args: List,
+        **kwargs: Dict
     ) -> Optional[forms.Form]:
         """
         .. _SEP-9: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0009.md
 
         Same as ``DepositIntegration.form_for_transaction``
 
+        :param request: a ``rest_framwork.request.Request`` object
         :param transaction: the ``Transaction`` database object
         :param post_data: the data included in the POST request body as a dictionary
         :param amount: a ``Decimal`` object the wallet may pass in the GET request.
@@ -466,9 +499,12 @@ class WithdrawalIntegration:
 
     def content_for_template(
         self,
+        request: Request,
         template: Template,
         form: Optional[forms.Form] = None,
         transaction: Optional[Transaction] = None,
+        *args: List,
+        **kwargs: Dict
     ) -> Optional[Dict]:
         """
         Same as ``DepositIntegration.content_for_template``, except the ``Template``
@@ -482,6 +518,7 @@ class WithdrawalIntegration:
 
             The template used to show transaction details
 
+        :param request: a ``rest_framework.request.Request`` instance
         :param template: a ``polaris.templates.Template`` enum value
             for the template to be rendered in the response
         :param form: the form to be rendered in the template
@@ -489,11 +526,19 @@ class WithdrawalIntegration:
         """
         pass
 
-    def after_form_validation(self, form: forms.Form, transaction: Transaction):
+    def after_form_validation(
+        self,
+        request: Request,
+        form: forms.Form,
+        transaction: Transaction,
+        *args: List,
+        **kwargs: Dict
+    ):
         """
         Same as ``DepositIntegration.after_form_validation``, except
         `transaction.to_address` should be saved here when present in `form`.
 
+        :param request: a ``rest_framework.request.Request`` instance
         :param form: the completed ``forms.Form`` submitted by the user
         :param transaction: the ``Transaction`` database object
         """
@@ -506,6 +551,8 @@ class WithdrawalIntegration:
         asset: Asset,
         amount: Optional[Decimal],
         callback: Optional[str],
+        *args: List,
+        **kwargs: Dict
     ) -> Optional[str]:
         """
         Same as ``DepositIntegration.interactive_url``
@@ -517,18 +564,29 @@ class WithdrawalIntegration:
 
     def save_sep9_fields(
         self,
+        request: Request,
         stellar_account: str,
         fields: Dict,
         language_code: str,
         account_memo: Optional[str] = None,
         account_memo_type: Optional[str] = None,
+        *args: List,
+        **kwargs: Dict
     ):
         """
         Same as ``DepositIntegration.save_sep9_fields``
         """
         pass
 
-    def process_sep6_request(self, params: Dict, transaction: Transaction) -> Dict:
+    def process_sep6_request(
+        self,
+        token: SEP10Token,
+        request: Request,
+        params: Dict,
+        transaction: Transaction,
+        *args: List,
+        **kwargs: Dict
+    ) -> Dict:
         """
         .. _/withdraw: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#withdraw
         .. _Withdraw no additional information needed: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#1-success-no-additional-information-needed-1
@@ -556,7 +614,15 @@ class WithdrawalIntegration:
             "`process_sep6_request` must be implemented if SEP-6 is active"
         )
 
-    def patch_transaction(self, params: Dict, transaction: Transaction):
+    def patch_transaction(
+        self,
+        token: SEP10Token,
+        request: Request,
+        params: Dict,
+        transaction: Transaction,
+        *args: List,
+        **kwargs: Dict
+    ):
         """
         Same as ``DepositIntegration.patch_transaction``
         """

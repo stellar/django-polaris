@@ -205,17 +205,16 @@ def test_sep9_params(client):
         },
         content_type="application/json",
     )
-    mock_put.assert_called_with(
-        {
-            "id": None,
-            "memo": None,
-            "memo_type": None,
-            "account": "test source address",
-            "first_name": "Test",
-            "email_address": "test@example.com",
-            "type": None,
-        }
-    )
+    mock_put.assert_called_once()
+    assert mock_put.call_args_list[0][1].get("params") == {
+        "id": None,
+        "memo": None,
+        "memo_type": None,
+        "account": "test source address",
+        "first_name": "Test",
+        "email_address": "test@example.com",
+        "type": None,
+    }
     mock_put.reset_mock()
     assert response.status_code == 202
     assert response.json() == {"id": "123"}
@@ -574,7 +573,10 @@ def test_delete_memo_customer(mock_delete, client):
         content_type="application/json",
     )
     assert response.status_code == 200
-    mock_delete.assert_called_with("test source address", "test memo string", "text")
+    mock_delete.assert_called_once()
+    assert mock_delete.call_args_list[0][1].get("account") == "test source address"
+    assert mock_delete.call_args_list[0][1].get("memo") == "test memo string"
+    assert mock_delete.call_args_list[0][1].get("memo_type") == "text"
 
 
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
@@ -586,7 +588,10 @@ def test_delete_memo_customer_with_memo(mock_delete, client):
         content_type="application/json",
     )
     assert response.status_code == 200
-    mock_delete.assert_called_with("test source address", "test memo string", "text")
+    mock_delete.assert_called_once()
+    assert mock_delete.call_args_list[0][1].get("account") == "test source address"
+    assert mock_delete.call_args_list[0][1].get("memo") == "test memo string"
+    assert mock_delete.call_args_list[0][1].get("memo_type") == "text"
 
 
 mock_bad_delete = Mock(side_effect=ObjectDoesNotExist)
@@ -601,9 +606,10 @@ def test_delete_memo_not_found(client):
         content_type="application/json",
     )
     assert response.status_code == 404
-    mock_bad_delete.assert_called_with(
-        "test source address", "test memo string", "text"
-    )
+    mock_bad_delete.assert_called_once()
+    assert mock_bad_delete.call_args_list[0][1].get("account") == "test source address"
+    assert mock_bad_delete.call_args_list[0][1].get("memo") == "test memo string"
+    assert mock_bad_delete.call_args_list[0][1].get("memo_type") == "text"
 
 
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
@@ -616,14 +622,16 @@ def test_callback_success_by_id_no_memo(mock_callback):
         data={"id": "test id", "url": "https://test.com/callback"},
     )
     assert response.status_code == 200
-    mock_callback.assert_called_once_with(
-        {
-            "id": "test id",
-            "memo": None,
-            "memo_type": None,
-            "account": "test source address",
-            "url": "https://test.com/callback",
-        }
+    assert (
+        mock_callback.call_args_list[0][1].get("params").get("account")
+        == "test source address"
+    )
+    assert mock_callback.call_args_list[0][1].get("params").get("memo") is None
+    assert mock_callback.call_args_list[0][1].get("params").get("memo_type") is None
+    assert mock_callback.call_args_list[0][1].get("params").get("id") == "test id"
+    assert (
+        mock_callback.call_args_list[0][1].get("params").get("url")
+        == "https://test.com/callback"
     )
 
 
@@ -636,15 +644,14 @@ def test_callback_success_by_account_no_memo(mock_callback):
         data={"account": "test source address", "url": "https://test.com/callback"},
     )
     assert response.status_code == 200
-    mock_callback.assert_called_once_with(
-        {
-            "id": None,
-            "memo": None,
-            "memo_type": None,
-            "account": "test source address",
-            "url": "https://test.com/callback",
-        }
-    )
+    mock_callback.assert_called_once()
+    assert mock_callback.call_args_list[0][1].get("params") == {
+        "id": None,
+        "memo": None,
+        "memo_type": None,
+        "account": "test source address",
+        "url": "https://test.com/callback",
+    }
 
 
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
@@ -661,15 +668,14 @@ def test_callback_success_by_account_with_memo(mock_callback):
         },
     )
     assert response.status_code == 200
-    mock_callback.assert_called_once_with(
-        {
-            "id": None,
-            "memo": "test memo",
-            "memo_type": "text",
-            "account": "test source address",
-            "url": "https://test.com/callback",
-        }
-    )
+    mock_callback.assert_called_once()
+    assert mock_callback.call_args_list[0][1].get("params") == {
+        "id": None,
+        "memo": "test memo",
+        "memo_type": "text",
+        "account": "test source address",
+        "url": "https://test.com/callback",
+    }
 
 
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
@@ -794,15 +800,14 @@ def test_callback_reject_on_valueerror(mock_callback):
     )
     assert response.status_code == 400
     assert response.json()["error"] == "test"
-    mock_callback.assert_called_once_with(
-        {
-            "id": "test id",
-            "memo": None,
-            "memo_type": None,
-            "account": "test source address",
-            "url": "https://test.com/callback",
-        }
-    )
+    mock_callback.assert_called_once()
+    assert mock_callback.call_args_list[0][1].get("params") == {
+        "id": "test id",
+        "memo": None,
+        "memo_type": None,
+        "account": "test source address",
+        "url": "https://test.com/callback",
+    }
 
 
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
@@ -816,15 +821,14 @@ def test_callback_reject_on_object_does_not_exist_error(mock_callback):
     )
     assert response.status_code == 404
     assert response.json()["error"] == "user does not exist"
-    mock_callback.assert_called_once_with(
-        {
-            "id": "test id",
-            "memo": None,
-            "memo_type": None,
-            "account": "test source address",
-            "url": "https://test.com/callback",
-        }
-    )
+    mock_callback.assert_called_once()
+    assert mock_callback.call_args_list[0][1].get("params") == {
+        "id": "test id",
+        "memo": None,
+        "memo_type": None,
+        "account": "test source address",
+        "url": "https://test.com/callback",
+    }
 
 
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)

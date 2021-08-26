@@ -28,7 +28,7 @@ def test_load_account():
         "thresholds": {"low_threshold": 0, "med_threshold": 1, "high_threshold": 2},
     }
     account = utils.load_account(mock_response)
-    assert account.account_id == mock_response["account_id"]
+    assert account.account.account_id == mock_response["account_id"]
     assert account.sequence == mock_response["sequence"]
 
     account.load_ed25519_public_key_signers()

@@ -1,5 +1,5 @@
 from decimal import Decimal, DecimalException
-from typing import Dict, Tuple, Optional
+from typing import Dict, Tuple
 
 from django.utils.translation import gettext as _
 from django.core.validators import URLValidator
@@ -26,12 +26,12 @@ from polaris.utils import (
 from polaris.shared.endpoints import SEP6_MORE_INFO_PATH
 from polaris.sep6.utils import validate_403_response
 from polaris.sep10.utils import validate_sep10_token
+from polaris.sep10.token import SEP10Token
 from polaris.integrations import (
     registered_deposit_integration as rdi,
     registered_fee_func,
     calculate_fee,
 )
-
 
 logger = getLogger(__name__)
 
@@ -40,7 +40,7 @@ logger = getLogger(__name__)
 @renderer_classes([JSONRenderer, BrowsableAPIRenderer])
 @parser_classes([MultiPartParser, FormParser, JSONParser])
 @validate_sep10_token()
-def deposit(account: str, client_domain: Optional[str], request: Request,) -> Response:
+def deposit(token: SEP10Token, request: Request) -> Response:
     args = parse_request_args(request)
     if "error" in args:
         return args["error"]
@@ -48,7 +48,7 @@ def deposit(account: str, client_domain: Optional[str], request: Request,) -> Re
     transaction_id = create_transaction_id()
     transaction = Transaction(
         id=transaction_id,
-        stellar_account=account,
+        stellar_account=token.account,
         asset=args["asset"],
         amount_in=args.get("amount"),
         amount_expected=args.get("amount"),
@@ -63,11 +63,13 @@ def deposit(account: str, client_domain: Optional[str], request: Request,) -> Re
         ),
         claimable_balance_supported=args["claimable_balance_supported"],
         on_change_callback=args["on_change_callback"],
-        client_domain=client_domain,
+        client_domain=token.client_domain,
     )
 
     try:
-        integration_response = rdi.process_sep6_request(args, transaction)
+        integration_response = rdi.process_sep6_request(
+            token=token, request=request, params=args, transaction=transaction
+        )
     except ValueError as e:
         return render_error_response(str(e))
     except APIException as e:
@@ -75,7 +77,7 @@ def deposit(account: str, client_domain: Optional[str], request: Request,) -> Re
 
     try:
         response, status_code = validate_response(
-            args, integration_response, transaction
+            token, request, args, integration_response, transaction
         )
     except (ValueError, KeyError) as e:
         logger.error(str(e))
@@ -96,13 +98,20 @@ def deposit(account: str, client_domain: Optional[str], request: Request,) -> Re
 
 
 def validate_response(
-    args: Dict, integration_response: Dict, transaction: Transaction
+    token: SEP10Token,
+    request: Request,
+    args: Dict,
+    integration_response: Dict,
+    transaction: Transaction,
 ) -> Tuple[Dict, int]:
     """
     Validate /deposit response returned from integration function
     """
     if "type" in integration_response:
-        return validate_403_response(integration_response, transaction), 403
+        return (
+            validate_403_response(token, request, integration_response, transaction),
+            403,
+        )
 
     asset = args["asset"]
     if not (

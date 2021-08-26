@@ -266,8 +266,7 @@ def generate_interactive_jwt(
         "sub": account,
         "jti": transaction_id,
     }
-    encoded_jwt = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256")
-    return encoded_jwt.decode("ascii")
+    return jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256")
 
 
 def check_sep24_config():

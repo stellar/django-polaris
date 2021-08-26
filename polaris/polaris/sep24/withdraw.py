@@ -1,9 +1,3 @@
-"""
-This module implements the logic for the `/transactions/withdraw` endpoint.
-This lets a user withdraw some asset from their Stellar account into a
-non-Stellar-based account.
-"""
-from typing import Optional
 from decimal import Decimal, DecimalException
 from urllib.parse import urlencode
 
@@ -40,16 +34,15 @@ from polaris.sep24.utils import (
     interactive_args_validation,
 )
 from polaris.sep10.utils import validate_sep10_token
+from polaris.sep10.token import SEP10Token
 from polaris.models import Asset, Transaction
 from polaris.integrations.forms import TransactionForm
 from polaris.locale.utils import validate_language, activate_lang_for_request
 from polaris.integrations import (
     registered_withdrawal_integration as rwi,
-    registered_scripts_func,
     registered_fee_func,
     calculate_fee,
     registered_toml_func,
-    scripts,
 )
 
 logger = getLogger(__name__)
@@ -91,7 +84,9 @@ def post_interactive_withdraw(request: Request) -> Response:
     callback = args_or_error["callback"]
     amount = args_or_error["amount"]
 
-    form = rwi.form_for_transaction(transaction, post_data=request.data)
+    form = rwi.form_for_transaction(
+        request=request, transaction=transaction, post_data=request.data
+    )
     if not form:
         logger.error(
             "Initial form_for_transaction() call returned None " f"for {transaction.id}"
@@ -124,12 +119,13 @@ def post_interactive_withdraw(request: Request) -> Response:
             transaction.amount_in = form.cleaned_data["amount"]
             transaction.amount_expected = form.cleaned_data["amount"]
             transaction.amount_fee = registered_fee_func(
-                {
+                request=request,
+                fee_params={
                     "amount": transaction.amount_in,
                     "type": form.cleaned_data.get("type"),
                     "operation": settings.OPERATION_WITHDRAWAL,
                     "asset_code": asset.code,
-                }
+                },
             )
             if settings.ADDITIVE_FEES_ENABLED:
                 transaction.amount_in += transaction.amount_fee
@@ -140,10 +136,13 @@ def post_interactive_withdraw(request: Request) -> Response:
             )
             transaction.save()
 
-        rwi.after_form_validation(form, transaction)
-        next_form = rwi.form_for_transaction(transaction)
+        rwi.after_form_validation(request=request, form=form, transaction=transaction)
+        next_form = rwi.form_for_transaction(request=request, transaction=transaction)
         if next_form or rwi.content_for_template(
-            Template.WITHDRAW, form=next_form, transaction=transaction
+            request=request,
+            template=Template.WITHDRAW,
+            form=next_form,
+            transaction=transaction,
         ):
             args = {"transaction_id": transaction.id, "asset_code": asset.code}
             if amount:
@@ -187,18 +186,13 @@ def post_interactive_withdraw(request: Request) -> Response:
     else:
         content = (
             rwi.content_for_template(
-                Template.WITHDRAW, form=form, transaction=transaction
+                request=request,
+                template=Template.WITHDRAW,
+                form=form,
+                transaction=transaction,
             )
             or {}
         )
-        if registered_scripts_func is not scripts:
-            logger.warning(
-                "DEPRECATED: the `scripts` Polaris integration function will be "
-                "removed in Polaris 2.0 in favor of allowing the anchor to override "
-                "and extend Polaris' Django templates. See the Template Extensions "
-                "documentation for more information."
-            )
-        template_scripts = registered_scripts_func({"form": form, **content})
 
         url_args = {"transaction_id": transaction.id, "asset_code": asset.code}
         if callback:
@@ -206,14 +200,13 @@ def post_interactive_withdraw(request: Request) -> Response:
         if amount:
             url_args["amount"] = amount
 
-        toml_data = registered_toml_func()
+        toml_data = registered_toml_func(request)
         post_url = f"{reverse('post_interactive_withdraw')}?{urlencode(url_args)}"
         get_url = f"{reverse('get_interactive_withdraw')}?{urlencode(url_args)}"
         content.update(
             form=form,
             post_url=post_url,
             get_url=get_url,
-            scripts=template_scripts,
             operation=settings.OPERATION_WITHDRAWAL,
             asset=asset,
             use_fee_endpoint=registered_fee_func != calculate_fee,
@@ -280,13 +273,21 @@ def get_interactive_withdraw(request: Request) -> Response:
         transaction.on_change_callback = args_or_error["on_change_callback"]
         transaction.save()
 
-    url = rwi.interactive_url(request, transaction, asset, amount, callback)
+    url = rwi.interactive_url(
+        request=request,
+        transaction=transaction,
+        asset=asset,
+        amount=amount,
+        callback=callback,
+    )
     if url:  # The anchor uses a standalone interactive flow
         return redirect(url)
 
-    form = rwi.form_for_transaction(transaction, amount=amount)
+    form = rwi.form_for_transaction(
+        request=request, transaction=transaction, amount=amount
+    )
     content = rwi.content_for_template(
-        Template.WITHDRAW, form=form, transaction=transaction
+        request=request, template=Template.WITHDRAW, form=form, transaction=transaction
     )
     if not (form or content):
         logger.error("The anchor did not provide content, unable to serve page.")
@@ -306,18 +307,6 @@ def get_interactive_withdraw(request: Request) -> Response:
     elif content is None:
         content = {}
 
-    if registered_scripts_func is not scripts:
-        logger.warning(
-            "DEPRECATED: the `scripts` Polaris integration function will be "
-            "removed in Polaris 2.0 in favor of allowing the anchor to override "
-            "and extend Polaris' Django templates. See the Template Extensions "
-            "documentation for more information."
-        )
-    if form:
-        template_scripts = registered_scripts_func({"form": form, **content})
-    else:
-        template_scripts = registered_scripts_func(content)
-
     url_args = {"transaction_id": transaction.id, "asset_code": asset.code}
     if callback:
         url_args["callback"] = callback
@@ -330,7 +319,6 @@ def get_interactive_withdraw(request: Request) -> Response:
         form=form,
         post_url=post_url,
         get_url=get_url,
-        scripts=template_scripts,
         operation=settings.OPERATION_WITHDRAWAL,
         asset=asset,
         use_fee_endpoint=registered_fee_func != calculate_fee,
@@ -344,7 +332,7 @@ def get_interactive_withdraw(request: Request) -> Response:
 @validate_sep10_token()
 @renderer_classes([JSONRenderer, BrowsableAPIRenderer])
 @parser_classes([MultiPartParser, FormParser, JSONParser])
-def withdraw(account: str, client_domain: Optional[str], request: Request,) -> Response:
+def withdraw(token: SEP10Token, request: Request,) -> Response:
     """
     POST /transactions/withdraw/interactive
 
@@ -389,7 +377,13 @@ def withdraw(account: str, client_domain: Optional[str], request: Request,) -> R
             return render_error_response(_("invalid 'account'"))
 
     try:
-        rwi.save_sep9_fields(account, sep9_fields, lang)
+        rwi.save_sep9_fields(
+            token=token,
+            request=request,
+            stellar_account=token.account,
+            fields=sep9_fields,
+            language_code=lang,
+        )
     except ValueError as e:
         # The anchor found a validation error in the sep-9 fields POSTed by
         # the wallet. The error string returned should be in the language
@@ -399,7 +393,7 @@ def withdraw(account: str, client_domain: Optional[str], request: Request,) -> R
     transaction_id = create_transaction_id()
     Transaction.objects.create(
         id=transaction_id,
-        stellar_account=account,
+        stellar_account=token.account,
         asset=asset,
         kind=Transaction.KIND.withdrawal,
         status=Transaction.STATUS.incomplete,
@@ -409,7 +403,7 @@ def withdraw(account: str, client_domain: Optional[str], request: Request,) -> R
         more_info_url=request.build_absolute_uri(
             f"{reverse('more_info')}?id={transaction_id}"
         ),
-        client_domain=client_domain,
+        client_domain=token.client_domain,
         from_address=source_account,
     )
     logger.info(f"Created withdrawal transaction {transaction_id}")
@@ -417,7 +411,7 @@ def withdraw(account: str, client_domain: Optional[str], request: Request,) -> R
     url = interactive_url(
         request,
         str(transaction_id),
-        account,
+        token.account,
         asset_code,
         settings.OPERATION_WITHDRAWAL,
         amount,

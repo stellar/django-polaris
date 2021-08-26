@@ -4,11 +4,6 @@ from polaris.integrations.info import default_info_func, registered_info_func
 from polaris.integrations.fees import calculate_fee, registered_fee_func
 from polaris.integrations.forms import TransactionForm, CreditCardForm
 from polaris.integrations.toml import get_stellar_toml, registered_toml_func
-from polaris.integrations.javascript import (
-    scripts,
-    registered_scripts_func,
-    TemplateScript,
-)
 from polaris.integrations.customers import (
     CustomerIntegration,
     registered_customer_integration,
@@ -32,7 +27,6 @@ def register_integrations(
     sep31_receiver: SEP31ReceiverIntegration = None,
     rails: RailsIntegration = None,
     toml: Callable = None,
-    scripts: Callable = None,
     fee: Callable = None,
     sep6_info: Callable = None,
     customer: CustomerIntegration = None,
@@ -57,7 +51,6 @@ def register_integrations(
                     MyCustomerIntegration,
                     toml_integration,
                     fee_integrations,
-                    scripts_integration,
                     info_integration
                 )
 
@@ -66,7 +59,6 @@ def register_integrations(
                     withdrawal=MyWithdrawalIntegration(),
                     customer=MyCustomerIntegration(),
                     toml=toml_integration,
-                    scripts=scripts_integration,
                     sep6_info=info_integration,
                     fee=fee_integration
                 )
@@ -82,8 +74,6 @@ def register_integrations(
     :param rails: the ``RailsIntegration`` subclass instance to be used by
         Polaris
     :param toml: a function that returns stellar.toml data as a dictionary
-    :param scripts: a function that returns a list of script tags as
-        strings
     :param fee: a function that returns the fee that would be charged
     :param sep6_info: a function that returns the /info `fields` or `types`
         values for an Asset
@@ -101,8 +91,6 @@ def register_integrations(
         raise TypeError("withdrawal must be a subclass of WithdrawalIntegration")
     elif toml and not callable(toml):
         raise TypeError("toml parameter is not callable")
-    elif scripts and not callable(scripts):
-        raise TypeError("scripts parameter is not callable")
     elif fee and not callable(fee):
         raise TypeError("fee parameter is not callable")
     elif sep6_info and not callable(sep6_info):
@@ -120,7 +108,6 @@ def register_integrations(
         (deposit, "registered_deposit_integration"),
         (withdrawal, "registered_withdrawal_integration"),
         (toml, "registered_toml_func"),
-        (scripts, "registered_scripts_func"),
         (fee, "registered_fee_func"),
         (sep6_info, "registered_info_func"),
         (customer, "registered_customer_integration"),

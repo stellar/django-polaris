@@ -17,8 +17,6 @@ from polaris.shared.serializers import TransactionSerializer
 from polaris.integrations import (
     registered_deposit_integration as rdi,
     registered_withdrawal_integration as rwi,
-    registered_scripts_func,
-    scripts,
 )
 
 
@@ -52,27 +50,18 @@ def more_info(request: Request, sep6: bool = False) -> Response:
     }
     if request_transaction.kind == Transaction.KIND.deposit:
         content = rdi.content_for_template(
-            Template.MORE_INFO, transaction=request_transaction
+            request=request,
+            template=Template.MORE_INFO,
+            transaction=request_transaction,
         )
-        if request_transaction.status == Transaction.STATUS.pending_user_transfer_start:
-            context.update(
-                instructions=rdi.instructions_for_pending_deposit(request_transaction)
-            )
     else:
         content = rwi.content_for_template(
-            Template.MORE_INFO, transaction=request_transaction
+            request=request,
+            template=Template.MORE_INFO,
+            transaction=request_transaction,
         )
     if content:
         context.update(content)
-
-    if registered_scripts_func is not scripts:
-        logger.warning(
-            "DEPRECATED: the `scripts` Polaris integration function will be "
-            "removed in Polaris 2.0 in favor of allowing the anchor to override "
-            "and extend Polaris' Django templates. See the Template Extensions "
-            "documentation for more information."
-        )
-    context["scripts"] = registered_scripts_func(content)
 
     # more_info.html will update the 'callback' parameter value to 'success' after
     # making the callback. If the page is then reloaded, the callback is not included
@@ -200,12 +189,13 @@ def fee(request: Request, sep6: bool = False) -> Response:
         return Response(
             {
                 "fee": registered_fee_func(
-                    {
+                    request=request,
+                    fee_params={
                         "operation": operation,
                         "type": op_type,
                         "asset_code": asset_code,
                         "amount": amount,
-                    }
+                    },
                 )
             }
         )

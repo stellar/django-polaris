@@ -1,17 +1,22 @@
 """This module defines custom management commands for the app admin."""
 import asyncio
+from asgiref.sync import sync_to_async
 from typing import Dict, Optional, Union, List, Tuple
 from decimal import Decimal
-from base64 import b64decode
 
 from django.core.management.base import BaseCommand
 from django.db.models import Q
 from stellar_sdk.exceptions import NotFoundError
-from stellar_sdk.transaction_envelope import (
-    TransactionEnvelope,
-    Transaction as HorizonTransaction,
+from stellar_sdk.transaction import Transaction as HorizonTransaction
+from stellar_sdk.transaction_envelope import TransactionEnvelope
+from stellar_sdk.xdr import (
+    PaymentResult,
+    PathPaymentStrictSendResult,
+    PathPaymentStrictReceiveResult,
+    OperationResult,
+    TransactionResult,
 )
-from stellar_sdk.xdr import Xdr
+from stellar_sdk.xdr.utils import from_xdr_amount
 from stellar_sdk.operation import (
     Operation,
     Payment,
@@ -23,13 +28,11 @@ from stellar_sdk.client.aiohttp_client import AiohttpClient
 
 from polaris import settings
 from polaris.models import Asset, Transaction
-from polaris.utils import getLogger, maybe_make_callback
+from polaris.utils import getLogger, maybe_make_callback_async
 
 logger = getLogger(__name__)
 PaymentOpResult = Union[
-    Xdr.types.PaymentResult,
-    Xdr.types.PathPaymentStrictSendResult,
-    Xdr.types.PathPaymentStrictReceiveResult,
+    PaymentResult, PathPaymentStrictSendResult, PathPaymentStrictReceiveResult
 ]
 PaymentOp = Union[Payment, PathPaymentStrictReceive, PathPaymentStrictSend]
 
@@ -58,11 +61,11 @@ class Command(BaseCommand):
             raise e
 
     async def watch_transactions(self):  # pragma: no cover
+        assets = await sync_to_async(list)(
+            Asset.objects.exclude(distribution_seed__isnull=True)
+        )
         await asyncio.gather(
-            *[
-                self._for_account(asset.distribution_account)
-                for asset in Asset.objects.exclude(distribution_seed__isnull=True)
-            ]
+            *[self._for_account(asset.distribution_account) for asset in assets]
         )
 
     async def _for_account(self, account: str):
@@ -79,15 +82,15 @@ class Command(BaseCommand):
                 raise RuntimeError(
                     "Stellar distribution account does not exist in horizon"
                 )
-            last_completed_transaction = (
+            last_completed_transaction = await sync_to_async(
                 Transaction.objects.filter(
                     Q(kind=Transaction.KIND.withdrawal) | Q(kind=Transaction.KIND.send),
                     receiving_anchor_account=account,
                     status=Transaction.STATUS.completed,
                 )
                 .order_by("-completed_at")
-                .first()
-            )
+                .first
+            )()
 
             cursor = "0"
             if last_completed_transaction:
@@ -98,10 +101,10 @@ class Command(BaseCommand):
             )
             endpoint = server.transactions().for_account(account).cursor(cursor)
             async for response in endpoint.stream():
-                self.process_response(response, account)
+                await self.process_response(response, account)
 
     @classmethod
-    def process_response(cls, response, account):
+    async def process_response(cls, response, account):
         # We should not match valid pending transactions with ones that were
         # unsuccessful on the stellar network. If they were unsuccessful, the
         # client is also aware of the failure and will likely attempt to
@@ -126,9 +129,15 @@ class Command(BaseCommand):
         send_filters = Q(
             status=Transaction.STATUS.pending_sender, kind=Transaction.KIND.send,
         )
-        transactions = Transaction.objects.filter(
-            withdraw_filters | send_filters, memo=memo, receiving_anchor_account=account
-        ).all()
+        transactions = await sync_to_async(list)(
+            Transaction.objects.filter(
+                withdraw_filters | send_filters,
+                memo=memo,
+                receiving_anchor_account=account,
+            )
+            .select_related("asset")
+            .all()
+        )
         if not transactions:
             logger.info(f"No match found for stellar transaction {response['id']}")
             return
@@ -145,17 +154,13 @@ class Command(BaseCommand):
             f"Matched transaction object {transaction.id} for stellar transaction {response['id']}"
         )
 
-        op_results = (
-            Xdr.StellarXDRUnpacker(b64decode(result_xdr))
-            .unpack_TransactionResult()
-            .result.results
-        )
-        horion_tx = TransactionEnvelope.from_xdr(
+        op_results = TransactionResult.from_xdr(result_xdr).result.results
+        horizon_tx = TransactionEnvelope.from_xdr(
             envelope_xdr, network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
         ).transaction
 
-        payment_data = cls._find_matching_payment_data(
-            response, horion_tx, op_results, transaction
+        payment_data = await cls._find_matching_payment_data(
+            response, horizon_tx, op_results, transaction
         )
         if not payment_data:
             logger.warning(f"Transaction matching memo {memo} has no payment operation")
@@ -173,20 +178,20 @@ class Command(BaseCommand):
         if transaction.protocol == Transaction.PROTOCOL.sep31:
             # SEP-31 uses 'pending_receiver' status
             transaction.status = Transaction.STATUS.pending_receiver
-            transaction.save()
+            await sync_to_async(transaction.save)()
         else:
             # SEP-6 and 24 uses 'pending_anchor' status
             transaction.status = Transaction.STATUS.pending_anchor
-            transaction.save()
-        maybe_make_callback(transaction)
+            await sync_to_async(transaction.save)()
+        await maybe_make_callback_async(transaction)
         return
 
     @classmethod
-    def _find_matching_payment_data(
+    async def _find_matching_payment_data(
         cls,
         response: Dict,
         horizon_tx: HorizonTransaction,
-        result_ops: List[Xdr.types.OperationResult],
+        result_ops: List[OperationResult],
         transaction: Transaction,
     ) -> Optional[Dict]:
         matching_payment_data = None
@@ -199,11 +204,12 @@ class Command(BaseCommand):
                 op, op_result, transaction.asset
             )
             if maybe_payment_data:
-                cls._update_transaction_info(
+                await cls._update_transaction_info(
                     transaction,
                     response["id"],
                     response["paging_token"],
-                    ops[idx].source or horizon_tx.source.public_key,
+                    getattr(ops[idx].source, "account_id", None)
+                    or horizon_tx.source.account_id,
                 )
                 matching_payment_data = maybe_payment_data
                 break
@@ -211,13 +217,13 @@ class Command(BaseCommand):
         return matching_payment_data
 
     @classmethod
-    def _update_transaction_info(
+    async def _update_transaction_info(
         cls, transaction: Transaction, stellar_txid: str, paging_token: str, source: str
     ):
         transaction.stellar_transaction_id = stellar_txid
         transaction.from_address = source
         transaction.paging_token = paging_token
-        transaction.save()
+        await sync_to_async(transaction.save)()
 
     @classmethod
     def _check_for_payment_match(
@@ -235,24 +241,23 @@ class Command(BaseCommand):
 
     @classmethod
     def _cast_operation_and_result(
-        cls, operation: Operation, op_result: Xdr.types.OperationResult
+        cls, operation: Operation, op_result: OperationResult
     ) -> Tuple[Optional[PaymentOp], Optional[PaymentOpResult]]:
-        code = operation.type_code()
         op_xdr_obj = operation.to_xdr_object()
-        if code == Xdr.const.PAYMENT:
+        if isinstance(operation, Payment):
             return (
                 Payment.from_xdr_object(op_xdr_obj),
-                op_result.tr.paymentResult,
+                op_result.tr.payment_result,
             )
-        elif code == Xdr.const.PATH_PAYMENT_STRICT_SEND:
+        elif isinstance(operation, PathPaymentStrictSend):
             return (
                 PathPaymentStrictSend.from_xdr_object(op_xdr_obj),
-                op_result.tr.pathPaymentStrictSendResult,
+                op_result.tr.path_payment_strict_send_result,
             )
-        elif code == Xdr.const.PATH_PAYMENT_STRICT_RECEIVE:
+        elif isinstance(operation, PathPaymentStrictReceive):
             return (
                 PathPaymentStrictReceive.from_xdr_object(op_xdr_obj),
-                op_result.tr.pathPaymentStrictReceiveResult,
+                op_result.tr.path_payment_strict_receive_result,
             )
         else:
             return None, None
@@ -262,7 +267,7 @@ class Command(BaseCommand):
         cls, operation: PaymentOp, op_result: PaymentOpResult
     ) -> Dict:
         values = {
-            "destination": operation.destination,
+            "destination": operation.destination.account_id,
             "amount": None,
             "code": None,
             "issuer": None,
@@ -278,9 +283,7 @@ class Command(BaseCommand):
             # this method of fetching amounts gives the "raw" amount, so
             # we need to divide by Operation._ONE: 10000000
             # (Stellar uses 7 decimals places of precision)
-            values["amount"] = str(
-                Decimal(op_result.success.last.amount) / Operation._ONE
-            )
+            values["amount"] = from_xdr_amount(op_result.success.last.amount.int64)
             values["code"] = operation.dest_asset.code
             values["issuer"] = operation.dest_asset.issuer
         elif isinstance(operation, PathPaymentStrictReceive):

@@ -1,8 +1,19 @@
-from typing import Dict, Optional
+from typing import Optional, List, Dict
+
+from rest_framework.request import Request
+
+from polaris.sep10.token import SEP10Token
 
 
 class CustomerIntegration:
-    def more_info_url(self, account: str) -> str:
+    def more_info_url(
+        self,
+        token: SEP10Token,
+        request: Request,
+        account: str,
+        *args: List,
+        **kwargs: Dict
+    ) -> str:
         """
         .. _SEP-6 Customer Information Status: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#4-customer-information-status
 
@@ -10,11 +21,20 @@ class CustomerIntegration:
         with the anchor. This URL will be returned in a `SEP-6 Customer Information Status`_
         response. This is optional.
 
+        :param token: the ``SEP10Token`` object representing the authenticated session
+        :param request: a ``rest_framework.request.Request`` instance
         :param account: the stellar account for the url to be returned
         """
         pass
 
-    def get(self, params: Dict) -> Dict:
+    def get(
+        self,
+        token: SEP10Token,
+        request: Request,
+        params: Dict,
+        *args: List,
+        **kwargs: Dict
+    ) -> Dict:
         """
         .. _`SEP-12 GET /customer`: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0012.md#customer-get
         .. _ObjectDoesNotExist: https://docs.djangoproject.com/en/3.1/ref/exceptions/#objectdoesnotexist
@@ -30,11 +50,20 @@ class CustomerIntegration:
         does not exist. An error response with the appropriate status will be sent using
         the message passed to the exception.
 
+        :param token: the ``SEP10Token`` object representing the authenticated session
+        :param request: a ``rest_framework.request.Request`` instance
         :param params: request parameters as described in SEP-12
         """
         pass
 
-    def put(self, params: Dict) -> str:
+    def put(
+        self,
+        token: SEP10Token,
+        request: Request,
+        params: Dict,
+        *args: List,
+        **kwargs: Dict
+    ) -> str:
         """
         Update or create a record of the customer information passed. This information can
         then later be queried for when a client requests a deposit or withdraw on behalf of
@@ -65,24 +94,44 @@ class CustomerIntegration:
         ``PUT /customer/verification`` to return the verification codes sent as a result of the
         initial call to ``PUT /customer``.
 
+        :param token: the ``SEP10Token`` object representing the authenticated session
+        :param request: a ``rest_framework.request.Request`` instance
         :param params: request parameters as described in SEP-12_
         :raises: ValueError or ObjectDoesNotExist
         """
         pass
 
-    def delete(self, account: str, memo: Optional[str], memo_type: Optional[str]):
+    def delete(
+        self,
+        token: SEP10Token,
+        request: Request,
+        account: str,
+        memo: Optional[str],
+        memo_type: Optional[str],
+        *args: List,
+        **kwargs: Dict
+    ):
         """
         Delete the record of the customer specified by `account`, `memo`, and `memo_type`.
         If such a record does not exist, raise a ``ObjectDoesNotExist`` exception for Polaris
         to return a 404 Not Found response.
 
+        :param token: the ``SEP10Token`` object representing the authenticated session
+        :param request: a ``rest_framework.request.Request`` instance
         :param account: the stellar account associated with the customer
         :param memo: the optional memo used to create the customer
         :param memo_type: the optional type of the memo used to create to the customer
         """
         pass
 
-    def callback(self, params: Dict):
+    def callback(
+        self,
+        token: SEP10Token,
+        request: Request,
+        params: Dict,
+        *args: List,
+        **kwargs: Dict
+    ):
         """
         Save the URL provided in association with the user identified by the parameters sent
         in the request. The anchor is responsible for making POST requests containing the
@@ -99,12 +148,22 @@ class CustomerIntegration:
 
         If this function is not implemented, Polaris will respond with a 501 Not Implemented.
 
+        :param token: the ``SEP10Token`` object representing the authenticated session
+        :param request: a ``rest_framework.request.Request`` instance
         :param params: request parameters as described in SEP-12_
         :raises: ValueError or django.core.exceptions.ObjectDoesNotExist
         """
         raise NotImplementedError()
 
-    def put_verification(self, account: str, params: Dict) -> Dict:
+    def put_verification(
+        self,
+        token: SEP10Token,
+        request: Request,
+        account: str,
+        params: Dict,
+        *args: List,
+        **kwargs: Dict
+    ) -> Dict:
         """
         .. _`endpoint specification`: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0012.md#customer-put-verification
 
@@ -130,6 +189,8 @@ class CustomerIntegration:
 
         If this function is not implemented, Polaris will respond with a 501 Not Implemented.
 
+        :param token: the ``SEP10Token`` object representing the authenticated session
+        :param request: a ``rest_framework.request.Request`` instance
         :param account: the Stellar account authenticated via SEP-10
         :param params: the request body of the ``PUT /customer/verification`` call
         :raises: ValueError, ObjectDoesNotExist, NotImplementedError

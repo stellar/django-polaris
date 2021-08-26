@@ -31,8 +31,8 @@ services:
     depends_on:
       - server
     command: watchmedo auto-restart --recursive --pattern="*.py" --directory="." python manage.py watch_transactions
-  check_trustlines:
-    container_name: check_trustlines
+  process_pending_deposits:
+    container_name: process_pending_deposits
     network_mode: host
     build: .
     volumes:
@@ -41,18 +41,7 @@ services:
       - ./example/data:/code/data
     depends_on:
       - server
-    command: watchmedo auto-restart --recursive --pattern="*.py" --directory="." python manage.py check_trustlines -- --loop
-  poll_pending_deposits:
-    container_name: poll_pending_deposits
-    network_mode: host
-    build: .
-    volumes:
-      - ./polaris/polaris:/code/polaris/polaris
-      - ./example/server:/code/server
-      - ./example/data:/code/data
-    depends_on:
-      - server
-    command: watchmedo auto-restart --recursive --pattern="*.py" --directory="." python manage.py poll_pending_deposits -- --loop
+    command: watchmedo auto-restart --recursive --pattern="*.py" --directory="." python manage.py process_pending_deposits -- --loop
   poll_outgoing_transactions:
     container_name: poll_outgoing_transactions
     network_mode: host

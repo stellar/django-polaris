@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Dict
 from django.db.models import QuerySet
 
 from polaris.models import Transaction
@@ -10,7 +10,9 @@ class RailsIntegration:
     accounts or other crypto networks.
     """
 
-    def poll_outgoing_transactions(self, transactions: QuerySet) -> List[Transaction]:
+    def poll_outgoing_transactions(
+        self, transactions: QuerySet, *args: List, **kwargs: Dict
+    ) -> List[Transaction]:
         """
         Check the transactions that are still in a ``pending_external`` status and
         return the ones that are completed, meaning the user has received the funds.
@@ -25,7 +27,9 @@ class RailsIntegration:
         """
         pass
 
-    def execute_outgoing_transaction(self, transaction: Transaction):
+    def execute_outgoing_transaction(
+        self, transaction: Transaction, *args: List, **kwargs: Dict
+    ):
         """
         Send the amount of the off-chain asset specified by `transaction` minus fees
         to the user associated with `transaction`. This function is used for SEP-6 &
@@ -78,7 +82,9 @@ class RailsIntegration:
         """
         pass
 
-    def poll_pending_deposits(self, pending_deposits: QuerySet) -> List[Transaction]:
+    def poll_pending_deposits(
+        self, pending_deposits: QuerySet, *args: List, **kwargs: Dict
+    ) -> List[Transaction]:
         """
         .. _autocommit: https://docs.djangoproject.com/en/2.2/topics/db/transactions/#autocommit
 
@@ -148,7 +154,7 @@ class RailsIntegration:
                 ).update(pending_execution_attempt=True)
 
         This is done to ensure the same ``Transaction`` object is not retrieved
-        from the database by multiple invocations of the poll_pending_deposits
+        from the database by multiple invocations of the process_pending_deposits
         command and submitted to Stellar as unique transactions.
 
         This differs from the majority of other queries Polaris makes, which

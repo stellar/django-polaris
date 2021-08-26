@@ -5,6 +5,7 @@ import uuid
 from typing import Optional, Union, Tuple, Dict
 from logging import getLogger as get_logger, LoggerAdapter
 
+import aiohttp
 from django.utils.translation import gettext
 from rest_framework import status
 from rest_framework.response import Response
@@ -13,6 +14,7 @@ from stellar_sdk.exceptions import NotFoundError
 from stellar_sdk.account import Account, Thresholds
 from stellar_sdk import Memo
 from requests import Response as RequestsResponse, RequestException, post
+from aiohttp import ClientResponse
 
 from polaris import settings
 from polaris.models import Transaction
@@ -117,6 +119,15 @@ def get_account_obj(kp):
             .account_id(account_id=kp.public_key)
             .call()
         )
+    except NotFoundError:
+        raise RuntimeError(f"account {kp.public_key} does not exist")
+    else:
+        return load_account(json_resp), json_resp
+
+
+async def get_account_obj_async(kp, server):
+    try:
+        json_resp = await server.accounts().account_id(account_id=kp.public_key).call()
     except NotFoundError:
         raise RuntimeError(f"account {kp.public_key} does not exist")
     else:
@@ -274,6 +285,48 @@ def maybe_make_callback(transaction: Transaction, timeout: Optional[int] = None)
         else:
             if not callback_resp.ok:
                 logger.error(f"Callback request returned {callback_resp.status_code}")
+
+
+async def make_on_change_callback_async(
+    transaction: Transaction, timeout: Optional[int] = None
+) -> ClientResponse:
+    if (
+        not transaction.on_change_callback
+        or transaction.on_change_callback.lower() == "postmessage"
+    ):
+        raise ValueError("invalid or missing on_change_callback")
+    if not timeout:
+        timeout = settings.CALLBACK_REQUEST_TIMEOUT
+    timeout_obj = aiohttp.ClientTimeout(total=timeout)
+    async with aiohttp.ClientSession(timeout=timeout_obj) as session:
+        return await session.post(
+            url=transaction.on_change_callback,
+            json=TransactionSerializer(transaction).data,
+            timeout=timeout,
+        )
+
+
+async def maybe_make_callback_async(
+    transaction: Transaction, timeout: Optional[int] = None
+):
+    """
+    Makes the on_change_callback request if present on the transaciton and
+    potentially logs an error. Use this function only if the response to the
+    callback is irrelevant for your use case.
+    """
+    if (
+        transaction.on_change_callback
+        and transaction.on_change_callback.lower() != "postmessage"
+    ):
+        try:
+            callback_resp = await make_on_change_callback_async(
+                transaction, timeout=timeout
+            )
+        except RequestException as e:
+            logger.error(f"Callback request raised {e.__class__.__name__}: {str(e)}")
+        else:
+            if not callback_resp.ok:
+                logger.error(f"Callback request returned {callback_resp.status}")
 
 
 def validate_patch_request_fields(fields: Dict, transaction: Transaction):
