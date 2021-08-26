@@ -90,14 +90,22 @@ Add Polaris endpoints
 Add Polaris' endpoints to ``urls.py`` in the ``app`` inner directory:
 ::
 
-    from django.contrib import admin
     from django.urls import path, include
     import polaris.urls
 
     urlpatterns = [
-        path('admin/', admin.site.urls),
+        ...,
         path("", include(polaris.urls))
     ]
+
+.. note::
+    Leaving ``admin.urls`` in ``urlpatterns`` will allow anyone using your service to access the admin menu login page.
+    By default, Django applications don't have any ``User`` models with usernames and passwords, but you may want to
+    remove the admin URLs to reduce risk regardless.
+
+    If you want to keep the admin panel for internal use, another option is to make the ``/admin`` path only accessible
+    via a private network. This can be accomplished by configuring a proxy server accordingly or simply deploying a
+    second instance of the server process on the private network.
 
 Specify environment variables
 -----------------------------

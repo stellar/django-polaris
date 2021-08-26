@@ -55,10 +55,16 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
 ]
 
+local_mode = env.bool("LOCAL_MODE", default=False)
+
+# Ensure SEP-24 session cookies have the secure flag
+SESSION_COOKIE_SECURE = not local_mode
+
 # Redirect HTTP to HTTPS if not in local mode
-SECURE_SSL_REDIRECT = not env.bool("LOCAL_MODE", default=False)
+SECURE_SSL_REDIRECT = not local_mode
 if SECURE_SSL_REDIRECT:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
 
 APPEND_SLASH = False
 
