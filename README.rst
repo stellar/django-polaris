@@ -163,16 +163,17 @@ Add the Polaris endpoints in ``urls.py``
 Database Models
 ^^^^^^^^^^^^^^^
 
-.. _psycopg2: https://pypi.org/project/psycopg2/
 .. _repository: https://github.com/stellar/django-polaris/issues
 .. _Fernet symmetric encryption: https://cryptography.io/en/latest/fernet/
 .. _Asset: https://django-polaris.readthedocs.io/en/stable/models/index.html#polaris.models.Asset
+.. _`Django-supported databases`: https://docs.djangoproject.com/en/3.2/ref/databases/
+.. _`DATABASES setting docs`: https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 
-Polaris works with all major relational databases, and the psycopg2_ PostgreSQL driver in
-installed out-of-the-box. If you find Polaris attempts to make queries incompatible with your
-database, file an issue in the project's github repository_.
+Polaris works with all `Django-supported databases`_. Install your database driver and see the `DATABASES setting docs`_
+for configuring the database connection. If you find Polaris attempts to make queries incompatible with your database,
+file an issue in the project's github repository_.
 
-Run migrations to create these tables in your database.
+Once configured, run migrations to create these tables in your database.
 ::
 
     python manage.py migrate
