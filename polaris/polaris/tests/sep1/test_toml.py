@@ -3,6 +3,7 @@ from unittest.mock import patch, Mock
 import toml
 import pytest
 from stellar_sdk import Keypair
+from rest_framework.request import Request
 
 from polaris import settings
 from polaris.models import Asset
@@ -27,6 +28,7 @@ def test_toml_generated(mock_toml_func, client):
     assert response.status_code == 200
     assert response.content_type == "text/plain"
     assert mock_toml_func.was_called_once()
+    assert isinstance(mock_toml_func.call_args[0][0], Request)
 
     toml_data = toml.loads(response.content.decode())
     assert "NETWORK_PASSPHRASE" in toml_data

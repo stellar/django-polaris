@@ -41,7 +41,7 @@ class PolarisPlainTextRenderer(BaseRenderer):
 
 @api_view(["GET"])
 @renderer_classes([PolarisPlainTextRenderer])
-def generate_toml(_request: Request) -> Response:
+def generate_toml(request: Request) -> Response:
     """Generate a TOML-formatted string"""
     if registered_toml_func is get_stellar_toml:
         # integration function is not used, check to see if a static file is defined
@@ -76,7 +76,7 @@ def generate_toml(_request: Request) -> Response:
     if "sep-31" in settings.ACTIVE_SEPS:
         toml_dict["DIRECT_PAYMENT_SERVER"] = os.path.join(settings.HOST_URL, "sep31")
 
-    toml_dict.update(registered_toml_func())
+    toml_dict.update(registered_toml_func(request))
     content = toml.dumps(toml_dict)
 
     return Response(content, content_type="text/plain")
