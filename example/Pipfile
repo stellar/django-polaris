@@ -9,6 +9,12 @@ watchdog = "<0.10"
 [packages]
 gunicorn = "*"
 psycopg2-binary = ">=2.9, <3.0"
+
+# Uncomment the following line if you would like to run the example without docker
+# You must run `pipenv install` from the example folder.
+# django-polaris = {path = "..", editable = true}
+
+# Comment the following line if you would like to run the example without docker
 django-polaris = {path = "/code", editable = true}
 
 [requires]
