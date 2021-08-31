@@ -63,7 +63,8 @@ from the project's ``settings.py``.
 
 First make sure you have ``cd``'ed into your django project's main directory
 and then run
-::
+
+.. code-block:: console
 
     pip install django-polaris
 
@@ -74,19 +75,21 @@ Settings
 .. _corsheaders documentation: https://github.com/adamchainz/django-cors-headers
 
 Add the following to ``INSTALLED_APPS`` in settings.py.
-::
+
+.. code-block:: python
 
     INSTALLED_APPS = [
         ...,
         "corsheaders",
         "rest_framework",
         "polaris",
-        <YOUR APP NAME>
+        "<YOUR APP NAME>"
     ]
 
 Add ``CorsMiddleware`` to your ``settings.MIDDLEWARE``. It should be listed above
 other middleware that can return responses such as ``CommonMiddleware``.
-::
+
+.. code-block:: python
 
     MIDDLEWARE = [
         ...,
@@ -100,7 +103,8 @@ does not change the CORS policy for any other endpoint on the server. You can ch
 this functionality using the settings listed in the `corsheaders documentation`_.
 
 Optionally, you can add Polaris' logger to your `LOGGING` configuration. For example:
-::
+
+.. code-block:: python
 
     LOGGING = {
         'version': 1,
@@ -157,7 +161,8 @@ Endpoints
 ^^^^^^^^^
 
 Add the Polaris endpoints in ``urls.py``
-::
+
+.. code-block:: python
 
     import polaris.urls
     from django.urls import path, include
@@ -181,13 +186,15 @@ for configuring the database connection. If you find Polaris attempts to make qu
 file an issue in the project's github repository_.
 
 Once configured, run migrations to create these tables in your database.
-::
+
+.. code-block:: console
 
     python manage.py migrate
 
 Now, create an ``Asset`` database object for each asset you intend to anchor. Get
 into your python shell, then run something like this:
-::
+
+.. code-block:: python
 
     from polaris.models import Asset
     Asset.objects.create(
@@ -228,20 +235,23 @@ The steps below outline the settings necessary to ensure your deployment is
 secure.
 
 To redirect HTTP traffic to HTTPS, add the following to settings.py:
-::
+
+.. code-block:: python
 
     SECURE_SSL_REDIRECT = True
 
 And if you're running Polaris behind a HTTPS proxy:
-::
+
+.. code-block:: python
 
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 This tells Django what header to check and what value it should be in
 order to consider the incoming request secure.
 
-If you're running SEP-24, add the following::
-::
+If you're running SEP-24, add the following
+
+.. code-block:: python
 
     SESSION_COOKIE_SECURE = True
 
@@ -270,13 +280,15 @@ Local Development
 ^^^^^^^^^^^^^^^^^
 
 Locally, Polaris can be run using Django's HTTP development server
-::
+
+.. code-block:: console
 
     python manage.py runserver
 
 If you're using Polaris' SEP-24 support, you also need to use the following
 environment variable:
-::
+
+.. code-block:: console
 
     LOCAL_MODE=1
 
@@ -290,14 +302,16 @@ Contributing
 
 To set up the development environment or run the SDF's reference server, run follow the
 instructions below.
-::
+
+.. code-block:: console
 
     git clone git@github.com:stellar/django-polaris.git
     cd django-polaris
 
 Then, add a ``.env`` file in the ``example`` directory. You'll need to create
 a signing account on Stellar's testnet and add it to your environment variables.
-::
+
+.. code-block:: console
 
     DJANGO_SECRET_KEY="supersecretdjangokey"
     DJANGO_DEBUG=True
@@ -313,18 +327,21 @@ Next, you'll need to create an asset on the Stellar test network and setup a dis
 Polaris comes with a `testnet issue` command to help with this.
 
 Now you're ready to add your asset to Polaris. Run the following commands:
-::
 
-    $ docker-compose build
-    $ docker-compose up server
+.. code-block:: console
+
+    docker-compose build
+    docker-compose up server
 
 Use another process to run the following:
-::
 
-    $ docker exec -it server python manage.py shell
+.. code-block:: console
+
+    docker exec -it server python manage.py shell
 
 Once you enter the python console, create the asset database object:
-::
+
+.. code-block:: python
 
     from polaris.models import Asset
 
@@ -333,9 +350,10 @@ Once you enter the python console, create the asset database object:
 Enter the code, issuer, and distribution seed for the asset. Enable the SEPs you want to test.
 
 Finally, exit the python console, kill the current ``docker-compose`` process, and run a new one:
-::
 
-    $ docker-compose up
+.. code-block:: console
+
+    docker-compose up
 
 This will run all processes, and you should now have a anchor server running on port 8000.
 When you make changes locally, the docker containers will restart with the updated code.
@@ -343,7 +361,8 @@ When you make changes locally, the docker containers will restart with the updat
 Testing
 ^^^^^^^
 You can install the dependencies locally in a virtual environment:
-::
+
+.. code-block:: console
 
     pip install pipenv
     cd django-polaris
@@ -352,7 +371,8 @@ You can install the dependencies locally in a virtual environment:
 
 Or, you can simply run the tests from inside the docker container. However,
 this may be slower.
-::
+
+.. code-block:: console
 
     docker exec -it server pytest -c polaris/pytest.ini
 
