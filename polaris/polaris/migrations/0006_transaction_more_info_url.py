@@ -2,9 +2,9 @@
 
 from django.db import migrations, models
 from django.db.models.functions import Concat
-from django.urls import reverse
 from polaris import settings
 from polaris.shared.endpoints import SEP6_MORE_INFO_PATH
+from polaris.sep24.urls import SEP24_MORE_INFO_PATH
 
 
 def populate_more_info_urls(apps, _):
@@ -12,7 +12,7 @@ def populate_more_info_urls(apps, _):
     if "sep-24" in settings.ACTIVE_SEPS:
         Transaction.objects.filter(protocol="sep24").update(
             more_info_url=Concat(
-                models.Value(f"{settings.HOST_URL}{reverse('more_info')}?id="),
+                models.Value(f"{settings.HOST_URL}{SEP24_MORE_INFO_PATH}?id="),
                 models.F("id"),
                 output_field=models.TextField(null=True, blank=True),
             ),
