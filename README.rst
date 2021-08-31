@@ -1,6 +1,6 @@
-==================
-Welcome to Polaris
-==================
+==============
+Django Polaris
+==============
 
 .. image:: https://circleci.com/gh/stellar/django-polaris.svg?style=shield
     :target: https://circleci.com/gh/stellar/django-polaris
@@ -15,8 +15,14 @@ Welcome to Polaris
 .. _readthedocs: https://django-polaris.readthedocs.io/
 .. _tutorial: https://django-polaris.readthedocs.io/en/stable/tutorials/index.html
 .. _`email list`: https://groups.google.com/g/stellar-polaris
+.. _`polaris-project-template`: https://github.com/JakeUrban/polaris-project-template
 
-To get a SEP-24 anchor server running quickly, see the tutorial_.
+Getting Started
+===============
+
+If you're starting without an existing django application, see the `polaris-project-template`_
+repository for getting started with the boilerplate code. To get a SEP-24 anchor server running
+quickly, see the tutorial_.
 
 For important updates on Polaris' development and releases please join the `email list`_.
 
@@ -75,6 +81,7 @@ Add the following to ``INSTALLED_APPS`` in settings.py.
         "corsheaders",
         "rest_framework",
         "polaris",
+        <YOUR APP NAME>
     ]
 
 Add ``CorsMiddleware`` to your ``settings.MIDDLEWARE``. It should be listed above
