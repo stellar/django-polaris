@@ -1,8 +1,10 @@
-from stellar_sdk import Server, Keypair, TransactionBuilder
+from typing import Tuple, Optional
+
+from stellar_sdk import Server, Keypair, TransactionBuilder, Memo, HashMemo
 from stellar_sdk.exceptions import NotFoundError
 
 from polaris.models import Transaction
-from polaris.utils import getLogger, load_account
+from polaris.utils import getLogger, load_account, memo_hex_to_base64
 from polaris import settings
 
 
@@ -10,7 +12,9 @@ logger = getLogger(__name__)
 
 
 class CustodyIntegration:
-    def get_distribution_account(self, transaction: Transaction) -> str:
+    def get_receiving_account_and_memo(
+        self, transaction: Transaction
+    ) -> Tuple[str, Optional[Memo]]:
         raise NotImplementedError()
 
     def submit_deposit_transaction(self, transaction: Transaction) -> dict:
@@ -21,8 +25,11 @@ class CustodyIntegration:
 
 
 class SelfCustodyIntegration(CustodyIntegration):
-    def get_distribution_account(self, transaction: Transaction) -> str:
-        return transaction.asset.distribution_account
+    def get_receiving_account_and_memo(
+        self, transaction: Transaction
+    ) -> Tuple[str, Optional[Memo]]:
+        padded_hex_memo = "0" * (64 - len(transaction.id.hex)) + transaction.id.hex
+        return transaction.asset.distribution_account, HashMemo(padded_hex_memo)
 
     def submit_deposit_transaction(self, transaction: Transaction) -> dict:
         with Server(horizon_url=settings.HORIZON_URI) as server:
