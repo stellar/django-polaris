@@ -30,12 +30,7 @@ class SelfCustodyIntegration(CustodyIntegration):
             return server.submit_transaction(transaction.envelope_xdr)
 
     def create_destination_account(self, transaction: Transaction) -> dict:
-        if self.requires_multisig(transaction):
-            rdi.create_channel_account(transaction)
-            if not transaction.channel_account:
-                asset = transaction.asset
-                transaction.refresh_from_db()
-                transaction.asset = asset
+        if transaction.channel_account:
             source_keypair = Keypair.from_secret(transaction.channel_seed)
         else:
             source_keypair = Keypair.from_secret(transaction.asset.distribution_seed)
@@ -61,16 +56,6 @@ class SelfCustodyIntegration(CustodyIntegration):
             ).build()
             transaction_envelope.sign(source_keypair)
             return server.submit_transaction(transaction_envelope)
-
-    @staticmethod
-    def requires_multisig(transaction: Transaction) -> bool:
-        master_signer = transaction.asset.get_distribution_account_master_signer()
-        thresholds = transaction.asset.get_distribution_account_thresholds()
-        return (
-            not master_signer
-            or master_signer["weight"] == 0
-            or master_signer["weight"] < thresholds["med_threshold"]
-        )
 
 
 registered_custody_integration = SelfCustodyIntegration()
