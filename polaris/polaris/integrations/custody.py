@@ -7,3 +7,6 @@ class CustodyIntegration:
 
     def submit_transaction(self, transaction: Transaction) -> dict:
         pass
+
+
+registered_custody_integration = CustodyIntegration()

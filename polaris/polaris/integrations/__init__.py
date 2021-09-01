@@ -19,7 +19,10 @@ from polaris.integrations.transactions import (
     registered_deposit_integration,
     registered_withdrawal_integration,
 )
-from polaris.integrations.custody import CustodyIntegration
+from polaris.integrations.custody import (
+    CustodyIntegration,
+    registered_custody_integration,
+)
 
 
 def register_integrations(
