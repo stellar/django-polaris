@@ -19,6 +19,7 @@ from polaris.integrations.transactions import (
     registered_deposit_integration,
     registered_withdrawal_integration,
 )
+from polaris.integrations.custody import CustodyIntegration
 
 
 def register_integrations(
@@ -30,6 +31,7 @@ def register_integrations(
     fee: Callable = None,
     sep6_info: Callable = None,
     customer: CustomerIntegration = None,
+    custody: CustodyIntegration = None,
 ):
     """
     Registers the integration classes and functions with Polaris
@@ -79,6 +81,8 @@ def register_integrations(
         values for an Asset
     :param customer: the ``CustomerIntegration`` subclass instance to be used
         by Polaris
+    :param custody: the ``CustodyIntegration`` subclass instance to be used
+        by Polaris
     :raises ValueError: missing argument(s)
     :raises TypeError: arguments are not subclasses of DepositIntegration or
         Withdrawal
@@ -103,6 +107,8 @@ def register_integrations(
         raise TypeError("send must be a subclass of SEP31ReceiverIntegration")
     elif rails and not issubclass(rails.__class__, RailsIntegration):
         raise TypeError("rails must be a subclass of RailsIntegration")
+    elif custody and not issubclass(custody.__class__, CustomerIntegration):
+        raise TypeError("custody must be a subclass of CustodyIntegration")
 
     for obj, attr in [
         (deposit, "registered_deposit_integration"),
@@ -113,6 +119,7 @@ def register_integrations(
         (customer, "registered_customer_integration"),
         (sep31_receiver, "registered_sep31_receiver_integration"),
         (rails, "registered_rails_integration"),
+        (custody, "registered_custody_integration"),
     ]:
         if obj:
             setattr(this, attr, obj)
