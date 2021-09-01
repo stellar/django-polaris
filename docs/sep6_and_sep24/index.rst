@@ -262,7 +262,7 @@ The ``process_pending_deposits`` command processes deposits transactions in one 
 You can invoke the command like so:
 ::
 
-    python manage.py poll_pending_deposits --loop --interval 10
+    python manage.py process_pending_deposits --loop --interval 10
 
 This process will continue indefinitely, calling the associated integration
 function, sleeping for 10 seconds, and then calling it again. You can also configure a
