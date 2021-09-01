@@ -14,7 +14,7 @@ logger = getLogger(__name__)
 class CustodyIntegration:
     def get_receiving_account_and_memo(
         self, transaction: Transaction
-    ) -> Tuple[str, Optional[Memo]]:
+    ) -> Tuple[str, Memo]:
         raise NotImplementedError()
 
     def submit_deposit_transaction(self, transaction: Transaction) -> dict:
@@ -27,7 +27,7 @@ class CustodyIntegration:
 class SelfCustodyIntegration(CustodyIntegration):
     def get_receiving_account_and_memo(
         self, transaction: Transaction
-    ) -> Tuple[str, Optional[Memo]]:
+    ) -> Tuple[str, Memo]:
         padded_hex_memo = "0" * (64 - len(transaction.id.hex)) + transaction.id.hex
         return transaction.asset.distribution_account, HashMemo(padded_hex_memo)
 
