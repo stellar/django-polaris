@@ -1,10 +1,9 @@
 from stellar_sdk import Server, Keypair, TransactionBuilder
 from stellar_sdk.exceptions import NotFoundError
 
-from polaris.models import Transaction, Asset
+from polaris.models import Transaction
 from polaris.utils import getLogger, load_account
 from polaris import settings
-from polaris.integrations import registered_deposit_integration as rdi
 
 
 logger = getLogger(__name__)
