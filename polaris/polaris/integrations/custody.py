@@ -11,7 +11,7 @@ logger = getLogger(__name__)
 
 
 class CustodyIntegration:
-    def get_distribution_account(self, asset: Asset) -> str:
+    def get_distribution_account(self, transaction: Transaction) -> str:
         raise NotImplementedError()
 
     def submit_deposit_transaction(self, transaction: Transaction) -> dict:
@@ -20,13 +20,10 @@ class CustodyIntegration:
     def create_destination_account(self, transaction: Transaction) -> dict:
         raise NotImplementedError()
 
-    def requires_multisig(self, transaction: Transaction) -> dict:
-        raise NotImplementedError()
-
 
 class SelfCustodyIntegration(CustodyIntegration):
-    def get_distribution_account(self, asset: Asset) -> str:
-        return asset.distribution_account
+    def get_distribution_account(self, transaction: Transaction) -> str:
+        return transaction.asset.distribution_account
 
     def submit_deposit_transaction(self, transaction: Transaction) -> dict:
         with Server(horizon_url=settings.HORIZON_URI) as server:
@@ -65,7 +62,8 @@ class SelfCustodyIntegration(CustodyIntegration):
             transaction_envelope.sign(source_keypair)
             return server.submit_transaction(transaction_envelope)
 
-    def requires_multisig(self, transaction: Transaction) -> bool:
+    @staticmethod
+    def requires_multisig(transaction: Transaction) -> bool:
         master_signer = transaction.asset.get_distribution_account_master_signer()
         thresholds = transaction.asset.get_distribution_account_thresholds()
         return (
