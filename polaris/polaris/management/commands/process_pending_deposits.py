@@ -211,6 +211,7 @@ class PendingDeposits:
 
         logger.debug(f"transaction {transaction.id} is not pending trust")
         try:
+            logger.debug(f"checking if transaction {transaction.id} requires multisig")
             requires_multisig = await cls.requires_multisig(transaction)
         except NotFoundError:
             await sync_to_async(cls.handle_error)(
@@ -411,6 +412,9 @@ class PendingDeposits:
             except RuntimeError:  # account does not exist
                 logger.debug(f"account for transaction {transaction.id} does not exist")
                 try:
+                    logger.debug(
+                        f"checking if transaction {transaction.id} requires multisig"
+                    )
                     requires_multisig = await PendingDeposits.requires_multisig(
                         transaction
                     )
@@ -726,7 +730,6 @@ class PendingDeposits:
 
     @staticmethod
     async def requires_multisig(transaction: Transaction) -> bool:
-        logger.debug(f"checking if transaction {transaction.id} requires multisig")
         master_signer = (
             await transaction.asset.get_distribution_account_master_signer_async()
         )
