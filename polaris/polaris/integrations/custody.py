@@ -4,7 +4,7 @@ from stellar_sdk import Server, Keypair, TransactionBuilder, Memo, HashMemo
 from stellar_sdk.exceptions import NotFoundError
 
 from polaris.models import Transaction
-from polaris.utils import getLogger, load_account, memo_hex_to_base64
+from polaris.utils import getLogger, load_account
 from polaris import settings
 
 
