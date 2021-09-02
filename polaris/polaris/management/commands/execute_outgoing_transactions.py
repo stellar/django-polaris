@@ -111,6 +111,12 @@ class Command(BaseCommand):
             logger.info(f"Calling execute_outgoing_transaction() for {transaction.id}")
             try:
                 rri.execute_outgoing_transaction(transaction)
+            except NotImplementedError:
+                logger.error(
+                    "RailsIntegration.execute_outgoing_transaction() is not implemented"
+                )
+                module.TERMINATE = True
+                break
             except Exception:
                 transaction.pending_execution_attempt = False
                 transaction.save()

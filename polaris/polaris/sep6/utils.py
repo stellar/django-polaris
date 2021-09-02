@@ -7,6 +7,7 @@ from polaris.utils import SEP_9_FIELDS
 from polaris.integrations import registered_customer_integration as rci
 from polaris.models import Transaction
 from polaris.sep10.token import SEP10Token
+from polaris import settings
 
 
 logger = getLogger(__name__)
@@ -51,10 +52,10 @@ def validate_403_response(
             logger.error("Invalid 'status' returned from process_sep6_request()")
             raise ValueError()
         response["status"] = integration_response["status"]
-        more_info_url = rci.more_info_url(
-            token=token, request=request, account=transaction.stellar_account
-        )
-        if more_info_url:
+        if settings.SEP6_USE_MORE_INFO_URL:
+            more_info_url = rci.more_info_url(
+                token=token, request=request, account=transaction.stellar_account
+            )
             response["more_info_url"] = more_info_url
 
     else:

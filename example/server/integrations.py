@@ -653,7 +653,7 @@ class MyCustomerIntegration(CustomerIntegration):
 
         if (
             user.email != params.get("email_address")
-            and PolarisUser.objects.filter(email=params["email_address"]).exists()
+            and PolarisUser.objects.filter(email=params.get("email_address")).exists()
         ):
             raise ValueError("email_address is taken")
 

@@ -38,7 +38,7 @@ class DepositIntegration:
         :param transaction: a ``Transaction`` that was executed on the
             Stellar network
         """
-        pass
+        raise NotImplementedError()
 
     def form_for_transaction(
         self,
@@ -185,7 +185,7 @@ class DepositIntegration:
         :param form: the form to be rendered in the template
         :param transaction: the transaction being processed
         """
-        pass
+        raise NotImplementedError()
 
     def after_form_validation(
         self,
@@ -227,7 +227,7 @@ class DepositIntegration:
         :param form: the completed ``forms.Form`` submitted by the user
         :param transaction: the ``Transaction`` database object
         """
-        pass
+        raise NotImplementedError()
 
     def interactive_url(
         self,
@@ -247,7 +247,7 @@ class DepositIntegration:
         :return: a URL to be used as the entry point for the interactive
             deposit flow
         """
-        pass
+        raise NotImplementedError()
 
     def save_sep9_fields(
         self,
@@ -293,7 +293,7 @@ class DepositIntegration:
         the exception in the response along with 400 HTTP status. The error message should be
         in the language specified by `language_code` if possible.
         """
-        pass
+        raise NotImplementedError()
 
     def process_sep6_request(
         self,
@@ -411,7 +411,7 @@ class DepositIntegration:
         :param transaction: An object representing the transaction that requires a channel
             account as it's source.
         """
-        pass
+        raise NotImplementedError()
 
     def patch_transaction(
         self,
@@ -524,7 +524,7 @@ class WithdrawalIntegration:
         :param form: the form to be rendered in the template
         :param transaction: the transaction being processed
         """
-        pass
+        raise NotImplementedError()
 
     def after_form_validation(
         self,
@@ -542,7 +542,7 @@ class WithdrawalIntegration:
         :param form: the completed ``forms.Form`` submitted by the user
         :param transaction: the ``Transaction`` database object
         """
-        pass
+        raise NotImplementedError()
 
     def interactive_url(
         self,
@@ -560,7 +560,7 @@ class WithdrawalIntegration:
         :return: a URL to be used as the entry point for the interactive
             withdraw flow
         """
-        pass
+        raise NotImplementedError()
 
     def save_sep9_fields(
         self,
@@ -576,7 +576,7 @@ class WithdrawalIntegration:
         """
         Same as ``DepositIntegration.save_sep9_fields``
         """
-        pass
+        raise NotImplementedError()
 
     def process_sep6_request(
         self,

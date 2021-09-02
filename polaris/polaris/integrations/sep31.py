@@ -72,7 +72,7 @@ class SEP31ReceiverIntegration:
         :param asset: the ``Asset`` object for the field values returned
         :param lang: the ISO 639-1 language code of the user
         """
-        pass
+        raise NotImplementedError()
 
     def process_post_request(
         self,
@@ -156,7 +156,7 @@ class SEP31ReceiverIntegration:
         :param params: The parameters included in the `/transaction` request
         :param transaction: the ``Transaction`` object representing the transaction being processed
         """
-        pass
+        raise NotImplementedError()
 
     def process_patch_request(
         self,
@@ -191,7 +191,7 @@ class SEP31ReceiverIntegration:
         :param params: the request body of the `PATCH /transaction` request
         :param transaction: the ``Transaction`` object that should be updated
         """
-        pass
+        raise NotImplementedError()
 
     def valid_sending_anchor(
         self,
@@ -210,7 +210,7 @@ class SEP31ReceiverIntegration:
         :param request: the ``rest_framework.request.Request`` instance
         :param public_key: the public key of the sending anchor's stellar account
         """
-        pass
+        raise NotImplementedError()
 
 
 registered_sep31_receiver_integration = SEP31ReceiverIntegration()
