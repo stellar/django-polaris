@@ -486,9 +486,6 @@ class PendingDeposits:
         transaction is scheduled for processing. If not, the transaction is
         updated to no longer be pending an execution attempt.
         """
-        logger.info(
-            f"checking for the appropriate trustline for transaction {transaction.id}"
-        )
         try:
             _, account = await get_account_obj_async(
                 Keypair.from_public_key(transaction.to_address), server
