@@ -4,5 +4,6 @@ include .env.example
 include polaris/polaris/static/polaris/base.css
 include polaris/polaris/static/polaris/company-icon.svg
 include polaris/polaris/static/polaris/chevron-down.svg
+recursive-include polaris/polaris/static/polaris/scripts *
 recursive-include polaris/polaris/templates *
 recursive-include polaris/polaris/locale *
