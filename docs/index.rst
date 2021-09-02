@@ -1,6 +1,6 @@
-==================
-Welcome to Polaris
-==================
+==============
+Django Polaris
+==============
 
 .. image:: https://circleci.com/gh/stellar/django-polaris.svg?style=shield
     :target: https://circleci.com/gh/stellar/django-polaris
@@ -13,8 +13,14 @@ Welcome to Polaris
     :target: https://pypi.python.org/pypi/django-polaris
 
 .. _`email list`: https://groups.google.com/g/stellar-polaris
+.. _`polaris-project-template`: https://github.com/JakeUrban/polaris-project-template
 
-To get a SEP-24 anchor server running quickly, see the :doc:`tutorial </tutorials/index>`.
+Getting Started
+===============
+
+If you're starting without an existing django application, see the `polaris-project-template`_
+repository for getting started with the boilerplate code. To get a SEP-24 anchor server running
+quickly, see the :doc:`tutorial </tutorials/index>`.
 
 For important updates on Polaris' development and releases please join the `email list`_.
 
@@ -28,7 +34,7 @@ What is Polaris?
 .. _Stellar Development Foundation: https://www.stellar.org/
 .. _github: https://github.com/stellar/django-polaris
 .. _django app: https://docs.djangoproject.com/en/3.0/intro/reusable-apps/
-.. _demo client: http://sep24.stellar.org/#HOME_DOMAIN=%22https://testanchor.stellar.org%22&TRANSFER_SERVER=%22%22&WEB_AUTH_ENDPOINT=%22%22&USER_SK=%22SBBMVOJQLRJTQISVSUPBI2ZNQLZYNR4ARGWFPDDEL2U7444HPDII4VCX%22&HORIZON_URL=%22https://horizon-testnet.stellar.org%22&ASSET_CODE=%22SRT%22&ASSET_ISSUER=%22%22&EMAIL_ADDRESS=%22%22&STRICT_MODE=false&AUTO_ADVANCE=true&PUBNET=false
+.. _`demo wallet`: http://demo-wallet.stellar.org
 
 Polaris is an extendable `django app`_ for Stellar Ecosystem Proposal (SEP) implementations
 maintained by the `Stellar Development Foundation`_ (SDF). Using Polaris, you can run a web
@@ -42,7 +48,7 @@ This is why each SEP implemented by Polaris comes with a programmable interface 
 to inject their own business logic.
 
 Polaris is completely open source and available on github_. The SDF also runs a reference
-server using Polaris that can be tested using our `demo client`_.
+server using Polaris that can be tested using our `demo wallet`_.
 
 Installation and Configuration
 ==============================
@@ -73,6 +79,7 @@ Add the following to ``INSTALLED_APPS`` in settings.py.
         "corsheaders",
         "rest_framework",
         "polaris",
+        <YOUR APP NAME>
     ]
 
 Add ``CorsMiddleware`` to your ``settings.MIDDLEWARE``. It should be listed above

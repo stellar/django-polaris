@@ -70,6 +70,10 @@ class Command(BaseCommand):
         )
         try:
             complete_transactions = rri.poll_outgoing_transactions(transactions)
+        except NotImplementedError:
+            module = sys.modules[__name__]
+            module.TERMINATE = True
+            return
         except Exception:
             logger.exception("An exception was raised by poll_pending_transfers()")
             return

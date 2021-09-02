@@ -204,12 +204,11 @@ class PendingDeposits:
             In this case, the transaction is submitted to the Stellar Network and
             updated as complete after success.
         """
-        logger.debug(f"processing transaction {transaction.id}")
+        logger.info(f"processing transaction {transaction.id}")
         if await cls.requires_trustline(transaction, server, locks):
-            logger.debug(f"transaction {transaction.id} requires trustline")
             return
 
-        logger.debug(f"transaction {transaction.id} is not pending trust")
+        logger.info(f"transaction {transaction.id} has the appropriate trustline")
         try:
             logger.debug(f"checking if transaction {transaction.id} requires multisig")
             requires_multisig = await cls.requires_multisig(transaction)
@@ -230,6 +229,7 @@ class PendingDeposits:
             await maybe_make_callback_async(transaction)
             return
         if requires_multisig:
+            logger.info(f"transaction {transaction.id} requires multiple signatures")
             await cls.save_as_pending_signatures(transaction, server)
             return
         logger.debug(f"transaction {transaction.id} does not require multisig")
@@ -425,9 +425,6 @@ class PendingDeposits:
                     )
                     raise RuntimeError("the distribution account does not exist")
                 if requires_multisig:
-                    logger.debug(
-                        f"creating channel account for transaction {transaction.id}"
-                    )
                     source_account_kp = await sync_to_async(cls.get_channel_keypair)(
                         transaction
                     )
@@ -535,9 +532,9 @@ class PendingDeposits:
                 f"{' or '.join(valid_statuses)}."
             )
 
+        logger.info(f"initiating Stellar deposit for {transaction.id}")
         transaction.status = Transaction.STATUS.pending_anchor
         await sync_to_async(transaction.save)()
-        logger.debug(f"initiating Stellar deposit for {transaction.id}")
         await maybe_make_callback_async(transaction)
 
         envelope = None
@@ -570,7 +567,9 @@ class PendingDeposits:
 
             transaction.status = Transaction.STATUS.pending_stellar
             await sync_to_async(transaction.save)()
-            logger.debug(f"transaction {transaction.id} now pending_stellar")
+            logger.info(
+                f"updating transaction {transaction.id} to pending_stellar status"
+            )
             await maybe_make_callback_async(transaction)
 
             try:
@@ -717,7 +716,7 @@ class PendingDeposits:
             return True
 
         if pending_trust and not transaction.claimable_balance_supported:
-            logger.debug(
+            logger.info(
                 f"destination account is pending_trust for transaction {transaction.id}"
             )
             transaction.status = Transaction.STATUS.pending_trust
@@ -742,8 +741,8 @@ class PendingDeposits:
 
     @classmethod
     async def save_as_pending_signatures(cls, transaction, server):
-        channel_kp = await sync_to_async(cls.get_channel_keypair)(transaction)
         try:
+            channel_kp = await sync_to_async(cls.get_channel_keypair)(transaction)
             channel_account, _ = await get_account_obj_async(channel_kp, server)
         except (RuntimeError, ConnectionError) as e:
             transaction.status = Transaction.STATUS.error
@@ -765,6 +764,9 @@ class PendingDeposits:
     @staticmethod
     def get_channel_keypair(transaction) -> Keypair:
         if not transaction.channel_account:
+            logger.info(
+                f"calling create_channel_account() for transaction {transaction.id}"
+            )
             rdi.create_channel_account(transaction=transaction)
         if not transaction.channel_seed:
             asset = transaction.asset

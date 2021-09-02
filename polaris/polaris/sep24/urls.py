@@ -17,6 +17,7 @@ from polaris.sep24.deposit import (
     get_interactive_deposit,
 )
 
+SEP24_MORE_INFO_PATH = "transaction/more_info"
 
 urlpatterns = [
     path("transactions/deposit/interactive", csrf_exempt(deposit)),
@@ -55,5 +56,5 @@ urlpatterns = [
     path("fee", fee),
     path("transaction", transaction),
     path("transactions", transactions),
-    path("transaction/more_info", more_info, name="more_info"),
+    path(SEP24_MORE_INFO_PATH, more_info, name="more_info"),
 ]

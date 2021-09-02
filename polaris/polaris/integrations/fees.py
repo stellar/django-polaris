@@ -8,7 +8,7 @@ from polaris.models import Asset
 
 
 def calculate_fee(
-    fee_params: Dict, request: Request = None, *_args: List, **_kwargs: Dict
+    fee_params: Dict, *_args: List, request: Request = None, **_kwargs: Dict
 ) -> Decimal:
     """
     .. _`/fee`: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md#fee

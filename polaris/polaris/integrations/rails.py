@@ -25,7 +25,7 @@ class RailsIntegration:
 
         :param transactions: a ``QuerySet`` of ``Transaction`` objects
         """
-        pass
+        raise NotImplementedError()
 
     def execute_outgoing_transaction(
         self, transaction: Transaction, *args: List, **kwargs: Dict
@@ -80,7 +80,7 @@ class RailsIntegration:
         :param transaction: the ``Transaction`` object associated with the payment
             this function should make
         """
-        pass
+        raise NotImplementedError()
 
     def poll_pending_deposits(
         self, pending_deposits: QuerySet, *args: List, **kwargs: Dict
@@ -164,7 +164,7 @@ class RailsIntegration:
         :return: a list of ``Transaction`` objects which correspond to
             successful user deposits to the anchor's account.
         """
-        pass
+        raise NotImplementedError()
 
 
 registered_rails_integration = RailsIntegration()

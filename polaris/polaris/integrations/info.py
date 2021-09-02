@@ -61,7 +61,7 @@ def default_info_func(
     :param lang: the language code the client requested for the `description`
         values in the response
     """
-    return {}
+    raise NotImplementedError()
 
 
 registered_info_func = default_info_func
