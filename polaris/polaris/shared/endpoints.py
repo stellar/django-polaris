@@ -49,19 +49,22 @@ def more_info(request: Request, sep6: bool = False) -> Response:
         "asset_code": request_transaction.asset.code,
         "asset": request_transaction.asset,
     }
-    if request_transaction.kind == Transaction.KIND.deposit:
-        content = rdi.content_for_template(
-            request=request,
-            template=Template.MORE_INFO,
-            transaction=request_transaction,
-        )
+    try:
+        if request_transaction.kind == Transaction.KIND.deposit:
+            content = rdi.content_for_template(
+                request=request,
+                template=Template.MORE_INFO,
+                transaction=request_transaction,
+            )
+        else:
+            content = rwi.content_for_template(
+                request=request,
+                template=Template.MORE_INFO,
+                transaction=request_transaction,
+            )
+    except NotImplementedError:
+        pass
     else:
-        content = rwi.content_for_template(
-            request=request,
-            template=Template.MORE_INFO,
-            transaction=request_transaction,
-        )
-    if content:
         context.update(content)
 
     # more_info.html will update the 'callback' parameter value to 'success' after
