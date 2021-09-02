@@ -25,7 +25,7 @@ class CustomerIntegration:
         :param request: a ``rest_framework.request.Request`` instance
         :param account: the stellar account for the url to be returned
         """
-        pass
+        raise NotImplementedError()
 
     def get(
         self,
@@ -54,7 +54,7 @@ class CustomerIntegration:
         :param request: a ``rest_framework.request.Request`` instance
         :param params: request parameters as described in SEP-12
         """
-        pass
+        raise NotImplementedError()
 
     def put(
         self,
@@ -99,7 +99,7 @@ class CustomerIntegration:
         :param params: request parameters as described in SEP-12_
         :raises: ValueError or ObjectDoesNotExist
         """
-        pass
+        raise NotImplementedError()
 
     def delete(
         self,
@@ -122,7 +122,7 @@ class CustomerIntegration:
         :param memo: the optional memo used to create the customer
         :param memo_type: the optional type of the memo used to create to the customer
         """
-        pass
+        raise NotImplementedError()
 
     def callback(
         self,

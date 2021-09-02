@@ -741,8 +741,8 @@ class PendingDeposits:
 
     @classmethod
     async def save_as_pending_signatures(cls, transaction, server):
-        channel_kp = await sync_to_async(cls.get_channel_keypair)(transaction)
         try:
+            channel_kp = await sync_to_async(cls.get_channel_keypair)(transaction)
             channel_account, _ = await get_account_obj_async(channel_kp, server)
         except (RuntimeError, ConnectionError) as e:
             transaction.status = Transaction.STATUS.error

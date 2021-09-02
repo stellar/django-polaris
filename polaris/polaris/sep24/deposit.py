@@ -139,14 +139,23 @@ def post_interactive_deposit(request: Request) -> Response:
             )
             transaction.save()
 
-        rdi.after_form_validation(request=request, form=form, transaction=transaction)
         next_form = rdi.form_for_transaction(request=request, transaction=transaction)
-        if next_form or rdi.content_for_template(
-            request=request,
-            template=Template.DEPOSIT,
-            form=next_form,
-            transaction=transaction,
-        ):
+        try:
+            rdi.after_form_validation(
+                request=request, form=form, transaction=transaction
+            )
+        except NotImplementedError:
+            pass
+        try:
+            next_content = rdi.content_for_template(
+                request=request,
+                template=Template.DEPOSIT,
+                form=next_form,
+                transaction=transaction,
+            )
+        except NotImplementedError:
+            next_content = None
+        if next_form or next_content:
             args = {"transaction_id": transaction.id, "asset_code": asset.code}
             if amount:
                 args["amount"] = amount
@@ -170,15 +179,15 @@ def post_interactive_deposit(request: Request) -> Response:
             return redirect(f"{reverse('more_info')}?{urlencode(args)}")
 
     else:
-        content = (
-            rdi.content_for_template(
+        try:
+            content = rdi.content_for_template(
                 request=request,
                 template=Template.DEPOSIT,
                 form=form,
                 transaction=transaction,
             )
-            or {}
-        )
+        except NotImplementedError:
+            content = {}
 
         url_args = {"transaction_id": transaction.id, "asset_code": asset.code}
         if callback:
@@ -257,22 +266,33 @@ def get_interactive_deposit(request: Request) -> Response:
         transaction.on_change_callback = args_or_error["on_change_callback"]
         transaction.save()
 
-    url = rdi.interactive_url(
-        request=request,
-        transaction=transaction,
-        asset=asset,
-        amount=amount,
-        callback=callback,
-    )
-    if url:  # The anchor uses a standalone interactive flow
+    try:
+        url = rdi.interactive_url(
+            request=request,
+            transaction=transaction,
+            asset=asset,
+            amount=amount,
+            callback=callback,
+        )
+    except NotImplementedError:
+        pass
+    else:
+        # The anchor uses a standalone interactive flow
         return redirect(url)
 
     form = rdi.form_for_transaction(
         request=request, transaction=transaction, amount=amount
     )
-    content = rdi.content_for_template(
-        request=request, template=Template.DEPOSIT, form=form, transaction=transaction
-    )
+    try:
+        content = rdi.content_for_template(
+            request=request,
+            template=Template.DEPOSIT,
+            form=form,
+            transaction=transaction,
+        )
+    except NotImplementedError:
+        content = None
+
     if not (form or content):
         logger.error("The anchor did not provide content, unable to serve page.")
         if transaction.status != transaction.STATUS.incomplete:
@@ -384,19 +404,25 @@ def deposit(token: SEP10Token, request: Request) -> Response:
     except Ed25519PublicKeyInvalidError:
         return render_error_response(_("invalid 'account'"))
 
-    try:
-        rdi.save_sep9_fields(
-            token=token,
-            request=request,
-            stellar_account=token.account,
-            fields=sep9_fields,
-            language_code=lang,
-        )
-    except ValueError as e:
-        # The anchor found a validation error in the sep-9 fields POSTed by
-        # the wallet. The error string returned should be in the language
-        # specified in the request.
-        return render_error_response(str(e))
+    if sep9_fields:
+        try:
+            rdi.save_sep9_fields(
+                token=token,
+                request=request,
+                stellar_account=token.account,
+                fields=sep9_fields,
+                language_code=lang,
+            )
+        except ValueError as e:
+            # The anchor found a validation error in the sep-9 fields POSTed by
+            # the wallet. The error string returned should be in the language
+            # specified in the request.
+            return render_error_response(str(e))
+        except NotImplementedError:
+            return render_error_response(
+                "passing SEP-9 fields in deposit requests is not supported",
+                status_code=501,
+            )
 
     # Construct interactive deposit pop-up URL.
     transaction_id = create_transaction_id()

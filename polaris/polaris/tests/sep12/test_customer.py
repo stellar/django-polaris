@@ -542,9 +542,11 @@ def test_get_valid_error_value(client):
 
 
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-def test_delete_success(client):
+@patch("polaris.sep12.customer.rci.delete")
+def test_delete_success(mock_delete, client):
     response = client.delete("/".join([endpoint, "test source address"]))
     assert response.status_code == 200
+    mock_delete.asset_called_once()
 
 
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
