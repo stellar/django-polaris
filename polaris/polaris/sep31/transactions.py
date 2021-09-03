@@ -15,13 +15,17 @@ from polaris.locale.utils import _is_supported_language, activate_lang_for_reque
 from polaris.sep10.utils import validate_sep10_token
 from polaris.sep10.token import SEP10Token
 from polaris.models import Transaction, Asset
-from polaris.integrations import registered_sep31_receiver_integration
+from polaris.integrations import (
+    registered_sep31_receiver_integration,
+    registered_custody_integration as rci,
+)
 from polaris.sep31.serializers import SEP31TransactionSerializer
 from polaris.utils import (
     render_error_response,
     create_transaction_id,
     memo_hex_to_base64,
     validate_patch_request_fields,
+    memo_str,
 )
 
 
@@ -126,14 +130,9 @@ class TransactionsAPIView(APIView):
                 status=400,
             )
 
-        transaction_id = create_transaction_id()
-        # create memo
-        transaction_id_hex = transaction_id.hex
-        padded_hex_memo = "0" * (64 - len(transaction_id_hex)) + transaction_id_hex
-        transaction_memo = memo_hex_to_base64(padded_hex_memo)
         # create transaction object without saving to the DB
         transaction = Transaction(
-            id=transaction_id,
+            id=create_transaction_id(),
             protocol=Transaction.PROTOCOL.sep31,
             kind=Transaction.KIND.send,
             status=Transaction.STATUS.pending_sender,
@@ -141,26 +140,36 @@ class TransactionsAPIView(APIView):
             asset=params["asset"],
             amount_in=params["amount"],
             amount_expected=params["amount"],
-            memo=transaction_memo,
-            memo_type=Transaction.MEMO_TYPES.hash,
-            receiving_anchor_account=params["asset"].distribution_account,
             client_domain=token.client_domain,
         )
 
         error_data = registered_sep31_receiver_integration.process_post_request(
             token=token, request=request, params=params, transaction=transaction
         )
-        try:
-            response_data = process_post_response(error_data, transaction)
-        except ValueError as e:
-            logger.error(str(e))
-            return render_error_response(
-                _("unable to process the request"), status_code=500
-            )
-        else:
-            transaction.save()
+        if error_data:
+            try:
+                validate_post_response(error_data, transaction)
+            except ValueError as e:
+                logger.error(str(e))
+                return render_error_response(
+                    _("unable to process the request"), status_code=500
+                )
+            else:
+                return Response(error_data, status=400)
 
-        return Response(response_data, status=400 if "error" in response_data else 201)
+        (
+            transaction.receiving_anchor_account,
+            memo_obj,
+        ) = rci.get_receiving_account_and_memo(request=request, transaction=transaction)
+        transaction.memo, transaction.memo_type = memo_str(memo_obj)
+        transaction.save()
+        response_data = {
+            "id": transaction.id,
+            "stellar_account_id": transaction.receiving_anchor_account,
+            "stellar_memo": transaction.memo,
+            "stellar_memo_type": transaction.memo_type,
+        }
+        return Response(response_data, status=201)
 
 
 def validate_post_request(request: Request) -> Dict:
@@ -225,39 +234,33 @@ def validate_post_fields(
     return dict(missing_fields)
 
 
-def process_post_response(error_data: Dict, transaction: Transaction) -> Dict:
-    if not error_data:
-        response_data = {
-            "id": transaction.id,
-            "stellar_account_id": transaction.asset.distribution_account,
-            "stellar_memo": transaction.memo,
-            "stellar_memo_type": transaction.memo_type,
-        }
-    else:
-        if Transaction.objects.filter(id=transaction.id).exists():
-            raise ValueError(f"transactions should not be created on bad requests")
-        elif error_data["error"] == "transaction_info_needed":
-            if not isinstance(error_data.get("fields"), dict):
-                raise ValueError("'fields' must serialize to a JSON object")
-            validate_post_fields_needed(error_data.get("fields"), transaction.asset)
-            if len(error_data) > 2:
-                raise ValueError(
-                    "extra fields returned in customer_info_needed response"
-                )
-        elif error_data["error"] == "customer_info_needed":
-            if ("type" in error_data and len(error_data) > 2) or (
-                "type" not in error_data and len(error_data) > 1
-            ):
-                raise ValueError(
-                    "extra fields returned in transaction_info_needed response"
-                )
-            elif type(error_data.get("type")) not in [None, str]:
-                raise ValueError("invalid value for 'type' key")
-        elif not isinstance(error_data["error"], str):
-            raise ValueError("'error' must be a string")
-        response_data = error_data
-
-    return response_data
+def validate_post_response(error_data: Dict, transaction: Transaction):
+    if error_data is None:
+        return None
+    elif not isinstance(error_data, dict):
+        raise ValueError(
+            "unexpected data type returned from process_post_request() "
+            f"({type(error_data)}), expected dict"
+        )
+    elif Transaction.objects.filter(id=transaction.id).exists():
+        raise ValueError(f"transactions should not be created on bad requests")
+    elif error_data["error"] == "transaction_info_needed":
+        if not isinstance(error_data.get("fields"), dict):
+            raise ValueError("'fields' must serialize to a JSON object")
+        validate_post_fields_needed(error_data.get("fields"), transaction.asset)
+        if len(error_data) > 2:
+            raise ValueError("extra fields returned in customer_info_needed response")
+    elif error_data["error"] == "customer_info_needed":
+        if ("type" in error_data and len(error_data) > 2) or (
+            "type" not in error_data and len(error_data) > 1
+        ):
+            raise ValueError(
+                "extra fields returned in transaction_info_needed response"
+            )
+        elif type(error_data.get("type")) not in [None, str]:
+            raise ValueError("invalid value for 'type' key")
+    elif not isinstance(error_data["error"], str):
+        raise ValueError("'error' must be a string")
 
 
 def validate_post_fields_needed(response_fields: Dict, asset: Asset):

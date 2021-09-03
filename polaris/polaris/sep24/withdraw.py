@@ -24,7 +24,7 @@ from polaris.utils import (
     render_error_response,
     extract_sep9_fields,
     create_transaction_id,
-    memo_hex_to_base64,
+    memo_str,
 )
 from polaris.sep24.utils import (
     interactive_url,
@@ -40,6 +40,7 @@ from polaris.integrations.forms import TransactionForm
 from polaris.locale.utils import validate_language, activate_lang_for_request
 from polaris.integrations import (
     registered_withdrawal_integration as rwi,
+    registered_custody_integration as rci,
     registered_fee_func,
     calculate_fee,
     registered_toml_func,
@@ -170,19 +171,13 @@ def post_interactive_withdraw(request: Request) -> Response:
             # ensure all changes from `after_form_validation()` have been saved to the db
             transaction.refresh_from_db()
 
-            # Add memo now that interactive flow is complete
-            #
-            # We use the transaction ID as a memo on the Stellar transaction for the
-            # payment in the withdrawal. This lets us identify that as uniquely
-            # corresponding to this `Transaction` in the database. But a UUID4 is a 32
-            # character hex string, while the Stellar HashMemo requires a 64 character
-            # hex-encoded (32 byte) string. So, we zero-pad the ID to create an
-            # appropriately sized string for the `HashMemo`.
-            transaction_id_hex = transaction.id.hex
-            padded_hex_memo = "0" * (64 - len(transaction_id_hex)) + transaction_id_hex
-            transaction.memo = memo_hex_to_base64(padded_hex_memo)
-
             if transaction.status != transaction.STATUS.pending_anchor:
+                # Add receiving account and memo now that anchor is ready to receive payment
+                (
+                    transaction.receiving_anchor_account,
+                    memo_obj,
+                ) = rci.get_receiving_account_and_memo(request, transaction)
+                transaction.memo, transaction.memo_type = memo_str(memo_obj)
                 transaction.status = Transaction.STATUS.pending_user_transfer_start
             else:
                 logger.info(f"Transaction {transaction.id} is pending KYC approval")
@@ -423,7 +418,6 @@ def withdraw(token: SEP10Token, request: Request,) -> Response:
         asset=asset,
         kind=Transaction.KIND.withdrawal,
         status=Transaction.STATUS.incomplete,
-        receiving_anchor_account=asset.distribution_account,
         memo_type=Transaction.MEMO_TYPES.hash,
         protocol=Transaction.PROTOCOL.sep24,
         more_info_url=request.build_absolute_uri(

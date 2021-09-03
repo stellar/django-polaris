@@ -4,7 +4,7 @@ from stellar_sdk import Server, Keypair, TransactionBuilder, Memo, HashMemo
 from stellar_sdk.exceptions import NotFoundError
 from rest_framework.request import Request
 
-from polaris.models import Transaction
+from polaris.models import Transaction, Asset
 from polaris.utils import getLogger, load_account
 from polaris import settings
 
@@ -13,6 +13,9 @@ logger = getLogger(__name__)
 
 
 class CustodyIntegration:
+    def get_distribution_account(self, asset: Asset) -> str:
+        raise NotImplementedError()
+
     def get_receiving_account_and_memo(
         self, request: Request, transaction: Transaction
     ) -> Tuple[str, Memo]:
@@ -26,6 +29,9 @@ class CustodyIntegration:
 
 
 class SelfCustodyIntegration(CustodyIntegration):
+    def get_distribution_account(self, asset: Asset) -> str:
+        return asset.distribution_account
+
     def get_receiving_account_and_memo(
         self, _request: Request, transaction: Transaction
     ) -> Tuple[str, Memo]:

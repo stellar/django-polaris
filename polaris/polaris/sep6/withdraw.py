@@ -18,8 +18,8 @@ from polaris.utils import (
     render_error_response,
     create_transaction_id,
     extract_sep9_fields,
+    memo_str,
     make_memo,
-    memo_hex_to_base64,
 )
 from polaris.sep6.utils import validate_403_response
 from polaris.sep10.token import SEP10Token
@@ -31,6 +31,7 @@ from polaris.integrations import (
     registered_withdrawal_integration as rwi,
     registered_fee_func,
     calculate_fee,
+    registered_custody_integration as rci,
 )
 
 logger = getLogger(__name__)
@@ -45,10 +46,7 @@ def withdraw(token: SEP10Token, request: Request) -> Response:
     if "error" in args:
         return args["error"]
 
-    transaction_id = create_transaction_id()
-    transaction_id_hex = transaction_id.hex
-    padded_hex_memo = "0" * (64 - len(transaction_id_hex)) + transaction_id_hex
-    transaction_memo = memo_hex_to_base64(padded_hex_memo)
+    transaction_id = (create_transaction_id(),)
     transaction = Transaction(
         id=transaction_id,
         stellar_account=token.account,
@@ -57,9 +55,6 @@ def withdraw(token: SEP10Token, request: Request) -> Response:
         amount_expected=args.get("amount"),
         kind=Transaction.KIND.withdrawal,
         status=Transaction.STATUS.pending_user_transfer_start,
-        receiving_anchor_account=args["asset"].distribution_account,
-        memo=transaction_memo,
-        memo_type=Transaction.MEMO_TYPES.hash,
         protocol=Transaction.PROTOCOL.sep6,
         more_info_url=request.build_absolute_uri(
             f"{SEP6_MORE_INFO_PATH}?id={transaction_id}"
@@ -90,10 +85,15 @@ def withdraw(token: SEP10Token, request: Request) -> Response:
         )
 
     if status_code == 200:
+        (
+            transaction.receiving_anchor_account,
+            memo_obj,
+        ) = rci.get_receiving_account_and_memo(request, transaction)
+        transaction.memo, transaction.memo_type = memo_str(memo_obj)
         response["memo"] = transaction.memo
         response["memo_type"] = transaction.memo_type
-        logger.info(f"Created withdraw transaction {transaction.id}")
         transaction.save()
+        logger.info(f"Created withdraw transaction {transaction.id}")
     elif Transaction.objects.filter(id=transaction.id).exists():
         logger.error("Do not save transaction objects for invalid SEP-6 requests")
         return render_error_response(
