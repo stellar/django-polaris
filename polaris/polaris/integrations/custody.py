@@ -192,6 +192,15 @@ class SelfCustodyIntegration(CustodyIntegration):
             transaction_envelope.sign(source_keypair)
             return server.submit_transaction(transaction_envelope)
 
+    def requires_third_party_signatures(self, transaction: Transaction) -> bool:
+        master_signer = transaction.asset.get_distribution_account_master_signer()
+        thresholds = transaction.asset.get_distribution_account_thresholds()
+        return (
+            not master_signer
+            or master_signer["weight"] == 0
+            or master_signer["weight"] < thresholds["med_threshold"]
+        )
+
     @property
     def claimable_balances_supported(self):
         return True
