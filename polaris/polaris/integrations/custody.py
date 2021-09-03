@@ -11,10 +11,6 @@ logger = getLogger(__name__)
 
 
 class CustodyIntegration:
-    def __init__(self):
-        self.account_creation_supported = True
-        self.claimable_balances_supported = False
-
     def get_distribution_account(self, asset: Asset) -> str:
         """
         Return the Stellar account used to receive payments of `asset`. This
@@ -111,13 +107,16 @@ class CustodyIntegration:
         """
         raise NotImplementedError()
 
+    @property
+    def claimable_balances_supported(self):
+        raise NotImplementedError()
+
+    @property
+    def account_creation_supported(self):
+        raise NotImplementedError()
+
 
 class SelfCustodyIntegration(CustodyIntegration):
-    def __init__(self):
-        super().__init__()
-        self.account_creation_supported = True
-        self.claimable_balances_supported = True
-
     def get_distribution_account(self, asset: Asset) -> str:
         return asset.distribution_account
 
@@ -163,6 +162,14 @@ class SelfCustodyIntegration(CustodyIntegration):
             ).build()
             transaction_envelope.sign(source_keypair)
             return server.submit_transaction(transaction_envelope)
+
+    @property
+    def claimable_balances_supported(self):
+        return True
+
+    @property
+    def account_creation_supported(self):
+        return True
 
 
 registered_custody_integration = SelfCustodyIntegration()
