@@ -1,3 +1,5 @@
+.. _anchoring-multisignature-assets:
+
 ===============================
 Anchoring Multisignature Assets
 ===============================

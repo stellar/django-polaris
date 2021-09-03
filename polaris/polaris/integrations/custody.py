@@ -107,6 +107,27 @@ class CustodyIntegration:
         """
         raise NotImplementedError()
 
+    def requires_third_party_signatures(self, transaction: Transaction) -> bool:
+        """
+        Return ``True`` if the transaction requires signatures neither the anchor
+        nor custody service can provide as a direct result of Polaris calling
+        ``submit_deposit_transaction()``, ``False`` otherwise.
+
+        If ``True`` is returned, Polaris will save a transaction envelope to
+        ``Transaction.envelope_xdr`` and set ``Transaction.pending_signatures`` to
+        ``True``. The anchor will then be expected to collect the signatures required,
+        updating ``Transaction.envelope_xdr``, and resetting
+        ``Transaction.pending_signatures`` back to ``False``. Finally, Polaris will
+        detect this change in state and pass the transaction to
+        ``submit_deposit_transaction()``.
+
+        Note that if third party signatures are required, Polaris expects the anchor
+        to provide a channel account to be used as the transaction source account.
+        See the :ref:`anchoring-multisignature-assets` documentation for more
+        information.
+        """
+        raise NotImplementedError()
+
     @property
     def claimable_balances_supported(self) -> bool:
         """
