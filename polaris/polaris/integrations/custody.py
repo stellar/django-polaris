@@ -1,4 +1,4 @@
-from stellar_sdk import Server, Keypair, TransactionBuilder, Memo, HashMemo
+from stellar_sdk import Server, Keypair, TransactionBuilder
 from stellar_sdk.exceptions import NotFoundError
 from rest_framework.request import Request
 
@@ -108,11 +108,19 @@ class CustodyIntegration:
         raise NotImplementedError()
 
     @property
-    def claimable_balances_supported(self):
+    def claimable_balances_supported(self) -> bool:
+        """
+        Return ``True`` if the custody service provider supports sending deposit
+        payments in the form of claimable balances, ``False`` otherwise.
+        """
         raise NotImplementedError()
 
     @property
-    def account_creation_supported(self):
+    def account_creation_supported(self) -> bool:
+        """
+        Return ``True`` if the custody service provider supports funding Stellar
+        accounts not custodied by the provider, ``False`` otherwise.
+        """
         raise NotImplementedError()
 
 
