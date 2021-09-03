@@ -11,6 +11,10 @@ logger = getLogger(__name__)
 
 
 class CustodyIntegration:
+    """
+    The base class for supporting third party custody service providers.
+    """
+
     def get_distribution_account(self, asset: Asset) -> str:
         """
         Return the Stellar account used to receive payments of `asset`. This
@@ -103,7 +107,8 @@ class CustodyIntegration:
 
         It is highly recommended to support creating destination accounts.
 
-        :param transaction: the transaction for
+        :param transaction: the transaction for which the destination account must
+            be funded
         """
         raise NotImplementedError()
 
@@ -146,12 +151,26 @@ class CustodyIntegration:
 
 
 class SelfCustodyIntegration(CustodyIntegration):
+    """
+    The default custody class used if no other custody class is registered.
+    Assumes a Stellar account secret key is saved to ``Asset.distribution_seed``
+    for every anchored asset.
+    """
+
     def get_distribution_account(self, asset: Asset) -> str:
+        """
+        Returns ``Asset.distribution_account``
+        """
         return asset.distribution_account
 
     def save_receiving_account_and_memo(
         self, _request: Request, transaction: Transaction
     ):
+        """
+        Generates a hash memo derived from ``Transaction.id`` and saves it to
+        ``Transaction.memo``. Also saves 'hash' to ``Transaction.memo_type`` and
+        ``Asset.distribution_account`` to ``Transaction.receiving_anchor_account``.
+        """
         padded_hex_memo = "0" * (64 - len(transaction.id.hex)) + transaction.id.hex
         transaction.receiving_anchor_account = transaction.asset.distribution_account
         transaction.memo = memo_hex_to_base64(padded_hex_memo)
@@ -161,10 +180,18 @@ class SelfCustodyIntegration(CustodyIntegration):
     def submit_deposit_transaction(
         self, transaction: Transaction, has_trustline: bool = True
     ) -> dict:
+        """
+        Submits ``Transaction.envelope_xdr`` to the Stellar network
+        """
         with Server(horizon_url=settings.HORIZON_URI) as server:
             return server.submit_transaction(transaction.envelope_xdr)
 
     def create_destination_account(self, transaction: Transaction) -> dict:
+        """
+        Builds and submits a transaction to fund ``Transaction.to_address``.
+        The source account of the transaction is either the distribution account
+        for the asset being transacted or a channel account provided by the anchor.
+        """
         if transaction.channel_account:
             source_keypair = Keypair.from_secret(transaction.channel_seed)
         else:
@@ -193,6 +220,11 @@ class SelfCustodyIntegration(CustodyIntegration):
             return server.submit_transaction(transaction_envelope)
 
     def requires_third_party_signatures(self, transaction: Transaction) -> bool:
+        """
+        Returns ``True`` if the distribution account for the asset being transacted
+        requires signatures from other signers in addition to the distribution account's
+        signature.
+        """
         master_signer = transaction.asset.get_distribution_account_master_signer()
         thresholds = transaction.asset.get_distribution_account_thresholds()
         return (
@@ -203,10 +235,16 @@ class SelfCustodyIntegration(CustodyIntegration):
 
     @property
     def claimable_balances_supported(self):
+        """
+        Polaris supports sending funds for deposit transactions as claimable balances.
+        """
         return True
 
     @property
     def account_creation_supported(self):
+        """
+        Polaris supports funding destination accounts for deposit transactions.
+        """
         return True
 
 

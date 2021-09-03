@@ -21,6 +21,7 @@ from polaris.integrations.transactions import (
 )
 from polaris.integrations.custody import (
     CustodyIntegration,
+    SelfCustodyIntegration,
     registered_custody_integration,
 )
 
