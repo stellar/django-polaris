@@ -173,15 +173,13 @@ def post_interactive_withdraw(request: Request) -> Response:
 
             if transaction.status != transaction.STATUS.pending_anchor:
                 # Add receiving account and memo now that anchor is ready to receive payment
-                (
-                    transaction.receiving_anchor_account,
-                    memo_obj,
-                ) = rci.get_receiving_account_and_memo(request, transaction)
-                transaction.memo, transaction.memo_type = memo_str(memo_obj)
                 transaction.status = Transaction.STATUS.pending_user_transfer_start
+                rci.save_receiving_account_and_memo(
+                    request=request, transaction=transaction
+                )
             else:
                 logger.info(f"Transaction {transaction.id} is pending KYC approval")
-            transaction.save()
+                transaction.save()
             args = {"id": transaction.id, "initialLoad": "true"}
             if callback:
                 args["callback"] = callback

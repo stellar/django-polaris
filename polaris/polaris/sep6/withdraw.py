@@ -46,7 +46,7 @@ def withdraw(token: SEP10Token, request: Request) -> Response:
     if "error" in args:
         return args["error"]
 
-    transaction_id = (create_transaction_id(),)
+    transaction_id = create_transaction_id()
     transaction = Transaction(
         id=transaction_id,
         stellar_account=token.account,
@@ -85,14 +85,9 @@ def withdraw(token: SEP10Token, request: Request) -> Response:
         )
 
     if status_code == 200:
-        (
-            transaction.receiving_anchor_account,
-            memo_obj,
-        ) = rci.get_receiving_account_and_memo(request, transaction)
-        transaction.memo, transaction.memo_type = memo_str(memo_obj)
+        rci.save_receiving_account_and_memo(request=request, transaction=transaction)
         response["memo"] = transaction.memo
         response["memo_type"] = transaction.memo_type
-        transaction.save()
         logger.info(f"Created withdraw transaction {transaction.id}")
     elif Transaction.objects.filter(id=transaction.id).exists():
         logger.error("Do not save transaction objects for invalid SEP-6 requests")

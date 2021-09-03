@@ -157,12 +157,7 @@ class TransactionsAPIView(APIView):
             else:
                 return Response(error_data, status=400)
 
-        (
-            transaction.receiving_anchor_account,
-            memo_obj,
-        ) = rci.get_receiving_account_and_memo(request=request, transaction=transaction)
-        transaction.memo, transaction.memo_type = memo_str(memo_obj)
-        transaction.save()
+        rci.save_receiving_account_and_memo(request=request, transaction=transaction)
         response_data = {
             "id": transaction.id,
             "stellar_account_id": transaction.receiving_anchor_account,
