@@ -212,12 +212,13 @@ class PendingDeposits:
         logger.info(f"transaction {transaction.id} has the appropriate trustline")
         try:
             logger.debug(f"checking if transaction {transaction.id} requires multisig")
-            requires_multisig = await cls.requires_multisig(transaction)
+            requires_multisig = await sync_to_async(
+                rci.requires_third_party_signatures
+            )(transaction)
         except NotFoundError:
             await sync_to_async(cls.handle_error)(
                 transaction,
-                f"{transaction.asset.code} distribution account "
-                f"{transaction.asset.distribution_account} does not exist",
+                "the distribution account for this transaction does not exist",
             )
             await maybe_make_callback_async(transaction)
             return
@@ -699,16 +700,17 @@ class PendingDeposits:
         return False
 
     @staticmethod
-    async def requires_multisig(transaction: Transaction) -> bool:
-        master_signer = (
-            await transaction.asset.get_distribution_account_master_signer_async()
-        )
-        thresholds = await transaction.asset.get_distribution_account_thresholds_async()
-        return (
-            not master_signer
-            or master_signer["weight"] == 0
-            or master_signer["weight"] < thresholds["med_threshold"]
-        )
+    def get_channel_keypair(transaction) -> Keypair:
+        if not transaction.channel_account:
+            logger.info(
+                f"calling create_channel_account() for transaction {transaction.id}"
+            )
+            rdi.create_channel_account(transaction=transaction)
+        if not transaction.channel_seed:
+            asset = transaction.asset
+            transaction.refresh_from_db()
+            transaction.asset = asset
+        return Keypair.from_secret(transaction.channel_seed)
 
     @classmethod
     async def save_as_pending_signatures(cls, transaction, server):
