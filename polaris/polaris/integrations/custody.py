@@ -1,9 +1,15 @@
-from stellar_sdk import Server, Keypair, TransactionBuilder
+from stellar_sdk import Server, Keypair, TransactionBuilder, TransactionEnvelope
 from stellar_sdk.exceptions import NotFoundError, BaseHorizonError, ConnectionError
 from rest_framework.request import Request
 
 from polaris.models import Transaction, Asset
-from polaris.utils import getLogger, load_account, memo_hex_to_base64
+from polaris.utils import (
+    getLogger,
+    load_account,
+    memo_hex_to_base64,
+    create_deposit_envelope,
+    get_account_obj,
+)
 from polaris import settings
 
 
@@ -184,7 +190,23 @@ class SelfCustodyIntegration(CustodyIntegration):
         Submits ``Transaction.envelope_xdr`` to the Stellar network
         """
         with Server(horizon_url=settings.HORIZON_URI) as server:
-            return server.submit_transaction(transaction.envelope_xdr)
+            if transaction.envelope_xdr:
+                envelope = TransactionEnvelope.from_xdr(
+                    transaction.envelope_xdr, settings.STELLAR_NETWORK_PASSPHRASE
+                )
+            else:
+                distribution_acc, _ = get_account_obj(
+                    Keypair.from_public_key(transaction.asset.distribution_account)
+                )
+                envelope = create_deposit_envelope(
+                    transaction=transaction,
+                    source_account=distribution_acc,
+                    use_claimable_balance=not has_trustline,
+                    base_fee=settings.MAX_TRANSACTION_FEE_STROOPS
+                    or server.fetch_base_fee(),
+                )
+                envelope.sign(transaction.asset.distribution_seed)
+            return server.submit_transaction(envelope.to_xdr())
 
     def create_destination_account(self, transaction: Transaction) -> dict:
         """
@@ -236,7 +258,7 @@ class SelfCustodyIntegration(CustodyIntegration):
                     "Horizon error when submitting create account "
                     f"to horizon: {e.message}"
                 )
-            except ConnectionError as e:
+            except ConnectionError:
                 raise RuntimeError("Failed to connect to Horizon")
 
     def requires_third_party_signatures(self, transaction: Transaction) -> bool:

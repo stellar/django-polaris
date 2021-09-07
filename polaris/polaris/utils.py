@@ -4,12 +4,21 @@ import codecs
 import uuid
 from typing import Optional, Union, Tuple, Dict
 from logging import getLogger as get_logger, LoggerAdapter
+from decimal import Decimal
 
 import aiohttp
 from django.utils.translation import gettext
 from rest_framework import status
 from rest_framework.response import Response
-from stellar_sdk import TextMemo, IdMemo, HashMemo
+from stellar_sdk import (
+    TransactionBuilder,
+    TransactionEnvelope,
+    Asset,
+    Claimant,
+    TextMemo,
+    IdMemo,
+    HashMemo,
+)
 from stellar_sdk.exceptions import NotFoundError
 from stellar_sdk.account import Account, Thresholds
 from stellar_sdk import Memo
@@ -349,3 +358,38 @@ def validate_patch_request_fields(fields: Dict, transaction: Transaction):
                     gettext("missing %(field)s in %(category)s")
                     % {"field": field, "category": category}
                 )
+
+
+def create_deposit_envelope(
+    transaction, source_account, use_claimable_balance, base_fee
+) -> TransactionEnvelope:
+    payment_amount = round(
+        Decimal(transaction.amount_in) - Decimal(transaction.amount_fee),
+        transaction.asset.significant_decimals,
+    )
+    builder = TransactionBuilder(
+        source_account=source_account,
+        network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
+        base_fee=base_fee,
+    )
+    payment_op_kwargs = {
+        "destination": transaction.to_address,
+        "asset_code": transaction.asset.code,
+        "asset_issuer": transaction.asset.issuer,
+        "amount": str(payment_amount),
+        "source": transaction.asset.distribution_account,
+    }
+    if use_claimable_balance:
+        claimant = Claimant(destination=transaction.to_address)
+        asset = Asset(code=transaction.asset.code, issuer=transaction.asset.issuer)
+        builder.append_create_claimable_balance_op(
+            claimants=[claimant],
+            asset=asset,
+            amount=str(payment_amount),
+            source=transaction.asset.distribution_account,
+        )
+    else:
+        builder.append_payment_op(**payment_op_kwargs)
+    if transaction.memo:
+        builder.add_memo(make_memo(transaction.memo, transaction.memo_type))
+    return builder.build()

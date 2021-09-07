@@ -9,7 +9,7 @@ from collections import defaultdict
 
 import django.db.transaction
 from django.core.management import BaseCommand
-from stellar_sdk import Keypair, TransactionEnvelope, Asset, Claimant, Server
+from stellar_sdk import Keypair, Server
 from stellar_sdk.client.aiohttp_client import AiohttpClient
 from stellar_sdk.account import Account
 from stellar_sdk.exceptions import (
@@ -18,7 +18,6 @@ from stellar_sdk.exceptions import (
     NotFoundError,
     BaseRequestError,
 )
-from stellar_sdk.transaction_builder import TransactionBuilder
 from stellar_sdk.xdr import TransactionResult, OperationType
 from asgiref.sync import sync_to_async
 
@@ -28,6 +27,7 @@ from polaris.utils import (
     maybe_make_callback,
     maybe_make_callback_async,
     get_account_obj_async,
+    create_deposit_envelope,
 )
 from polaris.integrations import (
     registered_deposit_integration as rdi,
@@ -37,7 +37,7 @@ from polaris.integrations import (
     calculate_fee,
 )
 from polaris.models import Transaction
-from polaris.utils import getLogger, make_memo
+from polaris.utils import getLogger
 
 logger = getLogger(__name__)
 
@@ -428,7 +428,13 @@ class PendingDeposits:
                 else:
                     # Aquire a lock for the source account of the transaction that will create the
                     # deposit's destination account.
+                    logger.debug(
+                        f"requesting lock to fund destination for transaction {transaction.id}"
+                    )
                     locks["source_accounts"][distribution_account].aquire()
+                    logger.debug(
+                        f"locked to create destination account for transaction {transaction.id}"
+                    )
 
                 try:
                     rci.create_destination_account(transaction)
@@ -439,6 +445,9 @@ class PendingDeposits:
                     )
                 finally:
                     if locks["source_accounts"][distribution_account].locked():
+                        logger.debug(
+                            f"unlocking after creating destination accoutn for transaction {transaction.id}"
+                        )
                         locks["source_accounts"][distribution_account].release()
 
                 account, _ = await get_account_obj_async(
@@ -509,51 +518,47 @@ class PendingDeposits:
         await sync_to_async(transaction.save)()
         await maybe_make_callback_async(transaction)
 
-        envelope = None
-        if transaction.envelope_xdr:
-            try:
-                envelope = TransactionEnvelope.from_xdr(
-                    transaction.envelope_xdr, settings.STELLAR_NETWORK_PASSPHRASE
-                )
-            except Exception:
-                await sync_to_async(cls.handle_error)(
-                    transaction, "Failed to decode transaction envelope"
-                )
-                await maybe_make_callback_async(transaction)
-                return False
-
-        logger.debug(f"requesting lock to submit deposit transaction {transaction.id}")
-        async with locks["source_accounts"][transaction.asset.distribution_account]:
+        try:
+            distribution_account = rci.get_distribution_account(transaction)
+        except NotImplementedError:
+            # Polaris has to assume that the custody service provider can handle concurrent
+            # requests to send funds to destination accounts since it does not have a dedicated
+            # distribution account.
+            distribution_account = None
+        else:
+            # Aquire a lock for the source account of the transaction that will create the
+            # deposit's destination account.
+            logger.debug(
+                f"requesting lock to submit deposit transaction {transaction.id}"
+            )
+            locks["source_accounts"][distribution_account].aquire()
             logger.debug(
                 f"locked to submit deposit transaction for transaction {transaction.id}"
             )
-            if not envelope:
-                distribution_acc, _ = await get_account_obj_async(
-                    Keypair.from_public_key(transaction.asset.distribution_account),
-                    server,
-                )
-                envelope = await cls.create_deposit_envelope(
-                    transaction, distribution_acc, server
-                )
-                envelope.sign(transaction.asset.distribution_seed)
 
-            transaction.status = Transaction.STATUS.pending_stellar
-            await sync_to_async(transaction.save)()
-            logger.info(
-                f"updating transaction {transaction.id} to pending_stellar status"
+        transaction.status = Transaction.STATUS.pending_stellar
+        await sync_to_async(transaction.save)()
+        logger.info(f"updating transaction {transaction.id} to pending_stellar status")
+        await maybe_make_callback_async(transaction)
+
+        try:
+            _, destination_account_json = await get_account_obj_async(
+                Keypair.from_public_key(transaction.to_address), server
             )
-            await maybe_make_callback_async(transaction)
-
-            try:
-                response = await server.submit_transaction(envelope)
-            except (BaseHorizonError, ConnectionError) as e:
-                message = getattr(e, "message", str(e))
-                await sync_to_async(cls.handle_error)(
-                    transaction, f"{e.__class__.__name__}: {message}"
-                )
-                await maybe_make_callback_async(transaction)
-                return False
-            logger.debug(f"unlocking after submitting transaction {transaction.id}")
+            response = await sync_to_async(rci.submit_deposit_transaction)(
+                transaction=transaction,
+                has_trustline=not is_pending_trust(
+                    transaction, destination_account_json
+                ),
+            )
+        except Exception as e:
+            # catch and re-raise exception here so we can release the lock if necessary.
+            # the exception will be caught by PendingDeposits.handle_submit()
+            raise e
+        finally:
+            if locks["source_accounts"][distribution_account].locked():
+                logger.debug(f"unlocking after submitting transaction {transaction.id}")
+                locks["source_accounts"][distribution_account].release()
 
         if not response.get("successful"):
             await sync_to_async(cls.handle_error)(
@@ -563,7 +568,8 @@ class PendingDeposits:
             )
             await maybe_make_callback_async(transaction)
             return False
-        elif transaction.claimable_balance_supported:
+
+        if transaction.claimable_balance_supported and rci.claimable_balances_supported:
             transaction.claimable_balance_id = cls.get_balance_id(response)
 
         transaction.envelope_xdr = response["envelope_xdr"]
@@ -588,7 +594,10 @@ class PendingDeposits:
             success = await PendingDeposits.submit(transaction, server, locks)
         except Exception as e:
             logger.exception("submit() threw an unexpected exception")
-            await sync_to_async(cls.handle_error)(transaction, str(e))
+            message = getattr(e, "message", str(e))
+            await sync_to_async(cls.handle_error)(
+                transaction, f"{e.__class__.__name__}: {message}"
+            )
             await maybe_make_callback_async(transaction)
             return
 
@@ -598,51 +607,6 @@ class PendingDeposits:
                 await sync_to_async(rdi.after_deposit)(transaction)
             except Exception:
                 logger.exception("after_deposit() threw an unexpected exception")
-
-    @staticmethod
-    async def create_deposit_envelope(
-        transaction, source_account, server
-    ) -> TransactionEnvelope:
-        payment_amount = round(
-            Decimal(transaction.amount_in) - Decimal(transaction.amount_fee),
-            transaction.asset.significant_decimals,
-        )
-        builder = TransactionBuilder(
-            source_account=source_account,
-            network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
-            # only one operation, so base_fee will be multipled by 1
-            base_fee=settings.MAX_TRANSACTION_FEE_STROOPS
-            or await server.fetch_base_fee(),
-        )
-        payment_op_kwargs = {
-            "destination": transaction.to_address,
-            "asset_code": transaction.asset.code,
-            "asset_issuer": transaction.asset.issuer,
-            "amount": str(payment_amount),
-            "source": transaction.asset.distribution_account,
-        }
-        if transaction.claimable_balance_supported:
-            _, json_resp = await get_account_obj_async(
-                Keypair.from_public_key(transaction.to_address), server
-            )
-            if is_pending_trust(transaction, json_resp):
-                claimant = Claimant(destination=transaction.to_address)
-                asset = Asset(
-                    code=transaction.asset.code, issuer=transaction.asset.issuer
-                )
-                builder.append_create_claimable_balance_op(
-                    claimants=[claimant],
-                    asset=asset,
-                    amount=str(payment_amount),
-                    source=transaction.asset.distribution_account,
-                )
-            else:
-                builder.append_payment_op(**payment_op_kwargs)
-        else:
-            builder.append_payment_op(**payment_op_kwargs)
-        if transaction.memo:
-            builder.add_memo(make_memo(transaction.memo, transaction.memo_type))
-        return builder.build()
 
     @staticmethod
     def get_balance_id(response: dict) -> Optional[str]:
@@ -687,7 +651,9 @@ class PendingDeposits:
             await maybe_make_callback_async(transaction)
             return True
 
-        if pending_trust and not transaction.claimable_balance_supported:
+        if pending_trust and not (
+            transaction.claimable_balance_supported and rci.claimable_balances_supported
+        ):
             logger.info(
                 f"destination account is pending_trust for transaction {transaction.id}"
             )
@@ -723,8 +689,21 @@ class PendingDeposits:
             logger.error(transaction.status_message)
         else:
             # Create the initial envelope XDR with the channel signature
-            envelope = await PendingDeposits.create_deposit_envelope(
-                transaction, channel_account, server
+            use_claimable_balance = False
+            if (
+                transaction.claimable_balance_supported
+                and rci.claimable_balances_supported
+            ):
+                _, json_resp = await get_account_obj_async(
+                    Keypair.from_public_key(transaction.to_address), server
+                )
+                use_claimable_balance = is_pending_trust(transaction, json_resp)
+            envelope = create_deposit_envelope(
+                transaction=transaction,
+                source_account=channel_account,
+                use_claimable_balance=use_claimable_balance,
+                base_fee=settings.MAX_TRANSACTION_FEE_STROOPS
+                or await server.fetch_base_fee(),
             )
             envelope.sign(channel_kp)
             transaction.envelope_xdr = envelope.to_xdr()
