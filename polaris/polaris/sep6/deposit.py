@@ -22,6 +22,7 @@ from polaris.utils import (
     create_transaction_id,
     extract_sep9_fields,
     make_memo,
+    get_account_obj,
 )
 from polaris.shared.endpoints import SEP6_MORE_INFO_PATH
 from polaris.sep6.utils import validate_403_response
@@ -29,6 +30,7 @@ from polaris.sep10.utils import validate_sep10_token
 from polaris.sep10.token import SEP10Token
 from polaris.integrations import (
     registered_deposit_integration as rdi,
+    registered_custody_integration as rci,
     registered_fee_func,
     calculate_fee,
 )
@@ -177,7 +179,7 @@ def validate_response(
 
 def parse_request_args(request: Request) -> Dict:
     try:
-        Keypair.from_public_key(request.GET.get("account"))
+        destination_kp = Keypair.from_public_key(request.GET.get("account"))
     except Ed25519PublicKeyInvalidError:
         return {"error": render_error_response(_("invalid 'account'"))}
 
@@ -240,6 +242,16 @@ def parse_request_args(request: Request) -> Dict:
             return {
                 "error": render_error_response(
                     _("'amount' must be within [%s, %s]") % (min_amount, min_amount)
+                )
+            }
+
+    if not rci.account_creation_supported:
+        try:
+            get_account_obj(destination_kp)
+        except RuntimeError:
+            return {
+                "error": render_error_response(
+                    _("public key 'account' must be a funded Stellar account")
                 )
             }
 
