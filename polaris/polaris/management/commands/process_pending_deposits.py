@@ -32,6 +32,7 @@ from polaris.utils import (
 from polaris.integrations import (
     registered_deposit_integration as rdi,
     registered_rails_integration as rri,
+    registered_custody_integration as rci,
     registered_fee_func,
     calculate_fee,
 )
@@ -411,63 +412,33 @@ class PendingDeposits:
                 return account, is_pending_trust(transaction, json_resp)
             except RuntimeError:  # account does not exist
                 logger.debug(f"account for transaction {transaction.id} does not exist")
+                if not rci.account_creation_supported:
+                    raise RuntimeError(
+                        "The destination account does not exist but account creation is not supported."
+                        f"The deposit request for transaction {transaction.id} should not have succeeded."
+                    )
                 try:
-                    logger.debug(
-                        f"checking if transaction {transaction.id} requires multisig"
-                    )
-                    requires_multisig = await PendingDeposits.requires_multisig(
-                        transaction
-                    )
-                except NotFoundError:
-                    logger.error(
-                        f"{transaction.asset.code} distribution account "
-                        f"{transaction.asset.distribution_account} does not exist"
-                    )
-                    raise RuntimeError("the distribution account does not exist")
-                if requires_multisig:
-                    source_account_kp = await sync_to_async(cls.get_channel_keypair)(
-                        transaction
-                    )
+                    distribution_account = rci.get_distribution_account(transaction)
+                except NotImplementedError:
+                    # Polaris has to assume that the custody service provider can handle concurrent
+                    # requests to create destination accounts since it does not have a dedicated
+                    # distribution account.
+                    distribution_account = None
                 else:
-                    source_account_kp = Keypair.from_secret(
-                        transaction.asset.distribution_seed
-                    )
+                    # Aquire a lock for the source account of the transaction that will create the
+                    # deposit's destination account.
+                    locks["source_accounts"][distribution_account].aquire()
 
-                logger.debug(
-                    f"requesting lock to create account for transaction {transaction.id}"
-                )
-                async with locks["source_accounts"][
-                    transaction.asset.distribution_account
-                ]:
-                    logger.debug(
-                        f"locked for transaction {transaction.id} to create destination account"
+                try:
+                    rci.create_destination_account(transaction)
+                except Exception:
+                    raise RuntimeError(
+                        "an exception was raised while attempting to create the destination "
+                        f"account for transaction {transaction.id}"
                     )
-                    source_account, _ = await get_account_obj_async(
-                        source_account_kp, server
-                    )
-                    builder = TransactionBuilder(
-                        source_account=source_account,
-                        network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
-                        # this transaction contains one operation so base_fee will be multiplied by 1
-                        base_fee=settings.MAX_TRANSACTION_FEE_STROOPS
-                        or await server.fetch_base_fee(),
-                    )
-                    transaction_envelope = builder.append_create_account_op(
-                        destination=transaction.to_address,
-                        starting_balance=settings.ACCOUNT_STARTING_BALANCE,
-                    ).build()
-                    transaction_envelope.sign(source_account_kp)
-
-                    try:
-                        await server.submit_transaction(transaction_envelope)
-                    except BaseHorizonError as e:  # pragma: no cover
-                        raise RuntimeError(
-                            "Horizon error when submitting create account "
-                            f"to horizon: {e.message}"
-                        )
-                    logger.debug(
-                        f"unlocking after creating destination account for transaction {transaction.id}"
-                    )
+                finally:
+                    if locks["source_accounts"][distribution_account].locked():
+                        locks["source_accounts"][distribution_account].release()
 
                 account, _ = await get_account_obj_async(
                     Keypair.from_public_key(transaction.to_address), server
@@ -760,19 +731,6 @@ class PendingDeposits:
         transaction.pending_execution_attempt = False
         await sync_to_async(transaction.save)()
         await maybe_make_callback_async(transaction)
-
-    @staticmethod
-    def get_channel_keypair(transaction) -> Keypair:
-        if not transaction.channel_account:
-            logger.info(
-                f"calling create_channel_account() for transaction {transaction.id}"
-            )
-            rdi.create_channel_account(transaction=transaction)
-        if not transaction.channel_seed:
-            asset = transaction.asset
-            transaction.refresh_from_db()
-            transaction.asset = asset
-        return Keypair.from_secret(transaction.channel_seed)
 
     @classmethod
     def handle_error(cls, transaction, message):

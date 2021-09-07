@@ -1,5 +1,5 @@
 from stellar_sdk import Server, Keypair, TransactionBuilder
-from stellar_sdk.exceptions import NotFoundError
+from stellar_sdk.exceptions import NotFoundError, BaseHorizonError, ConnectionError
 from rest_framework.request import Request
 
 from polaris.models import Transaction, Asset
@@ -192,9 +192,21 @@ class SelfCustodyIntegration(CustodyIntegration):
         The source account of the transaction is either the distribution account
         for the asset being transacted or a channel account provided by the anchor.
         """
-        if transaction.channel_account:
+        logger.debug(f"checking if transaction {transaction.id} requires multisig")
+        try:
+            requires_tp_sigs = self.requires_third_party_signatures(
+                transaction=transaction
+            )
+        except NotFoundError:
+            raise RuntimeError("the distribution account does not exist")
+        if requires_tp_sigs:
+            logger.info(
+                f"transaction {transaction.id} requires multisig, fetching channel account"
+            )
+            self._get_channel_keypair(transaction)
             source_keypair = Keypair.from_secret(transaction.channel_seed)
         else:
+            logger.info(f"transaction {transaction.id} doesn't require multisig")
             source_keypair = Keypair.from_secret(transaction.asset.distribution_seed)
         with Server(horizon_url=settings.HORIZON_URI) as server:
             try:
@@ -217,7 +229,15 @@ class SelfCustodyIntegration(CustodyIntegration):
                 starting_balance=settings.ACCOUNT_STARTING_BALANCE,
             ).build()
             transaction_envelope.sign(source_keypair)
-            return server.submit_transaction(transaction_envelope)
+            try:
+                return server.submit_transaction(transaction_envelope)
+            except BaseHorizonError as e:
+                raise RuntimeError(
+                    "Horizon error when submitting create account "
+                    f"to horizon: {e.message}"
+                )
+            except ConnectionError as e:
+                raise RuntimeError("Failed to connect to Horizon")
 
     def requires_third_party_signatures(self, transaction: Transaction) -> bool:
         """
@@ -246,6 +266,21 @@ class SelfCustodyIntegration(CustodyIntegration):
         Polaris supports funding destination accounts for deposit transactions.
         """
         return True
+
+    @staticmethod
+    def _get_channel_keypair(transaction) -> Keypair:
+        from polaris.integrations import registered_deposit_integration as rdi
+
+        if not transaction.channel_account:
+            logger.info(
+                f"calling create_channel_account() for transaction {transaction.id}"
+            )
+            rdi.create_channel_account(transaction=transaction)
+        if not transaction.channel_seed:
+            asset = transaction.asset
+            transaction.refresh_from_db()
+            transaction.asset = asset
+        return Keypair.from_secret(transaction.channel_seed)
 
 
 registered_custody_integration = SelfCustodyIntegration()
