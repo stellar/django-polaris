@@ -70,7 +70,7 @@ class Command(BaseCommand):
         assets = await sync_to_async(list)(Asset.objects.all())
         await asyncio.gather(
             *[
-                self._for_account(rci.get_distribution_account(asset))
+                self._for_account(rci.get_distribution_account(asset=asset))
                 for asset in assets
             ]
         )

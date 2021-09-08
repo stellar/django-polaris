@@ -158,6 +158,7 @@ class TransactionsAPIView(APIView):
                 return Response(error_data, status=400)
 
         rci.save_receiving_account_and_memo(request=request, transaction=transaction)
+        transaction.refresh_from_db()
         response_data = {
             "id": transaction.id,
             "stellar_account_id": transaction.receiving_anchor_account,
