@@ -111,7 +111,7 @@ def register_integrations(
         raise TypeError("send must be a subclass of SEP31ReceiverIntegration")
     elif rails and not issubclass(rails.__class__, RailsIntegration):
         raise TypeError("rails must be a subclass of RailsIntegration")
-    elif custody and not issubclass(custody.__class__, CustomerIntegration):
+    elif custody and not issubclass(custody.__class__, CustodyIntegration):
         raise TypeError("custody must be a subclass of CustodyIntegration")
 
     for obj, attr in [
