@@ -122,7 +122,7 @@ class TransactionsAPIView(APIView):
 
         # validate fields separately since error responses need different format
         missing_fields = validate_post_fields(
-            params.get("fields"), params.get("asset"), params.get("lang")
+            request, params.get("fields"), params.get("asset"), params.get("lang")
         )
         if missing_fields:
             return Response(
@@ -211,12 +211,12 @@ def validate_post_request(request: Request) -> Dict:
 
 
 def validate_post_fields(
-    passed_fields: Dict, asset: Asset, lang: Optional[str]
+    request: Request, passed_fields: Dict, asset: Asset, lang: Optional[str]
 ) -> Dict:
     missing_fields = defaultdict(dict)
-    expected_fields = registered_sep31_receiver_integration.info(asset, lang).get(
-        "fields", {}
-    )
+    expected_fields = registered_sep31_receiver_integration.info(
+        request=request, asset=asset, lang=lang
+    ).get("fields", {})
     if "transaction" not in expected_fields:
         return {}
     elif "transaction" not in passed_fields:
