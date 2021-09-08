@@ -366,12 +366,7 @@ def withdraw(token: SEP10Token, request: Request,) -> Response:
 
     # Verify that the asset code exists in our database, with withdraw enabled.
     asset = Asset.objects.filter(code=asset_code).first()
-    if not (
-        asset
-        and asset.withdrawal_enabled
-        and asset.sep24_enabled
-        and asset.distribution_account
-    ):
+    if not (asset and asset.withdrawal_enabled and asset.sep24_enabled):
         return render_error_response(_("invalid operation for asset %s") % asset_code)
 
     amount = None
