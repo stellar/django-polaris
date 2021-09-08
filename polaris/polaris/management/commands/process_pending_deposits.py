@@ -214,7 +214,7 @@ class PendingDeposits:
             logger.debug(f"checking if transaction {transaction.id} requires multisig")
             requires_multisig = await sync_to_async(
                 rci.requires_third_party_signatures
-            )(transaction)
+            )(transaction=transaction)
         except NotFoundError:
             await sync_to_async(cls.handle_error)(
                 transaction,
@@ -419,7 +419,9 @@ class PendingDeposits:
                         f"The deposit request for transaction {transaction.id} should not have succeeded."
                     )
                 try:
-                    distribution_account = rci.get_distribution_account(transaction)
+                    distribution_account = rci.get_distribution_account(
+                        asset=transaction.asset
+                    )
                 except NotImplementedError:
                     # Polaris has to assume that the custody service provider can handle concurrent
                     # requests to create destination accounts since it does not have a dedicated
@@ -431,7 +433,7 @@ class PendingDeposits:
                     logger.debug(
                         f"requesting lock to fund destination for transaction {transaction.id}"
                     )
-                    locks["source_accounts"][distribution_account].aquire()
+                    await locks["source_accounts"][distribution_account].acquire()
                     logger.debug(
                         f"locked to create destination account for transaction {transaction.id}"
                     )
@@ -519,7 +521,7 @@ class PendingDeposits:
         await maybe_make_callback_async(transaction)
 
         try:
-            distribution_account = rci.get_distribution_account(transaction)
+            distribution_account = rci.get_distribution_account(asset=transaction.asset)
         except NotImplementedError:
             # Polaris has to assume that the custody service provider can handle concurrent
             # requests to send funds to destination accounts since it does not have a dedicated
@@ -531,7 +533,7 @@ class PendingDeposits:
             logger.debug(
                 f"requesting lock to submit deposit transaction {transaction.id}"
             )
-            locks["source_accounts"][distribution_account].aquire()
+            await locks["source_accounts"][distribution_account].acquire()
             logger.debug(
                 f"locked to submit deposit transaction for transaction {transaction.id}"
             )

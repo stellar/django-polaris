@@ -170,7 +170,7 @@ class SelfCustodyIntegration(CustodyIntegration):
         return asset.distribution_account
 
     def save_receiving_account_and_memo(
-        self, _request: Request, transaction: Transaction
+        self, request: Request, transaction: Transaction
     ):
         """
         Generates a hash memo derived from ``Transaction.id`` and saves it to

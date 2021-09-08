@@ -26,6 +26,8 @@ from asgiref.sync import sync_to_async
 
 from polaris import settings
 from polaris.models import Asset, Transaction
+from polaris.utils import create_deposit_envelope
+from polaris.integrations import SelfCustodyIntegration
 from polaris.management.commands.process_pending_deposits import PendingDeposits
 
 test_module = "polaris.management.commands.process_pending_deposits"
@@ -283,263 +285,7 @@ async def test_get_or_create_destination_account_exists_pending_trust_different_
 
 
 @pytest.mark.django_db(transaction=True)
-async def test_get_or_create_destination_account_doesnt_exist():
-    usd = await sync_to_async(Asset.objects.create)(
-        code="USD",
-        issuer=Keypair.random().public_key,
-        distribution_seed=Keypair.random().secret,
-    )
-    destination = Keypair.random().public_key
-    transaction = await sync_to_async(Transaction.objects.create)(
-        asset=usd,
-        status=Transaction.STATUS.pending_user_transfer_start,
-        kind=Transaction.KIND.deposit,
-        stellar_account=destination,
-        to_address=destination,
-    )
-
-    stellar_account_obj = Account(transaction.to_address, 1)
-    distribution_account_obj = Account(usd.distribution_account, 1)
-
-    async def mock_get_account_obj_func(kp: Keypair, s):
-        if kp.public_key == transaction.to_address:
-            if s.submit_transaction.called:
-                return stellar_account_obj, {"balances": []}
-            else:
-                raise RuntimeError()
-        elif kp.public_key == usd.distribution_account:
-            return distribution_account_obj, None
-
-    with patch(
-        f"{test_module}.PendingDeposits.requires_multisig", new_callable=AsyncMock
-    ) as mock_requires_multisig:
-        async with Server(client=AiohttpClient()) as server:
-            server.fetch_base_fee = AsyncMock(return_value=100)
-            server.submit_transaction = AsyncMock()
-            mock_requires_multisig.return_value = False
-            with patch(
-                f"{test_module}.get_account_obj_async", mock_get_account_obj_func
-            ):
-                locks = {
-                    "destination_accounts": defaultdict(asyncio.Lock),
-                    "source_accounts": defaultdict(asyncio.Lock),
-                }
-                assert await PendingDeposits.get_or_create_destination_account(
-                    transaction, server, locks
-                ) == (stellar_account_obj, True,)
-                server.fetch_base_fee.assert_called()
-                mock_requires_multisig.assert_called()
-                server.submit_transaction.assert_called_once()
-                envelope = server.submit_transaction.mock_calls[0][1][0]
-                assert (
-                    envelope.transaction.source.account_id == usd.distribution_account
-                )
-                assert len(envelope.transaction.operations) == 1
-                assert isinstance(envelope.transaction.operations[0], CreateAccount)
-                assert (
-                    envelope.transaction.operations[0].destination
-                    == transaction.to_address
-                )
-
-
-@pytest.mark.django_db(transaction=True)
-async def test_get_or_create_destination_account_doesnt_exist_different_destination():
-    usd = await sync_to_async(Asset.objects.create)(
-        code="USD",
-        issuer=Keypair.random().public_key,
-        distribution_seed=Keypair.random().secret,
-    )
-    transaction = await sync_to_async(Transaction.objects.create)(
-        asset=usd,
-        status=Transaction.STATUS.pending_user_transfer_start,
-        kind=Transaction.KIND.deposit,
-        stellar_account=Keypair.random().public_key,
-        to_address=Keypair.random().public_key,
-    )
-
-    stellar_account_obj = Account(transaction.to_address, 1)
-    distribution_account_obj = Account(usd.distribution_account, 1)
-
-    async def mock_get_account_obj_func(kp: Keypair, s):
-        if kp.public_key == transaction.to_address:
-            if s.submit_transaction.called:
-                return stellar_account_obj, {"balances": []}
-            else:
-                raise RuntimeError()
-        elif kp.public_key == usd.distribution_account:
-            return distribution_account_obj, None
-
-    with patch(
-        f"{test_module}.PendingDeposits.requires_multisig", new_callable=AsyncMock
-    ) as mock_requires_multisig:
-        async with Server(client=AiohttpClient()) as server:
-            server.fetch_base_fee = AsyncMock(return_value=100)
-            server.submit_transaction = AsyncMock()
-            mock_requires_multisig.return_value = False
-            with patch(
-                f"{test_module}.get_account_obj_async", mock_get_account_obj_func
-            ):
-                locks = {
-                    "destination_accounts": defaultdict(asyncio.Lock),
-                    "source_accounts": defaultdict(asyncio.Lock),
-                }
-                assert await PendingDeposits.get_or_create_destination_account(
-                    transaction, server, locks
-                ) == (stellar_account_obj, True,)
-                server.fetch_base_fee.assert_called()
-                mock_requires_multisig.assert_called()
-                server.submit_transaction.assert_called_once()
-                envelope = server.submit_transaction.mock_calls[0][1][0]
-                assert (
-                    envelope.transaction.source.account_id == usd.distribution_account
-                )
-                assert len(envelope.transaction.operations) == 1
-                assert isinstance(envelope.transaction.operations[0], CreateAccount)
-                assert (
-                    envelope.transaction.operations[0].destination
-                    == transaction.to_address
-                )
-
-
-@pytest.mark.django_db(transaction=True)
-async def test_get_or_create_destination_account_doesnt_exist_requires_multisig():
-    usd = await sync_to_async(Asset.objects.create)(
-        code="USD",
-        issuer=Keypair.random().public_key,
-        distribution_seed=Keypair.random().secret,
-    )
-    destination = Keypair.random().public_key
-    transaction = await sync_to_async(Transaction.objects.create)(
-        asset=usd,
-        status=Transaction.STATUS.pending_user_transfer_start,
-        kind=Transaction.KIND.deposit,
-        stellar_account=destination,
-        to_address=destination,
-        channel_seed=Keypair.random().secret,
-    )
-
-    stellar_account_obj = Account(transaction.to_address, 1)
-    channel_account_obj = Account(transaction.channel_account, 1)
-
-    async def mock_get_account_obj_func(kp: Keypair, s):
-        if kp.public_key == transaction.to_address:
-            if s.submit_transaction.called:
-                return stellar_account_obj, {"balances": []}
-            else:
-                raise RuntimeError()
-        elif kp.public_key == transaction.channel_account:
-            return channel_account_obj, None
-
-    with patch(
-        f"{test_module}.PendingDeposits.requires_multisig", new_callable=AsyncMock
-    ) as mock_requires_multisig:
-        with patch(
-            f"{test_module}.PendingDeposits.get_channel_keypair"
-        ) as mock_get_channel_keypair:
-            async with Server(client=AiohttpClient()) as server:
-                server.fetch_base_fee = AsyncMock(return_value=100)
-                server.submit_transaction = AsyncMock()
-                mock_requires_multisig.return_value = True
-                mock_get_channel_keypair.return_value = Keypair.from_secret(
-                    transaction.channel_seed
-                )
-                with patch(
-                    f"{test_module}.get_account_obj_async", mock_get_account_obj_func
-                ):
-                    locks = {
-                        "destination_accounts": defaultdict(asyncio.Lock),
-                        "source_accounts": defaultdict(asyncio.Lock),
-                    }
-                    assert await PendingDeposits.get_or_create_destination_account(
-                        transaction, server, locks
-                    ) == (stellar_account_obj, True,)
-                    server.fetch_base_fee.assert_called()
-                    mock_requires_multisig.assert_called()
-                    mock_get_channel_keypair.assert_called()
-                    server.submit_transaction.assert_called_once()
-                    envelope = server.submit_transaction.mock_calls[0][1][0]
-                    assert (
-                        envelope.transaction.source.account_id
-                        == transaction.channel_account
-                    )
-                    assert len(envelope.transaction.operations) == 1
-                    assert isinstance(envelope.transaction.operations[0], CreateAccount)
-                    assert (
-                        envelope.transaction.operations[0].destination
-                        == transaction.to_address
-                    )
-
-
-@pytest.mark.django_db(transaction=True)
-async def test_get_or_create_destination_account_doesnt_exist_requires_multisig_different_destination():
-    usd = await sync_to_async(Asset.objects.create)(
-        code="USD",
-        issuer=Keypair.random().public_key,
-        distribution_seed=Keypair.random().secret,
-    )
-    transaction = await sync_to_async(Transaction.objects.create)(
-        asset=usd,
-        status=Transaction.STATUS.pending_user_transfer_start,
-        kind=Transaction.KIND.deposit,
-        stellar_account=Keypair.random().public_key,
-        to_address=Keypair.random().public_key,
-        channel_seed=Keypair.random().secret,
-    )
-
-    stellar_account_obj = Account(transaction.to_address, 1)
-    channel_account_obj = Account(transaction.channel_account, 1)
-
-    async def mock_get_account_obj_func(kp: Keypair, s):
-        if kp.public_key == transaction.to_address:
-            if s.submit_transaction.called:
-                return stellar_account_obj, {"balances": []}
-            else:
-                raise RuntimeError()
-        elif kp.public_key == transaction.channel_account:
-            return channel_account_obj, None
-
-    with patch(
-        f"{test_module}.PendingDeposits.requires_multisig", new_callable=AsyncMock
-    ) as mock_requires_multisig:
-        with patch(
-            f"{test_module}.PendingDeposits.get_channel_keypair"
-        ) as mock_get_channel_keypair:
-            async with Server(client=AiohttpClient()) as server:
-                server.fetch_base_fee = AsyncMock(return_value=100)
-                server.submit_transaction = AsyncMock()
-                mock_requires_multisig.return_value = True
-                mock_get_channel_keypair.return_value = Keypair.from_secret(
-                    transaction.channel_seed
-                )
-                with patch(
-                    f"{test_module}.get_account_obj_async", mock_get_account_obj_func
-                ):
-                    locks = {
-                        "destination_accounts": defaultdict(asyncio.Lock),
-                        "source_accounts": defaultdict(asyncio.Lock),
-                    }
-                    assert await PendingDeposits.get_or_create_destination_account(
-                        transaction, server, locks
-                    ) == (stellar_account_obj, True,)
-                    server.fetch_base_fee.assert_called()
-                    mock_requires_multisig.assert_called()
-                    mock_get_channel_keypair.assert_called()
-                    server.submit_transaction.assert_called_once()
-                    envelope = server.submit_transaction.mock_calls[0][1][0]
-                    assert (
-                        envelope.transaction.source.account_id
-                        == transaction.channel_account
-                    )
-                    assert len(envelope.transaction.operations) == 1
-                    assert isinstance(envelope.transaction.operations[0], CreateAccount)
-                    assert (
-                        envelope.transaction.operations[0].destination
-                        == transaction.to_address
-                    )
-
-
-@pytest.mark.django_db(transaction=True)
-async def test_submit_sucess():
+async def test_submit_success():
     usd = await sync_to_async(Asset.objects.create)(
         code="USD",
         issuer=Keypair.random().public_key,
@@ -551,6 +297,7 @@ async def test_submit_sucess():
         kind=Transaction.KIND.deposit,
         pending_execution_attempt=True,
         stellar_account=Keypair.random().public_key,
+        to_address=Keypair.random().public_key,
         amount_in=100,
         amount_fee=1,
     )
@@ -561,31 +308,23 @@ async def test_submit_sucess():
             f"{test_module}.maybe_make_callback_async", new_callable=AsyncMock
         ) as mock_maybe_make_callback:
             with patch(
-                f"{test_module}.PendingDeposits.create_deposit_envelope",
-                new_callable=AsyncMock,
-            ) as mock_create_deposit_envelope:
+                f"{test_module}.rci.submit_deposit_transaction",
+            ) as mock_submit_transaction:
                 mock_get_account_obj.return_value = (
-                    Account(usd.distribution_account, 1),
                     None,
-                )
-                mock_create_deposit_envelope.return_value = TransactionEnvelope(
-                    SdkTransaction(
-                        source=usd.distribution_account,
-                        sequence=1,
-                        fee=100,
-                        operations=[BumpSequence(2)],
-                    ),
-                    network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
+                    {
+                        "balances": [
+                            {"asset_code": usd.code, "asset_issuer": usd.issuer}
+                        ]
+                    },
                 )
                 async with Server(client=AiohttpClient()) as server:
-                    server.submit_transaction = AsyncMock(
-                        return_value={
-                            "envelope_xdr": "envelope_xdr",
-                            "paging_token": "paging_token",
-                            "id": "id",
-                            "successful": True,
-                        }
-                    )
+                    mock_submit_transaction.return_value = {
+                        "envelope_xdr": "envelope_xdr",
+                        "paging_token": "paging_token",
+                        "id": "id",
+                        "successful": True,
+                    }
                     locks = {
                         "destination_accounts": defaultdict(asyncio.Lock),
                         "source_accounts": defaultdict(asyncio.Lock),
@@ -604,14 +343,11 @@ async def test_submit_sucess():
                     assert transaction.completed_at
                     assert transaction.amount_out == 99
 
-                    server.submit_transaction.assert_called_once_with(
-                        mock_create_deposit_envelope.return_value
-                    )
-                    assert (
-                        len(mock_create_deposit_envelope.return_value.signatures) == 1
+                    mock_submit_transaction.assert_called_once_with(
+                        transaction=transaction, has_trustline=True
                     )
                     mock_get_account_obj.assert_called_once_with(
-                        Keypair.from_public_key(usd.distribution_account), server
+                        Keypair.from_public_key(transaction.to_address), server
                     )
                     assert mock_maybe_make_callback.call_count == 3
 
@@ -629,6 +365,7 @@ async def test_submit_request_failed_bad_request():
         kind=Transaction.KIND.deposit,
         pending_execution_attempt=True,
         stellar_account=Keypair.random().public_key,
+        to_address=Keypair.random().public_key,
         amount_in=100,
         amount_fee=1,
     )
@@ -636,62 +373,23 @@ async def test_submit_request_failed_bad_request():
         f"{test_module}.get_account_obj_async", new_callable=AsyncMock
     ) as mock_get_account_obj:
         with patch(
-            f"{test_module}.maybe_make_callback_async", new_callable=AsyncMock
-        ) as mock_maybe_make_callback:
-            with patch(
-                f"{test_module}.PendingDeposits.create_deposit_envelope",
-                new_callable=AsyncMock,
-            ) as mock_create_deposit_envelope:
-                mock_get_account_obj.return_value = (
-                    Account(usd.distribution_account, 1),
-                    None,
+            f"{test_module}.rci.submit_deposit_transaction",
+        ) as mock_submit_transaction:
+            mock_get_account_obj.return_value = (
+                None,
+                {"balances": [{"asset_code": usd.code, "asset_issuer": usd.issuer}]},
+            )
+            async with Server(client=AiohttpClient()) as server:
+                mock_submit_transaction.side_effect = BadRequestError(
+                    Mock(status_code=400, text="testing", json=Mock(return_value={}))
                 )
-                mock_create_deposit_envelope.return_value = TransactionEnvelope(
-                    SdkTransaction(
-                        source=usd.distribution_account,
-                        sequence=1,
-                        fee=100,
-                        operations=[BumpSequence(2)],
-                    ),
-                    network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
-                )
-                async with Server(client=AiohttpClient()) as server:
-                    server.submit_transaction = AsyncMock()
-                    server.submit_transaction.side_effect = BadRequestError(
-                        Mock(
-                            status_code=400, text="testing", json=Mock(return_value={})
-                        )
-                    )
-                    locks = {
-                        "destination_accounts": defaultdict(asyncio.Lock),
-                        "source_accounts": defaultdict(asyncio.Lock),
-                    }
+                locks = {
+                    "destination_accounts": defaultdict(asyncio.Lock),
+                    "source_accounts": defaultdict(asyncio.Lock),
+                }
 
-                    assert (
-                        await PendingDeposits.submit(transaction, server, locks)
-                        is False
-                    )
-
-                    await sync_to_async(transaction.refresh_from_db)()
-                    assert transaction.status == Transaction.STATUS.error
-                    assert transaction.status_message == "BadRequestError: testing"
-                    assert transaction.pending_execution_attempt is False
-                    assert transaction.envelope_xdr is None
-                    assert transaction.paging_token is None
-                    assert transaction.stellar_transaction_id is None
-                    assert transaction.completed_at is None
-                    assert transaction.amount_out is None
-
-                    server.submit_transaction.assert_called_once_with(
-                        mock_create_deposit_envelope.return_value
-                    )
-                    assert (
-                        len(mock_create_deposit_envelope.return_value.signatures) == 1
-                    )
-                    mock_get_account_obj.assert_called_once_with(
-                        Keypair.from_public_key(usd.distribution_account), server
-                    )
-                    assert mock_maybe_make_callback.call_count == 3
+                with pytest.raises(BadRequestError):
+                    await PendingDeposits.submit(transaction, server, locks)
 
 
 @pytest.mark.django_db(transaction=True)
@@ -707,6 +405,7 @@ async def test_submit_request_failed_connection_failed():
         kind=Transaction.KIND.deposit,
         pending_execution_attempt=True,
         stellar_account=Keypair.random().public_key,
+        to_address=Keypair.random().public_key,
         amount_in=100,
         amount_fee=1,
     )
@@ -714,59 +413,22 @@ async def test_submit_request_failed_connection_failed():
         f"{test_module}.get_account_obj_async", new_callable=AsyncMock
     ) as mock_get_account_obj:
         with patch(
-            f"{test_module}.maybe_make_callback_async", new_callable=AsyncMock
-        ) as mock_maybe_make_callback:
-            with patch(
-                f"{test_module}.PendingDeposits.create_deposit_envelope",
-                new_callable=AsyncMock,
-            ) as mock_create_deposit_envelope:
-                mock_get_account_obj.return_value = (
-                    Account(usd.distribution_account, 1),
-                    None,
-                )
-                mock_create_deposit_envelope.return_value = TransactionEnvelope(
-                    SdkTransaction(
-                        source=usd.distribution_account,
-                        sequence=1,
-                        fee=100,
-                        operations=[BumpSequence(2)],
-                    ),
-                    network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
-                )
+            f"{test_module}.rci.submit_deposit_transaction",
+        ) as mock_submit_transaction:
+            mock_get_account_obj.return_value = (
+                None,
+                {"balances": [{"asset_code": usd.code, "asset_issuer": usd.issuer}]},
+            )
 
-                async with Server(client=AiohttpClient()) as server:
-                    server.submit_transaction = AsyncMock()
-                    server.submit_transaction.side_effect = ConnectionError("testing")
-                    locks = {
-                        "destination_accounts": defaultdict(asyncio.Lock),
-                        "source_accounts": defaultdict(asyncio.Lock),
-                    }
+            async with Server(client=AiohttpClient()) as server:
+                mock_submit_transaction.side_effect = ConnectionError("testing")
+                locks = {
+                    "destination_accounts": defaultdict(asyncio.Lock),
+                    "source_accounts": defaultdict(asyncio.Lock),
+                }
 
-                    assert (
-                        await PendingDeposits.submit(transaction, server, locks)
-                        is False
-                    )
-
-                    await sync_to_async(transaction.refresh_from_db)()
-                    assert transaction.status == Transaction.STATUS.error
-                    assert transaction.status_message == "ConnectionError: testing"
-                    assert transaction.pending_execution_attempt is False
-                    assert transaction.envelope_xdr is None
-                    assert transaction.paging_token is None
-                    assert transaction.stellar_transaction_id is None
-                    assert transaction.completed_at is None
-                    assert transaction.amount_out is None
-
-                    server.submit_transaction.assert_called_once_with(
-                        mock_create_deposit_envelope.return_value
-                    )
-                    assert (
-                        len(mock_create_deposit_envelope.return_value.signatures) == 1
-                    )
-                    mock_get_account_obj.assert_called_once_with(
-                        Keypair.from_public_key(usd.distribution_account), server
-                    )
-                    assert mock_maybe_make_callback.call_count == 3
+                with pytest.raises(ConnectionError):
+                    await PendingDeposits.submit(transaction, server, locks)
 
 
 @pytest.mark.django_db(transaction=True)
@@ -782,6 +444,7 @@ async def test_submit_request_unsuccessful():
         kind=Transaction.KIND.deposit,
         pending_execution_attempt=True,
         stellar_account=Keypair.random().public_key,
+        to_address=Keypair.random().public_key,
         amount_in=100,
         amount_fee=1,
     )
@@ -792,25 +455,18 @@ async def test_submit_request_unsuccessful():
             f"{test_module}.maybe_make_callback_async", new_callable=AsyncMock
         ) as mock_maybe_make_callback:
             with patch(
-                f"{test_module}.PendingDeposits.create_deposit_envelope",
-                new_callable=AsyncMock,
-            ) as mock_create_deposit_envelope:
+                f"{test_module}.rci.submit_deposit_transaction",
+            ) as mock_submit_transaction:
                 mock_get_account_obj.return_value = (
-                    Account(usd.distribution_account, 1),
                     None,
-                )
-                mock_create_deposit_envelope.return_value = TransactionEnvelope(
-                    SdkTransaction(
-                        source=usd.distribution_account,
-                        sequence=1,
-                        fee=100,
-                        operations=[BumpSequence(2)],
-                    ),
-                    network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
+                    {
+                        "balances": [
+                            {"asset_code": usd.code, "asset_issuer": usd.issuer}
+                        ]
+                    },
                 )
                 async with Server(client=AiohttpClient()) as server:
-                    server.submit_transaction = AsyncMock()
-                    server.submit_transaction.return_value = {
+                    mock_submit_transaction.return_value = {
                         "successful": False,
                         "result_xdr": "testing",
                     }
@@ -837,14 +493,11 @@ async def test_submit_request_unsuccessful():
                     assert transaction.completed_at is None
                     assert transaction.amount_out is None
 
-                    server.submit_transaction.assert_called_once_with(
-                        mock_create_deposit_envelope.return_value
-                    )
-                    assert (
-                        len(mock_create_deposit_envelope.return_value.signatures) == 1
+                    mock_submit_transaction.assert_called_once_with(
+                        transaction=transaction, has_trustline=True
                     )
                     mock_get_account_obj.assert_called_once_with(
-                        Keypair.from_public_key(usd.distribution_account), server
+                        Keypair.from_public_key(transaction.to_address), server
                     )
                     assert mock_maybe_make_callback.call_count == 3
 
@@ -871,6 +524,7 @@ async def test_submit_multisig_success():
         kind=Transaction.KIND.deposit,
         pending_execution_attempt=True,
         stellar_account=Keypair.random().public_key,
+        to_address=Keypair.random().public_key,
         amount_in=100,
         amount_fee=1,
         envelope_xdr=envelope.to_xdr(),
@@ -882,12 +536,18 @@ async def test_submit_multisig_success():
             f"{test_module}.maybe_make_callback_async", new_callable=AsyncMock
         ) as mock_maybe_make_callback:
             with patch(
-                f"{test_module}.PendingDeposits.create_deposit_envelope",
-                new_callable=AsyncMock,
-            ) as mock_create_deposit_envelope:
+                f"{test_module}.rci.submit_deposit_transaction",
+            ) as mock_submit_transaction:
                 async with Server(client=AiohttpClient()) as server:
-                    server.submit_transaction = AsyncMock()
-                    server.submit_transaction.return_value = {
+                    mock_get_account_obj.return_value = (
+                        Mock(),
+                        {
+                            "balances": [
+                                {"asset_code": usd.code, "asset_issuer": usd.issuer}
+                            ]
+                        },
+                    )
+                    mock_submit_transaction.return_value = {
                         "envelope_xdr": "envelope_xdr",
                         "paging_token": "paging_token",
                         "id": "id",
@@ -911,11 +571,10 @@ async def test_submit_multisig_success():
                     assert transaction.completed_at
                     assert transaction.amount_out == 99
 
-                    mock_create_deposit_envelope.assert_not_called()
-                    mock_get_account_obj.assert_not_called()
-                    server.submit_transaction.assert_called_once()
-                    envelope_from_call = server.submit_transaction.mock_calls[0][1][0]
-                    assert envelope_from_call.to_xdr() == envelope.to_xdr()
+                    mock_submit_transaction.assert_called_once()
+                    kwargs = mock_submit_transaction.call_args[1]
+                    assert kwargs["transaction"] is transaction
+                    assert kwargs["has_trustline"] is True
                     assert mock_maybe_make_callback.call_count == 3
 
 
@@ -1068,32 +727,20 @@ async def test_create_transaction_envelope():
     )
     source_account = Account(usd.distribution_account, 1)
 
-    with patch(
-        f"{test_module}.get_account_obj_async", new_callable=AsyncMock
-    ) as mock_get_account_obj:
-        async with Server(client=AiohttpClient()) as server:
-            server.fetch_base_fee = AsyncMock(return_value=100)
+    envelope = create_deposit_envelope(transaction, source_account, False, 100)
 
-            envelope = await PendingDeposits.create_deposit_envelope(
-                transaction, source_account, server
-            )
-
-            mock_get_account_obj.assert_not_called()
-            server.fetch_base_fee.assert_called_once()
-            assert isinstance(envelope, TransactionEnvelope)
-            assert envelope.transaction.source.account_id == usd.distribution_account
-            assert isinstance(envelope.transaction.memo, TextMemo)
-            assert envelope.transaction.memo.memo_text.decode() == transaction.memo
-            assert envelope.network_passphrase == settings.STELLAR_NETWORK_PASSPHRASE
-            assert len(envelope.transaction.operations) == 1
-            assert isinstance(envelope.transaction.operations[0], Payment)
-            op = Payment.from_xdr_object(
-                envelope.transaction.operations[0].to_xdr_object()
-            )
-            assert op.source.account_id == usd.distribution_account
-            assert Decimal(op.amount) == 99
-            assert op.asset, SdkAsset == SdkAsset(usd.code, usd.issuer)
-            assert op.destination.account_id == transaction.to_address
+    assert isinstance(envelope, TransactionEnvelope)
+    assert envelope.transaction.source.account_id == usd.distribution_account
+    assert isinstance(envelope.transaction.memo, TextMemo)
+    assert envelope.transaction.memo.memo_text.decode() == transaction.memo
+    assert envelope.network_passphrase == settings.STELLAR_NETWORK_PASSPHRASE
+    assert len(envelope.transaction.operations) == 1
+    assert isinstance(envelope.transaction.operations[0], Payment)
+    op = Payment.from_xdr_object(envelope.transaction.operations[0].to_xdr_object())
+    assert op.source.account_id == usd.distribution_account
+    assert Decimal(op.amount) == 99
+    assert op.asset, SdkAsset == SdkAsset(usd.code, usd.issuer)
+    assert op.destination.account_id == transaction.to_address
 
 
 @pytest.mark.django_db(transaction=True)
@@ -1116,38 +763,21 @@ async def test_create_transaction_envelope_claimable_balance_supported_has_trust
         claimable_balance_supported=True,
     )
     source_account = Account(usd.distribution_account, 1)
-    with patch(
-        f"{test_module}.get_account_obj_async", new_callable=AsyncMock
-    ) as mock_get_account_obj:
-        async with Server(client=AiohttpClient()) as server:
-            server.fetch_base_fee = AsyncMock(return_value=100)
-            mock_get_account_obj.return_value = (
-                source_account,
-                {"balances": [{"asset_code": usd.code, "asset_issuer": usd.issuer}]},
-            )
 
-            envelope = await PendingDeposits.create_deposit_envelope(
-                transaction, source_account, server
-            )
+    envelope = create_deposit_envelope(transaction, source_account, False, 100)
 
-            mock_get_account_obj.assert_called_once_with(
-                Keypair.from_public_key(transaction.to_address), server
-            )
-            server.fetch_base_fee.assert_called_once()
-            assert isinstance(envelope, TransactionEnvelope)
-            assert envelope.transaction.source.account_id == usd.distribution_account
-            assert isinstance(envelope.transaction.memo, TextMemo)
-            assert envelope.transaction.memo.memo_text.decode() == transaction.memo
-            assert envelope.network_passphrase == settings.STELLAR_NETWORK_PASSPHRASE
-            assert len(envelope.transaction.operations) == 1
-            assert isinstance(envelope.transaction.operations[0], Payment)
-            op = Payment.from_xdr_object(
-                envelope.transaction.operations[0].to_xdr_object()
-            )
-            assert op.source.account_id == usd.distribution_account
-            assert Decimal(op.amount) == 99
-            assert op.asset, SdkAsset == SdkAsset(usd.code, usd.issuer)
-            assert op.destination.account_id == transaction.to_address
+    assert isinstance(envelope, TransactionEnvelope)
+    assert envelope.transaction.source.account_id == usd.distribution_account
+    assert isinstance(envelope.transaction.memo, TextMemo)
+    assert envelope.transaction.memo.memo_text.decode() == transaction.memo
+    assert envelope.network_passphrase == settings.STELLAR_NETWORK_PASSPHRASE
+    assert len(envelope.transaction.operations) == 1
+    assert isinstance(envelope.transaction.operations[0], Payment)
+    op = Payment.from_xdr_object(envelope.transaction.operations[0].to_xdr_object())
+    assert op.source.account_id == usd.distribution_account
+    assert Decimal(op.amount) == 99
+    assert op.asset, SdkAsset == SdkAsset(usd.code, usd.issuer)
+    assert op.destination.account_id == transaction.to_address
 
 
 @pytest.mark.django_db(transaction=True)
@@ -1170,39 +800,25 @@ async def test_create_transaction_envelope_claimable_balance_supported_no_trustl
         claimable_balance_supported=True,
     )
     source_account = Account(usd.distribution_account, 1)
-    with patch(
-        f"{test_module}.get_account_obj_async", new_callable=AsyncMock
-    ) as mock_get_account_obj:
-        async with Server(client=AiohttpClient()) as server:
-            server.fetch_base_fee = AsyncMock(return_value=100)
-            mock_get_account_obj.return_value = (source_account, {"balances": []})
 
-            envelope = await PendingDeposits.create_deposit_envelope(
-                transaction, source_account, server
-            )
+    envelope = create_deposit_envelope(transaction, source_account, True, 100)
 
-            mock_get_account_obj.assert_called_once_with(
-                Keypair.from_public_key(transaction.to_address), server
-            )
-            server.fetch_base_fee.assert_called_once()
-            assert isinstance(envelope, TransactionEnvelope)
-            assert envelope.transaction.source.account_id == usd.distribution_account
-            assert isinstance(envelope.transaction.memo, TextMemo)
-            assert envelope.transaction.memo.memo_text.decode() == transaction.memo
-            assert envelope.network_passphrase == settings.STELLAR_NETWORK_PASSPHRASE
-            assert len(envelope.transaction.operations) == 1
-            assert isinstance(
-                envelope.transaction.operations[0], CreateClaimableBalance
-            )
-            op = CreateClaimableBalance.from_xdr_object(
-                envelope.transaction.operations[0].to_xdr_object()
-            )
-            assert op.source.account_id == usd.distribution_account
-            assert Decimal(op.amount) == 99
-            assert op.asset, SdkAsset == SdkAsset(usd.code, usd.issuer)
-            assert len(op.claimants) == 1
-            assert isinstance(op.claimants[0], Claimant)
-            assert op.claimants[0].destination == transaction.to_address
+    assert isinstance(envelope, TransactionEnvelope)
+    assert envelope.transaction.source.account_id == usd.distribution_account
+    assert isinstance(envelope.transaction.memo, TextMemo)
+    assert envelope.transaction.memo.memo_text.decode() == transaction.memo
+    assert envelope.network_passphrase == settings.STELLAR_NETWORK_PASSPHRASE
+    assert len(envelope.transaction.operations) == 1
+    assert isinstance(envelope.transaction.operations[0], CreateClaimableBalance)
+    op = CreateClaimableBalance.from_xdr_object(
+        envelope.transaction.operations[0].to_xdr_object()
+    )
+    assert op.source.account_id == usd.distribution_account
+    assert Decimal(op.amount) == 99
+    assert op.asset, SdkAsset == SdkAsset(usd.code, usd.issuer)
+    assert len(op.claimants) == 1
+    assert isinstance(op.claimants[0], Claimant)
+    assert op.claimants[0].destination == transaction.to_address
 
 
 @pytest.mark.django_db(transaction=True)
@@ -1345,7 +961,10 @@ async def test_requires_multisig_single_master_signer():
             }
         },
     ):
-        assert await PendingDeposits.requires_multisig(transaction) is False
+        assert (
+            SelfCustodyIntegration().requires_third_party_signatures(transaction)
+            is False
+        )
 
 
 @pytest.mark.django_db(transaction=True)
@@ -1375,7 +994,10 @@ async def test_requires_multisig_single_master_signer_zero_weight():
             }
         },
     ):
-        assert await PendingDeposits.requires_multisig(transaction) is True
+        assert (
+            SelfCustodyIntegration().requires_third_party_signatures(transaction)
+            is True
+        )
 
 
 @pytest.mark.django_db(transaction=True)
@@ -1405,7 +1027,10 @@ async def test_requires_multisig_single_master_signer_insufficient_weight():
             }
         },
     ):
-        assert await PendingDeposits.requires_multisig(transaction) is True
+        assert (
+            SelfCustodyIntegration().requires_third_party_signatures(transaction)
+            is True
+        )
 
 
 @pytest.mark.django_db(transaction=True)
@@ -1430,7 +1055,10 @@ async def test_requires_multisig_fetch_account_single_master_signer():
         f"polaris.models.ASSET_DISTRIBUTION_ACCOUNT_MAP",
         {usd.distribution_account: distribution_account_json},
     ):
-        assert await PendingDeposits.requires_multisig(transaction) is False
+        assert (
+            SelfCustodyIntegration().requires_third_party_signatures(transaction)
+            is False
+        )
 
 
 @pytest.mark.django_db(transaction=True)
@@ -1450,8 +1078,7 @@ async def test_save_as_pending_signatures():
         f"{test_module}.get_account_obj_async", new_callable=AsyncMock
     ) as mock_get_account_obj:
         with patch(
-            f"{test_module}.PendingDeposits.create_deposit_envelope",
-            new_callable=AsyncMock,
+            f"{test_module}.create_deposit_envelope",
         ) as mock_create_deposit_envelope:
             with patch(
                 f"{test_module}.maybe_make_callback_async", new_callable=AsyncMock
@@ -1485,7 +1112,10 @@ async def test_save_as_pending_signatures():
                     assert len(envelope.signatures) == 1
                     mock_maybe_make_callback.assert_called_once()
                     mock_create_deposit_envelope.assert_called_once_with(
-                        transaction, mock_get_account_obj.return_value[0], server
+                        transaction=transaction,
+                        source_account=mock_get_account_obj.return_value[0],
+                        use_claimable_balance=False,
+                        base_fee=100,
                     )
 
 
@@ -1506,8 +1136,7 @@ async def test_save_as_pending_signatures_channel_account_not_found():
         f"{test_module}.get_account_obj_async", new_callable=AsyncMock
     ) as mock_get_account_obj:
         with patch(
-            f"{test_module}.PendingDeposits.create_deposit_envelope",
-            new_callable=AsyncMock,
+            f"{test_module}.create_deposit_envelope", new_callable=AsyncMock,
         ) as mock_create_deposit_envelope:
             with patch(
                 f"{test_module}.maybe_make_callback_async", new_callable=AsyncMock
@@ -1546,8 +1175,7 @@ async def test_save_as_pending_signatures_connection_failed():
         f"{test_module}.get_account_obj_async", new_callable=AsyncMock
     ) as mock_get_account_obj:
         with patch(
-            f"{test_module}.PendingDeposits.create_deposit_envelope",
-            new_callable=AsyncMock,
+            f"{test_module}.create_deposit_envelope", new_callable=AsyncMock,
         ) as mock_create_deposit_envelope:
             with patch(
                 f"{test_module}.maybe_make_callback_async", new_callable=AsyncMock
@@ -1587,7 +1215,7 @@ async def test_process_deposit_success():
         f"{test_module}.PendingDeposits.requires_trustline", new_callable=AsyncMock
     ) as requires_trustline:
         with patch(
-            f"{test_module}.PendingDeposits.requires_multisig", new_callable=AsyncMock
+            f"{test_module}.rci.requires_third_party_signatures"
         ) as requires_multisig:
             with patch(
                 f"{test_module}.PendingDeposits.handle_submit", new_callable=AsyncMock
@@ -1599,7 +1227,7 @@ async def test_process_deposit_success():
                     await PendingDeposits.process_deposit(transaction, server, {})
 
                     requires_trustline.assert_called_once_with(transaction, server, {})
-                    requires_multisig.assert_called_once_with(transaction)
+                    requires_multisig.assert_called_once_with(transaction=transaction)
                     handle_submit.assert_called_once_with(transaction, server, {})
 
 
@@ -1621,7 +1249,7 @@ async def test_process_deposit_requires_trustline():
         f"{test_module}.PendingDeposits.requires_trustline", new_callable=AsyncMock
     ) as requires_trustline:
         with patch(
-            f"{test_module}.PendingDeposits.requires_multisig", new_callable=AsyncMock
+            f"{test_module}.rci.requires_third_party_signatures"
         ) as requires_multisig:
             with patch(
                 f"{test_module}.PendingDeposits.handle_submit", new_callable=AsyncMock
@@ -1655,7 +1283,7 @@ async def test_process_deposit_requires_multisig():
         f"{test_module}.PendingDeposits.requires_trustline", new_callable=AsyncMock
     ) as requires_trustline:
         with patch(
-            f"{test_module}.PendingDeposits.requires_multisig", new_callable=AsyncMock
+            f"{test_module}.rci.requires_third_party_signatures"
         ) as requires_multisig:
             with patch(
                 f"{test_module}.PendingDeposits.handle_submit", new_callable=AsyncMock
@@ -1673,7 +1301,9 @@ async def test_process_deposit_requires_multisig():
                         requires_trustline.assert_called_once_with(
                             transaction, server, {}
                         )
-                        requires_multisig.assert_called_once_with(transaction)
+                        requires_multisig.assert_called_once_with(
+                            transaction=transaction
+                        )
                         save_as_pending_signatures.assert_called_once_with(
                             transaction, server
                         )
@@ -1698,7 +1328,7 @@ async def test_process_deposit_requires_multisig_raises_not_found():
         f"{test_module}.PendingDeposits.requires_trustline", new_callable=AsyncMock
     ) as requires_trustline:
         with patch(
-            f"{test_module}.PendingDeposits.requires_multisig", new_callable=AsyncMock
+            f"{test_module}.rci.requires_third_party_signatures"
         ) as requires_multisig:
             with patch(
                 f"{test_module}.PendingDeposits.handle_submit", new_callable=AsyncMock
@@ -1716,7 +1346,9 @@ async def test_process_deposit_requires_multisig_raises_not_found():
                         requires_trustline.assert_called_once_with(
                             transaction, server, {}
                         )
-                        requires_multisig.assert_called_once_with(transaction)
+                        requires_multisig.assert_called_once_with(
+                            transaction=transaction
+                        )
                         save_as_pending_signatures.assert_not_called()
                         handle_submit.assert_not_called()
 
@@ -1725,7 +1357,7 @@ async def test_process_deposit_requires_multisig_raises_not_found():
                         assert transaction.pending_execution_attempt is False
                         assert (
                             transaction.status_message
-                            == f"{usd.code} distribution account {usd.distribution_account} does not exist"
+                            == "the distribution account for this transaction does not exist"
                         )
 
 
@@ -1747,7 +1379,7 @@ async def test_process_deposit_requires_multisig_raises_connection_error():
         f"{test_module}.PendingDeposits.requires_trustline", new_callable=AsyncMock
     ) as requires_trustline:
         with patch(
-            f"{test_module}.PendingDeposits.requires_multisig", new_callable=AsyncMock
+            f"{test_module}.rci.requires_third_party_signatures"
         ) as requires_multisig:
             with patch(
                 f"{test_module}.PendingDeposits.handle_submit", new_callable=AsyncMock
@@ -1765,7 +1397,9 @@ async def test_process_deposit_requires_multisig_raises_connection_error():
                         requires_trustline.assert_called_once_with(
                             transaction, server, {}
                         )
-                        requires_multisig.assert_called_once_with(transaction)
+                        requires_multisig.assert_called_once_with(
+                            transaction=transaction
+                        )
                         save_as_pending_signatures.assert_not_called()
                         handle_submit.assert_not_called()
 

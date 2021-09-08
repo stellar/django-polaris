@@ -45,7 +45,8 @@ def test_withdraw_success(client):
     assert t.protocol == Transaction.PROTOCOL.sep24
     assert t.kind == Transaction.KIND.withdrawal
     assert t.status == Transaction.STATUS.incomplete
-    assert t.receiving_anchor_account == usd.distribution_account
+    assert t.receiving_anchor_account is None
+    assert t.memo is None
     assert t.memo_type == Transaction.MEMO_TYPES.hash
 
 
