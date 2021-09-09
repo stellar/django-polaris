@@ -604,7 +604,7 @@ async def test_handle_submit_success():
 
                 mock_submit.assert_called_once_with(transaction, server, {})
                 transaction.refresh_from_db.assert_called_once()
-                mock_rdi.after_deposit.assert_called_once_with(transaction)
+                mock_rdi.after_deposit.assert_called_once_with(transaction=transaction)
 
 
 @pytest.mark.django_db(transaction=True)
@@ -662,7 +662,9 @@ async def test_handle_submit_success_after_deposit_exception():
 
                     mock_submit.assert_called_once_with(transaction, server, {})
                     transaction.refresh_from_db.assert_called_once()
-                    mock_rdi.after_deposit.assert_called_once_with(transaction)
+                    mock_rdi.after_deposit.assert_called_once_with(
+                        transaction=transaction
+                    )
                     mock_logger.exception.assert_called_once()
 
 
