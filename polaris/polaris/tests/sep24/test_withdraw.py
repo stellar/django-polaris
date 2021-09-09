@@ -107,8 +107,7 @@ def test_withdraw_no_distribution_account(client):
     response = client.post(
         WITHDRAW_PATH, {"asset_code": usd.code, "amount": 10000}, follow=True
     )
-    assert response.status_code == 400
-    assert response.json()["error"] == f"invalid operation for asset {usd.code}"
+    assert response.status_code == 200
 
 
 @pytest.mark.django_db
