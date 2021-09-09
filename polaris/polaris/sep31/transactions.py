@@ -214,13 +214,10 @@ def validate_post_fields(
     ).get("fields", {})
     if "transaction" not in expected_fields:
         return {}
-    elif "transaction" not in passed_fields:
-        missing_fields["transaction"] = expected_fields["transaction"]
-        return missing_fields
     for field, info in expected_fields["transaction"].items():
         if info.get("optional"):
             continue
-        elif field not in passed_fields["transaction"]:
+        elif field not in passed_fields.get("transaction", {}):
             missing_fields["transaction"][field] = info
     return dict(missing_fields)
 
