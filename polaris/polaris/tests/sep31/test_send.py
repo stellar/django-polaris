@@ -3,6 +3,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 from stellar_sdk import Keypair
+from rest_framework.request import Request
 
 from polaris.tests.helpers import mock_check_auth_success
 from polaris.models import Transaction
@@ -52,6 +53,11 @@ def test_successful_send(client, usd_asset_factory):
     )
     assert body["stellar_memo_type"] == Transaction.MEMO_TYPES.hash
     assert body["stellar_account_id"] == asset.distribution_account
+    kwargs = success_send_integration.info.call_args_list[-1][1]
+    assert isinstance(kwargs.get("request"), Request)
+    assert kwargs.get("asset").code == asset.code
+    assert kwargs.get("asset").issuer == asset.issuer
+    assert kwargs.get("lang") is None
 
 
 @pytest.mark.django_db

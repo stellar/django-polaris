@@ -619,7 +619,9 @@ class PendingDeposits:
         if success:
             await sync_to_async(transaction.refresh_from_db)()
             try:
-                await sync_to_async(rdi.after_deposit)(transaction)
+                await sync_to_async(rdi.after_deposit)(transaction=transaction)
+            except NotImplementedError:
+                pass
             except Exception:
                 logger.exception("after_deposit() threw an unexpected exception")
 
