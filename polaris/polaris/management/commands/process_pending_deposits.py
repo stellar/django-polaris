@@ -427,6 +427,11 @@ class PendingDeposits:
                     # requests to create destination accounts since it does not have a dedicated
                     # distribution account.
                     distribution_account = None
+                except Exception:
+                    raise RuntimeError(
+                        "an exception was raised while attempting to fetch the distribution "
+                        f"account for transaction {transaction.id}"
+                    )
                 else:
                     # Aquire a lock for the source account of the transaction that will create the
                     # deposit's destination account.
@@ -439,14 +444,17 @@ class PendingDeposits:
                     )
 
                 try:
-                    rci.create_destination_account(transaction)
+                    rci.create_destination_account(transaction=transaction)
                 except Exception:
                     raise RuntimeError(
                         "an exception was raised while attempting to create the destination "
                         f"account for transaction {transaction.id}"
                     )
                 finally:
-                    if locks["source_accounts"][distribution_account].locked():
+                    if (
+                        distribution_account in locks["source_accounts"]
+                        and locks["source_accounts"][distribution_account].locked()
+                    ):
                         logger.debug(
                             f"unlocking after creating destination accoutn for transaction {transaction.id}"
                         )
@@ -558,7 +566,10 @@ class PendingDeposits:
             # the exception will be caught by PendingDeposits.handle_submit()
             raise e
         finally:
-            if locks["source_accounts"][distribution_account].locked():
+            if (
+                distribution_account in locks["source_accounts"]
+                and locks["source_accounts"][distribution_account].locked()
+            ):
                 logger.debug(f"unlocking after submitting transaction {transaction.id}")
                 locks["source_accounts"][distribution_account].release()
 
