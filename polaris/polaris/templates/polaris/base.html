@@ -53,11 +53,15 @@
       {% block "footer" %}
       {% endblock %}
     </div>
+    <script type="text/javascript" src="{% static 'polaris/scripts/number.js' %}"></script>
     <script type="text/javascript" src="{% static 'polaris/scripts/styleHelpers.js' %}"></script>
     <script type="text/javascript" src="{% static 'polaris/scripts/disableSubmitOnClick.js' %}"></script>
     <script type="text/javascript" src="{% static 'polaris/scripts/dynamicAmountPadding.js' %}"></script>
     <script type="text/javascript" src="{% static 'polaris/scripts/feeTable.js' %}"></script>
     <script type="text/javascript">
+      styleHelpers({
+        languageCode: "{{ LANGUAGE_CODE }}"
+      });
       feeTable({
         operation: "{{ operation }}",
         additiveFeesEnabled: "{{ additive_fees_enabled }}" === "True",
@@ -68,7 +72,10 @@
         significantDecimals: {{ asset.significant_decimals }},
         symbol: "{{ asset.symbol }}",
         assetCode: "{{ asset.code }}",
-        useFeeEndpoint: "{{ use_fee_endpoint }}" === "True"
+        useFeeEndpoint: "{{ use_fee_endpoint }}" === "True",
+        languageCode: "{{ LANGUAGE_CODE }}",
+        parseNumber: parseNumber,
+        formatNumber: formatNumber
       });
     </script>
 

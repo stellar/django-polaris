@@ -115,7 +115,7 @@ class TransactionForm(forms.Form):
 
         # Re-initialize the 'amount' field now that we have all the parameters necessary
         self.fields["amount"].__init__(
-            widget=forms.NumberInput(
+            widget=forms.TextInput(
                 attrs={
                     "class": "input",
                     "inputmode": "decimal",

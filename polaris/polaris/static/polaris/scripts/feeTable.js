@@ -10,7 +10,10 @@ function feeTable({
   significantDecimals,
   symbol,
   useFeeEndpoint,
-  assetCode
+  assetCode,
+  languageCode,
+  parseNumber,
+  formatNumber
 }) {
   let amountInput = document.querySelector('.amount-input');
   let typeInput = document.querySelector('#id_type');
@@ -45,13 +48,13 @@ function feeTable({
      */
     let feeStr;
     let totalStr;
-    if (Number(amountIn) !== 0) {
+    if (amountIn !== 0) {
       let total = additiveFeesEnabled ? amountIn + fee : amountIn - fee;
-      feeStr = fee.toFixed(significantDecimals);
-      totalStr = total.toFixed(significantDecimals);
+      feeStr = formatNumber(fee, languageCode, { maximumFractionDigits: significantDecimals });
+      totalStr = formatNumber(total, languageCode, { maximumFractionDigits: significantDecimals });
     } else {
       feeStr = "0";
-      totalStr = additiveFeesEnabled ? amountIn.toFixed(significantDecimals) : "0";
+      totalStr = additiveFeesEnabled ? formatNumber(amountIn, languageCode, { maximumFractionDigits: significantDecimals }) : "0";
     }
     return [feeStr, totalStr];
   }
@@ -97,11 +100,11 @@ function feeTable({
   }
 
   function amountInputChange(e) {
-    if (isNaN(amountInput.value)) return;
+    if (Number.isNaN(amountInput.value)) return;
     if (typeInput && !typeInput.value) {
       return;
     }
-    let amountIn = Number(amountInput.value);
+    let amountIn = parseNumber(amountInput.value, languageCode);
     if (!useFeeEndpoint) {
       let fee = fee_fixed + (amountIn * (fee_percent / 100));
       let [feeStr, amountOutStr] = getFeeTableStrings(fee, amountIn);
