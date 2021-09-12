@@ -1,5 +1,11 @@
 "use strict";
 
+/*
+* CSS style for :invalid input
+* color: #e64755;
+* box-shadow: 0 0 0.25rem rgba(230, 71, 85, 0.6), 0 0 0.125rem #e64755;
+*/
+
 function feeTable({
   operation,
   additiveFeesEnabled,
@@ -32,7 +38,8 @@ function feeTable({
     fee_percent = withdrawalFeePercent;
   }
   if (amountInput) {
-    feeTable.removeAttribute('hidden');
+    if (feeTable)
+      feeTable.removeAttribute('hidden');
     amountInput.addEventListener("keyup", amountInputChange);
     if (typeInput)
       typeInput.addEventListener("input", amountInputChange);
@@ -99,18 +106,42 @@ function feeTable({
     }, 500);
   }
 
+  function isAmountValid() {
+    const re = new RegExp('^\\d+((\\.|\\,)\\d{1,2})?$');
+    return re.test(amountInput.value);
+  }
+
+  function styleAmountInFieldInvalid() {
+    amountInput.style.color = "#e64755";
+    amountInput.style.boxShadow = "0 0 0.25rem rgba(230, 71, 85, 0.8)";
+  }
+
+  function styleAmountInFieldValid() {
+    amountInput.style.color = "#ffffff";
+    amountInput.style.boxShadow = "none";
+  }
+
   function amountInputChange(e) {
-    if (Number.isNaN(amountInput.value)) return;
+    if (!amountInput.value || Number.isNaN(amountInput.value)) return;
+    if (isAmountValid()) {
+      styleAmountInFieldValid();
+      console.log("valid")
+    } else {
+      styleAmountInFieldInvalid();
+      console.log("not valid")
+    }
     if (typeInput && !typeInput.value) {
       return;
     }
     let amountIn = parseNumber(amountInput.value, languageCode);
-    if (!useFeeEndpoint) {
-      let fee = fee_fixed + (amountIn * (fee_percent / 100));
-      let [feeStr, amountOutStr] = getFeeTableStrings(fee, amountIn);
-      updateFeeTableHtml(feeStr, amountOutStr);
-    } else {
-      callFeeEndpoint(amountIn);
+    if (feeTable) {
+      if (!useFeeEndpoint) {
+        let fee = fee_fixed + (amountIn * (fee_percent / 100));
+        let [feeStr, amountOutStr] = getFeeTableStrings(fee, amountIn);
+        updateFeeTableHtml(feeStr, amountOutStr);
+      } else {
+        callFeeEndpoint(amountIn);
+      }
     }
   }
 }
