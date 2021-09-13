@@ -112,11 +112,13 @@ function feeTable({
   }
 
   function styleAmountInFieldInvalid() {
+    // the same style applied for :invalid input fields in base.css
     amountInput.style.color = "#e64755";
     amountInput.style.boxShadow = "0 0 0.25rem rgba(230, 71, 85, 0.8)";
   }
 
   function styleAmountInFieldValid() {
+    // the same style applied for valid input fields in base.css
     amountInput.style.color = "#ffffff";
     amountInput.style.boxShadow = "none";
   }
