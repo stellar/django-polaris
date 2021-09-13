@@ -136,13 +136,13 @@ def post_interactive_withdraw(request: Request) -> Response:
             )
             transaction.save()
 
-        next_form = rwi.form_for_transaction(request=request, transaction=transaction)
         try:
             rwi.after_form_validation(
                 request=request, form=form, transaction=transaction
             )
         except NotImplementedError:
             pass
+        next_form = rwi.form_for_transaction(request=request, transaction=transaction)
         try:
             next_content = rwi.content_for_template(
                 request=request,
