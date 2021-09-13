@@ -51,6 +51,7 @@ setup(
         "toml",
         "pyjwt<3.0,>=2.1",
         "cryptography>=3.4,<4.0",
+        "sqlparse>=0.4.2"
     ],
     python_requires=">=3.7",
 )
