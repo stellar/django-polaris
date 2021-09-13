@@ -141,13 +141,13 @@ def post_interactive_deposit(request: Request) -> Response:
             )
             transaction.save()
 
-        next_form = rdi.form_for_transaction(request=request, transaction=transaction)
         try:
             rdi.after_form_validation(
                 request=request, form=form, transaction=transaction
             )
         except NotImplementedError:
             pass
+        next_form = rdi.form_for_transaction(request=request, transaction=transaction)
         try:
             next_content = rdi.content_for_template(
                 request=request,

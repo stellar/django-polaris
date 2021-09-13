@@ -9,6 +9,7 @@ from stellar_sdk.keypair import Keypair
 
 from polaris import settings
 from polaris.models import Transaction, Asset
+from polaris.integrations import TransactionForm
 from polaris.tests.helpers import (
     mock_check_auth_success,
     mock_check_auth_success_client_domain,
@@ -579,6 +580,72 @@ def test_interactive_withdraw_post_no_content_tx_complete(
         "The anchor did not provide content, is the interactive flow already complete?"
         in str(response.content)
     )
+
+
+@pytest.mark.django_db
+@patch("polaris.sep24.withdraw.rwi.content_for_template")
+def test_interactive_withdraw_post_validation_is_called_before_next_form(
+    mock_content_for_template, client
+):
+    """
+    Ensures we call WithdrawIntegration.after_form_validation() for the posted form data
+    before we call WithdrawIntegration.form_for_transaction() to retrieve the next form
+    """
+    usd = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        sep24_enabled=True,
+        deposit_enabled=True,
+    )
+    withdraw = Transaction.objects.create(
+        asset=usd,
+        kind=Transaction.KIND.withdrawal,
+        status=Transaction.STATUS.incomplete,
+    )
+
+    mock_content_for_template.return_value = {"test": "value"}
+    payload = interactive_jwt_payload(withdraw, "withdraw")
+    token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256")
+    returned_bound_form = False
+    validated = False
+
+    def mock_after_form_validation(*args, **kwargs):
+        nonlocal validated
+        validated = True
+
+    def mock_form_for_transaction(*args, **kwargs):
+        nonlocal returned_bound_form
+        if kwargs.get("post_data"):
+            returned_bound_form = True
+            return TransactionForm(kwargs.get("transaction"), kwargs.get("post_data"))
+        else:
+            if returned_bound_form and not validated:
+                raise RuntimeError()
+            return TransactionForm(kwargs.get("transaction"))
+
+    with patch(
+        "polaris.sep24.withdraw.rwi.form_for_transaction", mock_form_for_transaction
+    ):
+        with patch(
+            "polaris.sep24.withdraw.rwi.after_form_validation",
+            mock_after_form_validation,
+        ):
+            response = client.get(
+                f"{WEBAPP_PATH}"
+                f"?token={token}"
+                f"&transaction_id={withdraw.id}"
+                f"&asset_code={usd.code}"
+            )
+            assert response.status_code == 200
+            assert client.session["authenticated"] is True
+
+            response = client.post(
+                f"{WEBAPP_PATH}/submit"
+                f"?transaction_id={withdraw.id}"
+                f"&asset_code={withdraw.asset.code}",
+                {"amount": 100},
+            )
+            assert response.status_code == 302
 
 
 @pytest.mark.django_db
