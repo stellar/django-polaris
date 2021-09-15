@@ -1,11 +1,5 @@
 "use strict";
 
-/*
-* CSS style for :invalid input
-* color: #e64755;
-* box-shadow: 0 0 0.25rem rgba(230, 71, 85, 0.6), 0 0 0.125rem #e64755;
-*/
-
 function feeTable({
   operation,
   additiveFeesEnabled,
@@ -104,23 +98,6 @@ function feeTable({
         }
       });
     }, 500);
-  }
-
-  function isAmountValid() {
-    const re = new RegExp('^\\d+((\\.|\\,)\\d{1,2})?$');
-    return re.test(amountInput.value);
-  }
-
-  function styleAmountInFieldInvalid() {
-    // the same style applied for :invalid input fields in base.css
-    amountInput.style.color = "#e64755";
-    amountInput.style.boxShadow = "0 0 0.25rem rgba(230, 71, 85, 0.8)";
-  }
-
-  function styleAmountInFieldValid() {
-    // the same style applied for valid input fields in base.css
-    amountInput.style.color = "#ffffff";
-    amountInput.style.boxShadow = "none";
   }
 
   function amountInputChange(e) {
