@@ -102,13 +102,6 @@ function feeTable({
 
   function amountInputChange(e) {
     if (!amountInput.value || Number.isNaN(amountInput.value)) return;
-    if (isAmountValid()) {
-      styleAmountInFieldValid();
-      console.log("valid")
-    } else {
-      styleAmountInFieldInvalid();
-      console.log("not valid")
-    }
     if (typeInput && !typeInput.value) {
       return;
     }
