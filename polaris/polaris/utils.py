@@ -1,4 +1,5 @@
 """This module defines helpers for various endpoints."""
+import decimal
 import json
 import codecs
 import uuid
@@ -34,9 +35,9 @@ logger = getLogger(__name__)
 
 
 def render_error_response(
-    description: str,
-    status_code: int = status.HTTP_400_BAD_REQUEST,
-    content_type: str = "application/json",
+        description: str,
+        status_code: int = status.HTTP_400_BAD_REQUEST,
+        content_type: str = "application/json",
 ) -> Response:
     """
     Renders an error response in Django.
@@ -78,7 +79,7 @@ def create_transaction_id():
 
 
 def verify_valid_asset_operation(
-    asset, amount, op_type, content_type="application/json"
+        asset, amount, op_type, content_type="application/json"
 ) -> Optional[Response]:
     enabled = getattr(asset, f"{op_type}_enabled")
     min_amount = getattr(asset, f"{op_type}_min_amount")
@@ -116,8 +117,8 @@ def get_account_obj(kp):
     try:
         json_resp = (
             settings.HORIZON_SERVER.accounts()
-            .account_id(account_id=kp.public_key)
-            .call()
+                .account_id(account_id=kp.public_key)
+                .call()
         )
     except NotFoundError:
         raise RuntimeError(f"account {kp.public_key} does not exist")
@@ -142,8 +143,8 @@ def is_pending_trust(transaction, json_resp):
         asset_code = balance["asset_code"]
         asset_issuer = balance["asset_issuer"]
         if (
-            transaction.asset.code == asset_code
-            and transaction.asset.issuer == asset_issuer
+                transaction.asset.code == asset_code
+                and transaction.asset.issuer == asset_issuer
         ):
             pending_trust = False
             break
@@ -240,7 +241,7 @@ def extract_sep9_fields(args):
 
 
 def make_on_change_callback(
-    transaction: Transaction, timeout: Optional[int] = None
+        transaction: Transaction, timeout: Optional[int] = None
 ) -> RequestsResponse:
     """
     Makes a POST request to `transaction.on_change_callback`, a URL
@@ -255,8 +256,8 @@ def make_on_change_callback(
     :returns: The ``requests.Response`` object for the request
     """
     if (
-        not transaction.on_change_callback
-        or transaction.on_change_callback.lower() == "postmessage"
+            not transaction.on_change_callback
+            or transaction.on_change_callback.lower() == "postmessage"
     ):
         raise ValueError("invalid or missing on_change_callback")
     if not timeout:
@@ -275,8 +276,8 @@ def maybe_make_callback(transaction: Transaction, timeout: Optional[int] = None)
     callback is irrelevant for your use case.
     """
     if (
-        transaction.on_change_callback
-        and transaction.on_change_callback.lower() != "postmessage"
+            transaction.on_change_callback
+            and transaction.on_change_callback.lower() != "postmessage"
     ):
         try:
             callback_resp = make_on_change_callback(transaction, timeout=timeout)
@@ -288,11 +289,11 @@ def maybe_make_callback(transaction: Transaction, timeout: Optional[int] = None)
 
 
 async def make_on_change_callback_async(
-    transaction: Transaction, timeout: Optional[int] = None
+        transaction: Transaction, timeout: Optional[int] = None
 ) -> ClientResponse:
     if (
-        not transaction.on_change_callback
-        or transaction.on_change_callback.lower() == "postmessage"
+            not transaction.on_change_callback
+            or transaction.on_change_callback.lower() == "postmessage"
     ):
         raise ValueError("invalid or missing on_change_callback")
     if not timeout:
@@ -307,7 +308,7 @@ async def make_on_change_callback_async(
 
 
 async def maybe_make_callback_async(
-    transaction: Transaction, timeout: Optional[int] = None
+        transaction: Transaction, timeout: Optional[int] = None
 ):
     """
     Makes the on_change_callback request if present on the transaciton and
@@ -315,8 +316,8 @@ async def maybe_make_callback_async(
     callback is irrelevant for your use case.
     """
     if (
-        transaction.on_change_callback
-        and transaction.on_change_callback.lower() != "postmessage"
+            transaction.on_change_callback
+            and transaction.on_change_callback.lower() != "postmessage"
     ):
         try:
             callback_resp = await make_on_change_callback_async(
@@ -349,3 +350,14 @@ def validate_patch_request_fields(fields: Dict, transaction: Transaction):
                     gettext("missing %(field)s in %(category)s")
                     % {"field": field, "category": category}
                 )
+
+
+def to_decimals(float_value: float, precision: int) -> str:
+    """
+    Converting from float to string with the decimal precision.
+    """
+    return str(
+        decimal.Decimal(str(float_value)).quantize(
+            decimal.Decimal('.{}1'.format("0" * (precision - 1))),
+            rounding=decimal.ROUND_05UP)
+    )

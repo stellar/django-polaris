@@ -41,7 +41,7 @@ elif hasattr(settings, "POLARIS_ENV_PATH"):
             f"Could not find env file at {settings.POLARIS_ENV_PATH}"
         )
 
-accepted_seps = ["sep-1", "sep-6", "sep-6", "sep-10", "sep-12", "sep-24", "sep-31"]
+accepted_seps = ["sep-1", "sep-6", "sep-6", "sep-10", "sep-12", "sep-24", "sep-31", "sep-38"]
 ACTIVE_SEPS = env_or_settings("ACTIVE_SEPS", list=True)
 for i, sep in enumerate(ACTIVE_SEPS):
     if sep.lower() not in accepted_seps:

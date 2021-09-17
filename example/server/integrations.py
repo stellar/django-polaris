@@ -1,25 +1,25 @@
 import json
-from smtplib import SMTPException
-from decimal import Decimal
-from typing import List, Dict, Optional, Tuple
-from urllib.parse import urlencode
 from base64 import b64encode
 from collections import defaultdict
+from datetime import datetime
+from decimal import Decimal
 from logging import getLogger
+from smtplib import SMTPException
+from typing import List, Dict, Optional, Tuple
+from urllib.parse import urlencode
 
-from django.db.models import QuerySet
-from django.core.exceptions import ObjectDoesNotExist
-from django.utils.translation import gettext as _
 from django import forms
-from django.urls import reverse
-from django.core.mail import send_mail
 from django.conf import settings as server_settings
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.core.mail import send_mail
+from django.db.models import QuerySet
 from django.template.loader import render_to_string
-from stellar_sdk.keypair import Keypair
+from django.urls import reverse
+from django.utils.translation import gettext as _
 from rest_framework.request import Request
+from stellar_sdk.keypair import Keypair
 
-from polaris.models import Transaction, Asset
-from polaris.templates import Template
+from polaris import settings
 from polaris.integrations import (
     DepositIntegration,
     WithdrawalIntegration,
@@ -29,13 +29,16 @@ from polaris.integrations import (
     RailsIntegration,
     TransactionForm,
 )
-from polaris import settings
+from polaris.integrations.quote import SEP38AnchorIntegration, GetPricesResponse, GetPriceResponse
+from polaris.models import Transaction, Asset, Quote
 from polaris.sep10.token import SEP10Token
-
+from polaris.sep38 import list_exchange_pairs, get_significant_decimals
+from polaris.templates import Template
+from polaris.utils import to_decimals
 from . import mock_banking_rails as rails
-from .models import PolarisUser, PolarisStellarAccount, PolarisUserTransaction
 from .forms import KYCForm, WithdrawForm
-
+from .mock_exchange import get_mock_firm_exchange_price, get_mock_indicative_exchange_price
+from .models import PolarisUser, PolarisStellarAccount, PolarisUserTransaction
 
 logger = getLogger(__name__)
 CONFIRM_EMAIL_PAGE_TITLE = _("Confirm Email")
@@ -108,7 +111,7 @@ class SEP24KYC:
 
     @staticmethod
     def check_kyc(
-        transaction: Transaction, post_data=None
+            transaction: Transaction, post_data=None
     ) -> Tuple[Optional[forms.Form], Optional[Dict]]:
         """
         Returns a KYCForm if there is no record of this stellar account,
@@ -158,13 +161,13 @@ class SEP24KYC:
 
 class MyDepositIntegration(DepositIntegration):
     def form_for_transaction(
-        self,
-        request: Request,
-        transaction: Transaction,
-        post_data=None,
-        amount=None,
-        *args,
-        **kwargs,
+            self,
+            request: Request,
+            transaction: Transaction,
+            post_data=None,
+            amount=None,
+            *args,
+            **kwargs,
     ) -> Optional[forms.Form]:
         kyc_form, content = SEP24KYC.check_kyc(transaction, post_data=post_data)
         if kyc_form:
@@ -177,13 +180,13 @@ class MyDepositIntegration(DepositIntegration):
             return TransactionForm(transaction, initial={"amount": amount})
 
     def content_for_template(
-        self,
-        request: Request,
-        template: Template,
-        form: Optional[forms.Form] = None,
-        transaction: Optional[Transaction] = None,
-        *args,
-        **kwargs,
+            self,
+            request: Request,
+            template: Template,
+            form: Optional[forms.Form] = None,
+            transaction: Optional[Transaction] = None,
+            *args,
+            **kwargs,
     ) -> Optional[Dict]:
         na, kyc_content = SEP24KYC.check_kyc(transaction)
         if kyc_content:
@@ -205,18 +208,18 @@ class MyDepositIntegration(DepositIntegration):
                 # We're waiting on the user to send an off-chain payment
                 content.update(
                     memo=b64encode(str(hash(transaction)).encode())
-                    .decode()[:10]
-                    .upper()
+                             .decode()[:10]
+                             .upper()
                 )
             return content
 
     def after_form_validation(
-        self,
-        request: Request,
-        form: forms.Form,
-        transaction: Transaction,
-        *args,
-        **kwargs,
+            self,
+            request: Request,
+            form: forms.Form,
+            transaction: Transaction,
+            *args,
+            **kwargs,
     ):
         try:
             SEP24KYC.track_user_activity(form, transaction)
@@ -229,18 +232,18 @@ class MyDepositIntegration(DepositIntegration):
             )
 
     def process_sep6_request(
-        self,
-        token: SEP10Token,
-        request: Request,
-        params: Dict,
-        transaction: Transaction,
-        *args,
-        **kwargs,
+            self,
+            token: SEP10Token,
+            request: Request,
+            params: Dict,
+            transaction: Transaction,
+            *args,
+            **kwargs,
     ) -> Dict:
         account = (
             PolarisStellarAccount.objects.filter(account=params["account"], memo=None)
-            .select_related("user")
-            .first()
+                .select_related("user")
+                .first()
         )
         if not account:
             return {
@@ -256,7 +259,7 @@ class MyDepositIntegration(DepositIntegration):
         elif not (account.user.bank_account_number and account.user.bank_number):
             return {
                 "type": "non_interactive_customer_info_needed",
-                "fields": ["bank_number", "bank_account_number",],
+                "fields": ["bank_number", "bank_account_number", ],
             }
         elif params["type"] != "bank_account":
             raise ValueError(_("'type' must be 'bank_account'"))
@@ -320,13 +323,13 @@ class MyDepositIntegration(DepositIntegration):
 
 class MyWithdrawalIntegration(WithdrawalIntegration):
     def form_for_transaction(
-        self,
-        request: Request,
-        transaction: Transaction,
-        post_data=None,
-        amount=None,
-        *args,
-        **kwargs,
+            self,
+            request: Request,
+            transaction: Transaction,
+            post_data=None,
+            amount=None,
+            *args,
+            **kwargs,
     ) -> Optional[forms.Form]:
         kyc_form, content = SEP24KYC.check_kyc(transaction, post_data)
         if kyc_form:
@@ -339,13 +342,13 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
             return WithdrawForm(transaction, initial={"amount": amount})
 
     def content_for_template(
-        self,
-        request: Request,
-        template: Template,
-        form: Optional[forms.Form] = None,
-        transaction: Optional[Transaction] = None,
-        *args,
-        **kwargs,
+            self,
+            request: Request,
+            template: Template,
+            form: Optional[forms.Form] = None,
+            transaction: Optional[Transaction] = None,
+            *args,
+            **kwargs,
     ) -> Optional[Dict]:
         na, content = SEP24KYC.check_kyc(transaction)
         if content:
@@ -370,12 +373,12 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
             }
 
     def after_form_validation(
-        self,
-        request: Request,
-        form: forms.Form,
-        transaction: Transaction,
-        *args,
-        **kwargs,
+            self,
+            request: Request,
+            form: forms.Form,
+            transaction: Transaction,
+            *args,
+            **kwargs,
     ):
         try:
             SEP24KYC.track_user_activity(form, transaction)
@@ -388,13 +391,13 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
             )
 
     def process_sep6_request(
-        self,
-        token: SEP10Token,
-        request: Request,
-        params: Dict,
-        transaction: Transaction,
-        *args,
-        **kwargs,
+            self,
+            token: SEP10Token,
+            request: Request,
+            params: Dict,
+            transaction: Transaction,
+            *args,
+            **kwargs,
     ) -> Dict:
         account = (
             PolarisStellarAccount.objects.filter(
@@ -402,8 +405,8 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
                 memo=params["memo"],
                 memo_type=params["memo_type"],
             )
-            .select_related("user")
-            .first()
+                .select_related("user")
+                .first()
         )
         if not account:
             return {
@@ -419,7 +422,7 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
         elif not (account.user.bank_account_number and account.user.bank_number):
             return {
                 "type": "non_interactive_customer_info_needed",
-                "fields": ["bank_number", "bank_account_number",],
+                "fields": ["bank_number", "bank_account_number", ],
             }
         elif params["type"] != "bank_account":
             raise ValueError(_("'type' must be 'bank_account'"))
@@ -543,7 +546,7 @@ class MyCustomerIntegration(CustomerIntegration):
         }
 
     def get(
-        self, token: SEP10Token, request: Request, params: Dict, *args, **kwargs
+            self, token: SEP10Token, request: Request, params: Dict, *args, **kwargs
     ) -> Dict:
         user = None
         if params.get("id"):
@@ -589,7 +592,7 @@ class MyCustomerIntegration(CustomerIntegration):
             }
         }
         if (user.bank_number and user.bank_account_number) or (
-            params.get("type") in ["sep6-deposit", "sep31-sender", "sep31-receiver"]
+                params.get("type") in ["sep6-deposit", "sep31-sender", "sep31-receiver"]
         ):
             response_data.update(self.accepted)
             response_data.update(basic_info_accepted)
@@ -616,7 +619,7 @@ class MyCustomerIntegration(CustomerIntegration):
         return response_data
 
     def put(
-        self, token: SEP10Token, request: Request, params: Dict, *args, **kwargs
+            self, token: SEP10Token, request: Request, params: Dict, *args, **kwargs
     ) -> str:
         if params.get("id"):
             user = PolarisUser.objects.filter(id=params["id"]).first()
@@ -652,8 +655,8 @@ class MyCustomerIntegration(CustomerIntegration):
                 user = account.user
 
         if (
-            user.email != params.get("email_address")
-            and PolarisUser.objects.filter(email=params.get("email_address")).exists()
+                user.email != params.get("email_address")
+                and PolarisUser.objects.filter(email=params.get("email_address")).exists()
         ):
             raise ValueError("email_address is taken")
 
@@ -662,21 +665,21 @@ class MyCustomerIntegration(CustomerIntegration):
         user.last_name = params.get("last_name") or user.last_name
         user.bank_number = params.get("bank_number") or user.bank_number
         user.bank_account_number = (
-            params.get("bank_account_number") or user.bank_account_number
+                params.get("bank_account_number") or user.bank_account_number
         )
         user.save()
 
         return str(user.id)
 
     def delete(
-        self,
-        token: SEP10Token,
-        request: Request,
-        account: str,
-        memo: Optional[str],
-        memo_type: Optional[str],
-        *args,
-        **kwargs,
+            self,
+            token: SEP10Token,
+            request: Request,
+            account: str,
+            memo: Optional[str],
+            memo_type: Optional[str],
+            *args,
+            **kwargs,
     ):
         qparams = {"account": account, "memo": memo, "memo_type": memo_type}
         account = PolarisStellarAccount.objects.filter(**qparams).first()
@@ -709,12 +712,12 @@ class MyCustomerIntegration(CustomerIntegration):
 
 class MySEP31ReceiverIntegration(SEP31ReceiverIntegration):
     def info(
-        self,
-        request: Request,
-        asset: Asset,
-        lang: Optional[str] = None,
-        *args,
-        **kwargs,
+            self,
+            request: Request,
+            asset: Asset,
+            lang: Optional[str] = None,
+            *args,
+            **kwargs,
     ):
         return {
             "sep12": {
@@ -746,13 +749,13 @@ class MySEP31ReceiverIntegration(SEP31ReceiverIntegration):
         }
 
     def process_post_request(
-        self,
-        token: SEP10Token,
-        request: Request,
-        params: Dict,
-        transaction: Transaction,
-        *args,
-        **kwargs,
+            self,
+            token: SEP10Token,
+            request: Request,
+            params: Dict,
+            transaction: Transaction,
+            *args,
+            **kwargs,
     ) -> Optional[Dict]:
         _ = params.get("sender_id")  # not actually used
         receiver_id = params.get("receiver_id")
@@ -775,13 +778,13 @@ class MySEP31ReceiverIntegration(SEP31ReceiverIntegration):
         )
 
     def process_patch_request(
-        self,
-        token: SEP10Token,
-        request: Request,
-        params: Dict,
-        transaction: Transaction,
-        *args,
-        **kwargs,
+            self,
+            token: SEP10Token,
+            request: Request,
+            params: Dict,
+            transaction: Transaction,
+            *args,
+            **kwargs,
     ):
         info_fields = params.get("fields", {})
         transaction_fields = info_fields.get("transaction", {})
@@ -799,8 +802,8 @@ class MySEP31ReceiverIntegration(SEP31ReceiverIntegration):
             raise ValueError(_("field values must be strings"))
         user = (
             PolarisUserTransaction.objects.filter(transaction_id=transaction.id)
-            .first()
-            .user
+                .first()
+                .user
         )
         if "routing_number" in update_fields:
             user.bank_number = transaction_fields["routing_number"]
@@ -809,7 +812,7 @@ class MySEP31ReceiverIntegration(SEP31ReceiverIntegration):
         user.save()
 
     def valid_sending_anchor(
-        self, token: SEP10Token, request: Request, public_key: str, *args, **kwargs
+            self, token: SEP10Token, request: Request, public_key: str, *args, **kwargs
     ) -> bool:
         # A real anchor would check if public_key belongs to a partner anchor
         return True
@@ -817,7 +820,7 @@ class MySEP31ReceiverIntegration(SEP31ReceiverIntegration):
 
 class MyRailsIntegration(RailsIntegration):
     def poll_pending_deposits(
-        self, pending_deposits: QuerySet, *args, **kwargs
+            self, pending_deposits: QuerySet, *args, **kwargs
     ) -> List[Transaction]:
         """
         Anchors should implement their banking rails here, as described
@@ -854,7 +857,7 @@ class MyRailsIntegration(RailsIntegration):
         return ready_deposits
 
     def poll_outgoing_transactions(
-        self, transactions: QuerySet, *args, **kwargs
+            self, transactions: QuerySet, *args, **kwargs
     ) -> List[Transaction]:
         """
         Auto-complete pending_external transactions
@@ -970,3 +973,65 @@ def info_integration(request: Request, asset: Asset, lang: str):
             }
         },
     }
+
+
+class MySEP38AnchorIntegration(SEP38AnchorIntegration):
+    def get_prices(self,
+                   sell_asset: str,
+                   sell_amount: str,
+                   sell_delivery_method: str = None,
+                   buy_delivery_method: str = None,
+                   country_code: str = None) -> List[GetPricesResponse]:
+        exchange_pairs = list_exchange_pairs(buy_asset=sell_asset)
+
+        prices = []
+        for exchange_pair in exchange_pairs:
+            indicative_price = GetPricesResponse()
+            indicative_price.asset = exchange_pair.sell_asset
+            price = get_mock_indicative_exchange_price()
+            indicative_price.decimals = get_significant_decimals(indicative_price.asset)
+            indicative_price.price = to_decimals(float(price), indicative_price.decimals)
+            prices.append(indicative_price)
+        return prices
+
+    def get_price(self,
+                  sell_asset: str,
+                  buy_asset: str,
+                  sell_amount: str = None,
+                  buy_amount: str = None
+                  ) -> GetPriceResponse:
+        quote_price = GetPriceResponse()
+        buy_decimals = get_significant_decimals(buy_asset)
+        sell_decimals = get_significant_decimals(sell_asset)
+
+        if sell_amount is not None:
+            quote_price.sell_amount = sell_amount
+            price = float(get_mock_indicative_exchange_price())
+            quote_price.price = to_decimals(float(get_mock_indicative_exchange_price()), buy_decimals)
+            quote_price.buy_amount = to_decimals(float(quote_price.sell_amount) / float(price),
+                                                 buy_decimals)
+        else:
+            quote_price.buy_amount = buy_amount
+            price = float(get_mock_indicative_exchange_price())
+            quote_price.price = to_decimals(float(get_mock_indicative_exchange_price()), buy_decimals)
+            quote_price.sell_amount = to_decimals(float(quote_price.buy_amount) * float(price),
+                                                  sell_decimals)
+
+        return quote_price
+
+    @staticmethod
+    def approve_expiration(quote: Quote) -> (bool, datetime):
+        return True, quote.requested_expire_after
+
+    def post_quote(self, quote: Quote) -> Quote:
+        if quote.requested_expire_after is not None:
+            approved, expire_at = self.approve_expiration(quote)
+            if approved:
+                quote.expires_at = expire_at
+            else:
+                raise ValidationError(
+                    "The desired expiration: {} cannot be provided.".format(quote.requested_expire_after), )
+
+            quote.price = get_mock_firm_exchange_price()
+
+        return quote
