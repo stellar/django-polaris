@@ -21,6 +21,7 @@ django-compressor = "*"
 django-sass-processor = "*"
 
 [packages]
+aniso8601 = "*"
 django = ">=3.2, <4.0"
 asgiref = ">=3.2, <4"
 django-environ = "*"
