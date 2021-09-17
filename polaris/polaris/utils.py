@@ -1,4 +1,5 @@
 """This module defines helpers for various endpoints."""
+import decimal
 import json
 import codecs
 import uuid
@@ -116,8 +117,8 @@ def get_account_obj(kp):
     try:
         json_resp = (
             settings.HORIZON_SERVER.accounts()
-            .account_id(account_id=kp.public_key)
-            .call()
+                .account_id(account_id=kp.public_key)
+                .call()
         )
     except NotFoundError:
         raise RuntimeError(f"account {kp.public_key} does not exist")
@@ -349,3 +350,14 @@ def validate_patch_request_fields(fields: Dict, transaction: Transaction):
                     gettext("missing %(field)s in %(category)s")
                     % {"field": field, "category": category}
                 )
+
+
+def to_decimals(float_value: float, precision: int) -> str:
+    """
+    Converting from float to string with the decimal precision.
+    """
+    return str(
+        decimal.Decimal(str(float_value)).quantize(
+            decimal.Decimal('.{}1'.format("0" * (precision - 1))),
+            rounding=decimal.ROUND_05UP)
+    )

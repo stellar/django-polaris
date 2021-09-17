@@ -11,7 +11,7 @@ class RailsIntegration:
     """
 
     def poll_outgoing_transactions(
-        self, transactions: QuerySet, *args: List, **kwargs: Dict
+            self, transactions: QuerySet, *args: List, **kwargs: Dict
     ) -> List[Transaction]:
         """
         Check the transactions that are still in a ``pending_external`` status and
@@ -28,7 +28,7 @@ class RailsIntegration:
         raise NotImplementedError()
 
     def execute_outgoing_transaction(
-        self, transaction: Transaction, *args: List, **kwargs: Dict
+            self, transaction: Transaction, *args: List, **kwargs: Dict
     ):
         """
         Send the amount of the off-chain asset specified by `transaction` minus fees
@@ -83,7 +83,7 @@ class RailsIntegration:
         raise NotImplementedError()
 
     def poll_pending_deposits(
-        self, pending_deposits: QuerySet, *args: List, **kwargs: Dict
+            self, pending_deposits: QuerySet, *args: List, **kwargs: Dict
     ) -> List[Transaction]:
         """
         .. _autocommit: https://docs.djangoproject.com/en/2.2/topics/db/transactions/#autocommit
@@ -165,6 +165,12 @@ class RailsIntegration:
             successful user deposits to the anchor's account.
         """
         raise NotImplementedError()
+
+    def get_indicative_price(self, buy_asset: str, sell_asset: str) -> str:
+        pass
+
+    def get_firm_price(self, buy_asset: str, sell_asset: str, amount: str, expire_after: str) -> str:
+        pass
 
 
 registered_rails_integration = RailsIntegration()

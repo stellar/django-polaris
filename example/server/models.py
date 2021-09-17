@@ -1,7 +1,7 @@
 from uuid import uuid4
 
-from django.db import models
 from django.core.validators import MinLengthValidator
+from django.db import models
 
 from polaris.models import Transaction
 
@@ -64,3 +64,5 @@ class PolarisUserTransaction(models.Model):
 
     def __str__(self):
         return f"{str(self.account)}: {str(self.transaction)}"
+
+

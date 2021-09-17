@@ -1,35 +1,42 @@
 import sys
 from typing import Callable
-from polaris.integrations.info import default_info_func, registered_info_func
-from polaris.integrations.fees import calculate_fee, registered_fee_func
-from polaris.integrations.forms import TransactionForm, CreditCardForm
-from polaris.integrations.toml import get_stellar_toml, registered_toml_func
+
 from polaris.integrations.customers import (
     CustomerIntegration,
     registered_customer_integration,
 )
+from polaris.integrations.fees import calculate_fee, registered_fee_func
+from polaris.integrations.forms import TransactionForm, CreditCardForm
+from polaris.integrations.info import default_info_func, registered_info_func
+from polaris.integrations.quote import SEP38AnchorIntegration
 from polaris.integrations.rails import RailsIntegration, registered_rails_integration
 from polaris.integrations.sep31 import (
     SEP31ReceiverIntegration,
     registered_sep31_receiver_integration,
 )
+from polaris.integrations.toml import get_stellar_toml, registered_toml_func
 from polaris.integrations.transactions import (
     DepositIntegration,
     WithdrawalIntegration,
     registered_deposit_integration,
     registered_withdrawal_integration,
 )
+from polaris.integrations.quote import (
+    SEP38AnchorIntegration,
+    registered_quote_integration,
+)
 
 
 def register_integrations(
-    deposit: DepositIntegration = None,
-    withdrawal: WithdrawalIntegration = None,
-    sep31_receiver: SEP31ReceiverIntegration = None,
-    rails: RailsIntegration = None,
-    toml: Callable = None,
-    fee: Callable = None,
-    sep6_info: Callable = None,
-    customer: CustomerIntegration = None,
+        deposit: DepositIntegration = None,
+        withdrawal: WithdrawalIntegration = None,
+        sep31_receiver: SEP31ReceiverIntegration = None,
+        rails: RailsIntegration = None,
+        toml: Callable = None,
+        fee: Callable = None,
+        sep6_info: Callable = None,
+        customer: CustomerIntegration = None,
+        quote: SEP38AnchorIntegration = None,
 ):
     """
     Registers the integration classes and functions with Polaris
@@ -49,6 +56,7 @@ def register_integrations(
                     MyDepositIntegration,
                     MyWithdrawalIntegration,
                     MyCustomerIntegration,
+                    MyQuoteIntegration,
                     toml_integration,
                     fee_integrations,
                     info_integration
@@ -60,7 +68,8 @@ def register_integrations(
                     customer=MyCustomerIntegration(),
                     toml=toml_integration,
                     sep6_info=info_integration,
-                    fee=fee_integration
+                    fee=fee_integration,
+                    quote=MyQuoteIntegration()
                 )
 
     Simply pass the integration classes or functions you use.
@@ -98,11 +107,12 @@ def register_integrations(
     elif customer and not issubclass(customer.__class__, CustomerIntegration):
         raise TypeError("customer must be a subclass of CustomerIntegration")
     elif sep31_receiver and not issubclass(
-        sep31_receiver.__class__, SEP31ReceiverIntegration
-    ):
+            sep31_receiver.__class__, SEP31ReceiverIntegration):
         raise TypeError("send must be a subclass of SEP31ReceiverIntegration")
     elif rails and not issubclass(rails.__class__, RailsIntegration):
         raise TypeError("rails must be a subclass of RailsIntegration")
+    elif quote and not issubclass(quote.__class__, SEP38AnchorIntegration):
+        raise TypeError("quote must be a subclass of QuoteIntegration")
 
     for obj, attr in [
         (deposit, "registered_deposit_integration"),
@@ -113,6 +123,7 @@ def register_integrations(
         (customer, "registered_customer_integration"),
         (sep31_receiver, "registered_sep31_receiver_integration"),
         (rails, "registered_rails_integration"),
+        (quote, "registered_quote_integration"),
     ]:
         if obj:
             setattr(this, attr, obj)
