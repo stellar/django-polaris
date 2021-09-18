@@ -17,7 +17,12 @@ from rest_framework.renderers import (
 )
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from stellar_sdk.keypair import Keypair
-from stellar_sdk.exceptions import Ed25519PublicKeyInvalidError
+from stellar_sdk.strkey import StrKey
+from stellar_sdk.exceptions import (
+    Ed25519PublicKeyInvalidError,
+    MuxedEd25519AccountInvalidError,
+    ValueError as StellarSdkValueError,
+)
 
 from polaris import settings
 from polaris.templates import Template
@@ -399,10 +404,16 @@ def deposit(token: SEP10Token, request: Request) -> Response:
         if not (asset.deposit_min_amount <= amount <= asset.deposit_max_amount):
             return render_error_response(_("invalid 'amount'"))
 
-    try:
-        Keypair.from_public_key(destination_account)
-    except Ed25519PublicKeyInvalidError:
-        return render_error_response(_("invalid 'account'"))
+    if destination_account.startswith("M"):
+        try:
+            StrKey.decode_muxed_account(destination_account)
+        except (MuxedEd25519AccountInvalidError, StellarSdkValueError):
+            return render_error_response(_("invalid 'account'"))
+    else:
+        try:
+            Keypair.from_public_key(destination_account)
+        except Ed25519PublicKeyInvalidError:
+            return render_error_response(_("invalid 'account'"))
 
     if sep9_fields:
         try:
@@ -410,6 +421,9 @@ def deposit(token: SEP10Token, request: Request) -> Response:
                 token=token,
                 request=request,
                 stellar_account=token.account,
+                muxed_account=token.muxed_account,
+                account_memo=str(token.memo) if token.memo else None,
+                account_memo_type=Transaction.MEMO_TYPES.id if token.memo else None,
                 fields=sep9_fields,
                 language_code=lang,
             )
@@ -429,6 +443,8 @@ def deposit(token: SEP10Token, request: Request) -> Response:
     Transaction.objects.create(
         id=transaction_id,
         stellar_account=token.account,
+        muxed_account=token.muxed_account,
+        account_memo=token.memo,
         asset=asset,
         kind=Transaction.KIND.deposit,
         status=Transaction.STATUS.incomplete,
@@ -445,12 +461,13 @@ def deposit(token: SEP10Token, request: Request) -> Response:
     logger.info(f"Created deposit transaction {transaction_id}")
 
     url = interactive_url(
-        request,
-        str(transaction_id),
-        token.account,
-        asset_code,
-        settings.OPERATION_DEPOSIT,
-        amount,
+        request=request,
+        transaction_id=str(transaction_id),
+        account=token.muxed_account or token.account,
+        memo=token.memo,
+        asset_code=asset_code,
+        op_type=settings.OPERATION_DEPOSIT,
+        amount=amount,
     )
     return Response(
         {"type": "interactive_customer_info_needed", "url": url, "id": transaction_id},

@@ -1,3 +1,4 @@
+import os
 from django.apps import AppConfig
 from django.core.exceptions import ImproperlyConfigured
 
@@ -17,6 +18,7 @@ class PolarisConfig(AppConfig):
 
         self.check_middleware()
         self.check_protocol()
+        self.check_sep23_supported()
         if "sep-24" in settings.ACTIVE_SEPS:
             check_sep24_config()
 
@@ -47,4 +49,13 @@ class PolarisConfig(AppConfig):
         ):
             logger.debug(
                 "SECURE_SSL_REDIRECT is required to redirect HTTP traffic to HTTPS"
+            )
+
+    @staticmethod
+    def check_sep23_supported():
+        # use the same string comparisons as the SDK:
+        # https://github.com/StellarCN/py-stellar-base/blob/master/stellar_sdk/muxed_account.py#L15
+        if os.getenv("ENABLE_SEP_0023", "").lower() not in ("true", "1", "t"):
+            raise ImproperlyConfigured(
+                "environment variable ENABLE_SEP_0023 must be set to 'true'"
             )

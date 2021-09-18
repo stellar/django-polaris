@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "05596b0634cdcd8616e0a06dddf05ccd4c9f0ec1b96273e3a2fef0d350253d74"
+            "sha256": "120ffafba79e46b8918b83f2dc443e24306cc6887d50b5affd7d6cff5972ac41"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -364,11 +364,11 @@
         },
         "stellar-sdk": {
             "hashes": [
-                "sha256:dd840c16b23a941cb0f6cd29c11431f54b5859fdbdad24f0c017fd72f08f94e0",
-                "sha256:e1c35948337aee93cdefb47ab61e651b31171419d17db88610650f9e7f9a3636"
+                "sha256:b04f5663c9acd6780579fc567cd52c87d8ae2ea5477f1ef6352081a9e63cc0eb",
+                "sha256:c3445f08b09192751da7236d9f6e957cb2f7b1e06335a2839e2094d2d4d65a41"
             ],
             "index": "pypi",
-            "version": "==4.1.1"
+            "version": "==4.2.1"
         },
         "toml": {
             "hashes": [
@@ -472,11 +472,11 @@
         },
         "astroid": {
             "hashes": [
-                "sha256:3b680ce0419b8a771aba6190139a3998d14b413852506d99aff8dc2bf65ee67c",
-                "sha256:dc1e8b28427d6bbef6b8842b18765ab58f558c42bb80540bd7648c98412af25e"
+                "sha256:dcc06f6165f415220013801642bd6c9808a02967070919c4b746c6864c205471",
+                "sha256:fe81f80c0b35264acb5653302ffbd935d394f1775c5e4487df745bf9c2442708"
             ],
             "markers": "python_version ~= '3.6'",
-            "version": "==2.7.3"
+            "version": "==2.8.0"
         },
         "attrs": {
             "hashes": [
@@ -951,11 +951,11 @@
         },
         "pylint": {
             "hashes": [
-                "sha256:6758cce3ddbab60c52b57dcc07f0c5d779e5daf0cf50f6faacbef1d3ea62d2a1",
-                "sha256:e178e96b6ba171f8ef51fbce9ca30931e6acbea4a155074d80cc081596c9e852"
+                "sha256:0f358e221c45cbd4dad2a1e4b883e75d28acdcccd29d40c76eb72b307269b126",
+                "sha256:2c9843fff1a88ca0ad98a256806c82c5a8f86086e7ccbdb93297d86c3f90c436"
             ],
             "index": "pypi",
-            "version": "==2.10.2"
+            "version": "==2.11.1"
         },
         "pylint-django": {
             "hashes": [
@@ -1255,11 +1255,11 @@
         },
         "virtualenv": {
             "hashes": [
-                "sha256:9ef4e8ee4710826e98ff3075c9a4739e2cb1040de6a2a8d35db0055840dc96a0",
-                "sha256:e4670891b3a03eb071748c569a87cceaefbf643c5bac46d996c5a45c34aa0f06"
+                "sha256:4da4ac43888e97de9cf4fdd870f48ed864bbfd133d2c46cbdec941fed4a25aef",
+                "sha256:a4b987ec31c3c9996cf1bc865332f967fe4a0512c41b39652d6224f696e69da5"
             ],
             "markers": "python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3, 3.4'",
-            "version": "==20.7.2"
+            "version": "==20.8.0"
         },
         "virtualenv-clone": {
             "hashes": [
