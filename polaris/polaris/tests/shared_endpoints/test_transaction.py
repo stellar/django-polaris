@@ -62,7 +62,7 @@ def test_transaction_id_filter_and_format(
     response = client.get(f"{sep6_endpoint}?id={withdrawal.id}", follow=True, **header)
     content = json.loads(response.content)
 
-    assert response.status_code == 200
+    assert response.status_code == 200, content
 
     withdrawal_transaction = content.get("transaction")
 
