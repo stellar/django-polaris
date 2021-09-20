@@ -3,13 +3,17 @@ import json
 from typing import Dict
 from unittest.mock import patch, Mock
 
-from stellar_sdk.keypair import Keypair
+from stellar_sdk import Keypair, MuxedAccount
 from rest_framework.request import Request
 
 from polaris.tests.conftest import USD_DISTRIBUTION_SEED
 from polaris.tests.helpers import (
     mock_check_auth_success,
     mock_check_auth_success_client_domain,
+    mock_check_auth_success_muxed_account,
+    mock_check_auth_success_with_memo,
+    TEST_MUXED_ACCOUNT,
+    TEST_ACCOUNT_MEMO,
 )
 from polaris.integrations import WithdrawalIntegration
 from polaris.models import Transaction, Asset
@@ -38,7 +42,7 @@ class GoodWithdrawalIntegration(WithdrawalIntegration):
 @pytest.mark.django_db
 @patch("polaris.sep6.withdraw.rwi", GoodWithdrawalIntegration())
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-def test_good_withdrawal_integration(client, usd_asset_factory):
+def test_good_withdrawal_integration(client):
     asset = Asset.objects.create(
         code="USD",
         issuer=Keypair.random().public_key,
@@ -69,6 +73,104 @@ def test_good_withdrawal_integration(client, usd_asset_factory):
         "fee_percent": asset.withdrawal_fee_percent,
         "extra_info": {"test": "test"},
     }
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.withdraw.rwi", GoodWithdrawalIntegration())
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success_muxed_account)
+def test_success_muxed_account(client):
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        sep6_enabled=True,
+        withdrawal_enabled=True,
+        withdrawal_min_amount=10,
+        withdrawal_max_amount=1000,
+        distribution_seed=Keypair.random().secret,
+    )
+    response = client.get(
+        WITHDRAW_PATH,
+        {
+            "asset_code": asset.code,
+            "type": "bank_account",
+            "dest": "test bank account number",
+        },
+    )
+    content = response.json()
+    assert response.status_code == 200
+    assert content.pop("memo")
+    assert content.pop("memo_type") == Transaction.MEMO_TYPES.hash
+    assert content == {
+        "id": str(Transaction.objects.first().id),
+        "account_id": asset.distribution_account,
+        "min_amount": round(asset.withdrawal_min_amount, asset.significant_decimals),
+        "max_amount": round(asset.withdrawal_max_amount, asset.significant_decimals),
+        "fee_fixed": round(asset.withdrawal_fee_fixed, asset.significant_decimals),
+        "fee_percent": asset.withdrawal_fee_percent,
+        "extra_info": {"test": "test"},
+    }
+    assert Transaction.objects.count() == 1
+    t = Transaction.objects.first()
+    assert t.stellar_account == MuxedAccount.from_account(TEST_MUXED_ACCOUNT).account_id
+    assert t.muxed_account == TEST_MUXED_ACCOUNT
+    assert t.account_memo is None
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.withdraw.rwi", GoodWithdrawalIntegration())
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success_with_memo)
+def test_success_with_memo(client):
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        sep6_enabled=True,
+        withdrawal_enabled=True,
+        withdrawal_min_amount=10,
+        withdrawal_max_amount=1000,
+        distribution_seed=Keypair.random().secret,
+    )
+    response = client.get(
+        WITHDRAW_PATH,
+        {
+            "asset_code": asset.code,
+            "type": "bank_account",
+            "dest": "test bank account number",
+        },
+    )
+    content = response.json()
+    assert response.status_code == 200
+    assert content.pop("memo")
+    assert content.pop("memo_type") == Transaction.MEMO_TYPES.hash
+    assert content == {
+        "id": str(Transaction.objects.first().id),
+        "account_id": asset.distribution_account,
+        "min_amount": round(asset.withdrawal_min_amount, asset.significant_decimals),
+        "max_amount": round(asset.withdrawal_max_amount, asset.significant_decimals),
+        "fee_fixed": round(asset.withdrawal_fee_fixed, asset.significant_decimals),
+        "fee_percent": asset.withdrawal_fee_percent,
+        "extra_info": {"test": "test"},
+    }
+    assert Transaction.objects.count() == 1
+    t = Transaction.objects.first()
+    assert t.stellar_account == "test source address"
+    assert t.muxed_account is None
+    assert t.account_memo == TEST_ACCOUNT_MEMO
+
+
+@pytest.mark.django_db
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_withdraw_bad_muxed_account(client, acc1_usd_withdrawal_transaction_factory):
+    withdraw = acc1_usd_withdrawal_transaction_factory(
+        protocol=Transaction.PROTOCOL.sep6
+    )
+    asset = withdraw.asset
+    response = client.get(
+        WITHDRAW_PATH,
+        {"asset_code": asset.code, "type": "good type", "dest": "test", "account": "M"},
+    )
+    content = json.loads(response.content)
+    assert response.status_code == 400
+    assert content == {"error": "invalid 'account'"}
 
 
 @pytest.mark.django_db

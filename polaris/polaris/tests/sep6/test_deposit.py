@@ -3,13 +3,17 @@ import json
 from unittest.mock import patch, Mock
 from typing import Dict
 
-from stellar_sdk import Keypair
+from stellar_sdk import Keypair, MuxedAccount
 from rest_framework.request import Request
 
 from polaris.models import Transaction, Asset
 from polaris.tests.helpers import (
     mock_check_auth_success,
     mock_check_auth_success_client_domain,
+    mock_check_auth_success_muxed_account,
+    mock_check_auth_success_with_memo,
+    TEST_ACCOUNT_MEMO,
+    TEST_MUXED_ACCOUNT,
 )
 from polaris.integrations import DepositIntegration
 from polaris.sep10.token import SEP10Token
@@ -66,6 +70,108 @@ def test_deposit_success(mock_process_sep6_request, client):
         "fee_fixed": round(asset.deposit_fee_fixed, asset.significant_decimals),
         "fee_percent": asset.deposit_fee_percent,
     }
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.deposit.rdi.process_sep6_request")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success_muxed_account)
+def test_deposit_success_muxed_account(mock_process_sep6_request, client):
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        deposit_min_amount=10,
+        deposit_max_amount=1000,
+        sep6_enabled=True,
+        deposit_enabled=True,
+    )
+    mock_process_sep6_request.return_value = {
+        "how": "test",
+        "extra_info": {"test": "test"},
+    }
+    response = client.get(
+        DEPOSIT_PATH, {"asset_code": asset.code, "account": TEST_MUXED_ACCOUNT},
+    )
+    content = response.json()
+    assert response.status_code == 200, json.dumps(content, indent=2)
+    assert content == {
+        "id": str(Transaction.objects.first().id),
+        "how": "test",
+        "min_amount": round(asset.deposit_min_amount, asset.significant_decimals),
+        "max_amount": round(asset.deposit_max_amount, asset.significant_decimals),
+        "extra_info": {"test": "test"},
+        "fee_fixed": round(asset.deposit_fee_fixed, asset.significant_decimals),
+        "fee_percent": asset.deposit_fee_percent,
+    }
+    mock_process_sep6_request.assert_called_once()
+    assert Transaction.objects.count() == 1
+    t = Transaction.objects.first()
+    assert t.stellar_account == MuxedAccount.from_account(TEST_MUXED_ACCOUNT).account_id
+    assert t.muxed_account == TEST_MUXED_ACCOUNT
+    assert t.account_memo is None
+    assert t.to_address == TEST_MUXED_ACCOUNT
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.deposit.rdi.process_sep6_request")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success_with_memo)
+def test_deposit_success_with_memo(mock_process_sep6_request, client):
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        deposit_min_amount=10,
+        deposit_max_amount=1000,
+        sep6_enabled=True,
+        deposit_enabled=True,
+    )
+    mock_process_sep6_request.return_value = {
+        "how": "test",
+        "extra_info": {"test": "test"},
+    }
+    account = Keypair.random().public_key
+    response = client.get(
+        DEPOSIT_PATH,
+        {
+            "asset_code": asset.code,
+            "account": account,
+            "memo": TEST_ACCOUNT_MEMO,
+            "memo_type": Transaction.MEMO_TYPES.id,
+        },
+    )
+    content = response.json()
+    assert response.status_code == 200, json.dumps(content, indent=2)
+    assert content == {
+        "id": str(Transaction.objects.first().id),
+        "how": "test",
+        "min_amount": round(asset.deposit_min_amount, asset.significant_decimals),
+        "max_amount": round(asset.deposit_max_amount, asset.significant_decimals),
+        "extra_info": {"test": "test"},
+        "fee_fixed": round(asset.deposit_fee_fixed, asset.significant_decimals),
+        "fee_percent": asset.deposit_fee_percent,
+    }
+    mock_process_sep6_request.assert_called_once()
+    assert Transaction.objects.count() == 1
+    t = Transaction.objects.first()
+    assert t.stellar_account == "test source address"
+    assert t.muxed_account is None
+    assert t.account_memo == TEST_ACCOUNT_MEMO
+    assert t.to_address == account
+
+
+@pytest.mark.django_db
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_deposit_bad_muxed_account(client):
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        deposit_min_amount=10,
+        deposit_max_amount=1000,
+        sep6_enabled=True,
+        deposit_enabled=True,
+    )
+    response = client.get(DEPOSIT_PATH, {"asset_code": asset.code, "account": "M"},)
+    content = json.loads(response.content)
+    assert response.status_code == 400
+    assert content == {"error": "invalid 'account'"}
 
 
 @pytest.mark.django_db

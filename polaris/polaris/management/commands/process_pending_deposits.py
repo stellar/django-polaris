@@ -9,7 +9,14 @@ from collections import defaultdict
 
 import django.db.transaction
 from django.core.management import BaseCommand
-from stellar_sdk import Keypair, TransactionEnvelope, Asset, Claimant, Server
+from stellar_sdk import (
+    Keypair,
+    TransactionEnvelope,
+    Asset,
+    Claimant,
+    Server,
+    MuxedAccount,
+)
 from stellar_sdk.client.aiohttp_client import AiohttpClient
 from stellar_sdk.account import Account
 from stellar_sdk.exceptions import (
@@ -402,9 +409,15 @@ class PendingDeposits:
             logger.debug(
                 f"got lock to get or create destination account for transaction {transaction.id}"
             )
+            if transaction.to_address.startswith("M"):
+                destination_account = MuxedAccount.from_account(
+                    transaction.to_address
+                ).account_id
+            else:
+                destination_account = transaction.to_address
             try:
                 account, json_resp = await get_account_obj_async(
-                    Keypair.from_public_key(transaction.to_address), server
+                    Keypair.from_public_key(destination_account), server
                 )
                 logger.debug(f"account for transaction {transaction.id} exists")
                 return account, is_pending_trust(transaction, json_resp)
@@ -486,12 +499,18 @@ class PendingDeposits:
         transaction is scheduled for processing. If not, the transaction is
         updated to no longer be pending an execution attempt.
         """
+        if transaction.to_address.startswith("M"):
+            destination_account = MuxedAccount.from_account(
+                transaction.to_address
+            ).account_id
+        else:
+            destination_account = transaction.to_address
         try:
             _, account = await get_account_obj_async(
-                Keypair.from_public_key(transaction.to_address), server
+                Keypair.from_public_key(destination_account), server
             )
         except BaseRequestError:
-            logger.exception(f"Failed to load account {transaction.to_address}")
+            logger.exception(f"Failed to load account {destination_account}")
             transaction.pending_execution_attempt = False
             await sync_to_async(transaction.save)()
             return

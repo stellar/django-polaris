@@ -4,21 +4,24 @@ from urllib.parse import urlencode
 
 from django.core.exceptions import ObjectDoesNotExist
 from rest_framework.test import APIClient
-from stellar_sdk.keypair import Keypair
+from stellar_sdk import Keypair, MuxedAccount
 
-from polaris.tests.helpers import mock_check_auth_success
+from polaris.tests.helpers import (
+    mock_check_auth_success,
+    mock_check_auth_success_muxed_account,
+    mock_check_auth_success_with_memo,
+    TEST_ACCOUNT_MEMO,
+    TEST_MUXED_ACCOUNT,
+)
 
 
 endpoint = "/kyc/customer"
 
-mock_success_integration = Mock(
-    get=Mock(return_value={"status": "ACCEPTED"}), put=Mock(return_value="123"),
-)
 
-
-@patch("polaris.sep12.customer.rci", mock_success_integration)
+@patch("polaris.sep12.customer.rci")
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-def test_put_success(client):
+def test_put_success(mock_rci, client):
+    mock_rci.put = Mock(return_value="123")
     response = client.put(
         endpoint,
         data={
@@ -28,13 +31,126 @@ def test_put_success(client):
         },
         content_type="application/json",
     )
-    assert response.status_code == 202
-    assert response.json() == {"id": "123"}
+    content = response.json()
+    mock_rci.put.assert_called_once()
+    kwargs = mock_rci.put.call_args[1]
+    assert kwargs["token"].account == "test source address"
+    assert kwargs["token"].muxed_account is None
+    assert kwargs["token"].memo is None
+    assert kwargs["params"]["account"] == kwargs["token"].account
+    assert kwargs["params"]["memo"] == kwargs["token"].memo
+    assert kwargs["params"]["memo_type"] is None
+    assert response.status_code == 202, content
+    assert content == {"id": "123"}
+
+
+@patch("polaris.sep12.customer.rci")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success_with_memo)
+def test_put_success_auth_memo(mock_rci, client):
+    mock_rci.put = Mock(return_value="123")
+    response = client.put(
+        endpoint,
+        data={
+            "account": "test source address",
+            "first_name": "Test",
+            "email_address": "test@example.com",
+        },
+        content_type="application/json",
+    )
+    content = response.json()
+    mock_rci.put.assert_called_once()
+    kwargs = mock_rci.put.call_args[1]
+    assert kwargs["token"].account == "test source address"
+    assert kwargs["token"].muxed_account is None
+    assert kwargs["token"].memo == TEST_ACCOUNT_MEMO
+    assert kwargs["params"]["account"] == kwargs["token"].account
+    assert kwargs["params"]["memo"] == kwargs["token"].memo
+    assert kwargs["params"]["memo_type"] == "id"
+    assert response.status_code == 202, content
+    assert content == {"id": "123"}
+
+
+@patch("polaris.sep12.customer.rci")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success_with_memo)
+def test_put_success_auth_memo_and_body(mock_rci, client):
+    mock_rci.put = Mock(return_value="123")
+    response = client.put(
+        endpoint,
+        data={
+            "account": "test source address",
+            "memo": TEST_ACCOUNT_MEMO,
+            "memo_type": "id",
+            "first_name": "Test",
+            "email_address": "test@example.com",
+        },
+        content_type="application/json",
+    )
+    content = response.json()
+    mock_rci.put.assert_called_once()
+    kwargs = mock_rci.put.call_args[1]
+    assert kwargs["token"].account == "test source address"
+    assert kwargs["token"].muxed_account is None
+    assert kwargs["token"].memo == TEST_ACCOUNT_MEMO
+    assert kwargs["params"]["account"] == kwargs["token"].account
+    assert kwargs["params"]["memo"] == kwargs["token"].memo
+    assert kwargs["params"]["memo_type"] == "id"
+    assert response.status_code == 202, content
+    assert content == {"id": "123"}
+
+
+@patch("polaris.sep12.customer.rci")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success_with_memo)
+def test_put_auth_memo_and_body_doesnt_match(mock_rci, client):
+    mock_rci.put = Mock(return_value="123")
+    response = client.put(
+        endpoint,
+        data={
+            "account": "test source address",
+            "memo": 345,
+            "memo_type": "id",
+            "first_name": "Test",
+            "email_address": "test@example.com",
+        },
+        content_type="application/json",
+    )
+    content = response.json()
+    mock_rci.put.assert_not_called()
+    assert response.status_code == 403, content
+
+
+@patch("polaris.sep12.customer.rci")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success_muxed_account)
+def test_put_success_muxed_account(mock_rci, client):
+    mock_rci.put = Mock(return_value="123")
+    response = client.put(
+        endpoint,
+        data={
+            "account": TEST_MUXED_ACCOUNT,
+            "first_name": "Test",
+            "email_address": "test@example.com",
+        },
+        content_type="application/json",
+    )
+    content = response.json()
+    mock_rci.put.assert_called_once()
+    kwargs = mock_rci.put.call_args[1]
+    assert (
+        kwargs["token"].account
+        == MuxedAccount.from_account(TEST_MUXED_ACCOUNT).account_id
+    )
+    assert kwargs["token"].muxed_account == TEST_MUXED_ACCOUNT
+    assert kwargs["token"].memo is None
+    assert kwargs["params"]["account"] == kwargs["token"].muxed_account
+    assert kwargs["params"]["memo"] == kwargs["token"].memo
+    assert kwargs["params"]["memo_type"] is None
+    assert response.status_code == 202, content
+    assert content == {"id": "123"}
 
 
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-@patch("polaris.sep12.customer.rci", mock_success_integration)
-def test_put_existing_id(client):
+@patch("polaris.sep12.customer.rci")
+def test_put_existing_id(mock_rci, client):
+    mock_rci.put = Mock(return_value="123")
     response = client.put(
         endpoint,
         data={
@@ -55,6 +171,7 @@ def test_put_existing_id(client):
     )
     assert response.status_code == 202
     assert response.json() == {"id": "123"}
+    assert mock_rci.put.call_count == 2
 
 
 mock_raise_bad_id_error = Mock(put=Mock(side_effect=ObjectDoesNotExist("bad id")))
@@ -76,9 +193,10 @@ def test_bad_existing_id(client):
     assert response.json()["error"] == "bad id"
 
 
-@patch("polaris.sep12.customer.rci", mock_success_integration)
+@patch("polaris.sep12.customer.rci")
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-def test_put_memo(client):
+def test_put_memo(mock_rci, client):
+    mock_rci.put = Mock(return_value="123")
     response = client.put(
         endpoint,
         data={
@@ -189,12 +307,10 @@ def test_put_missing_memo_type(client):
     assert "error" in response.json()
 
 
-mock_put = Mock(return_value="123")
-
-
-@patch("polaris.sep12.customer.rci.put", mock_put)
+@patch("polaris.sep12.customer.rci.put")
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-def test_sep9_params(client):
+def test_sep9_params(mock_put, client):
+    mock_put.return_value = "123"
     response = client.put(
         endpoint,
         data={
@@ -216,19 +332,107 @@ def test_sep9_params(client):
         "type": None,
     }
     mock_put.reset_mock()
-    assert response.status_code == 202
+    assert response.status_code == 202, response.json()
     assert response.json() == {"id": "123"}
 
 
-mock_get_accepted = Mock(return_value={"status": "ACCEPTED", "id": "123"})
-
-
-@patch("polaris.sep12.customer.rci.get", mock_get_accepted)
+@patch("polaris.sep12.customer.rci.get")
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-def test_get_accepted(client):
+def test_get_accepted(mock_get, client):
+    mock_get.return_value = {"status": "ACCEPTED", "id": "123"}
     response = client.get(
         endpoint + "?" + urlencode({"account": "test source address"})
     )
+    content = response.json()
+    mock_get.assert_called_once()
+    kwargs = mock_get.call_args[1]
+    assert kwargs["token"].account == "test source address"
+    assert kwargs["token"].memo is None
+    assert kwargs["params"]["account"] == kwargs["token"].account
+    assert kwargs["params"]["memo"] == kwargs["token"].memo
+    assert kwargs["params"]["memo_type"] is None
+    assert response.status_code == 200, content
+    assert content == {"status": "ACCEPTED", "id": "123"}
+
+
+@patch("polaris.sep12.customer.rci.get")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success_with_memo)
+def test_get_accepted_with_memo(mock_get, client):
+    mock_get.return_value = {"status": "ACCEPTED", "id": "123"}
+    response = client.get(
+        endpoint + "?" + urlencode({"account": "test source address"})
+    )
+    content = response.json()
+    mock_get.assert_called_once()
+    kwargs = mock_get.call_args[1]
+    assert kwargs["token"].account == "test source address"
+    assert kwargs["token"].memo == TEST_ACCOUNT_MEMO
+    assert kwargs["params"]["account"] == kwargs["token"].account
+    assert kwargs["params"]["memo"] == kwargs["token"].memo
+    assert kwargs["params"]["memo_type"] == "id"
+    assert response.status_code == 200, content
+    assert content == {"status": "ACCEPTED", "id": "123"}
+
+
+@patch("polaris.sep12.customer.rci.get")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success_with_memo)
+def test_get_accepted_with_memo_and_params(mock_get, client):
+    mock_get.return_value = {"status": "ACCEPTED", "id": "123"}
+    response = client.get(
+        endpoint
+        + "?"
+        + urlencode(
+            {
+                "account": "test source address",
+                "memo": TEST_ACCOUNT_MEMO,
+                "memo_type": "id",
+            }
+        )
+    )
+    content = response.json()
+    mock_get.assert_called_once()
+    kwargs = mock_get.call_args[1]
+    assert kwargs["token"].account == "test source address"
+    assert kwargs["token"].memo == TEST_ACCOUNT_MEMO
+    assert kwargs["params"]["account"] == kwargs["token"].account
+    assert kwargs["params"]["memo"] == kwargs["token"].memo
+    assert kwargs["params"]["memo_type"] == "id"
+    assert response.status_code == 200, content
+    assert content == {"status": "ACCEPTED", "id": "123"}
+
+
+@patch("polaris.sep12.customer.rci.get")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success_with_memo)
+def test_get_accepted_with_memo_and_params_doesnt_match(mock_get, client):
+    mock_get.return_value = {"status": "ACCEPTED", "id": "123"}
+    response = client.get(
+        endpoint
+        + "?"
+        + urlencode({"account": "test source address", "memo": 345, "memo_type": "id"})
+    )
+    mock_get.assert_not_called()
+    assert response.status_code == 403
+    assert response.json() == {
+        "error": "The memo specified does not match the memo ID authorized via SEP-10"
+    }
+
+
+@patch("polaris.sep12.customer.rci.get")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success_muxed_account)
+def test_get_accepted_muxed_account(mock_get, client):
+    mock_get.return_value = {"status": "ACCEPTED", "id": "123"}
+    response = client.get(endpoint + "?" + urlencode({"account": TEST_MUXED_ACCOUNT}))
+    mock_get.assert_called_once()
+    kwargs = mock_get.call_args[1]
+    assert (
+        kwargs["token"].account
+        == MuxedAccount.from_account(TEST_MUXED_ACCOUNT).account_id
+    )
+    assert kwargs["token"].muxed_account == TEST_MUXED_ACCOUNT
+    assert kwargs["token"].memo is None
+    assert kwargs["params"]["account"] == kwargs["token"].muxed_account
+    assert kwargs["params"]["memo"] == kwargs["token"].memo
+    assert kwargs["params"]["memo_type"] is None
     assert response.status_code == 200
     assert response.json() == {"status": "ACCEPTED", "id": "123"}
 
@@ -249,9 +453,10 @@ def test_get_no_auth(client):
     assert "error" in response.json()
 
 
-@patch("polaris.sep12.customer.rci", mock_success_integration)
+@patch("polaris.sep12.customer.rci")
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-def test_no_id_or_account(client):
+def test_no_id_or_account(mock_rci, client):
+    mock_rci.get = Mock(return_value={"status": "NEEDS_INFO", "fields": {}})
     response = client.get(endpoint)
     assert response.status_code == 200
 
@@ -295,7 +500,7 @@ def test_get_missing_memo(client):
     response = client.get(
         endpoint
         + "?"
-        + urlencode({"account": "test source address", "memo_type": "text",}),
+        + urlencode({"account": "test source address", "memo_type": "text"}),
     )
     assert response.status_code == 400
     assert "error" in response.json()
@@ -370,7 +575,7 @@ def test_bad_field_needs_info(client):
     Mock(
         return_value={
             "status": "NEEDS_INFO",
-            "fields": {"email_address": {"description": "a description",}},
+            "fields": {"email_address": {"description": "a description"}},
         }
     ),
 )
@@ -450,7 +655,7 @@ def test_get_fields_status(client):
     Mock(
         return_value={
             "status": "NEEDS_INFO",
-            "fields": {"email_address": {"type": "string", "description": "test",}},
+            "fields": {"email_address": {"type": "string", "description": "test"}},
             "provided_fields": {
                 "first_name": {
                     "type": "string",
@@ -474,7 +679,7 @@ def test_get_provided_fields_status(client):
     Mock(
         return_value={
             "status": "NEEDS_INFO",
-            "fields": {"email_address": {"type": "string", "description": "test",}},
+            "fields": {"email_address": {"type": "string", "description": "test"}},
             "provided_fields": {
                 "first_name": {
                     "type": "string",
@@ -521,7 +726,7 @@ def test_get_bad_error_value(client):
     Mock(
         return_value={
             "status": "NEEDS_INFO",
-            "fields": {"email_address": {"type": "string", "description": "test",}},
+            "fields": {"email_address": {"type": "string", "description": "test"}},
             "provided_fields": {
                 "first_name": {
                     "type": "string",
@@ -547,6 +752,77 @@ def test_delete_success(mock_delete, client):
     response = client.delete("/".join([endpoint, "test source address"]))
     assert response.status_code == 200
     mock_delete.asset_called_once()
+    kwargs = mock_delete.call_args[1]
+    assert kwargs["token"].account == "test source address"
+    assert kwargs["token"].muxed_account is None
+    assert kwargs["token"].memo is None
+    assert kwargs["account"] == kwargs["token"].account
+    assert kwargs["memo"] == kwargs["token"].memo
+    assert kwargs["memo_type"] is None
+
+
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success_with_memo)
+@patch("polaris.sep12.customer.rci.delete")
+def test_delete_success_with_memo_auth(mock_delete, client):
+    response = client.delete("/".join([endpoint, "test source address"]),)
+    assert response.status_code == 200
+    mock_delete.asset_called_once()
+    kwargs = mock_delete.call_args[1]
+    assert kwargs["token"].account == "test source address"
+    assert kwargs["token"].muxed_account is None
+    assert kwargs["token"].memo is TEST_ACCOUNT_MEMO
+    assert kwargs["account"] == kwargs["token"].account
+    assert kwargs["memo"] == kwargs["token"].memo
+    assert kwargs["memo_type"] == "id"
+
+
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success_with_memo)
+@patch("polaris.sep12.customer.rci.delete")
+def test_delete_success_with_memo_auth_and_body(mock_delete, client):
+    response = client.delete(
+        "/".join([endpoint, "test source address"]),
+        data={"memo": TEST_ACCOUNT_MEMO, "memo_type": "id"},
+        content_type="application/json",
+    )
+    assert response.status_code == 200
+    mock_delete.asset_called_once()
+    kwargs = mock_delete.call_args[1]
+    assert kwargs["token"].account == "test source address"
+    assert kwargs["token"].muxed_account is None
+    assert kwargs["token"].memo is TEST_ACCOUNT_MEMO
+    assert kwargs["account"] == kwargs["token"].account
+    assert kwargs["memo"] == kwargs["token"].memo
+    assert kwargs["memo_type"] == "id"
+
+
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success_with_memo)
+@patch("polaris.sep12.customer.rci.delete")
+def test_delete_success_with_memo_auth_and_body_doesnt_match(mock_delete, client):
+    response = client.delete(
+        "/".join([endpoint, "test source address"]),
+        data={"memo": 456, "memo_type": "id"},
+        content_type="application/json",
+    )
+    assert response.status_code == 404
+    mock_delete.assert_not_called()
+
+
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success_muxed_account)
+@patch("polaris.sep12.customer.rci.delete")
+def test_delete_success_muxed_account(mock_delete, client):
+    response = client.delete("/".join([endpoint, TEST_MUXED_ACCOUNT]))
+    assert response.status_code == 200
+    mock_delete.asset_called_once()
+    kwargs = mock_delete.call_args[1]
+    assert (
+        kwargs["token"].account
+        == MuxedAccount.from_account(TEST_MUXED_ACCOUNT).account_id
+    )
+    assert kwargs["token"].muxed_account == TEST_MUXED_ACCOUNT
+    assert kwargs["token"].memo is None
+    assert kwargs["account"] == kwargs["token"].muxed_account
+    assert kwargs["memo"] == kwargs["token"].memo
+    assert kwargs["memo_type"] is None
 
 
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
@@ -726,7 +1002,7 @@ def test_callback_rejects_when_account_doesnt_match(mock_callback):
 def test_callback_rejects_on_missing_url(mock_callback):
     client = APIClient()
     response = client.put(
-        "/".join([endpoint, "callback"]), data={"account": "test source address",}
+        "/".join([endpoint, "callback"]), data={"account": "test source address"}
     )
     assert response.status_code == 400
     assert response.json()["error"] == "callback 'url' required"
@@ -739,7 +1015,7 @@ def test_callback_rejects_bad_id(mock_callback):
     client = APIClient()
     response = client.put(
         "/".join([endpoint, "callback"]),
-        data=json.dumps({"id": 1, "url": "https://test.com/callback",}),
+        data=json.dumps({"id": 1, "url": "https://test.com/callback"}),
         content_type="application/json",
     )
     assert response.status_code == 400
@@ -771,7 +1047,7 @@ def test_callback_rejects_bad_url(mock_callback):
     client = APIClient()
     response = client.put(
         "/".join([endpoint, "callback"]),
-        data={"account": "test source address", "url": "test.com/callback",},
+        data={"account": "test source address", "url": "test.com/callback"},
     )
     assert response.status_code == 400
     assert response.json()["error"] == "'url' must be a valid URL"
@@ -784,7 +1060,7 @@ def test_callback_rejects_bad_http_url(mock_callback):
     client = APIClient()
     response = client.put(
         "/".join([endpoint, "callback"]),
-        data={"account": "test source address", "url": "http://test.com/callback",},
+        data={"account": "test source address", "url": "http://test.com/callback"},
     )
     assert response.status_code == 400
     assert response.json()["error"] == "'url' must be a valid URL"
@@ -845,15 +1121,16 @@ def test_callback_reject_on_not_implemented_error():
 
 
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-@patch("polaris.sep12.customer.rci.put_verification", mock_get_accepted)
-def test_verification_success():
+@patch("polaris.sep12.customer.rci.put_verification")
+def test_verification_success(mock_put_verification):
+    mock_put_verification.return_value = {"status": "ACCEPTED", "id": "123"}
     client = APIClient()
     response = client.put(
         "/".join([endpoint, "verification"]),
         data={"id": "123", "mobile_number_verification": 12345},
     )
-    assert response.status_code == 200
-    assert response.json() == mock_get_accepted()
+    assert response.status_code == 200, response.json()
+    assert response.json() == mock_put_verification.return_value
 
 
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)

@@ -9,8 +9,14 @@ from rest_framework.response import Response
 from rest_framework.decorators import api_view, renderer_classes, parser_classes
 from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 from rest_framework.renderers import JSONRenderer, BrowsableAPIRenderer
-from stellar_sdk.exceptions import MemoInvalidException, Ed25519PublicKeyInvalidError
-from stellar_sdk.keypair import Keypair
+from stellar_sdk import Keypair
+from stellar_sdk.strkey import StrKey
+from stellar_sdk.exceptions import (
+    MemoInvalidException,
+    Ed25519PublicKeyInvalidError,
+    MuxedEd25519AccountInvalidError,
+    ValueError as StellarSdkValueError,
+)
 
 from polaris import settings
 from polaris.utils import (
@@ -52,6 +58,8 @@ def withdraw(token: SEP10Token, request: Request) -> Response:
     transaction = Transaction(
         id=transaction_id,
         stellar_account=token.account,
+        muxed_account=token.muxed_account,
+        account_memo=token.memo,
         asset=args["asset"],
         amount_in=args.get("amount"),
         amount_expected=args.get("amount"),
@@ -104,9 +112,15 @@ def withdraw(token: SEP10Token, request: Request) -> Response:
 
 
 def parse_request_args(request: Request) -> Dict:
-    if request.GET.get("account"):
+    account = request.GET.get("account")
+    if account and account.startswith("M"):
         try:
-            Keypair.from_public_key(request.GET.get("account"))
+            StrKey.decode_muxed_account(account)
+        except (MuxedEd25519AccountInvalidError, StellarSdkValueError):
+            return {"error": render_error_response(_("invalid 'account'"))}
+    elif account:
+        try:
+            Keypair.from_public_key(account)
         except Ed25519PublicKeyInvalidError:
             return {"error": render_error_response(_("invalid 'account'"))}
 

@@ -18,6 +18,7 @@ from polaris.integrations import (
     registered_deposit_integration as rdi,
     registered_withdrawal_integration as rwi,
 )
+from polaris.sep10.utils import SEP10Token
 
 
 logger = getLogger(__name__)
@@ -77,7 +78,7 @@ def more_info(request: Request, sep6: bool = False) -> Response:
     return Response(context, template_name="polaris/more_info.html")
 
 
-def transactions(request: Request, account: str, sep6: bool = False,) -> Response:
+def transactions(request: Request, token: SEP10Token, sep6: bool = False,) -> Response:
     try:
         limit = _validate_limit(request.GET.get("limit"))
     except ValueError:
@@ -100,7 +101,9 @@ def transactions(request: Request, account: str, sep6: bool = False,) -> Respons
     }
 
     qset_filter = _compute_qset_filters(request.GET, translation_dict)
-    qset_filter["stellar_account"] = account
+    qset_filter["stellar_account"] = token.account
+    qset_filter["muxed_account"] = token.muxed_account
+    qset_filter["account_memo"] = token.memo
 
     # Since the Transaction IDs are UUIDs, rather than in the chronological
     # order of their creation, we map the paging ID (if provided) to the
@@ -129,10 +132,10 @@ def transactions(request: Request, account: str, sep6: bool = False,) -> Respons
     return Response({"transactions": serializer.data})
 
 
-def transaction(request: Request, account: str, sep6: bool = False,) -> Response:
+def transaction(request: Request, token: SEP10Token, sep6: bool = False,) -> Response:
     try:
         request_transaction = _get_transaction_from_request(
-            request, account=account, sep6=sep6,
+            request, token=token, sep6=sep6,
         )
     except (AttributeError, ValidationError) as exc:
         return render_error_response(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
@@ -226,7 +229,7 @@ def _compute_qset_filters(req_params, translation_dict):
 
 
 def _get_transaction_from_request(
-    request, account: str = None, sep6: bool = False,
+    request, token: SEP10Token = None, sep6: bool = False,
 ):
     translation_dict = {
         "id": "id",
@@ -243,8 +246,10 @@ def _get_transaction_from_request(
             )
         )
 
-    if account:
-        qset_filter["stellar_account"] = account
+    if token:
+        qset_filter["stellar_account"] = token.account
+        qset_filter["muxed_account"] = token.muxed_account
+        qset_filter["account_memo"] = token.memo
 
     protocol = Transaction.PROTOCOL.sep6 if sep6 else Transaction.PROTOCOL.sep24
     return Transaction.objects.get(protocol=protocol, **qset_filter)

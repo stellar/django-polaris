@@ -12,6 +12,7 @@ class CustomerIntegration:
         request: Request,
         account: str,
         *args: List,
+        memo: Optional[int] = None,
         **kwargs: Dict
     ) -> str:
         """
@@ -23,7 +24,7 @@ class CustomerIntegration:
 
         :param token: the ``SEP10Token`` object representing the authenticated session
         :param request: a ``rest_framework.request.Request`` instance
-        :param account: the stellar account for the url to be returned
+        :param account: the stellar or muxed account for the url to be returned
         """
         raise NotImplementedError()
 
@@ -118,7 +119,7 @@ class CustomerIntegration:
 
         :param token: the ``SEP10Token`` object representing the authenticated session
         :param request: a ``rest_framework.request.Request`` instance
-        :param account: the stellar account associated with the customer
+        :param account: the stellar or muxed account associated with the customer
         :param memo: the optional memo used to create the customer
         :param memo_type: the optional type of the memo used to create to the customer
         """
@@ -191,7 +192,7 @@ class CustomerIntegration:
 
         :param token: the ``SEP10Token`` object representing the authenticated session
         :param request: a ``rest_framework.request.Request`` instance
-        :param account: the Stellar account authenticated via SEP-10
+        :param account: the Stellar or muxed account authenticated via SEP-10
         :param params: the request body of the ``PUT /customer/verification`` call
         :raises: ValueError, ObjectDoesNotExist, NotImplementedError
         """

@@ -54,7 +54,10 @@ def validate_403_response(
         response["status"] = integration_response["status"]
         if settings.SEP6_USE_MORE_INFO_URL:
             more_info_url = rci.more_info_url(
-                token=token, request=request, account=transaction.stellar_account
+                token=token,
+                request=request,
+                account=token.muxed_account or token.account,
+                memo=token.memo,
             )
             response["more_info_url"] = more_info_url
 
