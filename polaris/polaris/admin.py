@@ -1,6 +1,6 @@
 from django.contrib import admin
-from django.forms import ModelForm
-from polaris.models import Transaction, Asset
+
+from polaris.models import Transaction, Asset, Quote, OffChainAsset, BuyDeliveryMethod, SellDeliveryMethod, ExchangePair
 
 
 class TransactionAdmin(admin.ModelAdmin):
@@ -21,8 +21,8 @@ class AssetAdmin(admin.ModelAdmin):
     def get_fields(self, request, obj=None):
         fields = super().get_fields(request, obj)
         if not (
-            request.user.is_superuser
-            or request.user.user_permissions.filter(name="Can edit asset").exists()
+                request.user.is_superuser
+                or request.user.user_permissions.filter(name="Can edit asset").exists()
         ):
             fields.remove("distribution_seed")
         return fields
@@ -30,3 +30,9 @@ class AssetAdmin(admin.ModelAdmin):
 
 admin.site.register(Transaction, TransactionAdmin)
 admin.site.register(Asset, AssetAdmin)
+admin.site.register(BuyDeliveryMethod)
+admin.site.register(SellDeliveryMethod)
+admin.site.register(Quote)
+admin.site.register(OffChainAsset)
+admin.site.register(ExchangePair)
+
