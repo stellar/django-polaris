@@ -72,10 +72,10 @@ class CustomerAPIView(APIView):
         except ValueError:
             return render_error_response(_("invalid 'memo' for 'memo_type'"))
 
-        memo = request.data.get("memo") or token.memo
+        memo = request.GET.get("memo") or token.memo
         memo_type = None
         if memo:
-            memo_type = request.data.get("memo_type") or Transaction.MEMO_TYPES.id
+            memo_type = request.GET.get("memo_type") or Transaction.MEMO_TYPES.id
 
         try:
             response_data = rci.get(
