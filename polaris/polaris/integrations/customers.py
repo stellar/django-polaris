@@ -6,13 +6,6 @@ from polaris.sep10.token import SEP10Token
 
 
 class CustomerIntegration:
-    """
-    Create a subclass implementing the function below for Polaris to use when responding to SEP-12
-    requests. Note that customers can be sole owners of a Stellar account or partial owner of funds
-    in a shared Stellar account. Your data model should be designed to register users for each of
-    these cases. See the Shared Accounts page for more information.
-    """
-
     def more_info_url(
         self,
         token: SEP10Token,
