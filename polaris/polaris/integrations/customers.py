@@ -6,6 +6,13 @@ from polaris.sep10.token import SEP10Token
 
 
 class CustomerIntegration:
+    """
+    Create a subclass implementing the function below for Polaris to use when responding to SEP-12
+    requests. Note that customers can be sole owners of a Stellar account or partial owner of funds
+    in a shared Stellar account. Your data model should be designed to register users for each of
+    these cases. See the Shared Accounts page for more information.
+    """
+
     def more_info_url(
         self,
         token: SEP10Token,
@@ -25,6 +32,7 @@ class CustomerIntegration:
         :param token: the ``SEP10Token`` object representing the authenticated session
         :param request: a ``rest_framework.request.Request`` instance
         :param account: the stellar or muxed account for the url to be returned
+        :param memo: the ID memo used to identify the user of the shared Stellar account
         """
         raise NotImplementedError()
 

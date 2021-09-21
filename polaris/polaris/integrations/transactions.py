@@ -263,8 +263,8 @@ class DepositIntegration:
         **kwargs: Dict
     ):
         """
-        **DEPRECATED:** `stellar_account`, `account_memo`, `account_memo_type`, and `muxed_account`.
-        Use the `token` object passed instead.
+        **DEPRECATED:** `stellar_account`, `account_memo`, `account_memo_type`, and `muxed_account`
+        parameters. Use the `token` object passed instead.
 
         Save the `fields` passed for the user identified by `stellar_account` to pre-populate
         the forms returned from ``form_for_transaction()``. Note that this function is called

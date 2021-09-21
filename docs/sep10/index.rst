@@ -53,6 +53,8 @@ Integrations
 
 There are no integrations for SEP-10. It just works.
 
+.. _`SEP-10 API Reference`:
+
 API Reference
 -------------
 
