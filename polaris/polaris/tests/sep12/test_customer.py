@@ -396,7 +396,7 @@ def test_get_accepted_with_memo(mock_get, client):
     assert kwargs["token"].account == "test source address"
     assert kwargs["token"].memo == TEST_ACCOUNT_MEMO
     assert kwargs["params"]["account"] == kwargs["token"].account
-    assert kwargs["params"]["memo"] == kwargs["token"].memo
+    assert kwargs["params"]["memo"] == str(kwargs["token"].memo)
     assert kwargs["params"]["memo_type"] == "id"
     assert response.status_code == 200, content
     assert content == {"status": "ACCEPTED", "id": "123"}
@@ -423,7 +423,7 @@ def test_get_accepted_with_memo_and_params(mock_get, client):
     assert kwargs["token"].account == "test source address"
     assert kwargs["token"].memo == TEST_ACCOUNT_MEMO
     assert kwargs["params"]["account"] == kwargs["token"].account
-    assert kwargs["params"]["memo"] == kwargs["token"].memo
+    assert kwargs["params"]["memo"] == str(kwargs["token"].memo)
     assert kwargs["params"]["memo_type"] == "id"
     assert response.status_code == 200, content
     assert content == {"status": "ACCEPTED", "id": "123"}

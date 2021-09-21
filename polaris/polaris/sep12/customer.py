@@ -76,6 +76,8 @@ class CustomerAPIView(APIView):
         memo_type = None
         if memo:
             memo_type = request.GET.get("memo_type") or Transaction.MEMO_TYPES.id
+            if memo_type == Transaction.MEMO_TYPES.id:
+                memo = str(memo)
 
         try:
             response_data = rci.get(
@@ -153,6 +155,8 @@ class CustomerAPIView(APIView):
         memo_type = None
         if memo:
             memo_type = request.data.get("memo_type") or Transaction.MEMO_TYPES.id
+            if memo_type == Transaction.MEMO_TYPES.id:
+                memo = int(memo)
 
         try:
             customer_id = rci.put(
@@ -227,6 +231,8 @@ def callback(token: SEP10Token, request: Request) -> Response:
     memo_type = None
     if memo:
         memo_type = request.data.get("memo_type") or Transaction.MEMO_TYPES.id
+        if memo_type == Transaction.MEMO_TYPES.id:
+            memo = int(memo)
 
     callback_url = request.data.get("url")
     if not callback_url:
@@ -283,6 +289,8 @@ def delete(token: SEP10Token, request: Request, account: str,) -> Response:
     memo_type = None
     if memo:
         memo_type = request.data.get("memo_type") or Transaction.MEMO_TYPES.id
+        if memo_type == Transaction.MEMO_TYPES.id:
+            memo = int(memo)
     try:
         rci.delete(
             token=token,
