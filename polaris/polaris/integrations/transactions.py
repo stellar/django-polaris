@@ -580,6 +580,7 @@ class WithdrawalIntegration:
 
     def save_sep9_fields(
         self,
+        token: SEP10Token,
         request: Request,
         stellar_account: str,
         fields: Dict,

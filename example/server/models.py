@@ -32,16 +32,17 @@ class PolarisStellarAccount(models.Model):
     memo = models.TextField(null=True, blank=True)
     memo_type = models.TextField(null=True, blank=True)
     account = models.CharField(max_length=56, validators=[MinLengthValidator(56)])
+    muxed_account = models.TextField(null=True, blank=True)
     confirmed = models.BooleanField(default=False)
     confirmation_token = models.CharField(max_length=36, default=get_new_token)
 
     objects = models.Manager()
 
     class Meta:
-        unique_together = ["memo", "account"]
+        unique_together = ["memo", "account", "muxed_account"]
 
     def __str__(self):
-        return f"{str(self.user)}: {str(self.account)} - {str(self.memo)}"
+        return f"{str(self.user)}: {str(self.muxed_account or self.account)} (memo: {str(self.memo)})"
 
 
 class PolarisUserTransaction(models.Model):
