@@ -1,34 +1,32 @@
 """This module defines the models used by Polaris."""
-import uuid
-import decimal
 import datetime
+import decimal
 import secrets
+import uuid
 from base64 import urlsafe_b64encode as b64e, urlsafe_b64decode as b64d
 
 from cryptography.fernet import Fernet
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from stellar_sdk import Server
-from stellar_sdk.client.aiohttp_client import AiohttpClient
-
 from django.core.exceptions import ValidationError
 from django.core.validators import (
     MinLengthValidator,
     MinValueValidator,
     MaxValueValidator,
 )
+from django.db import models
 from django.utils.encoding import force_bytes
 from django.utils.translation import gettext_lazy as _
-from django.db import models
-from model_utils.models import TimeStampedModel
 from model_utils import Choices
+from model_utils.models import TimeStampedModel
+from stellar_sdk import Server
+from stellar_sdk.client.aiohttp_client import AiohttpClient
+from stellar_sdk.exceptions import SdkError
 from stellar_sdk.keypair import Keypair
 from stellar_sdk.transaction_envelope import TransactionEnvelope
-from stellar_sdk.exceptions import SdkError
 
 from polaris import settings
-
 
 # Used for loading the distribution signers data onto an Asset obj
 ASSET_DISTRIBUTION_ACCOUNT_MAP = {}
@@ -344,7 +342,6 @@ def deserialize(value):
 
 
 class Transaction(models.Model):
-
     KIND = PolarisChoices("deposit", "withdrawal", "send")
     """Choices object for ``deposit``, ``withdrawal``, or ``send``."""
 
@@ -672,3 +669,105 @@ class Transaction(models.Model):
     class Meta:
         ordering = ("-started_at",)
         app_label = "polaris"
+
+
+class Quote(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
+
+    sell_asset = models.TextField(null=False, blank=False)
+    """
+    The asset the client would like to sell. Ex. USDC:G..., iso4217:ARS
+    """
+
+    buy_asset = models.TextField(null=False, blank=False)
+    """
+    The asset the client would like to exchange for sell_asset.
+    """
+
+    sell_amount = models.DecimalField(
+        null=True, blank=True, max_digits=30, decimal_places=7
+    )
+    """
+    The amount of sell_asset the client would exchange for buy_asset.
+    """
+
+    buy_amount = models.DecimalField(
+        null=True, blank=True, max_digits=30, decimal_places=7
+    )
+    """
+    The amount of buy_asset the client would like to purchase with sell_asset.
+    """
+
+    price = models.DecimalField(default=0, blank=False, max_digits=30, decimal_places=7)
+    """
+    The asset the client would like to exchange for sell_asset.
+    """
+
+    expires_at = models.DateTimeField(default=utc_now)
+    """
+    The expiration time of the quote.
+    """
+
+    sell_delivery_method = models.TextField(null=False, blank=True)
+    """
+    One of the name values specified by the sell_delivery_methods array.
+    """
+
+    buy_delivery_method = models.TextField(null=False, blank=True)
+    """
+    One of the name values specified by the buy_delivery_methods array.
+    """
+
+    country_code = models.TextField(null=False, blank=True)
+    """
+    The ISO 3166-1 alpha-3 code of the user's current address. 
+    """
+
+    requested_expire_after = models.DateTimeField(default=utc_now)
+    """
+    The requested expiration date from the client.
+    """
+
+
+class OffChainAsset(models.Model):
+    """
+    The off-chain assets in ISO4217 format.
+    """
+
+    schema = models.TextField(null=False, blank=False)
+    identifier = models.TextField(null=False, blank=False)
+    significant_decimals = models.IntegerField(default=2)
+    country_codes = models.TextField(null=True, blank=True)
+
+    @property
+    def asset(self):
+        return f"{self.schema}:{self.identifier}"
+
+
+class BuyDeliveryMethod(models.Model):
+    """
+    The buy_delivery_method defined in SEP-38.
+    """
+
+    asset = models.ForeignKey(OffChainAsset, on_delete=models.CASCADE)
+    name = models.TextField(null=False, blank=False)
+    description = models.TextField(null=False, blank=False)
+
+
+class SellDeliveryMethod(models.Model):
+    """
+    The sell_delivery_method defined in SEP-38.
+    """
+
+    asset = models.ForeignKey(OffChainAsset, on_delete=models.CASCADE)
+    name = models.TextField(null=False, blank=False)
+    description = models.TextField(null=False, blank=False)
+
+
+class ExchangePair(models.Model):
+    """
+    The pair of exchanging assets provided by the anchor.
+    """
+
+    buy_asset = models.TextField(null=False, blank=False)
+    sell_asset = models.TextField(null=False, blank=False)
