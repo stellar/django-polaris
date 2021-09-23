@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "120ffafba79e46b8918b83f2dc443e24306cc6887d50b5affd7d6cff5972ac41"
+            "sha256": "e61cc32a5dd997481e341a2dac9e069d6f3b7a99803f413120862747c5c5066e"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -366,11 +366,11 @@
         },
         "stellar-sdk": {
             "hashes": [
-                "sha256:b04f5663c9acd6780579fc567cd52c87d8ae2ea5477f1ef6352081a9e63cc0eb",
-                "sha256:c3445f08b09192751da7236d9f6e957cb2f7b1e06335a2839e2094d2d4d65a41"
+                "sha256:5a670e94b7f0a384b8e3e55ca370a2b4762636b38bf1bc7d690a38321842c86b",
+                "sha256:e12357ece20e713e2c30f0ad74e897341af5b82921930625f25f4a67b99ba5a9"
             ],
             "index": "pypi",
-            "version": "==4.2.1"
+            "version": "==4.2.2"
         },
         "toml": {
             "hashes": [
@@ -620,15 +620,15 @@
                 "sha256:f0b278ce10936db1a37e6954e15a3730bea96a0997c26d7fee88e6c396c2086d",
                 "sha256:f11642dddbb0253cc8853254301b51390ba0081750a8ac03f20ea8103f0c56b6"
             ],
-            "markers": "python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3, 3.4' and python_version < '4.0'",
+            "markers": "python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3, 3.4' and python_version < '4'",
             "version": "==5.5"
         },
         "distlib": {
             "hashes": [
-                "sha256:106fef6dc37dd8c0e2c0a60d3fca3e77460a48907f335fa28420463a6f799736",
-                "sha256:23e223426b28491b1ced97dc3bbe183027419dfc7982b4fa2f05d5f3ff10711c"
+                "sha256:c8b54e8454e5bf6237cc84c20e8264c3e991e824ef27e8f1e81049867d861e31",
+                "sha256:d982d0751ff6eaaab5e2ec8e691d949ee80eddf01a62eaa96ddb11531fe16b05"
             ],
-            "version": "==0.3.2"
+            "version": "==0.3.3"
         },
         "django": {
             "hashes": [
@@ -712,7 +712,7 @@
                 "sha256:9c2ea1e62d871267b78307fe511c0838ba0da28698c5732d54e2790bf3ba9899",
                 "sha256:e17d6e2b81095c9db0a03a8025a957f334d6ea30b26f9ec70805411e5c7c81f2"
             ],
-            "markers": "python_version < '4.0' and python_full_version >= '3.6.1'",
+            "markers": "python_version < '4' and python_full_version >= '3.6.1'",
             "version": "==5.9.3"
         },
         "jinja2": {

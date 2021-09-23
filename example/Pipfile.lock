@@ -160,7 +160,7 @@
                 "sha256:0c8911edd15d19223366a194a513099a302055a962bca2cec0f54b8b63175d8b",
                 "sha256:f23667ebe1084be45f6ae0538e4a5a865206544097e4e8bbcacf42cd02a348f3"
             ],
-            "markers": "python_version >= '3'",
+            "markers": "python_version >= '3' and python_version >= '3'",
             "version": "==2.0.4"
         },
         "cryptography": {
@@ -244,7 +244,7 @@
                 "sha256:14475042e284991034cb48e06f6851428fb14c4dc953acd9be9a5e95c7b6dd7a",
                 "sha256:467fbad99067910785144ce333826c71fb0e63a425657295239737f7ecd125f3"
             ],
-            "markers": "python_version >= '3'",
+            "markers": "python_version >= '3' and python_version >= '3'",
             "version": "==3.2"
         },
         "mnemonic": {
@@ -412,18 +412,18 @@
         },
         "stellar-sdk": {
             "hashes": [
-                "sha256:b04f5663c9acd6780579fc567cd52c87d8ae2ea5477f1ef6352081a9e63cc0eb",
-                "sha256:c3445f08b09192751da7236d9f6e957cb2f7b1e06335a2839e2094d2d4d65a41"
+                "sha256:5a670e94b7f0a384b8e3e55ca370a2b4762636b38bf1bc7d690a38321842c86b",
+                "sha256:e12357ece20e713e2c30f0ad74e897341af5b82921930625f25f4a67b99ba5a9"
             ],
             "markers": "python_version >= '3.6'",
-            "version": "==4.2.1"
+            "version": "==4.2.2"
         },
         "toml": {
             "hashes": [
                 "sha256:806143ae5bfb6a3c6e736a764057db0e6a0e05e338b5630894a5f779cabb4f9b",
                 "sha256:b3bda1d108d5dd99f4a20d24d9c348e91c4db7ab1b749200bded2f839ccbe68f"
             ],
-            "markers": "python_version >= '2.6' and python_version not in '3.0, 3.1, 3.2, 3.3'",
+            "markers": "python_version >= '2.6' and python_version not in '3.0, 3.1, 3.2'",
             "version": "==0.10.2"
         },
         "typing-extensions": {
@@ -432,7 +432,7 @@
                 "sha256:50b6f157849174217d0656f99dc82fe932884fb250826c18350e159ec6cdf342",
                 "sha256:779383f6086d90c99ae41cf0ff39aac8a7937a9283ce0a414e5dd782f4c94a84"
             ],
-            "markers": "python_version < '3.8'",
+            "markers": "python_version < '3.8' and python_version < '3.8'",
             "version": "==3.10.0.0"
         },
         "urllib3": {
