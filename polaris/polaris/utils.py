@@ -1,4 +1,5 @@
 """This module defines helpers for various endpoints."""
+import decimal
 import json
 import codecs
 import uuid
