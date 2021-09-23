@@ -56,7 +56,13 @@ def get_prices(request: Request) -> Response:
             status_code=status.HTTP_400_BAD_REQUEST,
         )
 
-    indicative_prices = rqi.get_prices(**request_data)
+    indicative_prices = rqi.get_prices(
+        client_sell_asset=request_data.get("sell_asset"),
+        client_sell_amount = request_data.get("sell_amount"),
+        sell_delivery_method=request_data.get("sell_delivery_method"),
+        buy_delivery_method=request_data.get("buy_delivery_method"),
+        country_code=request_data.get("country_code")
+    )
     results = []
     for it in indicative_prices:
         results.append(it)
@@ -96,7 +102,16 @@ def _validate_price_request(r: dict) -> dict:
 def get_price(request: Request) -> Response:
     try:
         request_data = _validate_price_request(request.data)
-        qp = rqi.get_price(**request_data)
+
+        qp = rqi.get_price(
+            client_sell_asset = request_data.get("sell_asset"),
+            client_buy_asset=request_data.get("buy_asset"),
+            sell_amount=request_data.get("sell_amount"),
+            buy_amount=request_data.get("buy_amount"),
+            sell_delivery_method=request_data.get("sell_delivery_method"),
+            buy_delivery_method=request_data.get("buy_delivery_method"),
+            country_code=request_data.get("country_code"),
+        )
         return Response(qp)
     except ValueError as ex:
         return render_error_response(

@@ -11,6 +11,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from polaris.integrations import registered_quote_integration as rqi
+from polaris.sep10.token import SEP10Token
+from polaris.sep10.utils import validate_sep10_token
 from polaris.sep24.utils import check_authentication
 from polaris.sep38.utils import (
     get_significant_decimals,
@@ -56,8 +58,7 @@ class QuoteAPIView(APIView):
     renderer_classes = [JSONRenderer]
 
     @staticmethod
-    @check_authentication()
-    def get(_: Request, quote_id: str) -> Response:
+    def get(request: Request, quote_id: str = None) -> Response:
         try:
             quote = get_quote_by_id(quote_id)
             return Response(model_to_dict(quote, fields=quote_response_fields))
@@ -68,7 +69,6 @@ class QuoteAPIView(APIView):
             )
 
     @staticmethod
-    @check_authentication()
     def post(request: Request) -> Response:
         from polaris.models import Quote
 

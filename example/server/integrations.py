@@ -23,9 +23,6 @@ from django.template.loader import render_to_string
 from stellar_sdk import Keypair, MuxedAccount
 from django.urls import reverse
 from django.utils.translation import gettext as _
-from rest_framework.request import Request
-from stellar_sdk.keypair import Keypair
-
 from polaris import settings
 from polaris.integrations import (
     DepositIntegration,
@@ -48,7 +45,9 @@ from polaris.sep38.utils import (
     get_significant_decimals,
 )
 from polaris.templates import Template
-from polaris.utils import to_decimals
+from rest_framework.request import Request
+from stellar_sdk.keypair import Keypair
+
 from . import mock_banking_rails as rails
 from .forms import KYCForm, WithdrawForm
 from .mock_exchange import (
@@ -1152,7 +1151,7 @@ def delivery_method_supported(
         if sell_asset:
             dms = get_sell_delivery_methods(get_offchain_asset(sell_asset))
         else:
-            dms = get_buy_delivery_methods(get_offchain_asset(sell_asset))
+            dms = get_buy_delivery_methods(get_offchain_asset(buy_asset))
 
         if not any(dm.name == delivery_method for dm in dms):
             # This method is not supported
