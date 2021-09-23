@@ -49,7 +49,9 @@ class TransactionsAPIView(APIView):
             return render_error_response(_("missing 'id' in URI"))
         try:
             t = Transaction.objects.filter(
-                id=transaction_id, stellar_account=token.account,
+                id=transaction_id,
+                stellar_account=token.account,
+                protocol=Transaction.PROTOCOL.sep31,
             ).first()
         except ValidationError:  # bad id parameter
             return render_error_response(_("transaction not found"), status_code=404)

@@ -386,7 +386,25 @@ class Transaction(models.Model):
     """The token to be used as a cursor for querying before or after this transaction"""
 
     stellar_account = models.TextField(validators=[MinLengthValidator(1)])
-    """The stellar source account for the transaction."""
+    """
+    The Stellar (G...) account authenticated via SEP-10 that initiated this transaction.
+    Note that if ``Transaction.muxed_account`` is not null, this column's value is 
+    derived from the muxed account.
+    """
+
+    muxed_account = models.TextField(null=True, blank=True)
+    """
+    The muxed (M...) account authenticated via SEP-10 that initiated this transaction.
+    If this column value is not null, ``Transaction.stellar_account`` is derived from
+    this value and ``Transaction.account_memo`` will be null.
+    """
+
+    account_memo = models.PositiveIntegerField(null=True, blank=True)
+    """
+    The ID (64-bit integer) memo identifying the user of the shared Stellar account 
+    authenticated via SEP-10 that initiated this transaction. If this column value
+    is not null, ``Transaction.muxed_account`` will be null.
+    """
 
     asset = models.ForeignKey("Asset", on_delete=models.CASCADE)
     """The Django foreign key to the associated :class:`Asset`"""
@@ -548,7 +566,7 @@ class Transaction(models.Model):
     )  # Using to_address for naming consistency
     """
     Sent to address (perhaps BTC, IBAN, or bank account in the case of a 
-    withdrawal or send, Stellar address in the case of a deposit).
+    withdrawal or send, Stellar or muxed address in the case of a deposit).
     """
 
     required_info_updates = models.TextField(null=True, blank=True)

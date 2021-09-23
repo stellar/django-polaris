@@ -170,8 +170,10 @@
                 "sha256:21ca464b3a4b8d8e86ba0ee5045e103a1fcfac3b39319727bc0fc58c09c6aff7",
                 "sha256:34dae04a0dce5730d8eb7894eab617d8a70d0c97da76b905de9efb7128ad7085",
                 "sha256:3520667fda779eb788ea00080124875be18f2d8f0848ec00733c0ec3bb8219fc",
+                "sha256:3c4129fc3fdc0fa8e40861b5ac0c673315b3c902bbdc05fc176764815b43dd1d",
                 "sha256:3fa3a7ccf96e826affdf1a0a9432be74dc73423125c8f96a909e3835a5ef194a",
                 "sha256:5b0fbfae7ff7febdb74b574055c7466da334a5371f253732d7e2e7525d570498",
+                "sha256:695104a9223a7239d155d7627ad912953b540929ef97ae0c34c7b8bf30857e89",
                 "sha256:8695456444f277af73a4877db9fc979849cd3ee74c198d04fc0776ebc3db52b9",
                 "sha256:94cc5ed4ceaefcbe5bf38c8fba6a21fc1d365bb8fb826ea1688e3370b2e24a1c",
                 "sha256:94fff993ee9bc1b2440d3b7243d488c6a3d9724cc2b09cdb297f6a886d040ef7",
@@ -410,11 +412,11 @@
         },
         "stellar-sdk": {
             "hashes": [
-                "sha256:dd840c16b23a941cb0f6cd29c11431f54b5859fdbdad24f0c017fd72f08f94e0",
-                "sha256:e1c35948337aee93cdefb47ab61e651b31171419d17db88610650f9e7f9a3636"
+                "sha256:5a670e94b7f0a384b8e3e55ca370a2b4762636b38bf1bc7d690a38321842c86b",
+                "sha256:e12357ece20e713e2c30f0ad74e897341af5b82921930625f25f4a67b99ba5a9"
             ],
             "markers": "python_version >= '3.6'",
-            "version": "==4.1.1"
+            "version": "==4.2.2"
         },
         "toml": {
             "hashes": [

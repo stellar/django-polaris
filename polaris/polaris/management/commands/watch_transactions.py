@@ -204,12 +204,14 @@ class Command(BaseCommand):
                 op, op_result, transaction.asset
             )
             if maybe_payment_data:
+                if ops[idx].source:
+                    source = ops[idx].source.account_muxed or ops[idx].source.account_id
+                else:
+                    source = (
+                        horizon_tx.source.account_muxed or horizon_tx.source.account_id
+                    )
                 await cls._update_transaction_info(
-                    transaction,
-                    response["id"],
-                    response["paging_token"],
-                    getattr(ops[idx].source, "account_id", None)
-                    or horizon_tx.source.account_id,
+                    transaction, response["id"], response["paging_token"], source
                 )
                 matching_payment_data = maybe_payment_data
                 break

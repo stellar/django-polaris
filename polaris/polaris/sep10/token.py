@@ -1,12 +1,16 @@
-from pytz import utc
 from jwt import decode
 from jwt.exceptions import InvalidTokenError
-from datetime import datetime
+from datetime import datetime, timezone
 from urllib.parse import urlparse
 from typing import Union, Dict, Optional
 
-from stellar_sdk import Keypair
-from stellar_sdk.exceptions import Ed25519PublicKeyInvalidError
+from stellar_sdk import Keypair, MuxedAccount
+from stellar_sdk.strkey import StrKey
+from stellar_sdk.exceptions import (
+    Ed25519PublicKeyInvalidError,
+    MuxedEd25519AccountInvalidError,
+    ValueError as StellarSdkValueError,
+)
 
 from polaris import settings
 
@@ -37,21 +41,45 @@ class SEP10Token:
                 f"jwt is missing one of the required fields: {', '.join(self._REQUIRED_FIELDS)}"
             )
 
-        try:
-            Keypair.from_public_key(jwt["sub"])
-        except Ed25519PublicKeyInvalidError:
-            raise ValueError(f"invalid Stellar public key: {jwt['sub']}")
+        memo = None
+        stellar_account = None
+        if jwt["sub"].startswith("M"):
+            try:
+                StrKey.decode_muxed_account(jwt["sub"])
+            except (MuxedEd25519AccountInvalidError, StellarSdkValueError):
+                raise ValueError(f"invalid muxed account address: {jwt['sub']}")
+        elif ":" in jwt["sub"]:
+            try:
+                stellar_account, memo = jwt["sub"].split(":")
+            except ValueError:
+                raise ValueError(f"improperly formatted 'sub' value: {jwt['sub']}")
+        else:
+            stellar_account = jwt["sub"]
+
+        if stellar_account:
+            try:
+                Keypair.from_public_key(stellar_account)
+            except Ed25519PublicKeyInvalidError:
+                raise ValueError(f"invalid Stellar public key: {jwt['sub']}")
+
+        if memo:
+            try:
+                int(memo)
+            except ValueError:
+                raise ValueError(
+                    f"invalid memo in 'sub' value, expected 64-bit integer: {memo}"
+                )
 
         try:
-            iat = datetime.fromtimestamp(jwt["iat"], tz=utc)
+            iat = datetime.fromtimestamp(jwt["iat"], tz=timezone.utc)
         except (OSError, ValueError, OverflowError):
             raise ValueError("invalid iat value")
         try:
-            exp = datetime.fromtimestamp(jwt["exp"], tz=utc)
+            exp = datetime.fromtimestamp(jwt["exp"], tz=timezone.utc)
         except (OSError, ValueError, OverflowError):
             raise ValueError("invalid exp value")
 
-        now = datetime.now(tz=utc)
+        now = datetime.now(tz=timezone.utc)
         if now < iat or now > exp:
             raise ValueError("jwt is no longer valid")
 
@@ -67,9 +95,34 @@ class SEP10Token:
     @property
     def account(self) -> str:
         """
-        The G-address specified in the payload's ``sub`` value
+        The Stellar account (`G...`) authenticated. Note that a muxed account
+        could have been authenticated, in which case `Token.muxed_account` should
+        be used.
         """
-        return self._payload["sub"]
+        if self._payload["sub"].startswith("M"):
+            return MuxedAccount.from_account(self._payload["sub"]).account_id
+        elif ":" in self._payload["sub"]:
+            return self._payload["sub"].split(":")[0]
+        else:
+            return self._payload["sub"]
+
+    @property
+    def muxed_account(self) -> Optional[str]:
+        """
+        The M-address specified in the payload's ``sub`` value, if present
+        """
+        return self._payload["sub"] if self._payload["sub"].startswith("M") else None
+
+    @property
+    def memo(self) -> Optional[int]:
+        """
+        The memo included with the payload's ``sub`` value, if present
+        """
+        return (
+            int(self._payload["sub"].split(":")[1])
+            if ":" in self._payload["sub"]
+            else None
+        )
 
     @property
     def issuer(self) -> str:
@@ -86,7 +139,7 @@ class SEP10Token:
         The time at which the JWT was issued RFC7519, Section 4.1.6 -
         represented as a UTC datetime object
         """
-        return datetime.fromtimestamp(self._payload["iat"], tz=utc)
+        return datetime.fromtimestamp(self._payload["iat"], tz=timezone.utc)
 
     @property
     def expires_at(self) -> datetime:
@@ -94,7 +147,7 @@ class SEP10Token:
         The expiration time on or after which the JWT will not accepted for
         processing, RFC7519, Section 4.1.4 — represented as a UTC datetime object
         """
-        return datetime.fromtimestamp(self._payload["exp"], tz=utc)
+        return datetime.fromtimestamp(self._payload["exp"], tz=timezone.utc)
 
     @property
     def client_domain(self) -> Optional[str]:

@@ -13,6 +13,7 @@ from django.utils.translation import gettext as _
 from django.urls import reverse
 from django.conf import settings as django_settings
 from django.core.validators import URLValidator
+from stellar_sdk import MuxedAccount
 
 from polaris import settings
 from polaris.utils import getLogger
@@ -88,7 +89,10 @@ def authenticate_session_helper(r: Request):
         if r.session.get("authenticated") and r.session.get("account"):
             tid = r.GET.get("transaction_id")
             tqs = Transaction.objects.filter(
-                id=tid, stellar_account=r.session["account"],
+                id=tid,
+                stellar_account=r.session["account"],
+                muxed_account=r.session["muxed_account"],
+                account_memo=r.session["memo"],
             )
             if not (tid in r.session.get("transactions", []) and tqs.exists()):
                 raise ValueError(f"Not authenticated for transaction ID: {tid}")
@@ -120,15 +124,32 @@ def authenticate_session_helper(r: Request):
     elif jwt_dict["iat"] > now or jwt_dict["exp"] < now:
         raise ValueError(_("Token is not yet valid or is expired"))
 
+    if jwt_dict["sub"].startswith("M"):
+        muxed_account = jwt_dict["sub"]
+        stellar_account = MuxedAccount.from_account(muxed_account).account_id
+        account_memo = None
+    elif ":" in jwt_dict["sub"]:
+        stellar_account, account_memo = jwt_dict["sub"].split(":")
+        muxed_account = None
+    else:
+        stellar_account = jwt_dict["sub"]
+        account_memo = None
+        muxed_account = None
+
     transaction_qs = Transaction.objects.filter(
-        id=jwt_dict["jti"], stellar_account=jwt_dict["sub"],
+        id=jwt_dict["jti"],
+        stellar_account=stellar_account,
+        muxed_account=muxed_account,
+        account_memo=account_memo,
     )
     if not transaction_qs.exists():
         raise ValueError(_("Transaction for account not found"))
 
     # JWT is valid, authenticate session
     r.session["authenticated"] = True
-    r.session["account"] = jwt_dict["sub"]
+    r.session["account"] = stellar_account
+    r.session["muxed_account"] = muxed_account
+    r.session["memo"] = account_memo
     try:
         r.session["transactions"].append(jwt_dict["jti"])
     except KeyError:
@@ -252,7 +273,7 @@ def interactive_args_validation(request: Request, kind: str) -> Dict:
 
 
 def generate_interactive_jwt(
-    request: Request, transaction_id: str, account: str,
+    request: Request, transaction_id: str, account: str, memo: int
 ) -> str:
     """
     Generates a 30-second JWT for the client to use in the GET URL for
@@ -263,7 +284,7 @@ def generate_interactive_jwt(
         "iss": request.build_absolute_uri(request.path),
         "iat": issued_at,
         "exp": issued_at + settings.INTERACTIVE_JWT_EXPIRATION,
-        "sub": account,
+        "sub": f"{account}:{memo}" if memo else account,
         "jti": transaction_id,
     }
     return jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256")
@@ -309,6 +330,7 @@ def interactive_url(
     request: Request,
     transaction_id: str,
     account: str,
+    memo: int,
     asset_code: str,
     op_type: str,
     amount: Optional[Decimal],
@@ -316,7 +338,7 @@ def interactive_url(
     params = {
         "asset_code": asset_code,
         "transaction_id": transaction_id,
-        "token": generate_interactive_jwt(request, transaction_id, account),
+        "token": generate_interactive_jwt(request, transaction_id, account, memo),
     }
     if amount:
         params["amount"] = amount

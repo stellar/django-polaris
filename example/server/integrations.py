@@ -1,4 +1,5 @@
 import json
+import requests
 from smtplib import SMTPException
 from decimal import Decimal
 from typing import List, Dict, Optional, Tuple
@@ -6,6 +7,7 @@ from urllib.parse import urlencode
 from base64 import b64encode
 from collections import defaultdict
 from logging import getLogger
+from unittest.mock import Mock
 
 from django.db.models import QuerySet
 from django.core.exceptions import ObjectDoesNotExist
@@ -15,7 +17,7 @@ from django.urls import reverse
 from django.core.mail import send_mail
 from django.conf import settings as server_settings
 from django.template.loader import render_to_string
-from stellar_sdk.keypair import Keypair
+from stellar_sdk import Keypair, MuxedAccount
 from rest_framework.request import Request
 
 from polaris.models import Transaction, Asset
@@ -88,16 +90,24 @@ class SEP24KYC:
                 )
 
             account = PolarisStellarAccount.objects.create(
-                account=transaction.stellar_account, user=user,
+                user=user,
+                account=transaction.stellar_account,
+                muxed_account=transaction.muxed_account,
+                memo=transaction.account_memo,
+                memo_type=Transaction.MEMO_TYPES.id
+                if transaction.account_memo
+                else None,
             )
             if server_settings.EMAIL_HOST_USER:
                 send_confirmation_email(user, account)
         else:
             try:
                 account = PolarisStellarAccount.objects.get(
-                    account=transaction.stellar_account, memo=None
+                    account=transaction.stellar_account,
+                    muxed_account=transaction.muxed_account,
+                    memo=transaction.account_memo,
                 )
-            except PolarisStellarAccount.DoesNotExist:
+            except ObjectDoesNotExist:
                 raise RuntimeError(
                     f"Unknown address: {transaction.stellar_account}, KYC required."
                 )
@@ -116,6 +126,8 @@ class SEP24KYC:
         """
         account = PolarisStellarAccount.objects.filter(
             account=transaction.stellar_account,
+            muxed_account=transaction.muxed_account,
+            memo=transaction.account_memo,
         ).first()
         if not account:  # Unknown stellar account, get KYC info
             if post_data:
@@ -256,7 +268,7 @@ class MyDepositIntegration(DepositIntegration):
         elif not (account.user.bank_account_number and account.user.bank_number):
             return {
                 "type": "non_interactive_customer_info_needed",
-                "fields": ["bank_number", "bank_account_number",],
+                "fields": ["bank_number", "bank_account_number"],
             }
         elif params["type"] != "bank_account":
             raise ValueError(_("'type' must be 'bank_account'"))
@@ -307,15 +319,51 @@ class MyDepositIntegration(DepositIntegration):
 
     def create_channel_account(self, transaction: Transaction, *args, **kwargs):
         kp = Keypair.random()
-        settings.HORIZON_SERVER._client.get(
-            f"https://friendbot.stellar.org/?addr={kp.public_key}"
-        )
+        requests.get(f"https://friendbot.stellar.org/?addr={kp.public_key}")
         transaction.channel_seed = kp.secret
         transaction.save()
 
     def after_deposit(self, transaction: Transaction, *args, **kwargs):
         transaction.channel_seed = None
         transaction.save()
+
+    def interactive_url(
+        self,
+        request: Request,
+        transaction: Transaction,
+        asset: Asset,
+        amount: Optional[Decimal],
+        callback: Optional[str],
+        *args: List,
+        **kwargs: Dict,
+    ) -> Optional[str]:
+        raise NotImplementedError()
+
+    def save_sep9_fields(
+        self,
+        token: SEP10Token,
+        request: Request,
+        stellar_account: str,
+        fields: Dict,
+        language_code: str,
+        muxed_account: Optional[str] = None,
+        account_memo: Optional[str] = None,
+        account_memo_type: Optional[str] = None,
+        *args: List,
+        **kwargs: Dict,
+    ):
+        raise NotImplementedError()
+
+    def patch_transaction(
+        self,
+        token: SEP10Token,
+        request: Request,
+        params: Dict,
+        transaction: Transaction,
+        *args: List,
+        **kwargs: Dict,
+    ):
+        raise NotImplementedError()
 
 
 class MyWithdrawalIntegration(WithdrawalIntegration):
@@ -419,7 +467,7 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
         elif not (account.user.bank_account_number and account.user.bank_number):
             return {
                 "type": "non_interactive_customer_info_needed",
-                "fields": ["bank_number", "bank_account_number",],
+                "fields": ["bank_number", "bank_account_number"],
             }
         elif params["type"] != "bank_account":
             raise ValueError(_("'type' must be 'bank_account'"))
@@ -472,6 +520,44 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
             transaction_id=transaction.id, user=account.user, account=account
         )
         return response
+
+    def interactive_url(
+        self,
+        request: Request,
+        transaction: Transaction,
+        asset: Asset,
+        amount: Optional[Decimal],
+        callback: Optional[str],
+        *args: List,
+        **kwargs: Dict,
+    ) -> Optional[str]:
+        raise NotImplementedError()
+
+    def save_sep9_fields(
+        self,
+        token: SEP10Token,
+        request: Request,
+        stellar_account: str,
+        fields: Dict,
+        language_code: str,
+        muxed_account: Optional[str] = None,
+        account_memo: Optional[str] = None,
+        account_memo_type: Optional[str] = None,
+        *args: List,
+        **kwargs: Dict,
+    ):
+        raise NotImplementedError()
+
+    def patch_transaction(
+        self,
+        token: SEP10Token,
+        request: Request,
+        params: Dict,
+        transaction: Transaction,
+        *args: List,
+        **kwargs: Dict,
+    ):
+        raise NotImplementedError()
 
 
 class MyCustomerIntegration(CustomerIntegration):
@@ -551,8 +637,17 @@ class MyCustomerIntegration(CustomerIntegration):
             if not user:
                 raise ObjectDoesNotExist(_("customer not found"))
         elif params.get("account"):
+            if params["account"].startswith("M"):
+                stellar_account = MuxedAccount.from_account(
+                    params["account"]
+                ).account_id
+                muxed_account = params["account"]
+            else:
+                stellar_account = params["account"]
+                muxed_account = None
             account = PolarisStellarAccount.objects.filter(
-                account=params.get("account"),
+                account=stellar_account,
+                muxed_account=muxed_account,
                 memo=params.get("memo"),
                 memo_type=params.get("memo_type"),
             ).first()
@@ -623,8 +718,17 @@ class MyCustomerIntegration(CustomerIntegration):
             if not user:
                 raise ObjectDoesNotExist("could not identify user customer 'id'")
         else:
+            if params["account"].startswith("M"):
+                stellar_account = MuxedAccount.from_account(
+                    params["account"]
+                ).account_id
+                muxed_account = params["account"]
+            else:
+                stellar_account = params["account"]
+                muxed_account = None
             account = PolarisStellarAccount.objects.filter(
-                account=params["account"],
+                account=stellar_account,
+                muxed_account=muxed_account,
                 memo=params.get("memo"),
                 memo_type=params.get("memo_type"),
             ).first()
@@ -640,7 +744,8 @@ class MyCustomerIntegration(CustomerIntegration):
                 if user:
                     account = PolarisStellarAccount.objects.create(
                         user=user,
-                        account=params["account"],
+                        account=stellar_account,
+                        muxed_account=muxed_account,
                         memo=params["memo"],
                         memo_type=params["memo_type"],
                     )
@@ -678,7 +783,18 @@ class MyCustomerIntegration(CustomerIntegration):
         *args,
         **kwargs,
     ):
-        qparams = {"account": account, "memo": memo, "memo_type": memo_type}
+        if account.startswith("M"):
+            stellar_account = MuxedAccount.from_account(account).account_id
+            muxed_account = account
+        else:
+            stellar_account = account
+            muxed_account = None
+        qparams = {
+            "account": stellar_account,
+            "muxed_account": muxed_account,
+            "memo": memo,
+            "memo_type": memo_type,
+        }
         account = PolarisStellarAccount.objects.filter(**qparams).first()
         if not account:
             raise ObjectDoesNotExist()
@@ -691,6 +807,12 @@ class MyCustomerIntegration(CustomerIntegration):
                 "SEP-9 fields were not passed for new customer. "
                 "'first_name', 'last_name', and 'email_address' are required."
             )
+        if params["account"].startswith("M"):
+            stellar_account = MuxedAccount.from_account(params["account"]).account_id
+            muxed_account = params["account"]
+        else:
+            stellar_account = params["account"]
+            muxed_account = None
         user = PolarisUser.objects.create(
             first_name=params["first_name"],
             last_name=params["last_name"],
@@ -700,11 +822,44 @@ class MyCustomerIntegration(CustomerIntegration):
         )
         account = PolarisStellarAccount.objects.create(
             user=user,
-            account=params["account"],
+            account=stellar_account,
+            muxed_account=muxed_account,
             memo=params.get("memo"),
             memo_type=params.get("memo_type"),
         )
         return user, account
+
+    def more_info_url(
+        self,
+        token: SEP10Token,
+        request: Request,
+        account: str,
+        *args: List,
+        memo: Optional[int] = None,
+        **kwargs: Dict,
+    ) -> str:
+        raise NotImplementedError()
+
+    def callback(
+        self,
+        token: SEP10Token,
+        request: Request,
+        params: Dict,
+        *args: List,
+        **kwargs: Dict,
+    ):
+        raise NotImplementedError()
+
+    def put_verification(
+        self,
+        token: SEP10Token,
+        request: Request,
+        account: str,
+        params: Dict,
+        *args: List,
+        **kwargs: Dict,
+    ) -> Dict:
+        raise NotImplementedError()
 
 
 class MySEP31ReceiverIntegration(SEP31ReceiverIntegration):
@@ -788,7 +943,7 @@ class MySEP31ReceiverIntegration(SEP31ReceiverIntegration):
         if not isinstance(transaction_fields, dict):
             raise ValueError(_("'transaction' value must be an object"))
         possible_fields = set()
-        for obj in self.info(transaction.asset)["fields"].values():
+        for obj in self.info(request, transaction.asset)["fields"].values():
             possible_fields.union(obj.keys())
         update_fields = list(transaction_fields.keys())
         if not update_fields:
@@ -920,7 +1075,7 @@ class MyRailsIntegration(RailsIntegration):
             # Parse a mock bank API response to demonstrate how an anchor would
             # report back to the sending anchor which fields needed updating.
             error_fields = response.error.fields
-            info_fields = MySEP31ReceiverIntegration().info(transaction.asset)
+            info_fields = MySEP31ReceiverIntegration().info(Mock(), transaction.asset)
             required_info_update = defaultdict(dict)
             for field in error_fields:
                 if "name" in field:

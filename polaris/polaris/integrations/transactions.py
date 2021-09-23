@@ -256,12 +256,16 @@ class DepositIntegration:
         stellar_account: str,
         fields: Dict,
         language_code: str,
+        muxed_account: Optional[str] = None,
         account_memo: Optional[str] = None,
         account_memo_type: Optional[str] = None,
         *args: List,
         **kwargs: Dict
     ):
         """
+        **DEPRECATED:** `stellar_account`, `account_memo`, `account_memo_type`, and `muxed_account`
+        parameters. Use the `token` object passed instead.
+
         Save the `fields` passed for the user identified by `stellar_account` to pre-populate
         the forms returned from ``form_for_transaction()``. Note that this function is called
         before the transaction is created.
@@ -271,7 +275,13 @@ class DepositIntegration:
         ::
 
             # Assuming you have a similar method and model
-            user = user_for_account(stellar_account)
+            if token.muxed_account:
+                user_key = token.muxed_account
+            elif token.memo:
+                user_key = f"{token.account}:{token.memo}"
+            else:
+                user_key = token.account
+            user = user_for_key(user_key)
             user.phone_number = fields.get('mobile_number')
             user.email = fields.get('email_address')
             user.save()
@@ -281,7 +291,13 @@ class DepositIntegration:
         ::
 
             # In your form_for_transaction() implementation
-            user = user_for_account(transaction.stellar_account)
+            if token.muxed_account:
+                user_key = token.muxed_account
+            elif token.memo:
+                user_key = f"{token.account}:{token.memo}"
+            else:
+                user_key = token.account
+            user = user_for_key(user_key)
             form_args = {
                 'phone_number': format_number(user.phone_number),
                 'email': user.email_address
@@ -564,10 +580,12 @@ class WithdrawalIntegration:
 
     def save_sep9_fields(
         self,
+        token: SEP10Token,
         request: Request,
         stellar_account: str,
         fields: Dict,
         language_code: str,
+        muxed_account: Optional[str] = None,
         account_memo: Optional[str] = None,
         account_memo_type: Optional[str] = None,
         *args: List,

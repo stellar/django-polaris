@@ -10,8 +10,14 @@ from rest_framework.response import Response
 from rest_framework.renderers import JSONRenderer, BrowsableAPIRenderer
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.exceptions import APIException
-from stellar_sdk.exceptions import MemoInvalidException, Ed25519PublicKeyInvalidError
-from stellar_sdk.keypair import Keypair
+from stellar_sdk.strkey import StrKey
+from stellar_sdk import Keypair
+from stellar_sdk.exceptions import (
+    MemoInvalidException,
+    Ed25519PublicKeyInvalidError,
+    MuxedEd25519AccountInvalidError,
+    ValueError as StellarSdkValueError,
+)
 
 from polaris import settings
 from polaris.models import Asset, Transaction
@@ -49,6 +55,8 @@ def deposit(token: SEP10Token, request: Request) -> Response:
     transaction = Transaction(
         id=transaction_id,
         stellar_account=token.account,
+        muxed_account=token.muxed_account,
+        account_memo=token.memo,
         asset=args["asset"],
         amount_in=args.get("amount"),
         amount_expected=args.get("amount"),
@@ -176,10 +184,17 @@ def validate_response(
 
 
 def parse_request_args(request: Request) -> Dict:
-    try:
-        Keypair.from_public_key(request.GET.get("account"))
-    except Ed25519PublicKeyInvalidError:
-        return {"error": render_error_response(_("invalid 'account'"))}
+    account = request.GET.get("account")
+    if account.startswith("M"):
+        try:
+            StrKey.decode_muxed_account(account)
+        except (MuxedEd25519AccountInvalidError, StellarSdkValueError):
+            return {"error": render_error_response(_("invalid 'account'"))}
+    else:
+        try:
+            Keypair.from_public_key(account)
+        except Ed25519PublicKeyInvalidError:
+            return {"error": render_error_response(_("invalid 'account'"))}
 
     asset = Asset.objects.filter(
         code=request.GET.get("asset_code"), sep6_enabled=True, deposit_enabled=True
