@@ -3,8 +3,8 @@ from rest_framework.renderers import JSONRenderer
 from rest_framework.request import Request
 from rest_framework.response import Response
 
-from polaris.sep38.utils import list_stellar_assets, list_offchain_assets
 from polaris.sep38.serializers import OffChainAssetSerializer
+from polaris.models import Asset, OffChainAsset
 
 
 @api_view(["GET"])
@@ -15,9 +15,9 @@ def info(_: Request) -> Response:
     See: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0038.md#response
     """
     info_data = {"assets": []}
-    for asset in list_stellar_assets():
+    for asset in Asset.objects.filter(sep38_enabled=True):
         info_data["assets"].append({"asset": f"stellar:{asset.code}:{asset.issuer}"})
     info_data["assets"].append(
-        OffChainAssetSerializer(list_offchain_assets(), many=True)
+        OffChainAssetSerializer(OffChainAsset.objects.all(), many=True)
     )
     return Response(info_data)

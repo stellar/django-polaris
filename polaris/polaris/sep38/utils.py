@@ -1,76 +1,148 @@
-from typing import List, Dict
+from typing import Union, Optional, List
 
-from polaris.models import (
-    OffChainAsset,
-    Asset,
-    DeliveryMethod,
-    Quote,
-    ExchangePair,
-)
+from django.utils.translation import gettext
+from django.core.exceptions import ObjectDoesNotExist
+from django.db.models import Q
+
+from polaris.models import OffChainAsset, Asset, ExchangePair, DeliveryMethod
 
 
-def list_stellar_assets() -> List[Asset]:
-    return list(Asset.objects.all())
+def asset_id_format(asset: Union[Asset, OffChainAsset]) -> str:
+    if isinstance(asset, Asset):
+        return f"stellar:{asset.code}:{asset.issuer}"
+    else:
+        return asset.asset
 
 
-def list_offchain_assets() -> List[OffChainAsset]:
-    """
-    Gets the list of offchain assets.
-    """
-    return list(OffChainAsset.objects.all())
-
-
-def list_exchange_pairs(
-    anchor_sell_asset: str = None, anchor_buy_asset: str = None,
-) -> List[ExchangePair]:
-    exchange_pairs = ExchangePair.objects.all()
-    if anchor_sell_asset is not None:
-        exchange_pairs = exchange_pairs.filter(sell_asset=anchor_sell_asset)
-    if anchor_buy_asset is not None:
-        exchange_pairs = exchange_pairs.filter(buy_asset=anchor_buy_asset)
-
-    return list(exchange_pairs)
+def asset_id_to_kwargs(asset_id: str) -> dict:
+    if asset_id.startswith("stellar"):
+        _, code, issuer = asset_id.split(":")
+        return {"code": code, "issuer": issuer}
+    else:
+        scheme, identifier = asset_id.split(":")
+        return {"scheme": scheme, "identifier": identifier}
 
 
 def is_stellar_asset(asset: str) -> bool:
-    tokens = asset.split(":")
-    if len(tokens) != 3:
-        return False
-    return tokens[0] == "stellar"
+    return asset.startswith("stellar")
 
 
-def get_offchain_asset(asset: str) -> OffChainAsset:
-    schema, identifier = asset.split(":")
-    return OffChainAsset.objects.get(schema=schema, identifier=identifier)
-
-
-def get_stellar_asset(asset: str) -> Asset:
-    _, code, issuer = asset.split(":")
-    return Asset.objects.get(code=code, issuer=issuer)
-
-
-def get_buy_delivery_methods(asset: OffChainAsset) -> List[DeliveryMethod]:
-    return list(
-        DeliveryMethod.objects.filter(asset=asset, type=DeliveryMethod.TYPE.buy)
-    )
-
-
-def get_sell_delivery_methods(asset: OffChainAsset) -> List[DeliveryMethod]:
-    return list(
-        DeliveryMethod.objects.filter(asset=asset, type=DeliveryMethod.TYPE.sell)
-    )
-
-
-def get_significant_decimals(asset: str) -> int:
-    if is_stellar_asset(asset):
-        return get_stellar_asset(asset).significant_decimals
+def get_buy_assets(
+    sell_asset: Union[Asset, OffChainAsset],
+    buy_delivery_method: Optional[str],
+    country_code: Optional[str],
+) -> List[Union[Asset, OffChainAsset]]:
+    asset_str = asset_id_format(sell_asset)
+    pairs = ExchangePair.objects.filter(sell_asset=asset_str).all()
+    if not pairs:
+        return []
+    buy_asset_strs = [p.buy_asset for p in pairs]
+    conditions = Q()
+    for asset_str in buy_asset_strs:
+        conditions |= Q(**asset_id_to_kwargs(asset_str))
+    kwargs = {}
+    if country_code:
+        kwargs["country_codes__icontains"] = country_code
+    if buy_delivery_method:
+        kwargs["delivery_methods__type"] = DeliveryMethod.TYPE.buy
+        kwargs["delivery_methods__name"] = buy_delivery_method
+    if isinstance(sell_asset, Asset):
+        buy_assets = OffChainAsset.objects.filter(conditions, **kwargs).all()
     else:
-        return get_offchain_asset(asset).significant_decimals
+        if buy_delivery_method:
+            raise ValueError(
+                gettext(
+                    "unexpected 'buy_delivery_method', "
+                    "client intends to buy a Stellar asset"
+                )
+            )
+        buy_assets = Asset.objects.filter(conditions, **kwargs).all()
+    return list(buy_assets)
 
 
-def get_quote_by_id(quote_id: str) -> Quote:
-    return Quote.objects.get(id=quote_id)
+def get_buy_asset(
+    sell_asset: Union[Asset, OffChainAsset],
+    buy_asset_str: str,
+    buy_delivery_method: Optional[str],
+    country_code: Optional[str],
+) -> Union[Asset, OffChainAsset]:
+    if isinstance(sell_asset, Asset):
+        if is_stellar_asset(buy_asset_str):
+            raise ValueError(
+                gettext(
+                    "invalid 'sell_asset' and 'buy_asset'. "
+                    "Expected one on-chain asset and one off-chain asset."
+                )
+            )
+        kwargs = {}
+        if country_code:
+            kwargs["country_codes__icontains"] = country_code
+        if buy_delivery_method:
+            kwargs["delivery_methods__type"] = DeliveryMethod.TYPE.buy
+            kwargs["delivery_methods__name"] = buy_delivery_method
+        kwargs.update(**asset_id_to_kwargs(buy_asset_str))
+        try:
+            buy_asset = OffChainAsset.objects.get(**kwargs)
+        except ObjectDoesNotExist:
+            raise ValueError(
+                gettext(
+                    "unable to find 'buy_asset' using the following filters: "
+                    "'country_code', 'buy_delivery_method'"
+                )
+            )
+    else:
+        if not is_stellar_asset(buy_asset_str):
+            raise ValueError(
+                gettext(
+                    "invalid 'sell_asset' and 'buy_asset'. "
+                    "Expected one on-chain asset and one off-chain asset."
+                )
+            )
+        elif buy_delivery_method:
+            raise ValueError(
+                gettext(
+                    "unexpected 'buy_delivery_method', "
+                    "client intends to buy a Stellar asset"
+                )
+            )
+        try:
+            buy_asset = Asset.objects.get(**asset_id_to_kwargs(buy_asset_str))
+        except ObjectDoesNotExist:
+            raise ValueError(
+                gettext(
+                    "unable to find 'buy_asset' using the following filters: "
+                    "'country_code', 'buy_delivery_method'"
+                )
+            )
+    if not ExchangePair.objects.filter(
+        sell_asset=asset_id_format(sell_asset), buy_asset=buy_asset_str
+    ).exists():
+        raise ValueError(gettext("unsupported asset pair"))
+    return buy_asset
 
 
-def get_exchange_pair(sell_asset: str, buy_asset: str):
-    return ExchangePair.objects.get(sell_asset=buy_asset, buy_asset=sell_asset)
+def get_sell_asset(
+    sell_asset_str: str, sell_delivery_method: Optional[str]
+) -> Union[Asset, OffChainAsset]:
+    try:
+        if sell_asset_str.startswith("stellar"):
+            if sell_delivery_method:
+                raise ValueError(
+                    gettext(
+                        "unexpected 'sell_delivery_method', "
+                        "client intends to sell a Stellar asset"
+                    )
+                )
+            try:
+                _, code, issuer = sell_asset_str.split(":")
+            except ValueError:
+                raise ValueError(gettext("invalid 'sell_asset' format"))
+            return Asset.objects.get(code=code, issuer=issuer)
+        else:
+            try:
+                scheme, identifier = sell_asset_str.split(":")
+            except ValueError:
+                raise ValueError(gettext("invalid 'sell_asset' format"))
+            return OffChainAsset.objects.get(scheme=scheme, identifier=identifier)
+    except ObjectDoesNotExist:
+        raise ValueError(gettext("unknown 'sell_asset'"))

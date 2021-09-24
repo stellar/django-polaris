@@ -77,17 +77,13 @@ class OffChainAssetSerializer(serializers.ModelSerializer):
     @staticmethod
     def get_sell_delivery_methods(instance):
         return DeliveryMethodSerializer(
-            DeliveryMethod.objects.filter(
-                asset=instance, type=DeliveryMethod.TYPE.sell
-            ),
-            many=True,
+            instance.delivery_methods.filter(type=DeliveryMethod.TYPE.sell), many=True,
         )
 
     @staticmethod
     def get_buy_delivery_methods(instance):
         return DeliveryMethodSerializer(
-            DeliveryMethod.objects.filter(asset=instance, type=DeliveryMethod.TYPE.buy),
-            many=True,
+            instance.delivery_methods.filter(type=DeliveryMethod.TYPE.buy), many=True,
         )
 
     class Meta:

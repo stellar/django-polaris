@@ -224,6 +224,9 @@ class Asset(TimeStampedModel):
     sep31_enabled = models.BooleanField(default=False)
     """`True` if this asset is transferable via SEP-31"""
 
+    sep38_enabled = models.BooleanField(default=False)
+    """`True` if this asset is exchangeable via SEP-38"""
+
     symbol = models.TextField(default="$")
     """The symbol used in HTML pages when displaying amounts of this asset"""
 
@@ -789,6 +792,8 @@ class OffChainAsset(models.Model):
     supports delivery of this asset.
     """
 
+    delivery_methods = models.ManyToManyField("DeliveryMethod")
+
     class Meta:
         constraints = [
             models.UniqueConstraint(
@@ -813,11 +818,6 @@ class DeliveryMethod(models.Model):
     """
     The type of delivery method. Sell methods describe how a client can deliver funds to the 
     anchor. Buy methods describe how a client can receive or collect funds from the anchor.
-    """
-
-    asset = models.ForeignKey("OffChainAsset", on_delete=models.CASCADE)
-    """
-    The off-chain asset for which this delivery method is supported.
     """
 
     name = models.TextField()
