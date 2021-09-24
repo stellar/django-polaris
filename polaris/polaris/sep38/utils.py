@@ -1,12 +1,9 @@
 from typing import List, Dict
 
-from django.db.models import QuerySet
-
 from polaris.models import (
     OffChainAsset,
     Asset,
-    BuyDeliveryMethod,
-    SellDeliveryMethod,
+    DeliveryMethod,
     Quote,
     ExchangePair,
 )
@@ -16,41 +13,11 @@ def list_stellar_assets() -> List[Asset]:
     return list(Asset.objects.all())
 
 
-def list_offchain_assets() -> List[Dict]:
+def list_offchain_assets() -> List[OffChainAsset]:
     """
     Gets the list of offchain assets.
     """
-    result = []
-    for offchain_asset in OffChainAsset.objects.all():
-        asset_dict = dict()
-        asset_dict["asset"] = offchain_asset.asset
-
-        # Populate optional country_codes list
-        if offchain_asset.country_codes is not None:
-            country_codes = []
-            for cc in offchain_asset.country_codes.split(","):
-                country_codes.append(cc)
-            asset_dict["country_codes"] = country_codes
-
-        # Populate optional sell_delivery_methords
-        sell_delivery_methods = SellDeliveryMethod.objects.filter(asset=offchain_asset)
-        if sell_delivery_methods is not None and len(sell_delivery_methods) > 0:
-            dms = []
-            # sdm : SellDeliveryMethod = None
-            for dm in sell_delivery_methods:
-                dms.append({"name": dm.name, "description": dm.description})
-            asset_dict["sell_delivery_methods"] = dms
-
-        # Populate optional buy_delivery_methords
-        buy_delivery_methods = BuyDeliveryMethod.objects.filter(asset=offchain_asset)
-        if buy_delivery_methods is not None and len(buy_delivery_methods) > 0:
-            dms = []
-            for dm in buy_delivery_methods:
-                dms.append({"name": dm.name, "description": dm.description})
-            asset_dict["buy_delivery_methods"] = dms
-
-        result.append(asset_dict)
-    return result
+    return list(OffChainAsset.objects.all())
 
 
 def list_exchange_pairs(
@@ -82,12 +49,16 @@ def get_stellar_asset(asset: str) -> Asset:
     return Asset.objects.get(code=code, issuer=issuer)
 
 
-def get_buy_delivery_methods(asset: OffChainAsset) -> List[BuyDeliveryMethod]:
-    return list(BuyDeliveryMethod.objects.filter(asset=asset))
+def get_buy_delivery_methods(asset: OffChainAsset) -> List[DeliveryMethod]:
+    return list(
+        DeliveryMethod.objects.filter(asset=asset, type=DeliveryMethod.TYPE.buy)
+    )
 
 
-def get_sell_delivery_methods(asset: OffChainAsset) -> List[SellDeliveryMethod]:
-    return list(SellDeliveryMethod.objects.filter(asset=asset))
+def get_sell_delivery_methods(asset: OffChainAsset) -> List[DeliveryMethod]:
+    return list(
+        DeliveryMethod.objects.filter(asset=asset, type=DeliveryMethod.TYPE.sell)
+    )
 
 
 def get_significant_decimals(asset: str) -> int:

@@ -19,8 +19,7 @@ class TestQuote(unittest.TestCase):
         list_stellar_assets()
 
     @pytest.mark.django_db
-    @patch("polaris.sep38.utils.BuyDeliveryMethod.objects.filter")
-    @patch("polaris.sep38.utils.SellDeliveryMethod.objects.filter")
+    @patch("polaris.sep38.utils.DeliveryMethod.objects.filter")
     @patch("polaris.sep38.utils.OffChainAsset.objects.all")
     def test_list_offchain_assets(
         self,
@@ -69,7 +68,7 @@ class TestQuote(unittest.TestCase):
             )
 
     @pytest.mark.django_db
-    @patch("polaris.models.BuyDeliveryMethod")
+    @patch("polaris.models.DeliveryMethod")
     def test_get_buy_delivery_methods(self, _):
         from polaris.sep38.utils import get_buy_delivery_methods
         from polaris.models import OffChainAsset

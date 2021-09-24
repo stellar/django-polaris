@@ -1,9 +1,5 @@
 import json
 import requests
-from smtplib import SMTPException
-from decimal import Decimal
-from typing import List, Dict, Optional, Tuple
-from urllib.parse import urlencode
 from base64 import b64encode
 from collections import defaultdict
 from datetime import datetime
@@ -20,7 +16,7 @@ from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.core.mail import send_mail
 from django.db.models import QuerySet
 from django.template.loader import render_to_string
-from stellar_sdk import Keypair, MuxedAccount
+from stellar_sdk import MuxedAccount
 from django.urls import reverse
 from django.utils.translation import gettext as _
 from polaris import settings

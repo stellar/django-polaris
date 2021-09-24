@@ -5,8 +5,7 @@ from polaris.models import (
     Asset,
     Quote,
     OffChainAsset,
-    BuyDeliveryMethod,
-    SellDeliveryMethod,
+    DeliveryMethod,
     ExchangePair,
 )
 
@@ -38,8 +37,7 @@ class AssetAdmin(admin.ModelAdmin):
 
 admin.site.register(Transaction, TransactionAdmin)
 admin.site.register(Asset, AssetAdmin)
-admin.site.register(BuyDeliveryMethod)
-admin.site.register(SellDeliveryMethod)
+admin.site.register(DeliveryMethod)
 admin.site.register(Quote)
 admin.site.register(OffChainAsset)
 admin.site.register(ExchangePair)

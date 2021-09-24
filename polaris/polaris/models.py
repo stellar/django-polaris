@@ -691,15 +691,29 @@ class Transaction(models.Model):
 
 class Quote(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4)
+    """
+    The unique ID for the quote.
+    """
 
-    sell_asset = models.TextField(null=False, blank=False)
+    TYPE = PolarisChoices("firm", "indicative")
+    """
+    Choices for type.
+    """
+
+    type = models.TextField(choices=TYPE)
+    """
+    The type of quote. Firm quotes have a non-null price and expiration, indicative quotes 
+    may have a null price and expiration.
+    """
+
+    sell_asset = models.TextField()
     """
     The asset the client would like to sell. Ex. USDC:G..., iso4217:ARS
     """
 
-    buy_asset = models.TextField(null=False, blank=False)
+    buy_asset = models.TextField()
     """
-    The asset the client would like to exchange for sell_asset.
+    The asset the client would like to receive for some amount of sell_asset.
     """
 
     sell_amount = models.DecimalField(
@@ -716,76 +730,135 @@ class Quote(models.Model):
     The amount of buy_asset the client would like to purchase with sell_asset.
     """
 
-    price = models.DecimalField(default=0, blank=False, max_digits=30, decimal_places=7)
+    price = models.DecimalField(null=True, blank=True, max_digits=30, decimal_places=7)
     """
-    The asset the client would like to exchange for sell_asset.
-    """
-
-    expires_at = models.DateTimeField(default=utc_now)
-    """
-    The expiration time of the quote.
+    The price offered by the anchor for one unit of buy_asset in terms of sell_asset.
     """
 
-    sell_delivery_method = models.TextField(null=False, blank=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+    """
+    The expiration time of the quote. Null if type is Quote.TYPE.indicative.
+    """
+
+    sell_delivery_method = models.ForeignKey(
+        "DeliveryMethod", on_delete=models.CASCADE, related_name="+"
+    )
     """
     One of the name values specified by the sell_delivery_methods array.
     """
 
-    buy_delivery_method = models.TextField(null=False, blank=True)
+    buy_delivery_method = models.ForeignKey(
+        "DeliveryMethod", on_delete=models.CASCADE, related_name="+"
+    )
     """
     One of the name values specified by the buy_delivery_methods array.
     """
 
-    country_code = models.TextField(null=False, blank=True)
+    country_code = models.TextField(null=True, blank=True)
     """
     The ISO 3166-1 alpha-3 code of the user's current address. 
     """
 
-    requested_expire_after = models.DateTimeField(default=utc_now)
+    requested_expire_after = models.DateTimeField(null=True, blank=True)
     """
     The requested expiration date from the client.
     """
 
+    objects = models.Manager()
+
 
 class OffChainAsset(models.Model):
+    schema = models.TextField()
     """
-    The off-chain assets in ISO4217 format.
+    The scheme of the off-chain asset as defined by SEP-38's Asset Identification Format.
     """
 
-    schema = models.TextField(null=False, blank=False)
-    identifier = models.TextField(null=False, blank=False)
-    significant_decimals = models.IntegerField(default=2)
+    identifier = models.TextField()
+    """
+    The identifier of the off-chain asset as defined by SEP-38's Asset Identification Format.
+    """
+
+    significant_decimals = models.PositiveIntegerField(default=2)
+    """
+    The number of decimal places Polaris should preserve when collecting & calculating amounts.
+    """
+
     country_codes = models.TextField(null=True, blank=True)
+    """
+    A comma-separated list of ISO 3166-1 alpha-3 codes of the countries where the anchor 
+    supports delivery of this asset.
+    """
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["scheme", "identifier"], name="offchain_unique_index"
+            )
+        ]
+
+    objects = models.Manager()
 
     @property
     def asset(self):
         return f"{self.schema}:{self.identifier}"
 
 
-class BuyDeliveryMethod(models.Model):
+class DeliveryMethod(models.Model):
+    TYPE = PolarisChoices("buy", "sell")
     """
-    The buy_delivery_method defined in SEP-38.
-    """
-
-    asset = models.ForeignKey(OffChainAsset, on_delete=models.CASCADE)
-    name = models.TextField(null=False, blank=False)
-    description = models.TextField(null=False, blank=False)
-
-
-class SellDeliveryMethod(models.Model):
-    """
-    The sell_delivery_method defined in SEP-38.
+    The types of delivery methods.
     """
 
-    asset = models.ForeignKey(OffChainAsset, on_delete=models.CASCADE)
-    name = models.TextField(null=False, blank=False)
-    description = models.TextField(null=False, blank=False)
+    type = models.TextField(choices=TYPE)
+    """
+    The type of delivery method. Sell methods describe how a client can deliver funds to the 
+    anchor. Buy methods describe how a client can receive or collect funds from the anchor.
+    """
+
+    asset = models.ForeignKey("OffChainAsset", on_delete=models.CASCADE)
+    """
+    The off-chain asset for which this delivery method is supported.
+    """
+
+    name = models.TextField()
+    """
+    The name of the delivery method, to be used in SEP-38 request and response bodies.
+    """
+
+    description = models.TextField()
+    """
+    The human-readable description of the deliver method, to be used in SEP-38 
+    response bodies.
+    """
+
+    objects = models.Manager()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["name", "type"], name="deliverymethod_unique_index"
+            )
+        ]
 
 
 class ExchangePair(models.Model):
+    buy_asset = models.TextField()
     """
-    The pair of exchanging assets provided by the anchor.
+    The asset the client can purchase with sell_asset using SEP-38's Asset 
+    Identification Format.
     """
 
-    buy_asset = models.TextField(null=False, blank=False)
-    sell_asset = models.TextField(null=False, blank=False)
+    sell_asset = models.TextField()
+    """
+    The asset the client can provide in exchange for buy_asset using SEP-38's
+    Asset Identification Format.
+    """
+
+    objects = models.Manager()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["buy_asset", "sell_asset"], name="exchangepair_unique_index"
+            )
+        ]

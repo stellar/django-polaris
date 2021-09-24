@@ -154,9 +154,9 @@ def get_mock_stellar_assets():
 def get_mock_buy_delivery_methods():
     methods = []
     for bdms in _buy_delivery_methods:
-        from polaris.models import BuyDeliveryMethod
+        from polaris.models import DeliveryMethod
 
-        bdm = BuyDeliveryMethod()
+        bdm = DeliveryMethod(type=DeliveryMethod.TYPE.buy)
         bdm.__dict__.update(bdms)
         methods.append(bdm)
     return methods
@@ -165,9 +165,9 @@ def get_mock_buy_delivery_methods():
 def get_mock_sell_delivery_methods():
     methods = []
     for sdms in _sell_delivery_methods:
-        from polaris.models import SellDeliveryMethod
+        from polaris.models import DeliveryMethod
 
-        sdm = SellDeliveryMethod()
+        sdm = DeliveryMethod(type=DeliveryMethod.TYPE.sell)
         sdm.__dict__.update(sdms)
         methods.append(sdm)
     return methods
