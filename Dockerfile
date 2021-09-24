@@ -24,6 +24,7 @@ HOST_URL=https://fake.com\n\
 SERVER_JWT_KEY=notsosecretkey\n\
 DJANGO_SECRET_KEY=notsosecretkey\n\
 ACTIVE_SEPS=\
+ENABLE_SEP_0023=True\
 ' >> /code/.env; fi
 
 # Install dependencies
