@@ -35,6 +35,16 @@ class QuoteIntegration:
         Polaris will also ensure that the `sell_delivery_method` is supported for
         `sell_asset`.
 
+        Raise a ``ValueError`` if the parameters are invalid in some way. Because Polaris
+        validates all the parameters passed, the only reason to raise this exception
+        _should_ be because the `sell_amount` is outside the minimum and maximum bounds
+        for your service. Polaris will return a 400 Bad Request status code in this case.
+
+        Raise a ``RuntimeError`` if you cannot return prices for the provided `sell_asset`
+        and `buy_assets` for any reason. For example, the service used by the anchor to
+        source exchange prices could be down. Polaris will return a 503 Server Unavailable
+        status code in this case.
+
         :param token: The ``SEP10Token`` object representing the authenticated session
         :param request: The ``rest_framework.Request`` object representing the request
         :param sell_asset: The asset the client would like to sell for `buy_assets`
@@ -71,6 +81,17 @@ class QuoteIntegration:
         `sell_asset` and `buy_asset`, that the specified `sell_delivery_method` or
         `buy_delivery_method` is supported by the off-chain asset, and that the anchor
         supports transacting the off-chain asset in the `country_code`, if specified.
+
+        Raise a ``ValueError`` if the parameters are invalid in some way. Because Polaris
+        validates all the parameters passed, the only reason to raise this exception
+        _should_ be because `sell_amount` or `buy_amount` is outside the minimum and
+        maximum bounds for your service. Polaris will return a 400 Bad Request status
+        code in this case.
+
+        Raise a ``RuntimeError`` if you cannot return prices for the provided `sell_asset`
+        and `buy_asset` for any reason. For example, the service used by the anchor to
+        source exchange prices could be down. Polaris will return a 503 Server Unavailable
+        status code in this case.
 
         :param token: The ``SEP10Token`` object representing the authenticated session
         :param request: The ``rest_framework.Request`` object representing the request
@@ -112,9 +133,17 @@ class QuoteIntegration:
         `buy_delivery_method` is supported by the off-chain asset, and that the anchor
         supports transacting the off-chain asset in the `country_code`, if specified.
 
-        If `expire_after` is passed, ``Quote.expires_at`` must be equal to or after
-        the date and time specified. If the requested date and time is unacceptable,
-        raise a ``ValueError``. A 400 Bad Request code will be returned to the client.
+        Raise a ``ValueError`` if the parameters are invalid in some way. Because Polaris
+        validates all the parameters passed, the only reason to raise this exception
+        _should_ be because `sell_amount` or `buy_amount` is outside the minimum and
+        maximum bounds for your service OR the requested `expires_at` value is not
+        acceptable to the anchor. Polaris will return a 400 Bad Request status code in
+        this case.
+
+        Raise a ``RuntimeError`` if you cannot return prices for the provided `sell_asset`
+        and `buy_asset` for any reason. For example, the service used by the anchor to
+        source exchange prices could be down. Polaris will return a 503 Server Unavailable
+        status code in this case.
 
         :param token: The ``SEP10Token`` object representing the authenticated session
         :param request: The ``rest_framework.Request`` object representing the request
