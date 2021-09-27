@@ -26,18 +26,23 @@ def get_price(token: SEP10Token, request: Request) -> Response:
     try:
         request_data = validate_price_request(token, request)
     except ValueError as e:
-        return render_error_response(str(e))
+        return render_error_response(str(e), status_code=400)
 
-    price = rqi.get_price(**request_data)
+    try:
+        price = rqi.get_price(**request_data)
+    except ValueError as e:
+        return render_error_response(str(e), status_code=400)
+    except RuntimeError as e:
+        return render_error_response(str(e), status_code=503)
+
     if not isinstance(price, Decimal):
-        return render_error_response(
-            gettext("an internal error occurred"), status_code=500
-        )
+        return render_error_response(gettext("internal server error"), status_code=500)
+
     return Response(
         {
             "price": str(round(price, request_data["sell_asset"].significant_decimals)),
-            "sell_amount": request_data["sell_amount"],
-            "buy_amount": request_data["buy_amount"],
+            "sell_amount": str(request_data["sell_amount"]),
+            "buy_amount": str(request_data["buy_amount"]),
         }
     )
 
@@ -49,15 +54,21 @@ def get_prices(token: SEP10Token, request: Request) -> Response:
     try:
         request_data = validate_prices_request(token, request)
     except ValueError as e:
-        return render_error_response(str(e))
+        return render_error_response(str(e), status_code=400)
+
+    try:
+        prices = rqi.get_prices(**request_data)
+    except ValueError as e:
+        return render_error_response(str(e), status_code=400)
+    except RuntimeError as e:
+        return render_error_response(str(e), status_code=503)
+
+    if len(prices) != len(request_data["buy_assets"]):
+        return render_error_response(gettext("internal server error"), status_code=500)
 
     buy_assets = []
-    if not request_data["buy_assets"]:
-        return Response({"buy_assets": buy_assets})
-
-    prices = rqi.get_prices(**request_data)
-    for idx, price in enumerate(prices):
-        buy_asset = request_data["buy_assets"][idx]
+    for idx, buy_asset in enumerate(request_data["buy_assets"]):
+        price = prices[idx]
         buy_assets.append(
             {
                 "asset": asset_id_format(buy_asset),
@@ -67,13 +78,14 @@ def get_prices(token: SEP10Token, request: Request) -> Response:
                 "decimals": request_data["sell_asset"].significant_decimals,
             }
         )
+
     return Response({"buy_assets": buy_assets})
 
 
 def validate_prices_request(token: SEP10Token, request: Request) -> dict:
     validated_data: Dict = {"token": token, "request": request}
     required_fields = ["sell_asset", "sell_amount"]
-    if any(f not in required_fields for f in request.GET.keys()):
+    if not set(required_fields).issubset(request.GET.keys()):
         raise ValueError(
             gettext("missing required parameters. Required: ")
             + ", ".join(required_fields)
@@ -90,12 +102,19 @@ def validate_prices_request(token: SEP10Token, request: Request) -> dict:
     validated_data["sell_asset"] = get_sell_asset(
         sell_asset_str=request.GET["sell_asset"],
         sell_delivery_method=request.GET.get("sell_delivery_method"),
+        country_code=request.GET.get("country_code"),
     )
     validated_data["buy_assets"] = get_buy_assets(
         sell_asset=validated_data["sell_asset"],
         buy_delivery_method=request.GET.get("buy_delivery_method"),
         country_code=request.GET.get("country_code"),
     )
+    if not validated_data["buy_assets"]:
+        raise ValueError(
+            gettext(
+                "no 'buy_assets' for 'delivery_method' and 'country_code' specificed"
+            )
+        )
     try:
         validated_data["sell_amount"] = round(
             Decimal(request.GET["sell_amount"]),
@@ -115,7 +134,7 @@ def validate_prices_request(token: SEP10Token, request: Request) -> dict:
 def validate_price_request(token: SEP10Token, request: Request) -> dict:
     validated_data = {"token": token, "request": request}
     required_fields = ["sell_asset", "sell_amount", "buy_asset", "buy_amount"]
-    if any(f not in required_fields for f in request.GET.keys()):
+    if not set(required_fields).issubset(request.GET.keys()):
         raise ValueError(
             gettext("missing required parameters. Required: ")
             + ", ".join(required_fields)
@@ -132,6 +151,7 @@ def validate_price_request(token: SEP10Token, request: Request) -> dict:
     validated_data["sell_asset"] = get_sell_asset(
         sell_asset_str=request.GET["sell_asset"],
         sell_delivery_method=request.GET.get("sell_delivery_method"),
+        country_code=request.GET.get("country_code"),
     )
     validated_data["buy_asset"] = get_buy_asset(
         sell_asset=validated_data["sell_asset"],
@@ -141,11 +161,11 @@ def validate_price_request(token: SEP10Token, request: Request) -> dict:
     )
     try:
         validated_data["buy_amount"] = round(
-            Decimal(request.data["buy_amount"]),
+            Decimal(request.GET["buy_amount"]),
             validated_data["buy_asset"].significant_decimals,
         )
         validated_data["sell_amount"] = round(
-            Decimal(request.data["sell_amount"]),
+            Decimal(request.GET["sell_amount"]),
             validated_data["sell_asset"].significant_decimals,
         )
     except DecimalException:

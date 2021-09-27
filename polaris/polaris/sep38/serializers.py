@@ -78,16 +78,22 @@ class OffChainAssetSerializer(serializers.ModelSerializer):
     def get_sell_delivery_methods(instance):
         return DeliveryMethodSerializer(
             instance.delivery_methods.filter(type=DeliveryMethod.TYPE.sell), many=True,
-        )
+        ).data
 
     @staticmethod
     def get_buy_delivery_methods(instance):
         return DeliveryMethodSerializer(
             instance.delivery_methods.filter(type=DeliveryMethod.TYPE.buy), many=True,
-        )
+        ).data
 
     class Meta:
         model = OffChainAsset
+        fields = [
+            "asset",
+            "country_codes",
+            "sell_delivery_methods",
+            "buy_delivery_methods",
+        ]
 
 
 class DeliveryMethodSerializer(serializers.ModelSerializer):

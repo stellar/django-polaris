@@ -34,7 +34,7 @@ def get_quote(token: SEP10Token, request: Request, quote_id: str) -> Response:
 @parser_classes([JSONParser])
 @renderer_classes([JSONRenderer])
 @validate_sep10_token()
-def post(token: SEP10Token, request: Request) -> Response:
+def post_quote(token: SEP10Token, request: Request) -> Response:
     try:
         request_data = validate_quote_request(token, request)
     except ValueError as e:

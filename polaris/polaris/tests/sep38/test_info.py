@@ -1,28 +1,53 @@
-from unittest.mock import patch, MagicMock
+import pytest
 
-from rest_framework import status
+from stellar_sdk import Keypair
 
-from polaris.tests.sep38 import BaseSep38Tests
-from polaris.tests.sep38.data import get_mock_offchain_assets, get_mock_stellar_assets
+from polaris.models import Asset, OffChainAsset, DeliveryMethod
+
+ENDPOINT = "/sep38/info"
 
 
-class TestInfo(BaseSep38Tests):
-    @classmethod
-    def setUpClass(cls):
-        BaseSep38Tests.setUpClass()
+@pytest.mark.django_db
+def test_info(client):
+    usd_stellar = Asset.objects.create(
+        code="usd", issuer=Keypair.random().public_key, sep38_enabled=True
+    )
+    brl_offchain = OffChainAsset.objects.create(
+        scheme="iso4217", identifier="BRL", country_codes="BRA"
+    )
+    delivery_methods = [
+        DeliveryMethod.objects.create(
+            type=DeliveryMethod.TYPE.buy, name="cash_pickup", description="cash pick-up"
+        ),
+        DeliveryMethod.objects.create(
+            type=DeliveryMethod.TYPE.sell,
+            name="cash_dropoff",
+            description="cash drop-off",
+        ),
+    ]
+    brl_offchain.delivery_methods.add(*delivery_methods)
 
-    @classmethod
-    def tearDownClass(cls):
-        BaseSep38Tests.tearDownClass()
+    response = client.get(ENDPOINT)
+    assert response.status_code == 200, response.content
 
-    def tearDown(self) -> None:
-        super().tearDown()
+    body = response.json()
+    assert len(body["assets"]) == 2, body
 
-    def test_info(self):
-        from polaris.sep38.info import info
-
-        self.mock_list_stellar_assets.return_value = get_mock_stellar_assets()
-        self.mock_list_offchain_assets.return_value = get_mock_offchain_assets()
-        mock_request = MagicMock()
-        info(mock_request)
-        assert self.mock_error.call_count == 0
+    expected_usd_stellar = {"asset": f"stellar:{usd_stellar.code}:{usd_stellar.issuer}"}
+    expected_brl_offchain = {
+        "asset": brl_offchain.asset,
+        "sell_delivery_methods": [
+            {"name": "cash_dropoff", "description": "cash drop-off"}
+        ],
+        "buy_delivery_methods": [
+            {"name": "cash_pickup", "description": "cash pick-up"}
+        ],
+        "country_codes": ["BRA"],
+    }
+    for a in body["assets"]:
+        if a["asset"] == expected_usd_stellar["asset"]:
+            assert a == expected_usd_stellar, (a, expected_usd_stellar)
+        elif a["asset"] == brl_offchain.asset:
+            assert a == expected_brl_offchain, (a, expected_brl_offchain)
+        else:
+            raise ValueError(f"unexpected asset: {a}")

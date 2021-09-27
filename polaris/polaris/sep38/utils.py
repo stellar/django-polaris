@@ -40,13 +40,13 @@ def get_buy_assets(
     conditions = Q()
     for asset_str in buy_asset_strs:
         conditions |= Q(**asset_id_to_kwargs(asset_str))
-    kwargs = {}
-    if country_code:
-        kwargs["country_codes__icontains"] = country_code
-    if buy_delivery_method:
-        kwargs["delivery_methods__type"] = DeliveryMethod.TYPE.buy
-        kwargs["delivery_methods__name"] = buy_delivery_method
     if isinstance(sell_asset, Asset):
+        kwargs = {}
+        if country_code:
+            kwargs["country_codes__icontains"] = country_code
+        if buy_delivery_method:
+            kwargs["delivery_methods__type"] = DeliveryMethod.TYPE.buy
+            kwargs["delivery_methods__name"] = buy_delivery_method
         buy_assets = OffChainAsset.objects.filter(conditions, **kwargs).all()
     else:
         if buy_delivery_method:
@@ -56,7 +56,7 @@ def get_buy_assets(
                     "client intends to buy a Stellar asset"
                 )
             )
-        buy_assets = Asset.objects.filter(conditions, **kwargs).all()
+        buy_assets = Asset.objects.filter(conditions).all()
     return list(buy_assets)
 
 
@@ -67,20 +67,18 @@ def get_buy_asset(
     country_code: Optional[str],
 ) -> Union[Asset, OffChainAsset]:
     if isinstance(sell_asset, Asset):
-        if is_stellar_asset(buy_asset_str):
-            raise ValueError(
-                gettext(
-                    "invalid 'sell_asset' and 'buy_asset'. "
-                    "Expected one on-chain asset and one off-chain asset."
-                )
-            )
         kwargs = {}
+        try:
+            scheme, identifier = buy_asset_str.split(":")
+        except ValueError:
+            raise ValueError(gettext("invalid 'sell_asset' format"))
+        kwargs["scheme"] = scheme
+        kwargs["identifier"] = identifier
         if country_code:
             kwargs["country_codes__icontains"] = country_code
         if buy_delivery_method:
             kwargs["delivery_methods__type"] = DeliveryMethod.TYPE.buy
             kwargs["delivery_methods__name"] = buy_delivery_method
-        kwargs.update(**asset_id_to_kwargs(buy_asset_str))
         try:
             buy_asset = OffChainAsset.objects.get(**kwargs)
         except ObjectDoesNotExist:
@@ -91,14 +89,7 @@ def get_buy_asset(
                 )
             )
     else:
-        if not is_stellar_asset(buy_asset_str):
-            raise ValueError(
-                gettext(
-                    "invalid 'sell_asset' and 'buy_asset'. "
-                    "Expected one on-chain asset and one off-chain asset."
-                )
-            )
-        elif buy_delivery_method:
+        if buy_delivery_method:
             raise ValueError(
                 gettext(
                     "unexpected 'buy_delivery_method', "
@@ -106,7 +97,11 @@ def get_buy_asset(
                 )
             )
         try:
-            buy_asset = Asset.objects.get(**asset_id_to_kwargs(buy_asset_str))
+            _, code, issuer = buy_asset_str.split(":")
+        except ValueError:
+            raise ValueError(gettext("invalid 'buy_asset' format"))
+        try:
+            buy_asset = Asset.objects.get(code=code, issuer=issuer)
         except ObjectDoesNotExist:
             raise ValueError(
                 gettext(
@@ -122,10 +117,12 @@ def get_buy_asset(
 
 
 def get_sell_asset(
-    sell_asset_str: str, sell_delivery_method: Optional[str]
+    sell_asset_str: str,
+    sell_delivery_method: Optional[str],
+    country_code: Optional[str],
 ) -> Union[Asset, OffChainAsset]:
     try:
-        if sell_asset_str.startswith("stellar"):
+        if is_stellar_asset(sell_asset_str):
             if sell_delivery_method:
                 raise ValueError(
                     gettext(
@@ -143,6 +140,18 @@ def get_sell_asset(
                 scheme, identifier = sell_asset_str.split(":")
             except ValueError:
                 raise ValueError(gettext("invalid 'sell_asset' format"))
-            return OffChainAsset.objects.get(scheme=scheme, identifier=identifier)
+            kwargs = {}
+            if country_code:
+                kwargs["country_codes__icontains"] = country_code
+            if sell_delivery_method:
+                kwargs["delivery_methods__type"] = DeliveryMethod.TYPE.sell
+                kwargs["delivery_methods__name"] = sell_delivery_method
+            return OffChainAsset.objects.get(
+                scheme=scheme, identifier=identifier, **kwargs
+            )
     except ObjectDoesNotExist:
-        raise ValueError(gettext("unknown 'sell_asset'"))
+        raise ValueError(
+            gettext(
+                "no 'sell_asset' for 'delivery_method' and 'country_code' specificed"
+            )
+        )

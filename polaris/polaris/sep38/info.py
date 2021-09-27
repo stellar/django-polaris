@@ -17,7 +17,7 @@ def info(_: Request) -> Response:
     info_data = {"assets": []}
     for asset in Asset.objects.filter(sep38_enabled=True):
         info_data["assets"].append({"asset": f"stellar:{asset.code}:{asset.issuer}"})
-    info_data["assets"].append(
-        OffChainAssetSerializer(OffChainAsset.objects.all(), many=True)
+    info_data["assets"].extend(
+        OffChainAssetSerializer(OffChainAsset.objects.all(), many=True).data
     )
     return Response(info_data)

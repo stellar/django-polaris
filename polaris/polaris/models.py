@@ -771,7 +771,7 @@ class Quote(models.Model):
 
 
 class OffChainAsset(models.Model):
-    schema = models.TextField()
+    scheme = models.TextField()
     """
     The scheme of the off-chain asset as defined by SEP-38's Asset Identification Format.
     """
@@ -805,7 +805,7 @@ class OffChainAsset(models.Model):
 
     @property
     def asset(self):
-        return f"{self.schema}:{self.identifier}"
+        return f"{self.scheme}:{self.identifier}"
 
 
 class DeliveryMethod(models.Model):

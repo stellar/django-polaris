@@ -8,7 +8,7 @@ from polaris.integrations.customers import (
 from polaris.integrations.fees import calculate_fee, registered_fee_func
 from polaris.integrations.forms import TransactionForm, CreditCardForm
 from polaris.integrations.info import default_info_func, registered_info_func
-from polaris.integrations.quote import SEP38AnchorIntegration
+from polaris.integrations.quote import QuoteIntegration, registered_quote_integration
 from polaris.integrations.rails import RailsIntegration, registered_rails_integration
 from polaris.integrations.sep31 import (
     SEP31ReceiverIntegration,
@@ -21,10 +21,6 @@ from polaris.integrations.transactions import (
     registered_deposit_integration,
     registered_withdrawal_integration,
 )
-from polaris.integrations.quote import (
-    SEP38AnchorIntegration,
-    registered_quote_integration,
-)
 
 
 def register_integrations(
@@ -36,7 +32,7 @@ def register_integrations(
     fee: Callable = None,
     sep6_info: Callable = None,
     customer: CustomerIntegration = None,
-    quote: SEP38AnchorIntegration = None,
+    quote: QuoteIntegration = None,
 ):
     """
     Registers the integration classes and functions with Polaris
@@ -88,6 +84,8 @@ def register_integrations(
         values for an Asset
     :param customer: the ``CustomerIntegration`` subclass instance to be used
         by Polaris
+    :param quote: the ``QuoteIntegration`` subclass instance to be used by
+        Polaris
     :raises ValueError: missing argument(s)
     :raises TypeError: arguments are not subclasses of DepositIntegration or
         Withdrawal
@@ -112,7 +110,7 @@ def register_integrations(
         raise TypeError("send must be a subclass of SEP31ReceiverIntegration")
     elif rails and not issubclass(rails.__class__, RailsIntegration):
         raise TypeError("rails must be a subclass of RailsIntegration")
-    elif quote and not issubclass(quote.__class__, SEP38AnchorIntegration):
+    elif quote and not issubclass(quote.__class__, QuoteIntegration):
         raise TypeError("quote must be a subclass of QuoteIntegration")
 
     for obj, attr in [
