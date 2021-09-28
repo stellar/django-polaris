@@ -64,14 +64,14 @@ def post_quote(token: SEP10Token, request: Request) -> Response:
 def validate_quote_request(token: SEP10Token, request: Request) -> dict:
     validated_data: Dict = {"token": token, "request": request}
     required_fields = ["sell_asset", "sell_amount", "buy_asset", "buy_amount"]
-    if not set(required_fields).issubset(request.GET.keys()):
+    if not set(required_fields).issubset(request.data.keys()):
         raise ValueError(
             gettext("missing required parameters. Required: ")
             + ", ".join(required_fields)
         )
     if request.data.get("expire_after"):
         try:
-            validated_data["required_expire_after"] = datetime.strptime(
+            validated_data["expire_after"] = datetime.strptime(
                 request.data.get("expire_after"), "%Y-%m-%dT%H:%M:%S%fZ"
             )
         except ValueError:
@@ -81,10 +81,12 @@ def validate_quote_request(token: SEP10Token, request: Request) -> dict:
                     "Expected UTC ISO 8601 datetime string."
                 )
             )
-        if validated_data["required_expire_after"] < datetime.now(timezone.utc):
+        if validated_data["expire_after"] < datetime.now(timezone.utc):
             raise ValueError(
                 gettext("invalid 'expire_after' datetime. Expected future datetime.")
             )
+    else:
+        validated_data["expire_after"] = None
     validated_data["sell_asset"] = get_sell_asset(
         sell_asset_str=request.data["sell_asset"],
         sell_delivery_method=request.data.get("buy_delivery_method"),
