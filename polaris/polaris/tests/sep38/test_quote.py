@@ -81,7 +81,7 @@ def test_post_quote_success_no_optional_params(mock_rqi, client):
         ),
         content_type="application/json",
     )
-    assert response.status_code == 200, response.content
+    assert response.status_code == 201, response.content
     body = response.json()
     quote_id = UUID(body.pop("id"))
     datetime.strptime(body.pop("expires_at"), DATETIME_FORMAT)
@@ -126,11 +126,12 @@ def test_post_quote_success_country_code_buy_delivery_method_expire_after(
             sell_amount=Decimal(100),
             buy_amount=Decimal(100),
             price=Decimal(2.12),
-            expires_at=expire_after + timedelta(hours=1),
+            expires_at=expire_after,
             buy_delivery_method=data["offchain_assets"][0].delivery_methods.first(),
             requested_expire_after=expire_after,
         )
     )
+    print(expire_after.strftime(DATETIME_FORMAT))
     response = client.post(
         ENDPOINT,
         {
@@ -140,10 +141,11 @@ def test_post_quote_success_country_code_buy_delivery_method_expire_after(
             "buy_amount": 100,
             "country_code": "BRA",
             "buy_delivery_method": "cash_pickup",
+            "expire_after": expire_after.strftime(DATETIME_FORMAT),
         },
         content_type="application/json",
     )
-    assert response.status_code == 200, response.content
+    assert response.status_code == 201, response.content
     body = response.json()
     quote_id = UUID(body.pop("id"))
     datetime.strptime(body.pop("expires_at"), DATETIME_FORMAT)
@@ -166,7 +168,7 @@ def test_post_quote_success_country_code_buy_delivery_method_expire_after(
         "buy_delivery_method": "cash_pickup",
         "sell_delivery_method": None,
         "country_code": "BRA",
-        "expire_after": None,
+        "expire_after": expire_after,
     }
     assert Quote.objects.get(id=quote_id)
 
@@ -206,7 +208,7 @@ def test_post_quote_success_country_code_sell_delivery_method(mock_rqi, client):
         },
         content_type="application/json",
     )
-    assert response.status_code == 200, response.content
+    assert response.status_code == 201, response.content
     body = response.json()
     quote_id = UUID(body.pop("id"))
     datetime.strptime(body.pop("expires_at"), DATETIME_FORMAT)
@@ -266,7 +268,7 @@ def test_post_quote_success_no_optional_params_swap_exchange_pair(mock_rqi, clie
         },
         content_type="application/json",
     )
-    assert response.status_code == 200, response.content
+    assert response.status_code == 201, response.content
     body = response.json()
     quote_id = UUID(body.pop("id"))
     datetime.strptime(body.pop("expires_at"), DATETIME_FORMAT)
@@ -739,6 +741,56 @@ def test_post_quote_failure_bad_buy_amount(mock_rqi, client):
 @pytest.mark.django_db
 @patch(f"{code_path}.rqi")
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_post_quote_failure_bad_expires_at(mock_rqi, client):
+    data = default_data()
+
+    response = client.post(
+        ENDPOINT,
+        {
+            "sell_asset": asset_id_format(data["stellar_assets"][0]),
+            "sell_amount": 100,
+            "buy_asset": asset_id_format(data["offchain_assets"][0]),
+            "buy_amount": 100,
+            "expire_after": "test",
+        },
+        content_type="application/json",
+    )
+    assert response.status_code == 400, response.content
+    assert response.json() == {
+        "error": "invalid 'expire_after' string format. Expected UTC ISO 8601 datetime string."
+    }
+    mock_rqi.post_quote.assert_not_called()
+
+
+@pytest.mark.django_db
+@patch(f"{code_path}.rqi")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_post_quote_failure_expires_at_in_past(mock_rqi, client):
+    data = default_data()
+
+    response = client.post(
+        ENDPOINT,
+        {
+            "sell_asset": asset_id_format(data["stellar_assets"][0]),
+            "sell_amount": 100,
+            "buy_asset": asset_id_format(data["offchain_assets"][0]),
+            "buy_amount": 100,
+            "expire_after": (datetime.now(timezone.utc) - timedelta(hours=1)).strftime(
+                DATETIME_FORMAT
+            ),
+        },
+        content_type="application/json",
+    )
+    assert response.status_code == 400, response.content
+    assert response.json() == {
+        "error": "invalid 'expire_after' datetime. Expected future datetime."
+    }
+    mock_rqi.post_quote.assert_not_called()
+
+
+@pytest.mark.django_db
+@patch(f"{code_path}.rqi")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 def test_post_quote_failure_anchor_raises_value_error(mock_rqi, client):
     data = default_data()
     mock_rqi.post_quote.side_effect = ValueError("test")
@@ -774,7 +826,7 @@ def test_post_quote_failure_anchor_raises_value_error(mock_rqi, client):
 @pytest.mark.django_db
 @patch(f"{code_path}.rqi")
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-def test_post_quote_failure_anchor_raises_value_error(mock_rqi, client):
+def test_post_quote_failure_anchor_raises_runtime_error(mock_rqi, client):
     data = default_data()
     mock_rqi.post_quote.side_effect = RuntimeError("test")
 
@@ -824,6 +876,41 @@ def test_post_quote_failure_anchor_raises_unexpected_error(mock_rqi, client):
             },
             content_type="application/json",
         )
+    mock_rqi.post_quote.assert_called_once()
+    kwargs = mock_rqi.post_quote.call_args[1]
+    del kwargs["token"]
+    del kwargs["request"]
+    assert kwargs == {
+        "sell_asset": data["stellar_assets"][0],
+        "sell_amount": Decimal(100),
+        "buy_asset": data["offchain_assets"][0],
+        "buy_amount": Decimal(100),
+        "buy_delivery_method": None,
+        "sell_delivery_method": None,
+        "country_code": None,
+        "expire_after": None,
+    }
+
+
+@pytest.mark.django_db
+@patch(f"{code_path}.rqi")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_post_quote_failure_anchor_provides_bad_quote(mock_rqi, client):
+    data = default_data()
+    mock_rqi.post_quote.return_value = None
+
+    response = client.post(
+        ENDPOINT,
+        {
+            "sell_asset": asset_id_format(data["stellar_assets"][0]),
+            "sell_amount": 100,
+            "buy_asset": asset_id_format(data["offchain_assets"][0]),
+            "buy_amount": 100,
+        },
+        content_type="application/json",
+    )
+    assert response.status_code == 500, response.content
+    assert response.json() == {"error": "internal server error"}
     mock_rqi.post_quote.assert_called_once()
     kwargs = mock_rqi.post_quote.call_args[1]
     del kwargs["token"]
@@ -1139,3 +1226,51 @@ def test_validate_quote_both_offchain_assets():
             ),
             "",
         )
+
+
+# GET /quote/:id tests
+
+
+@pytest.mark.django_db
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_get_quote_success(client):
+    data = default_data()
+    quote = Quote.objects.create(
+        type=Quote.TYPE.firm,
+        buy_asset=asset_id_format(data["offchain_assets"][0]),
+        sell_asset=asset_id_format(data["stellar_assets"][0]),
+        buy_amount=Decimal(100),
+        sell_amount=Decimal(100),
+        price=Decimal(2.12),
+        sell_delivery_method=data["offchain_assets"][0].delivery_methods.first(),
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+    )
+    response = client.get(f"{ENDPOINT}/{quote.id}")
+    assert response.status_code == 200
+    assert response.json() == {
+        "id": str(quote.id),
+        "expires_at": quote.expires_at.strftime(DATETIME_FORMAT),
+        "buy_asset": asset_id_format(data["offchain_assets"][0]),
+        "sell_asset": asset_id_format(data["stellar_assets"][0]),
+        "price": "2.12",
+        "sell_amount": "100.00",
+        "buy_amount": "100.00",
+    }
+
+
+@pytest.mark.django_db
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_get_quote_not_found(client):
+    default_data()
+    response = client.get(f"{ENDPOINT}/{str(uuid.uuid4())}")
+    assert response.status_code == 404, response.content
+    assert response.json() == {"error": "quote not found"}
+
+
+@pytest.mark.django_db
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_get_quote_not_found_bad_id(client):
+    default_data()
+    response = client.get(f"{ENDPOINT}/test")
+    assert response.status_code == 404, response.content
+    assert response.json() == {"error": "quote not found"}

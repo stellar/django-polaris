@@ -71,7 +71,7 @@ def get_buy_asset(
         try:
             scheme, identifier = buy_asset_str.split(":")
         except ValueError:
-            raise ValueError(gettext("invalid 'sell_asset' format"))
+            raise ValueError(gettext("invalid 'buy_asset' format"))
         kwargs["scheme"] = scheme
         kwargs["identifier"] = identifier
         if country_code:

@@ -589,7 +589,7 @@ def test_get_prices_failure_anchor_raises_value_error(mock_rqi, client):
 @pytest.mark.django_db
 @patch(f"{code_path}.rqi")
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-def test_get_prices_failure_anchor_raises_value_error(mock_rqi, client):
+def test_get_prices_failure_anchor_raises_runtime_error(mock_rqi, client):
     data = default_data()
     mock_rqi.get_prices.side_effect = RuntimeError("test")
 

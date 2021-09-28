@@ -436,7 +436,7 @@ def test_get_price_failure_bad_buy_offchain_format(mock_rqi, client):
         {
             "buy_asset": f"USD",
             "buy_amount": 100,
-            "sell_asset": asset_id_format(data["offchain_assets"][0]),
+            "sell_asset": asset_id_format(data["stellar_assets"][0]),
             "sell_amount": 100,
         },
     )
@@ -448,7 +448,7 @@ def test_get_price_failure_bad_buy_offchain_format(mock_rqi, client):
 @pytest.mark.django_db
 @patch(f"{code_path}.rqi")
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-def test_get_price_failure_stellar_asset_not_found(mock_rqi, client):
+def test_get_price_failure_sell_stellar_asset_not_found(mock_rqi, client):
     data = default_data()
 
     # delete stellar asset from DB
@@ -473,7 +473,7 @@ def test_get_price_failure_stellar_asset_not_found(mock_rqi, client):
 @pytest.mark.django_db
 @patch(f"{code_path}.rqi")
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-def test_get_price_failure_offchain_asset_not_found(mock_rqi, client):
+def test_get_price_failure_sell_offchain_asset_not_found(mock_rqi, client):
     data = default_data()
 
     # swap exchange pair
@@ -495,6 +495,60 @@ def test_get_price_failure_offchain_asset_not_found(mock_rqi, client):
     assert response.status_code == 400, response.content
     assert response.json() == {
         "error": "no 'sell_asset' for 'delivery_method' and 'country_code' specificed"
+    }
+    mock_rqi.get_price.assert_not_called()
+
+
+@pytest.mark.django_db
+@patch(f"{code_path}.rqi")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_get_price_failure_buy_stellar_asset_not_found(mock_rqi, client):
+    data = default_data()
+
+    # delete stellar asset from DB
+    data["stellar_assets"][0].delete()
+    # swap exchange pair
+    pair = data["exchange_pairs"][0]
+    pair.sell_asset, pair.buy_asset = pair.buy_asset, pair.sell_asset
+    pair.save()
+
+    response = client.get(
+        PRICE_ENDPOINT,
+        {
+            "sell_asset": asset_id_format(data["offchain_assets"][0]),
+            "sell_amount": 100,
+            "buy_asset": asset_id_format(data["stellar_assets"][0]),
+            "buy_amount": 100,
+        },
+    )
+    assert response.status_code == 400, response.content
+    assert response.json() == {
+        "error": "unable to find 'buy_asset' using the following filters: 'country_code', 'buy_delivery_method'"
+    }
+    mock_rqi.get_price.assert_not_called()
+
+
+@pytest.mark.django_db
+@patch(f"{code_path}.rqi")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_get_price_failure_buy_offchain_asset_not_found(mock_rqi, client):
+    data = default_data()
+
+    # delete offchain asset from DB
+    data["offchain_assets"][0].delete()
+
+    response = client.get(
+        PRICE_ENDPOINT,
+        {
+            "sell_asset": asset_id_format(data["stellar_assets"][0]),
+            "sell_amount": 100,
+            "buy_asset": asset_id_format(data["offchain_assets"][0]),
+            "buy_amount": 100,
+        },
+    )
+    assert response.status_code == 400, response.content
+    assert response.json() == {
+        "error": "unable to find 'buy_asset' using the following filters: 'country_code', 'buy_delivery_method'"
     }
     mock_rqi.get_price.assert_not_called()
 
@@ -685,7 +739,7 @@ def test_get_price_failure_anchor_raises_value_error(mock_rqi, client):
 @pytest.mark.django_db
 @patch(f"{code_path}.rqi")
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-def test_get_price_failure_anchor_raises_value_error(mock_rqi, client):
+def test_get_price_failure_anchor_raises_runtime_error(mock_rqi, client):
     data = default_data()
     mock_rqi.get_price.side_effect = RuntimeError("test")
 

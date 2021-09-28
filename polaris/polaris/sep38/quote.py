@@ -59,7 +59,7 @@ def post_quote(token: SEP10Token, request: Request) -> Response:
         return render_error_response("internal server error", status_code=500)
 
     quote.save()
-    return Response(QuoteSerializer(quote).data)
+    return Response(QuoteSerializer(quote).data, status=201)
 
 
 def validate_quote_request(token: SEP10Token, request: Request) -> dict:
@@ -82,7 +82,7 @@ def validate_quote_request(token: SEP10Token, request: Request) -> dict:
     if request.data.get("expire_after"):
         try:
             validated_data["expire_after"] = datetime.strptime(
-                request.data.get("expire_after"), "%Y-%m-%dT%H:%M:%S%fZ"
+                request.data.get("expire_after"), DATETIME_FORMAT
             ).replace(tzinfo=timezone.utc)
         except ValueError:
             raise ValueError(
