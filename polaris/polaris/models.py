@@ -719,16 +719,12 @@ class Quote(models.Model):
     The asset the client would like to receive for some amount of sell_asset.
     """
 
-    sell_amount = models.DecimalField(
-        null=True, blank=True, max_digits=30, decimal_places=7
-    )
+    sell_amount = models.DecimalField(max_digits=30, decimal_places=7)
     """
     The amount of sell_asset the client would exchange for buy_asset.
     """
 
-    buy_amount = models.DecimalField(
-        null=True, blank=True, max_digits=30, decimal_places=7
-    )
+    buy_amount = models.DecimalField(max_digits=30, decimal_places=7)
     """
     The amount of buy_asset the client would like to purchase with sell_asset.
     """
@@ -744,14 +740,22 @@ class Quote(models.Model):
     """
 
     sell_delivery_method = models.ForeignKey(
-        "DeliveryMethod", on_delete=models.CASCADE, related_name="+"
+        "DeliveryMethod",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="+",
     )
     """
     One of the name values specified by the sell_delivery_methods array.
     """
 
     buy_delivery_method = models.ForeignKey(
-        "DeliveryMethod", on_delete=models.CASCADE, related_name="+"
+        "DeliveryMethod",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="+",
     )
     """
     One of the name values specified by the buy_delivery_methods array.

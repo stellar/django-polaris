@@ -31,7 +31,7 @@ def get_quote(token: SEP10Token, request: Request, quote_id: str) -> Response:
         quote = Quote.objects.get(id=quote_id)
     except (ValidationError, ObjectDoesNotExist):
         return render_error_response("quote not found", status_code=404)
-    return Response(QuoteSerializer(quote))
+    return Response(QuoteSerializer(quote).data)
 
 
 @api_view(["POST"])
@@ -116,4 +116,29 @@ def validate_quote_request(token: SEP10Token, request: Request) -> dict:
 
 
 def validate_quote_provided(quote: Quote):
-    pass
+    if not isinstance(quote, Quote):
+        raise ValueError("object returned is not a Quote")
+    if quote.type != Quote.TYPE.firm:
+        raise ValueError(f"quote is not of type '{Quote.TYPE.firm}'")
+    if not (
+        isinstance(quote.sell_amount, Decimal) and isinstance(quote.buy_amount, Decimal)
+    ):
+        raise ValueError("quote amounts must be of type decimal.Decimal")
+    if not (quote.sell_amount > 0 and quote.buy_amount > 0):
+        raise ValueError("quote amounts must be positive")
+    if not quote.price:
+        raise ValueError("quote must have price")
+    if not quote.expires_at:
+        raise ValueError("quote must have expiration")
+    if not (bool(quote.buy_delivery_method) ^ bool(quote.sell_delivery_method)):
+        raise ValueError(
+            "quote must have either have buy_delivery_method or sell_delivery_method'"
+        )
+    if not (quote.buy_asset and quote.sell_asset):
+        raise ValueError("quote must have both buy and sell assets")
+    if not (isinstance(quote.buy_asset, str) and isinstance(quote.sell_asset, str)):
+        raise ValueError("quote assets must be strings")
+    if not (
+        quote.buy_asset.startswith("stellar") ^ quote.sell_asset.startswith("stellar")
+    ):
+        raise ValueError("quote must have one stellar asset and one off chain asset")
