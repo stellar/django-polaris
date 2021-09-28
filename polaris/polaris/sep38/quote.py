@@ -18,6 +18,7 @@ from polaris.utils import render_error_response
 from polaris.sep38.serializers import QuoteSerializer
 from polaris.sep38.utils import get_buy_asset, get_sell_asset
 from polaris.utils import getLogger
+from polaris.settings import DATETIME_FORMAT
 
 
 logger = getLogger(__name__)
@@ -52,7 +53,7 @@ def post_quote(token: SEP10Token, request: Request) -> Response:
         return render_error_response(str(e), status_code=503)
 
     try:
-        validate_quote_provided(quote)
+        validate_quote_provided(quote, request.data.get("expire_after"))
     except ValueError as e:
         logger.error(gettext("invalid quote provided: ") + str(e))
         return render_error_response("internal server error", status_code=500)
@@ -69,11 +70,20 @@ def validate_quote_request(token: SEP10Token, request: Request) -> dict:
             gettext("missing required parameters. Required: ")
             + ", ".join(required_fields)
         )
+    if request.data.get("buy_delivery_method") and request.data.get(
+        "sell_delivery_method"
+    ):
+        raise ValueError(
+            gettext(
+                "'buy_delivery_method' or 'sell_delivery_method' "
+                "is valid, but not both"
+            )
+        )
     if request.data.get("expire_after"):
         try:
             validated_data["expire_after"] = datetime.strptime(
                 request.data.get("expire_after"), "%Y-%m-%dT%H:%M:%S%fZ"
-            )
+            ).replace(tzinfo=timezone.utc)
         except ValueError:
             raise ValueError(
                 gettext(
@@ -89,7 +99,7 @@ def validate_quote_request(token: SEP10Token, request: Request) -> dict:
         validated_data["expire_after"] = None
     validated_data["sell_asset"] = get_sell_asset(
         sell_asset_str=request.data["sell_asset"],
-        sell_delivery_method=request.data.get("buy_delivery_method"),
+        sell_delivery_method=request.data.get("sell_delivery_method"),
         country_code=request.data.get("country_code"),
     )
     validated_data["buy_asset"] = get_buy_asset(
@@ -117,27 +127,33 @@ def validate_quote_request(token: SEP10Token, request: Request) -> dict:
     return validated_data
 
 
-def validate_quote_provided(quote: Quote):
+def validate_quote_provided(quote: Quote, requested_expire_after: str):
     if not isinstance(quote, Quote):
         raise ValueError("object returned is not a Quote")
     if quote.type != Quote.TYPE.firm:
         raise ValueError(f"quote is not of type '{Quote.TYPE.firm}'")
-    if not (
-        isinstance(quote.sell_amount, Decimal) and isinstance(quote.buy_amount, Decimal)
-    ):
-        raise ValueError("quote amounts must be of type decimal.Decimal")
-    if not (quote.sell_amount > 0 and quote.buy_amount > 0):
-        raise ValueError("quote amounts must be positive")
     if not quote.price:
         raise ValueError("quote must have price")
+    if not (
+        isinstance(quote.sell_amount, Decimal)
+        and isinstance(quote.buy_amount, Decimal)
+        and isinstance(quote.price, Decimal)
+    ):
+        raise ValueError("quote amounts must be of type decimal.Decimal")
+    if not (quote.sell_amount > 0 and quote.buy_amount > 0 and quote.price > 0):
+        raise ValueError("quote amounts must be positive")
     if not quote.expires_at:
         raise ValueError("quote must have expiration")
+    elif quote.expires_at < datetime.now(timezone.utc):
+        raise ValueError("quote expiration must be in the future")
+    elif requested_expire_after and quote.expires_at < datetime.strptime(
+        requested_expire_after, DATETIME_FORMAT
+    ).replace(tzinfo=timezone.utc):
+        raise ValueError("quote expiration must be at or after requested 'expire_at'")
     if not (bool(quote.buy_delivery_method) ^ bool(quote.sell_delivery_method)):
         raise ValueError(
             "quote must have either have buy_delivery_method or sell_delivery_method'"
         )
-    if not (quote.buy_asset and quote.sell_asset):
-        raise ValueError("quote must have both buy and sell assets")
     if not (isinstance(quote.buy_asset, str) and isinstance(quote.sell_asset, str)):
         raise ValueError("quote assets must be strings")
     if not (

@@ -29,22 +29,29 @@ class QuoteSerializer(serializers.ModelSerializer):
 
     def get_price(self, instance):
         self.cache_asset(instance.sell_asset, self.sell_assets)
-        return round(
-            instance.price, self.sell_assets[instance.sell_asset].significant_decimals
+        return str(
+            round(
+                instance.price,
+                self.sell_assets[instance.sell_asset].significant_decimals,
+            )
         )
 
     def get_sell_amount(self, instance):
         self.cache_asset(instance.sell_asset, self.sell_assets)
-        return round(
-            instance.sell_amount,
-            self.sell_assets[instance.sell_asset].significant_decimals,
+        return str(
+            round(
+                instance.sell_amount,
+                self.sell_assets[instance.sell_asset].significant_decimals,
+            )
         )
 
     def get_buy_amount(self, instance):
         self.cache_asset(instance.buy_asset, self.buy_assets)
-        return round(
-            instance.buy_amount,
-            self.buy_assets[instance.buy_asset].significant_decimals,
+        return str(
+            round(
+                instance.buy_amount,
+                self.buy_assets[instance.buy_asset].significant_decimals,
+            )
         )
 
     class Meta:
