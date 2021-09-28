@@ -345,8 +345,10 @@ def deserialize(value):
 
 
 class Transaction(models.Model):
-    KIND = PolarisChoices("deposit", "withdrawal", "send")
-    """Choices object for ``deposit``, ``withdrawal``, or ``send``."""
+    KIND = PolarisChoices(
+        "deposit", "withdrawal", "send", "deposit-exchange", "withdrawal-exchange"
+    )
+    """Choices object for the kind of transaction"""
 
     status_to_message = {
         # SEP-6 & SEP-24
@@ -408,6 +410,8 @@ class Transaction(models.Model):
 
     asset = models.ForeignKey("Asset", on_delete=models.CASCADE)
     """The Django foreign key to the associated :class:`Asset`"""
+
+    quote = models.ForeignKey("Quote", null=True, blank=True, on_delete=models.CASCADE)
 
     # These fields can be shown through an API:
     kind = models.CharField(choices=KIND, default=KIND.deposit, max_length=20)
