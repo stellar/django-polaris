@@ -1,6 +1,10 @@
 import json
+from datetime import timezone
+
 from rest_framework import serializers
+
 from polaris.models import Transaction
+from polaris.settings import DATETIME_FORMAT
 
 
 class SEP31TransactionSerializer(serializers.ModelSerializer):
@@ -11,6 +15,12 @@ class SEP31TransactionSerializer(serializers.ModelSerializer):
     stellar_memo_type = serializers.SerializerMethodField()
     required_info_message = serializers.SerializerMethodField()
     required_info_updates = serializers.SerializerMethodField()
+    started_at = serializers.DateTimeField(
+        format=DATETIME_FORMAT, default_timezone=timezone.utc
+    )
+    completed_at = serializers.DateTimeField(
+        format=DATETIME_FORMAT, default_timezone=timezone.utc
+    )
 
     @staticmethod
     def get_stellar_account_id(instance):
