@@ -1,6 +1,7 @@
+import uuid
 from datetime import datetime, timezone
 from decimal import Decimal, DecimalException
-from typing import Dict
+from typing import Dict, Union, Optional
 
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.utils.translation import gettext
@@ -10,13 +11,18 @@ from rest_framework.decorators import parser_classes, renderer_classes, api_view
 from rest_framework.request import Request
 from rest_framework.response import Response
 
-from polaris.models import Quote
+from polaris.models import Quote, Asset, OffChainAsset, DeliveryMethod
 from polaris.integrations import registered_quote_integration as rqi
 from polaris.sep10.token import SEP10Token
 from polaris.sep10.utils import validate_sep10_token
 from polaris.utils import render_error_response
 from polaris.sep38.serializers import QuoteSerializer
-from polaris.sep38.utils import get_buy_asset, get_sell_asset
+from polaris.sep38.utils import (
+    get_buy_asset,
+    get_sell_asset,
+    asset_id_format,
+    find_delivery_method,
+)
 from polaris.utils import getLogger
 from polaris.settings import DATETIME_FORMAT
 
@@ -45,8 +51,9 @@ def post_quote(token: SEP10Token, request: Request) -> Response:
     except ValueError as e:
         return render_error_response(str(e))
 
+    quote = make_quote(**request_data)
     try:
-        quote = rqi.post_quote(**request_data)
+        quote = rqi.post_quote(token=token, request=request, quote=quote,)
     except ValueError as e:
         return render_error_response(str(e), status_code=400)
     except RuntimeError as e:
@@ -122,9 +129,46 @@ def validate_quote_request(token: SEP10Token, request: Request) -> dict:
             gettext("invalid 'buy_amount' or 'sell_amount'; Expected decimal strings.")
         )
     validated_data["country_code"] = request.data.get("country_code")
-    validated_data["buy_delivery_method"] = request.data.get("buy_delivery_method")
-    validated_data["sell_delivery_method"] = request.data.get("sell_delivery_method")
+    validated_data["buy_delivery_method"] = find_delivery_method(
+        validated_data["buy_asset"],
+        request.data.get("buy_delivery_method"),
+        DeliveryMethod.TYPE.buy,
+    )
+    validated_data["sell_delivery_method"] = find_delivery_method(
+        validated_data["sell_asset"],
+        request.data.get("sell_delivery_method"),
+        DeliveryMethod.TYPE.sell,
+    )
     return validated_data
+
+
+def make_quote(
+    token: SEP10Token,
+    request: Request,
+    sell_asset: Union[Asset, OffChainAsset],
+    sell_amount: Decimal,
+    buy_asset: Union[Asset, OffChainAsset],
+    buy_amount: Decimal,
+    sell_delivery_method: Optional[DeliveryMethod] = None,
+    buy_delivery_method: Optional[DeliveryMethod] = None,
+    country_code: Optional[str] = None,
+    expire_after: Optional[datetime] = None,
+):
+    return Quote(
+        id=str(uuid.uuid4()),
+        stellar_account=token.account,
+        account_memo=token.memo,
+        muxed_account=token.muxed_account,
+        type=Quote.TYPE.firm,
+        sell_asset=asset_id_format(sell_asset),
+        buy_asset=asset_id_format(buy_asset),
+        sell_amount=sell_amount,
+        buy_amount=buy_amount,
+        buy_delivery_method=buy_delivery_method,
+        sell_delivery_method=sell_delivery_method,
+        country_code=country_code,
+        requested_expire_after=expire_after,
+    )
 
 
 def validate_quote_provided(quote: Quote, requested_expire_after: str):

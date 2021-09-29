@@ -10,6 +10,7 @@ from rest_framework.renderers import JSONRenderer, BrowsableAPIRenderer
 from polaris.models import Asset
 from polaris.utils import render_error_response
 from polaris.integrations import registered_sep31_receiver_integration
+from polaris import settings
 
 
 logger = getLogger(__name__)
@@ -149,5 +150,7 @@ def get_asset_info(asset: Asset, fields_and_types: Dict) -> Dict:
         )
     if asset.send_fee_percent:
         asset_info["fee_percent"] = asset.send_fee_percent
+    if "sep-38" in settings.ACTIVE_SEPS:
+        asset_info["quotes_supported"] = asset.sep38_enabled
 
     return asset_info

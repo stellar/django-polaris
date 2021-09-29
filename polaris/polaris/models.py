@@ -702,6 +702,27 @@ class Quote(models.Model):
     The unique ID for the quote.
     """
 
+    stellar_account = models.TextField()
+    """
+    The Stellar (G...) account authenticated via SEP-10 when this Quote was created.
+    Note that if ``Quote.muxed_account`` is not null, this column's value is 
+    derived from the muxed account. 
+    """
+
+    account_memo = models.TextField(null=True, blank=True)
+    """
+    The ID (64-bit integer) memo identifying the user of the shared Stellar account 
+    authenticated via SEP-10 when this Quote was created. If this column value
+    is not null, ``Quote.muxed_account`` will be null.
+    """
+
+    muxed_account = models.TextField(null=True, blank=True)
+    """
+    The muxed (M...) account authenticated via SEP-10 when this Quote was created.
+    If this column value is not null, ``Quote.stellar_account`` is derived from
+    this value and ``Quote.account_memo`` will be null.
+    """
+
     TYPE = PolarisChoices("firm", "indicative")
     """
     Choices for type.

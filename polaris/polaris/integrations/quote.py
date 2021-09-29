@@ -108,25 +108,15 @@ class QuoteIntegration:
         raise NotImplementedError()
 
     def post_quote(
-        self,
-        token: SEP10Token,
-        request: Request,
-        sell_asset: Union[Asset, OffChainAsset],
-        sell_amount: Decimal,
-        buy_asset: Union[Asset, OffChainAsset],
-        buy_amount: Decimal,
-        sell_delivery_method: Optional[DeliveryMethod] = None,
-        buy_delivery_method: Optional[DeliveryMethod] = None,
-        country_code: Optional[str] = None,
-        expire_after: Optional[datetime] = None,
-        *args,
-        **kwargs
+        self, token: SEP10Token, request: Request, quote: Quote, *args, **kwargs
     ) -> Quote:
         """
-        Return a ``Quote`` object representing a exchange rate offer based on the parameters
-        passed. The quote must be of type ``Quote.TYPE.firm``, meaning ``Quote.price`` and
-        ``Quote.expires_at`` are not ``None``. The anchor will be expected to honor the
-        price set when the quote is used in a ``Transaction``.
+        Assign ``Quote.price`` and Quote.expire_at`` on the `quote` passed and return it.
+        The anchor will be expected to honor the price set when the quote is used in a
+        ``Transaction``. Note that the ``Quote`` object passed is not yet saved to the
+        database when this function is called. If no exception is raised, Polaris will
+        save the returned quote to the database. However, the anchor is free to save the
+        quote to the database in this function if necessary.
 
         Polaris will ensure that there is an ``ExchangePair`` database record for the
         `sell_asset` and `buy_asset`, that the specified `sell_delivery_method` or
@@ -147,17 +137,7 @@ class QuoteIntegration:
 
         :param token: The ``SEP10Token`` object representing the authenticated session
         :param request: The ``rest_framework.Request`` object representing the request
-        :param sell_asset: The asset the client would like to sell for `buy_assets`
-        :param sell_amount: The amount the client would like to sell of `sell_asset`
-        :param buy_asset: The asset the client would like to buy using `sell_asset`
-        :param buy_amount: The amount the client would like to purchase of `buy_asset`
-        :param sell_delivery_method: The method the client would like to use to deliver
-            funds to the anchor.
-        :param buy_delivery_method: The method the client would like to use to receive
-            or collect funds from the anchor.
-        :param country_code: The ISO 3166-1 alpha-3 code of the user's current address
-        :param expire_after: The earliest date and time the client would like the quote
-            to expire
+        :param quote: The ``Quote`` object representing the exchange rate to be offered
         """
         raise NotImplementedError()
 

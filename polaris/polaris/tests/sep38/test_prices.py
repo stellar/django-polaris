@@ -20,20 +20,19 @@ def default_data():
     brl_offchain = OffChainAsset.objects.create(
         scheme="iso4217", identifier="BRL", country_codes="BRA"
     )
-    brl_offchain.delivery_methods.add(
-        *[
-            DeliveryMethod.objects.create(
-                type=DeliveryMethod.TYPE.buy,
-                name="cash_pickup",
-                description="cash pick-up",
-            ),
-            DeliveryMethod.objects.create(
-                type=DeliveryMethod.TYPE.sell,
-                name="cash_dropoff",
-                description="cash drop-off",
-            ),
-        ]
-    )
+    delivery_methods = [
+        DeliveryMethod.objects.create(
+            type=DeliveryMethod.TYPE.buy,
+            name="cash_pickup",
+            description="cash pick-up",
+        ),
+        DeliveryMethod.objects.create(
+            type=DeliveryMethod.TYPE.sell,
+            name="cash_dropoff",
+            description="cash drop-off",
+        ),
+    ]
+    brl_offchain.delivery_methods.add(*delivery_methods)
     pair = ExchangePair.objects.create(
         buy_asset=asset_id_format(brl_offchain), sell_asset=asset_id_format(usd_stellar)
     )
@@ -41,6 +40,7 @@ def default_data():
         "stellar_assets": [usd_stellar],
         "offchain_assets": [brl_offchain],
         "exchange_pairs": [pair],
+        "delivery_methods": delivery_methods,
     }
 
 
@@ -113,7 +113,7 @@ def test_get_prices_success_country_code_buy_delivery_method(mock_rqi, client):
         "sell_asset": data["stellar_assets"][0],
         "sell_amount": Decimal(100),
         "buy_assets": data["offchain_assets"],
-        "buy_delivery_method": "cash_pickup",
+        "buy_delivery_method": data["delivery_methods"][0],
         "sell_delivery_method": None,
         "country_code": "BRA",
     }
@@ -159,7 +159,7 @@ def test_get_prices_success_country_code_sell_delivery_method(mock_rqi, client):
         "sell_amount": Decimal(100),
         "buy_assets": data["stellar_assets"],
         "buy_delivery_method": None,
-        "sell_delivery_method": "cash_dropoff",
+        "sell_delivery_method": data["delivery_methods"][1],
         "country_code": "BRA",
     }
 

@@ -11,11 +11,13 @@ from polaris.sep10.utils import validate_sep10_token
 from polaris.sep10.token import SEP10Token
 from polaris.integrations import registered_quote_integration as rqi
 from polaris.utils import render_error_response
+from polaris.models import DeliveryMethod
 from polaris.sep38.utils import (
     asset_id_format,
     get_buy_assets,
     get_sell_asset,
     get_buy_asset,
+    find_delivery_method,
 )
 
 
@@ -125,8 +127,16 @@ def validate_prices_request(token: SEP10Token, request: Request) -> dict:
     # buy_assets will be empty if the following attributes are invalid
     # and an empty list will be returned prior to calling the anchor's
     # integration function.
-    validated_data["buy_delivery_method"] = request.GET.get("buy_delivery_method")
-    validated_data["sell_delivery_method"] = request.GET.get("sell_delivery_method")
+    validated_data["buy_delivery_method"] = find_delivery_method(
+        validated_data["buy_assets"][0],
+        request.GET.get("buy_delivery_method"),
+        DeliveryMethod.TYPE.buy,
+    )
+    validated_data["sell_delivery_method"] = find_delivery_method(
+        validated_data["sell_asset"],
+        request.GET.get("sell_delivery_method"),
+        DeliveryMethod.TYPE.sell,
+    )
     validated_data["country_code"] = request.GET.get("country_code")
     return validated_data
 
@@ -173,6 +183,14 @@ def validate_price_request(token: SEP10Token, request: Request) -> dict:
             gettext("invalid 'buy_amount' or 'sell_amount'; Expected decimal strings.")
         )
     validated_data["country_code"] = request.GET.get("country_code")
-    validated_data["buy_delivery_method"] = request.GET.get("buy_delivery_method")
-    validated_data["sell_delivery_method"] = request.GET.get("sell_delivery_method")
+    validated_data["buy_delivery_method"] = find_delivery_method(
+        validated_data["buy_asset"],
+        request.GET.get("buy_delivery_method"),
+        DeliveryMethod.TYPE.buy,
+    )
+    validated_data["sell_delivery_method"] = find_delivery_method(
+        validated_data["sell_asset"],
+        request.GET.get("sell_delivery_method"),
+        DeliveryMethod.TYPE.sell,
+    )
     return validated_data

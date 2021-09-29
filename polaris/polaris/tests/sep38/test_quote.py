@@ -27,20 +27,19 @@ def default_data():
     brl_offchain = OffChainAsset.objects.create(
         scheme="iso4217", identifier="BRL", country_codes="BRA"
     )
-    brl_offchain.delivery_methods.add(
-        *[
-            DeliveryMethod.objects.create(
-                type=DeliveryMethod.TYPE.buy,
-                name="cash_pickup",
-                description="cash pick-up",
-            ),
-            DeliveryMethod.objects.create(
-                type=DeliveryMethod.TYPE.sell,
-                name="cash_dropoff",
-                description="cash drop-off",
-            ),
-        ]
-    )
+    delivery_methods = [
+        DeliveryMethod.objects.create(
+            type=DeliveryMethod.TYPE.buy,
+            name="cash_pickup",
+            description="cash pick-up",
+        ),
+        DeliveryMethod.objects.create(
+            type=DeliveryMethod.TYPE.sell,
+            name="cash_dropoff",
+            description="cash drop-off",
+        ),
+    ]
+    brl_offchain.delivery_methods.add(*delivery_methods)
     pair = ExchangePair.objects.create(
         buy_asset=asset_id_format(brl_offchain), sell_asset=asset_id_format(usd_stellar)
     )
@@ -48,6 +47,7 @@ def default_data():
         "stellar_assets": [usd_stellar],
         "offchain_assets": [brl_offchain],
         "exchange_pairs": [pair],
+        "delivery_methods": delivery_methods,
     }
 
 
@@ -56,19 +56,20 @@ def default_data():
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 def test_post_quote_success_no_optional_params(mock_rqi, client):
     data = default_data()
-    mock_rqi.post_quote = Mock(
-        return_value=Quote(
-            id=uuid.uuid4(),
-            type=Quote.TYPE.firm,
-            sell_asset=asset_id_format(data["stellar_assets"][0]),
-            buy_asset=asset_id_format(data["offchain_assets"][0]),
-            sell_amount=Decimal(100),
-            buy_amount=Decimal(100),
-            price=Decimal(2.12),
-            expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
-            buy_delivery_method=data["offchain_assets"][0].delivery_methods.first(),
-        )
-    )
+
+    def mock_post_quote(token, request, quote, *args, **kwargs) -> Quote:
+        quote.price = Decimal(2.12)
+        quote.expires_at = quote.requested_expire_after or datetime.now(
+            timezone.utc
+        ) + timedelta(hours=1)
+        if quote.sell_asset.startswith("stellar"):
+            quote.buy_delivery_method = data["delivery_methods"][0]
+        else:
+            quote.sell_delivery_method = data["delivery_methods"][1]
+        return quote
+
+    mock_rqi.post_quote = mock_post_quote
+
     response = client.post(
         ENDPOINT,
         json.dumps(
@@ -92,20 +93,6 @@ def test_post_quote_success_no_optional_params(mock_rqi, client):
         "sell_asset": asset_id_format(data["stellar_assets"][0]),
         "buy_asset": asset_id_format(data["offchain_assets"][0]),
     }
-    mock_rqi.post_quote.assert_called_once()
-    kwargs = mock_rqi.post_quote.call_args[1]
-    del kwargs["token"]
-    del kwargs["request"]
-    assert kwargs == {
-        "sell_asset": data["stellar_assets"][0],
-        "sell_amount": Decimal(100),
-        "buy_asset": data["offchain_assets"][0],
-        "buy_amount": Decimal(100),
-        "buy_delivery_method": None,
-        "sell_delivery_method": None,
-        "country_code": None,
-        "expire_after": None,
-    }
     assert Quote.objects.get(id=quote_id)
 
 
@@ -116,22 +103,21 @@ def test_post_quote_success_country_code_buy_delivery_method_expire_after(
     mock_rqi, client
 ):
     data = default_data()
+
+    def mock_post_quote(token, request, quote, *args, **kwargs) -> Quote:
+        quote.price = Decimal(2.12)
+        quote.expires_at = quote.requested_expire_after or datetime.now(
+            timezone.utc
+        ) + timedelta(hours=1)
+        if not quote.buy_delivery_method and quote.sell_asset.startswith("stellar"):
+            quote.buy_delivery_method = data["delivery_methods"][0]
+        elif not quote.sell_delivery_method and quote.buy_asset.startswith("stellar"):
+            quote.sell_delivery_method = data["delivery_methods"][1]
+        return quote
+
+    mock_rqi.post_quote = mock_post_quote
+
     expire_after = datetime.now(timezone.utc) + timedelta(hours=24)
-    mock_rqi.post_quote = Mock(
-        return_value=Quote(
-            id=uuid.uuid4(),
-            type=Quote.TYPE.firm,
-            sell_asset=asset_id_format(data["stellar_assets"][0]),
-            buy_asset=asset_id_format(data["offchain_assets"][0]),
-            sell_amount=Decimal(100),
-            buy_amount=Decimal(100),
-            price=Decimal(2.12),
-            expires_at=expire_after,
-            buy_delivery_method=data["offchain_assets"][0].delivery_methods.first(),
-            requested_expire_after=expire_after,
-        )
-    )
-    print(expire_after.strftime(DATETIME_FORMAT))
     response = client.post(
         ENDPOINT,
         {
@@ -156,20 +142,6 @@ def test_post_quote_success_country_code_buy_delivery_method_expire_after(
         "sell_asset": asset_id_format(data["stellar_assets"][0]),
         "buy_asset": asset_id_format(data["offchain_assets"][0]),
     }
-    mock_rqi.post_quote.assert_called_once()
-    kwargs = mock_rqi.post_quote.call_args[1]
-    del kwargs["token"]
-    del kwargs["request"]
-    assert kwargs == {
-        "sell_asset": data["stellar_assets"][0],
-        "sell_amount": Decimal(100),
-        "buy_asset": data["offchain_assets"][0],
-        "buy_amount": Decimal(100),
-        "buy_delivery_method": "cash_pickup",
-        "sell_delivery_method": None,
-        "country_code": "BRA",
-        "expire_after": expire_after,
-    }
     assert Quote.objects.get(id=quote_id)
 
 
@@ -183,19 +155,19 @@ def test_post_quote_success_country_code_sell_delivery_method(mock_rqi, client):
     pair.sell_asset, pair.buy_asset = pair.buy_asset, pair.sell_asset
     pair.save()
 
-    mock_rqi.post_quote = Mock(
-        return_value=Quote(
-            id=uuid.uuid4(),
-            type=Quote.TYPE.firm,
-            buy_asset=asset_id_format(data["stellar_assets"][0]),
-            sell_asset=asset_id_format(data["offchain_assets"][0]),
-            sell_amount=Decimal(100),
-            buy_amount=Decimal(100),
-            price=Decimal(2.12),
-            expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
-            sell_delivery_method=data["offchain_assets"][0].delivery_methods.first(),
-        )
-    )
+    def mock_post_quote(token, request, quote, *args, **kwargs) -> Quote:
+        quote.price = Decimal(2.12)
+        quote.expires_at = quote.requested_expire_after or datetime.now(
+            timezone.utc
+        ) + timedelta(hours=1)
+        if not quote.buy_delivery_method and quote.sell_asset.startswith("stellar"):
+            quote.buy_delivery_method = data["delivery_methods"][0]
+        elif not quote.sell_delivery_method and quote.buy_asset.startswith("stellar"):
+            quote.sell_delivery_method = data["delivery_methods"][1]
+        return quote
+
+    mock_rqi.post_quote = mock_post_quote
+
     response = client.post(
         ENDPOINT,
         {
@@ -219,20 +191,6 @@ def test_post_quote_success_country_code_sell_delivery_method(mock_rqi, client):
         "buy_asset": asset_id_format(data["stellar_assets"][0]),
         "sell_asset": asset_id_format(data["offchain_assets"][0]),
     }
-    mock_rqi.post_quote.assert_called_once()
-    kwargs = mock_rqi.post_quote.call_args[1]
-    del kwargs["token"]
-    del kwargs["request"]
-    assert kwargs == {
-        "sell_asset": data["offchain_assets"][0],
-        "sell_amount": Decimal(100),
-        "buy_asset": data["stellar_assets"][0],
-        "buy_amount": Decimal(100),
-        "buy_delivery_method": None,
-        "sell_delivery_method": "cash_dropoff",
-        "country_code": "BRA",
-        "expire_after": None,
-    }
     assert Quote.objects.get(id=quote_id)
 
 
@@ -245,19 +203,19 @@ def test_post_quote_success_no_optional_params_swap_exchange_pair(mock_rqi, clie
     pair.sell_asset, pair.buy_asset = pair.buy_asset, pair.sell_asset
     pair.save()
 
-    mock_rqi.post_quote = Mock(
-        return_value=Quote(
-            id=uuid.uuid4(),
-            type=Quote.TYPE.firm,
-            buy_asset=asset_id_format(data["stellar_assets"][0]),
-            sell_asset=asset_id_format(data["offchain_assets"][0]),
-            sell_amount=Decimal(100),
-            buy_amount=Decimal(100),
-            price=Decimal(2.12),
-            expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
-            sell_delivery_method=data["offchain_assets"][0].delivery_methods.first(),
-        )
-    )
+    def mock_post_quote(token, request, quote, *args, **kwargs) -> Quote:
+        quote.price = Decimal(2.12)
+        quote.expires_at = quote.requested_expire_after or datetime.now(
+            timezone.utc
+        ) + timedelta(hours=1)
+        if not quote.buy_delivery_method and quote.sell_asset.startswith("stellar"):
+            quote.buy_delivery_method = data["delivery_methods"][0]
+        elif not quote.sell_delivery_method and quote.buy_asset.startswith("stellar"):
+            quote.sell_delivery_method = data["delivery_methods"][1]
+        return quote
+
+    mock_rqi.post_quote = mock_post_quote
+
     response = client.post(
         ENDPOINT,
         {
@@ -278,20 +236,6 @@ def test_post_quote_success_no_optional_params_swap_exchange_pair(mock_rqi, clie
         "buy_amount": "100.00",
         "buy_asset": asset_id_format(data["stellar_assets"][0]),
         "sell_asset": asset_id_format(data["offchain_assets"][0]),
-    }
-    mock_rqi.post_quote.assert_called_once()
-    kwargs = mock_rqi.post_quote.call_args[1]
-    del kwargs["token"]
-    del kwargs["request"]
-    assert kwargs == {
-        "sell_asset": data["offchain_assets"][0],
-        "sell_amount": Decimal(100),
-        "buy_asset": data["stellar_assets"][0],
-        "buy_amount": Decimal(100),
-        "buy_delivery_method": None,
-        "sell_delivery_method": None,
-        "country_code": None,
-        "expire_after": None,
     }
     assert Quote.objects.get(id=quote_id)
 
@@ -811,16 +755,7 @@ def test_post_quote_failure_anchor_raises_value_error(mock_rqi, client):
     kwargs = mock_rqi.post_quote.call_args[1]
     del kwargs["token"]
     del kwargs["request"]
-    assert kwargs == {
-        "sell_asset": data["stellar_assets"][0],
-        "sell_amount": Decimal(100),
-        "buy_asset": data["offchain_assets"][0],
-        "buy_amount": Decimal(100),
-        "buy_delivery_method": None,
-        "sell_delivery_method": None,
-        "country_code": None,
-        "expire_after": None,
-    }
+    assert isinstance(kwargs["quote"], Quote)
 
 
 @pytest.mark.django_db
@@ -846,16 +781,7 @@ def test_post_quote_failure_anchor_raises_runtime_error(mock_rqi, client):
     kwargs = mock_rqi.post_quote.call_args[1]
     del kwargs["token"]
     del kwargs["request"]
-    assert kwargs == {
-        "sell_asset": data["stellar_assets"][0],
-        "sell_amount": Decimal(100),
-        "buy_asset": data["offchain_assets"][0],
-        "buy_amount": Decimal(100),
-        "buy_delivery_method": None,
-        "sell_delivery_method": None,
-        "country_code": None,
-        "expire_after": None,
-    }
+    assert isinstance(kwargs["quote"], Quote)
 
 
 @pytest.mark.django_db
@@ -880,16 +806,7 @@ def test_post_quote_failure_anchor_raises_unexpected_error(mock_rqi, client):
     kwargs = mock_rqi.post_quote.call_args[1]
     del kwargs["token"]
     del kwargs["request"]
-    assert kwargs == {
-        "sell_asset": data["stellar_assets"][0],
-        "sell_amount": Decimal(100),
-        "buy_asset": data["offchain_assets"][0],
-        "buy_amount": Decimal(100),
-        "buy_delivery_method": None,
-        "sell_delivery_method": None,
-        "country_code": None,
-        "expire_after": None,
-    }
+    assert isinstance(kwargs["quote"], Quote)
 
 
 @pytest.mark.django_db
@@ -915,16 +832,7 @@ def test_post_quote_failure_anchor_provides_bad_quote(mock_rqi, client):
     kwargs = mock_rqi.post_quote.call_args[1]
     del kwargs["token"]
     del kwargs["request"]
-    assert kwargs == {
-        "sell_asset": data["stellar_assets"][0],
-        "sell_amount": Decimal(100),
-        "buy_asset": data["offchain_assets"][0],
-        "buy_amount": Decimal(100),
-        "buy_delivery_method": None,
-        "sell_delivery_method": None,
-        "country_code": None,
-        "expire_after": None,
-    }
+    assert isinstance(kwargs["quote"], Quote)
 
 
 def test_validate_quote_not_quote():

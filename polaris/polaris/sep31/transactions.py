@@ -2,6 +2,7 @@ from typing import Dict, Optional
 from decimal import Decimal, InvalidOperation
 from collections import defaultdict
 from polaris.utils import getLogger
+from datetime import datetime, timezone
 
 from django.utils.translation import gettext as _
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
@@ -11,10 +12,11 @@ from rest_framework.response import Response
 from rest_framework.renderers import JSONRenderer, BrowsableAPIRenderer
 from rest_framework.parsers import JSONParser
 
+from polaris.sep38.utils import asset_id_format
 from polaris.locale.utils import _is_supported_language, activate_lang_for_request
 from polaris.sep10.utils import validate_sep10_token
 from polaris.sep10.token import SEP10Token
-from polaris.models import Transaction, Asset
+from polaris.models import Transaction, Asset, Quote, ExchangePair
 from polaris.integrations import registered_sep31_receiver_integration
 from polaris.sep31.serializers import SEP31TransactionSerializer
 from polaris.utils import (
@@ -196,6 +198,37 @@ def validate_post_request(request: Request) -> Dict:
         and type(request.data.get("receiver_id")) in [str, type(None)]
     ):
         raise ValueError(_("'sender_id' and 'receiver_id' values must be strings"))
+    quote = None
+    if request.data.get("quote_id"):
+        try:
+            quote = Quote.objects.get(
+                id=request.data.get("quote_id"), type=Quote.TYPE.firm
+            )
+        except ObjectDoesNotExist:
+            raise ValueError(_("quote not found for 'quote_id'"))
+        if quote.expires_at < datetime.now(timezone.utc):
+            raise ValueError(_("quote has expired"))
+        if quote.sell_asset != asset_id_format(asset):
+            raise ValueError(
+                _(
+                    "quote 'sell_asset' does not match 'asset_code' and 'asset_issuer' parameters"
+                )
+            )
+        if quote.buy_asset != request.data.get("destination_asset"):
+            raise ValueError(
+                _("quote 'buy_asset' does not match 'destination_asset' parameter")
+            )
+        if quote.sell_amount != amount:
+            raise ValueError(_("quote amount does not patch 'amount' parameter"))
+    elif request.data.get("destination_asset"):
+        if not ExchangePair.objects.filter(
+            sell_asset=asset_id_format(asset),
+            buy_asset=request.data["destination_asset"],
+        ).exists():
+            raise ValueError(
+                _("unsupported 'destination_asset' for 'asset_code' and 'asset_issuer'")
+            )
+
     return {
         "asset": asset,
         "amount": amount,
@@ -204,6 +237,8 @@ def validate_post_request(request: Request) -> Dict:
         "sender_id": request.data.get("sender_id"),
         "receiver_id": request.data.get("receiver_id"),
         "fields": request.data.get("fields"),
+        "destination_asset": request.data.get("destination_asset"),
+        "quote": quote,
     }
 
 

@@ -47,7 +47,11 @@ def get_buy_assets(
         if buy_delivery_method:
             kwargs["delivery_methods__type"] = DeliveryMethod.TYPE.buy
             kwargs["delivery_methods__name"] = buy_delivery_method
-        buy_assets = OffChainAsset.objects.filter(conditions, **kwargs).all()
+        buy_assets = (
+            OffChainAsset.objects.filter(conditions, **kwargs)
+            .prefetch_related("delivery_methods")
+            .all()
+        )
     else:
         if buy_delivery_method:
             raise ValueError(
@@ -80,7 +84,9 @@ def get_buy_asset(
             kwargs["delivery_methods__type"] = DeliveryMethod.TYPE.buy
             kwargs["delivery_methods__name"] = buy_delivery_method
         try:
-            buy_asset = OffChainAsset.objects.get(**kwargs)
+            buy_asset = OffChainAsset.objects.prefetch_related("delivery_methods").get(
+                **kwargs
+            )
         except ObjectDoesNotExist:
             raise ValueError(
                 gettext(
@@ -146,7 +152,7 @@ def get_sell_asset(
             if sell_delivery_method:
                 kwargs["delivery_methods__type"] = DeliveryMethod.TYPE.sell
                 kwargs["delivery_methods__name"] = sell_delivery_method
-            return OffChainAsset.objects.get(
+            return OffChainAsset.objects.prefetch_related("delivery_methods").get(
                 scheme=scheme, identifier=identifier, **kwargs
             )
     except ObjectDoesNotExist:
@@ -155,3 +161,22 @@ def get_sell_asset(
                 "no 'sell_asset' for 'delivery_method' and 'country_code' specificed"
             )
         )
+
+
+def find_delivery_method(
+    asset: Union[Asset, OffChainAsset],
+    delivery_method_name: str,
+    delivery_method_type: str,
+) -> Optional[DeliveryMethod]:
+    if isinstance(asset, Asset):
+        return None
+    if not delivery_method_name:
+        return None
+    delivery_method = None
+    for dm in asset.delivery_methods.all():
+        if dm.type != delivery_method_type:
+            continue
+        if dm.name == delivery_method_name:
+            delivery_method = dm
+            break
+    return delivery_method

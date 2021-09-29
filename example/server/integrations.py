@@ -1183,40 +1183,19 @@ class MyQuoteIntegration(QuoteIntegration):
         return True
 
     def post_quote(
-        self,
-        token: SEP10Token,
-        request: Request,
-        sell_asset: Union[Asset, OffChainAsset],
-        sell_amount: Decimal,
-        buy_asset: Union[Asset, OffChainAsset],
-        buy_amount: Decimal,
-        sell_delivery_method: Optional[DeliveryMethod] = None,
-        buy_delivery_method: Optional[DeliveryMethod] = None,
-        country_code: Optional[str] = None,
-        expire_after: Optional[datetime] = None,
-        *args,
-        **kwargs,
+        self, token: SEP10Token, request: Request, quote: Quote, *args, **kwargs,
     ) -> Quote:
-        if expire_after and not self.approve_expiration(expire_after):
+        if quote.requested_expire_after and not self.approve_expiration(
+            quote.requested_expire_after
+        ):
             raise ValueError(
-                f"expiration ({expire_after.strftime(settings.DATETIME_FORMAT)}) cannot be provided.",
+                f"expiration ({quote.requested_expire_after.strftime(settings.DATETIME_FORMAT)}) cannot be provided.",
             )
         try:
-            price = get_mock_firm_exchange_price()
+            quote.price = get_mock_firm_exchange_price()
         except RequestException:
             raise RuntimeError("unable to fetch price for quote")
-        return Quote(
-            id=str(uuid.uuid4()),
-            type=Quote.TYPE.firm,
-            sell_asset=asset_id_format(sell_asset),
-            buy_asset=asset_id_format(buy_asset),
-            sell_amount=sell_amount,
-            buy_amount=buy_amount,
-            expires_at=expire_after
-            or datetime.now(timezone.utc) + timedelta(minutes=random.randrange(5, 60)),
-            price=price,
-            buy_delivery_method=buy_delivery_method,
-            sell_delivery_method=sell_delivery_method,
-            country_code=country_code,
-            requested_expire_after=expire_after,
+        quote.expires_at = datetime.now(timezone.utc) + timedelta(
+            minutes=random.randrange(5, 60)
         )
+        return quote
