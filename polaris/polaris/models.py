@@ -551,6 +551,13 @@ class Transaction(models.Model):
     )
     """Amount of fee charged by anchor."""
 
+    fee_asset = models.TextField(null=True, blank=True)
+    """
+    The string representing the asset in which the fee is charged. The string
+    must be formatted using SEP-38's Asset Identification Format, and is only
+    necessary for transactions using different on and off-chain assets.
+    """
+
     started_at = models.DateTimeField(default=utc_now)
     """Start date and time of transaction."""
 
@@ -709,7 +716,7 @@ class Quote(models.Model):
     derived from the muxed account. 
     """
 
-    account_memo = models.TextField(null=True, blank=True)
+    account_memo = models.PositiveIntegerField(null=True, blank=True)
     """
     The ID (64-bit integer) memo identifying the user of the shared Stellar account 
     authenticated via SEP-10 when this Quote was created. If this column value

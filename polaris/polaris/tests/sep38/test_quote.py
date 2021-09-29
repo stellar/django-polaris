@@ -4,7 +4,7 @@ import pytest
 import json
 from datetime import datetime, timezone, timedelta
 from uuid import UUID
-from unittest.mock import patch, Mock
+from unittest.mock import patch
 from decimal import Decimal
 
 from stellar_sdk import Keypair

@@ -16,7 +16,7 @@ endpoint = "/sep31/transactions/"
 @patch("polaris.sep31.transactions.registered_sep31_receiver_integration", Mock())
 def test_successful_call(client, acc1_usd_deposit_transaction_factory):
     transaction = acc1_usd_deposit_transaction_factory(
-        protocol=Transaction.PROTOCOL.sep31
+        protocol=Transaction.PROTOCOL.sep31,
     )
     # The above transaction was created in memory, not retrieved from the DB.
     # The Decimal fields are altered to allow 7 decimals of precision once they

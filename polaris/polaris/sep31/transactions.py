@@ -1,3 +1,4 @@
+import uuid
 from typing import Dict, Optional
 from decimal import Decimal, InvalidOperation
 from collections import defaultdict
@@ -16,9 +17,11 @@ from polaris.sep38.utils import asset_id_format
 from polaris.locale.utils import _is_supported_language, activate_lang_for_request
 from polaris.sep10.utils import validate_sep10_token
 from polaris.sep10.token import SEP10Token
-from polaris.models import Transaction, Asset, Quote, ExchangePair
+from polaris.models import Transaction, Asset, Quote, ExchangePair, OffChainAsset
 from polaris.integrations import registered_sep31_receiver_integration
 from polaris.sep31.serializers import SEP31TransactionSerializer
+from polaris.sep38.utils import asset_id_to_kwargs
+from polaris import settings
 from polaris.utils import (
     render_error_response,
     create_transaction_id,
@@ -50,11 +53,15 @@ class TransactionsAPIView(APIView):
         elif not transaction_id:
             return render_error_response(_("missing 'id' in URI"))
         try:
-            t = Transaction.objects.filter(
-                id=transaction_id,
-                stellar_account=token.account,
-                protocol=Transaction.PROTOCOL.sep31,
-            ).first()
+            t = (
+                Transaction.objects.filter(
+                    id=transaction_id,
+                    stellar_account=token.account,
+                    protocol=Transaction.PROTOCOL.sep31,
+                )
+                .select_related("quote")
+                .first()
+            )
         except ValidationError:  # bad id parameter
             return render_error_response(_("transaction not found"), status_code=404)
         if not t:
@@ -116,7 +123,7 @@ class TransactionsAPIView(APIView):
             return render_error_response("invalid sending account", status_code=403)
 
         try:
-            params = validate_post_request(request)
+            params = validate_post_request(token, request)
         except ValueError as e:
             return render_error_response(str(e))
 
@@ -149,6 +156,7 @@ class TransactionsAPIView(APIView):
             memo_type=Transaction.MEMO_TYPES.hash,
             receiving_anchor_account=params["asset"].distribution_account,
             client_domain=token.client_domain,
+            quote=params["quote"],
         )
 
         error_data = registered_sep31_receiver_integration.process_post_request(
@@ -161,13 +169,16 @@ class TransactionsAPIView(APIView):
             return render_error_response(
                 _("unable to process the request"), status_code=500
             )
+        if "error" in response_data:
+            return Response(response_data, status=400)
         else:
+            if transaction.quote and transaction.quote.type == Quote.TYPE.indicative:
+                transaction.quote.save()
             transaction.save()
+            return Response(response_data, status=201)
 
-        return Response(response_data, status=400 if "error" in response_data else 201)
 
-
-def validate_post_request(request: Request) -> Dict:
+def validate_post_request(token: SEP10Token, request: Request) -> Dict:
     asset_args = {"code": request.data.get("asset_code")}
     if request.data.get("asset_issuer"):
         asset_args["issuer"] = request.data.get("asset_issuer")
@@ -199,7 +210,14 @@ def validate_post_request(request: Request) -> Dict:
     ):
         raise ValueError(_("'sender_id' and 'receiver_id' values must be strings"))
     quote = None
+    destination_asset = None
     if request.data.get("quote_id"):
+        if "sep-38" not in settings.ACTIVE_SEPS or not asset.sep38_enabled:
+            raise ValueError(_("quotes are not supported"))
+        if not request.data.get("destination_asset"):
+            raise ValueError(
+                _("'destination_asset' must be provided if 'quote_id' is provided")
+            )
         try:
             quote = Quote.objects.get(
                 id=request.data.get("quote_id"), type=Quote.TYPE.firm
@@ -220,7 +238,15 @@ def validate_post_request(request: Request) -> Dict:
             )
         if quote.sell_amount != amount:
             raise ValueError(_("quote amount does not patch 'amount' parameter"))
+        try:
+            destination_asset = OffChainAsset.objects.get(
+                asset_id_to_kwargs(request.data.get("destination_asset"))
+            )
+        except (ValueError, TypeError, ObjectDoesNotExist):
+            raise ValueError(_("invalid 'destination_asset'"))
     elif request.data.get("destination_asset"):
+        if "sep-38" not in settings.ACTIVE_SEPS or not asset.sep38_enabled:
+            raise ValueError(_("quotes are not supported"))
         if not ExchangePair.objects.filter(
             sell_asset=asset_id_format(asset),
             buy_asset=request.data["destination_asset"],
@@ -228,7 +254,22 @@ def validate_post_request(request: Request) -> Dict:
             raise ValueError(
                 _("unsupported 'destination_asset' for 'asset_code' and 'asset_issuer'")
             )
-
+        try:
+            destination_asset = OffChainAsset.objects.get(
+                asset_id_to_kwargs(request.data.get("destination_asset"))
+            )
+        except (ValueError, TypeError, ObjectDoesNotExist):
+            raise ValueError(_("invalid 'destination_asset'"))
+        quote = Quote(
+            id=str(uuid.uuid4()),
+            type=Quote.TYPE.indicative,
+            stellar_account=token.account,
+            account_memo=token.memo,
+            muxed_account=token.muxed_account,
+            sell_asset=asset_id_format(asset),
+            buy_asset=request.data.get("destination_asset"),
+            sell_amount=amount,
+        )
     return {
         "asset": asset,
         "amount": amount,
@@ -237,7 +278,7 @@ def validate_post_request(request: Request) -> Dict:
         "sender_id": request.data.get("sender_id"),
         "receiver_id": request.data.get("receiver_id"),
         "fields": request.data.get("fields"),
-        "destination_asset": request.data.get("destination_asset"),
+        "destination_asset": destination_asset,
         "quote": quote,
     }
 
