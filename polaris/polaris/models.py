@@ -728,7 +728,9 @@ class Quote(models.Model):
     The amount of sell_asset the client would exchange for buy_asset.
     """
 
-    buy_amount = models.DecimalField(max_digits=30, decimal_places=7)
+    buy_amount = models.DecimalField(
+        null=True, blank=True, max_digits=30, decimal_places=7
+    )
     """
     The amount of buy_asset the client would like to purchase with sell_asset.
     """
