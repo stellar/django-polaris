@@ -4,8 +4,9 @@ from unittest.mock import patch, Mock
 from datetime import datetime
 
 from polaris.tests.helpers import mock_check_auth_success
-from polaris.models import Transaction
+from polaris.models import Transaction, Quote
 from polaris.sep31.serializers import SEP31TransactionSerializer
+from polaris.sep38.utils import asset_id_format
 
 
 endpoint = "/sep31/transactions/"
@@ -25,6 +26,15 @@ def test_successful_call(client, acc1_usd_deposit_transaction_factory):
     transaction.refresh_from_db()
     # stellar account has to match auth token
     transaction.stellar_account = "test source address"
+    transaction.quote = Quote.objects.create(
+        id=str(uuid.uuid4()),
+        stellar_account=transaction.stellar_account,
+        type=Quote.TYPE.indicative,
+        sell_asset=asset_id_format(transaction.asset),
+        buy_asset="iso4217:USD",
+        sell_amount=transaction.amount_in,
+    )
+    transaction.fee_asset = asset_id_format(transaction.asset)
     transaction.save()
     response = client.get(endpoint + str(transaction.id))
     serialization = {"transaction": SEP31TransactionSerializer(transaction).data}
@@ -37,8 +47,11 @@ def test_successful_call(client, acc1_usd_deposit_transaction_factory):
                 "id": str(transaction.id),
                 "status": "pending_sender",
                 "status_eta": 3600,
+                "amount_in_asset": transaction.quote.sell_asset,
                 "amount_in": "18.34",
+                "amount_out_asset": transaction.quote.buy_asset,
                 "amount_out": "18.24",
+                "amount_fee_asset": transaction.fee_asset,
                 "amount_fee": "0.10",
                 "started_at": datetime.isoformat(transaction.started_at).replace(
                     "+00:00", "Z"

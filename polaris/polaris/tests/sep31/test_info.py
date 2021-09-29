@@ -40,7 +40,7 @@ success_info_response = Mock(
     "polaris.sep31.info.registered_sep31_receiver_integration", success_info_response
 )
 def test_success_response(client, usd_asset_factory):
-    asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31])
+    asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31, "sep38"])
     response = client.get(endpoint)
     body = response.json()
     assert response.status_code == 200
@@ -56,7 +56,7 @@ def test_success_response(client, usd_asset_factory):
         body["receive"][asset.code].pop("sep12")
         == success_info_response.info()["sep12"]
     )
-    assert body["receive"][asset.code].pop("quotes_supported") is False
+    assert body["receive"][asset.code].pop("quotes_supported") is True
     assert body == {"receive": {asset.code: {}}}
 
 
