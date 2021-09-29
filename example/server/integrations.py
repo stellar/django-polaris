@@ -1,18 +1,22 @@
 import json
+import random
+import uuid
+
 import requests
+from requests import RequestException
 from base64 import b64encode
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from logging import getLogger
 from unittest.mock import Mock
 from smtplib import SMTPException
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Optional, Tuple, Union
 from urllib.parse import urlencode
 
 from django import forms
 from django.conf import settings as server_settings
-from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.core.exceptions import ObjectDoesNotExist
 from django.core.mail import send_mail
 from django.db.models import QuerySet
 from django.template.loader import render_to_string
@@ -29,18 +33,11 @@ from polaris.integrations import (
     RailsIntegration,
     TransactionForm,
 )
-from polaris.integrations.quote import SEP38AnchorIntegration
-from polaris.models import Transaction, Asset, Quote
+from polaris.integrations.quote import QuoteIntegration
+from polaris.models import Transaction, Asset, Quote, OffChainAsset, DeliveryMethod
 from polaris.sep10.token import SEP10Token
-from polaris.sep38.utils import (
-    list_exchange_pairs,
-    is_stellar_asset,
-    get_offchain_asset,
-    get_buy_delivery_methods,
-    get_sell_delivery_methods,
-    get_significant_decimals,
-)
 from polaris.templates import Template
+from polaris.sep38.utils import asset_id_format
 from rest_framework.request import Request
 from stellar_sdk.keypair import Keypair
 
@@ -1140,152 +1137,86 @@ def info_integration(request: Request, asset: Asset, lang: str):
     }
 
 
-def delivery_method_supported(
-    sell_asset: str = None, buy_asset: str = None, delivery_method: str = None,
-) -> bool:
-    if delivery_method:
-        if sell_asset:
-            dms = get_sell_delivery_methods(get_offchain_asset(sell_asset))
-        else:
-            dms = get_buy_delivery_methods(get_offchain_asset(buy_asset))
-
-        if not any(dm.name == delivery_method for dm in dms):
-            # This method is not supported
-            return False
-    return True
-
-
-def country_code_supported(asset: str, country_code: str) -> bool:
-    if country_code and country_code not in get_offchain_asset(
-        asset
-    ).country_codes.split(","):
-        # The contry code is not supported by the anchor.
-        return False
-    return True
-
-
-class MySEP38AnchorIntegration(SEP38AnchorIntegration):
+class MyQuoteIntegration(QuoteIntegration):
     def get_prices(
         self,
-        client_sell_asset: str,
-        client_sell_amount: str,
-        sell_delivery_method: str = None,
-        buy_delivery_method: str = None,
-        country_code: str = None,
+        token: SEP10Token,
+        request: Request,
+        sell_asset: Union[Asset, OffChainAsset],
+        sell_amount: Decimal,
+        buy_assets: List[Union[Asset, OffChainAsset]],
+        sell_delivery_method: Optional[DeliveryMethod] = None,
+        buy_delivery_method: Optional[DeliveryMethod] = None,
+        country_code: Optional[str] = None,
         *args,
         **kwargs,
-    ) -> List[dict]:
-        exchange_pairs = list_exchange_pairs(anchor_buy_asset=client_sell_asset)
-
+    ) -> List[Decimal]:
         prices = []
-        _is_stellar_asset = is_stellar_asset(client_sell_asset)
-        for exchange_pair in exchange_pairs:
-            if _is_stellar_asset:
-                # We are selling a stellar asset. Buying asset is offchain.
-                if not delivery_method_supported(
-                    sell_asset=exchange_pair.sell_asset,
-                    delivery_method=buy_delivery_method,
-                ):
-                    continue
-
-                if not country_code_supported(
-                    asset=exchange_pair.sell_asset, country_code=country_code
-                ):
-                    continue
-            else:
-                # We are selling an offchain asset.
-                if not delivery_method_supported(
-                    buy_asset=exchange_pair.buy_asset,
-                    delivery_method=sell_delivery_method,
-                ):
-                    continue
-                if not country_code_supported(
-                    asset=exchange_pair.buy_asset, country_code=country_code
-                ):
-                    continue
-
-            price = get_mock_indicative_exchange_price()
-            decimals = get_significant_decimals(exchange_pair.sell_asset)
-            indicative_price = {
-                "asset": exchange_pair.sell_asset,
-                "decimals": decimals,
-                "price": round(price, decimals),
-            }
-            prices.append(indicative_price)
+        for _ in buy_assets:
+            try:
+                prices.append(get_mock_indicative_exchange_price())
+            except RequestException:
+                raise RuntimeError("unable to fetch prices")
         return prices
 
     def get_price(
         self,
-        client_sell_asset: str,
-        client_buy_asset: str,
-        sell_amount: str = None,
-        buy_amount: str = None,
-        sell_delivery_method: str = None,
-        buy_delivery_method: str = None,
-        country_code: str = None,
+        token: SEP10Token,
+        request: Request,
+        sell_asset: Union[Asset, OffChainAsset],
+        sell_amount: Decimal,
+        buy_asset: Union[Asset, OffChainAsset],
+        buy_amount: Decimal,
+        sell_delivery_method: Optional[DeliveryMethod] = None,
+        buy_delivery_method: Optional[DeliveryMethod] = None,
+        country_code: Optional[str] = None,
         *args,
         **kwargs,
-    ) -> dict:
-        # Check delivery method
-        if is_stellar_asset(client_sell_asset):
-            if not delivery_method_supported(
-                buy_asset=client_buy_asset, delivery_method=buy_delivery_method,
-            ):
-                raise ValidationError(
-                    f"{client_buy_asset} does not have {buy_delivery_method} delivery."
-                )
-            if not country_code_supported(
-                asset=client_buy_asset, country_code=country_code
-            ):
-                raise ValidationError(
-                    f"{client_buy_asset} is not provided at {country_code}."
-                )
-        else:
-            if not delivery_method_supported(
-                sell_asset=client_sell_asset, delivery_method=sell_delivery_method,
-            ):
-                raise ValidationError(
-                    f"{client_sell_asset} does not have {sell_delivery_method} delivery."
-                )
-            if not country_code_supported(
-                asset=client_sell_asset, country_code=country_code
-            ):
-                raise ValidationError("{sell_asset} is not provided at {country_code}.")
-
-        buy_decimals = get_significant_decimals(client_buy_asset)
-        sell_decimals = get_significant_decimals(client_sell_asset)
-
-        if sell_amount is not None:
-            price = get_mock_indicative_exchange_price()
-            quote_price = {
-                "sell_amount": sell_amount,
-                "price": str(round(price, buy_decimals)),
-                "buy_amount": str(round(Decimal(sell_amount) / price, buy_decimals)),
-            }
-        else:
-            price = get_mock_indicative_exchange_price()
-            quote_price = {
-                "buy_amount": buy_amount,
-                "price": str(round(price, buy_decimals)),
-                "sell_amount": str(round(Decimal(buy_amount) * price, sell_decimals)),
-            }
-
-        return quote_price
+    ) -> Decimal:
+        try:
+            return get_mock_indicative_exchange_price()
+        except RequestException:
+            raise RuntimeError("unable to fetch price")
 
     @staticmethod
-    def approve_expiration(quote: Quote) -> (bool, datetime):
-        return True, quote.requested_expire_after
+    def approve_expiration(_expire_after) -> bool:
+        return True
 
-    def post_quote(self, quote: Quote, *args, **kwargs) -> Quote:
-        if quote.requested_expire_after is not None:
-            approved, expire_at = self.approve_expiration(quote)
-            if approved:
-                quote.expires_at = expire_at
-            else:
-                raise ValidationError(
-                    f"The desired expiration: {quote.requested_expire_after} cannot be provided.",
-                )
-
-            quote.price = get_mock_firm_exchange_price()
-
-        return quote
+    def post_quote(
+        self,
+        token: SEP10Token,
+        request: Request,
+        sell_asset: Union[Asset, OffChainAsset],
+        sell_amount: Decimal,
+        buy_asset: Union[Asset, OffChainAsset],
+        buy_amount: Decimal,
+        sell_delivery_method: Optional[DeliveryMethod] = None,
+        buy_delivery_method: Optional[DeliveryMethod] = None,
+        country_code: Optional[str] = None,
+        expire_after: Optional[datetime] = None,
+        *args,
+        **kwargs,
+    ) -> Quote:
+        if expire_after and not self.approve_expiration(expire_after):
+            raise ValueError(
+                f"expiration ({expire_after.strftime(settings.DATETIME_FORMAT)}) cannot be provided.",
+            )
+        try:
+            price = get_mock_firm_exchange_price()
+        except RequestException:
+            raise RuntimeError("unable to fetch price for quote")
+        return Quote(
+            id=str(uuid.uuid4()),
+            type=Quote.TYPE.firm,
+            sell_asset=asset_id_format(sell_asset),
+            buy_asset=asset_id_format(buy_asset),
+            sell_amount=sell_amount,
+            buy_amount=buy_amount,
+            expires_at=expire_after
+            or datetime.now(timezone.utc) + timedelta(minutes=random.randrange(5, 60)),
+            price=price,
+            buy_delivery_method=buy_delivery_method,
+            sell_delivery_method=sell_delivery_method,
+            country_code=country_code,
+            requested_expire_after=expire_after,
+        )

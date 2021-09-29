@@ -12,16 +12,12 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog', include('blog.urls'))
 """
-from django.contrib import admin
 from django.urls import path, include
 
 import polaris.urls
-from polaris.sep38 import manager_api
 from .views import all_fields_form_view, confirm_email, skip_confirm_email, log_callback
 
 urlpatterns = [
-    path("admin/", admin.site.urls),
-    path("anchor/sep38/", include(manager_api)),
     path("all-fields", all_fields_form_view),
     path("confirm_email", confirm_email, name="confirm_email"),
     path("skip_confirm_email", skip_confirm_email, name="skip_confirm_email"),

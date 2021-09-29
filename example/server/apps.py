@@ -12,7 +12,7 @@ class AnchorConfig(AppConfig):
             MyCustomerIntegration,
             MySEP31ReceiverIntegration,
             MyRailsIntegration,
-            MySEP38AnchorIntegration,
+            MyQuoteIntegration,
             fee_integration,
             info_integration,
         )
@@ -25,5 +25,5 @@ class AnchorConfig(AppConfig):
             customer=MyCustomerIntegration(),
             sep31_receiver=MySEP31ReceiverIntegration(),
             rails=MyRailsIntegration(),
-            quote=MySEP38AnchorIntegration(),
+            quote=MyQuoteIntegration(),
         )
