@@ -220,10 +220,14 @@ def validate_post_request(token: SEP10Token, request: Request) -> Dict:
             )
         try:
             quote = Quote.objects.get(
-                id=request.data.get("quote_id"), type=Quote.TYPE.firm
+                id=str(request.data.get("quote_id")),
+                stellar_account=token.account,
+                account_memo=token.memo,
+                muxed_account=token.muxed_account,
+                type=Quote.TYPE.firm,
             )
         except ObjectDoesNotExist:
-            raise ValueError(_("quote not found for 'quote_id'"))
+            raise ValueError(_("quote not found"))
         if quote.expires_at < datetime.now(timezone.utc):
             raise ValueError(_("quote has expired"))
         if quote.sell_asset != asset_id_format(asset):
@@ -240,7 +244,7 @@ def validate_post_request(token: SEP10Token, request: Request) -> Dict:
             raise ValueError(_("quote amount does not patch 'amount' parameter"))
         try:
             destination_asset = OffChainAsset.objects.get(
-                asset_id_to_kwargs(request.data.get("destination_asset"))
+                **asset_id_to_kwargs(request.data.get("destination_asset"))
             )
         except (ValueError, TypeError, ObjectDoesNotExist):
             raise ValueError(_("invalid 'destination_asset'"))
@@ -256,7 +260,7 @@ def validate_post_request(token: SEP10Token, request: Request) -> Dict:
             )
         try:
             destination_asset = OffChainAsset.objects.get(
-                asset_id_to_kwargs(request.data.get("destination_asset"))
+                **asset_id_to_kwargs(request.data.get("destination_asset"))
             )
         except (ValueError, TypeError, ObjectDoesNotExist):
             raise ValueError(_("invalid 'destination_asset'"))

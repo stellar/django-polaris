@@ -1,13 +1,15 @@
 import uuid
 from unittest.mock import Mock, patch
+from datetime import datetime, timezone, timedelta
 
 import pytest
 from stellar_sdk import Keypair
 from rest_framework.request import Request
 
 from polaris.tests.helpers import mock_check_auth_success
-from polaris.models import Transaction
+from polaris.models import Transaction, OffChainAsset, ExchangePair, Quote
 from polaris.sep31.transactions import process_post_response
+from polaris.sep38.utils import asset_id_format
 
 
 transaction_endpoint = "/sep31/transactions"
@@ -41,7 +43,7 @@ def test_successful_send(client, usd_asset_factory):
             "amount": 100,
             "sender_id": "123",
             "receiver_id": "456",
-            "fields": {"transaction": {"bank_account": "fake account"},},
+            "fields": {"transaction": {"bank_account": "fake account"}},
         },
         content_type="application/json",
     )
@@ -58,6 +60,716 @@ def test_successful_send(client, usd_asset_factory):
     assert kwargs.get("asset").code == asset.code
     assert kwargs.get("asset").issuer == asset.issuer
     assert kwargs.get("lang") is None
+    success_send_integration.process_post_request.assert_called_once()
+    kwargs = success_send_integration.process_post_request.call_args[1]
+    success_send_integration.process_post_request.reset_mock()
+    transaction = kwargs.get("transaction")
+    assert isinstance(transaction, Transaction)
+    assert transaction.amount_in == 100
+    assert transaction.asset.code == asset.code
+    assert transaction.kind == Transaction.KIND.send
+    assert transaction.protocol == Transaction.PROTOCOL.sep31
+    assert transaction.receiving_anchor_account == asset.distribution_account
+
+
+@pytest.mark.django_db
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch(
+    "polaris.sep31.transactions.registered_sep31_receiver_integration",
+    success_send_integration,
+)
+def test_successful_send_indicative_quote(client, usd_asset_factory):
+    asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31, "sep38"])
+    offchain_asset = OffChainAsset.objects.create(scheme="test", identifier="test")
+    ExchangePair.objects.create(
+        sell_asset=asset_id_format(asset), buy_asset=offchain_asset.asset
+    )
+    response = client.post(
+        transaction_endpoint,
+        {
+            "asset_code": asset.code,
+            "asset_issuer": asset.issuer,
+            "destination_asset": offchain_asset.asset,
+            "amount": 100,
+            "sender_id": "123",
+            "receiver_id": "456",
+            "fields": {"transaction": {"bank_account": "fake account"}},
+        },
+        content_type="application/json",
+    )
+    body = response.json()
+    assert response.status_code == 201, response.content
+    assert all(
+        f in body
+        for f in ["id", "stellar_account_id", "stellar_memo_type", "stellar_memo"]
+    )
+    assert body["stellar_memo_type"] == Transaction.MEMO_TYPES.hash
+    assert body["stellar_account_id"] == asset.distribution_account
+    kwargs = success_send_integration.info.call_args_list[-1][1]
+    assert isinstance(kwargs.get("request"), Request)
+    assert kwargs.get("asset").code == asset.code
+    assert kwargs.get("asset").issuer == asset.issuer
+    assert kwargs.get("lang") is None
+    success_send_integration.process_post_request.assert_called_once()
+    kwargs = success_send_integration.process_post_request.call_args[1]
+    success_send_integration.process_post_request.reset_mock()
+    transaction = kwargs.get("transaction")
+    assert isinstance(transaction, Transaction)
+    assert transaction.amount_in == 100
+    assert transaction.asset.code == asset.code
+    assert transaction.kind == Transaction.KIND.send
+    assert transaction.protocol == Transaction.PROTOCOL.sep31
+    assert transaction.receiving_anchor_account == asset.distribution_account
+    assert isinstance(transaction.quote, Quote)
+    assert transaction.quote.id
+    assert transaction.quote.type == Quote.TYPE.indicative
+    assert transaction.quote.sell_asset == asset_id_format(asset)
+    assert transaction.quote.buy_asset == offchain_asset.asset
+    assert transaction.quote.sell_amount == transaction.amount_in
+
+
+@pytest.mark.django_db
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch(
+    "polaris.sep31.transactions.registered_sep31_receiver_integration",
+    success_send_integration,
+)
+def test_successful_send_firm_quote(client, usd_asset_factory):
+    asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31, "sep38"])
+    offchain_asset = OffChainAsset.objects.create(scheme="test", identifier="test")
+    ExchangePair.objects.create(
+        sell_asset=asset_id_format(asset), buy_asset=offchain_asset.asset
+    )
+    quote = Quote.objects.create(
+        id=str(uuid.uuid4()),
+        stellar_account="test source address",
+        type=Quote.TYPE.firm,
+        sell_asset=asset_id_format(asset),
+        buy_asset=offchain_asset.asset,
+        sell_amount=100,
+        buy_amount=100,
+        price=1,
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+    )
+    response = client.post(
+        transaction_endpoint,
+        {
+            "asset_code": asset.code,
+            "asset_issuer": asset.issuer,
+            "destination_asset": offchain_asset.asset,
+            "quote_id": quote.id,
+            "amount": 100,
+            "sender_id": "123",
+            "receiver_id": "456",
+            "fields": {"transaction": {"bank_account": "fake account"}},
+        },
+        content_type="application/json",
+    )
+    body = response.json()
+    assert response.status_code == 201, response.content
+    assert all(
+        f in body
+        for f in ["id", "stellar_account_id", "stellar_memo_type", "stellar_memo"]
+    )
+    assert body["stellar_memo_type"] == Transaction.MEMO_TYPES.hash
+    assert body["stellar_account_id"] == asset.distribution_account
+    kwargs = success_send_integration.info.call_args_list[-1][1]
+    assert isinstance(kwargs.get("request"), Request)
+    assert kwargs.get("asset").code == asset.code
+    assert kwargs.get("asset").issuer == asset.issuer
+    assert kwargs.get("lang") is None
+    success_send_integration.process_post_request.assert_called_once()
+    kwargs = success_send_integration.process_post_request.call_args[1]
+    success_send_integration.process_post_request.reset_mock()
+    transaction = kwargs.get("transaction")
+    assert isinstance(transaction, Transaction)
+    assert transaction.amount_in == 100
+    assert transaction.asset.code == asset.code
+    assert transaction.kind == Transaction.KIND.send
+    assert transaction.protocol == Transaction.PROTOCOL.sep31
+    assert transaction.receiving_anchor_account == asset.distribution_account
+    assert isinstance(transaction.quote, Quote)
+    assert str(transaction.quote.id) == str(quote.id)
+
+
+@pytest.mark.django_db
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch("polaris.sep31.transactions.registered_sep31_receiver_integration")
+def test_send_indicative_quote_not_enabled(mock_sep31_ri, client, usd_asset_factory):
+    asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31])
+    offchain_asset = OffChainAsset.objects.create(scheme="test", identifier="test")
+    ExchangePair.objects.create(
+        sell_asset=asset_id_format(asset), buy_asset=offchain_asset.asset
+    )
+    response = client.post(
+        transaction_endpoint,
+        {
+            "asset_code": asset.code,
+            "asset_issuer": asset.issuer,
+            "destination_asset": offchain_asset.asset,
+            "amount": 100,
+            "sender_id": "123",
+            "receiver_id": "456",
+            "fields": {"transaction": {"bank_account": "fake account"}},
+        },
+        content_type="application/json",
+    )
+    body = response.json()
+    assert response.status_code == 400, response.content
+    assert body == {"error": "quotes are not supported"}
+    mock_sep31_ri.process_post_request.assert_not_called()
+
+
+@pytest.mark.django_db
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch("polaris.sep31.transactions.registered_sep31_receiver_integration")
+def test_send_indicative_quote_no_exchange_pair(
+    mock_sep31_ri, client, usd_asset_factory
+):
+    asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31, "sep38"])
+    offchain_asset = OffChainAsset.objects.create(scheme="test", identifier="test")
+    response = client.post(
+        transaction_endpoint,
+        {
+            "asset_code": asset.code,
+            "asset_issuer": asset.issuer,
+            "destination_asset": offchain_asset.asset,
+            "amount": 100,
+            "sender_id": "123",
+            "receiver_id": "456",
+            "fields": {"transaction": {"bank_account": "fake account"}},
+        },
+        content_type="application/json",
+    )
+    body = response.json()
+    assert response.status_code == 400, response.content
+    assert body == {
+        "error": "unsupported 'destination_asset' for 'asset_code' and 'asset_issuer'"
+    }
+    mock_sep31_ri.process_post_request.assert_not_called()
+
+
+@pytest.mark.django_db
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch("polaris.sep31.transactions.registered_sep31_receiver_integration")
+def test_send_indicative_quote_no_offchain_asset(
+    mock_sep31_ri, client, usd_asset_factory
+):
+    asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31, "sep38"])
+    ExchangePair.objects.create(
+        sell_asset=asset_id_format(asset), buy_asset="test:test"
+    )
+    response = client.post(
+        transaction_endpoint,
+        {
+            "asset_code": asset.code,
+            "asset_issuer": asset.issuer,
+            "destination_asset": "test:test",
+            "amount": 100,
+            "sender_id": "123",
+            "receiver_id": "456",
+            "fields": {"transaction": {"bank_account": "fake account"}},
+        },
+        content_type="application/json",
+    )
+    body = response.json()
+    assert response.status_code == 400, response.content
+    assert body == {"error": "invalid 'destination_asset'"}
+    mock_sep31_ri.process_post_request.assert_not_called()
+
+
+@pytest.mark.django_db
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch("polaris.sep31.transactions.registered_sep31_receiver_integration")
+def test_send_firm_quote_not_supported(mock_sep31_ri, client, usd_asset_factory):
+    asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31])
+    offchain_asset = OffChainAsset.objects.create(scheme="test", identifier="test")
+    ExchangePair.objects.create(
+        sell_asset=asset_id_format(asset), buy_asset=offchain_asset.asset
+    )
+    quote = Quote.objects.create(
+        id=str(uuid.uuid4()),
+        stellar_account="test source address",
+        type=Quote.TYPE.firm,
+        sell_asset=asset_id_format(asset),
+        buy_asset=offchain_asset.asset,
+        sell_amount=100,
+        buy_amount=100,
+        price=1,
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+    )
+    response = client.post(
+        transaction_endpoint,
+        {
+            "asset_code": asset.code,
+            "asset_issuer": asset.issuer,
+            "destination_asset": offchain_asset.asset,
+            "quote_id": quote.id,
+            "amount": 100,
+            "sender_id": "123",
+            "receiver_id": "456",
+            "fields": {"transaction": {"bank_account": "fake account"}},
+        },
+        content_type="application/json",
+    )
+    body = response.json()
+    assert response.status_code == 400, response.content
+    assert body == {"error": "quotes are not supported"}
+    mock_sep31_ri.process_post_request.assert_not_called()
+
+
+@pytest.mark.django_db
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch("polaris.sep31.transactions.registered_sep31_receiver_integration")
+def test_send_firm_quote_no_destination_asset(mock_sep31_ri, client, usd_asset_factory):
+    asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31, "sep38"])
+    offchain_asset = OffChainAsset.objects.create(scheme="test", identifier="test")
+    ExchangePair.objects.create(
+        sell_asset=asset_id_format(asset), buy_asset=offchain_asset.asset
+    )
+    quote = Quote.objects.create(
+        id=str(uuid.uuid4()),
+        stellar_account="test source address",
+        type=Quote.TYPE.firm,
+        sell_asset=asset_id_format(asset),
+        buy_asset=offchain_asset.asset,
+        sell_amount=100,
+        buy_amount=100,
+        price=1,
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+    )
+    response = client.post(
+        transaction_endpoint,
+        {
+            "asset_code": asset.code,
+            "asset_issuer": asset.issuer,
+            "quote_id": quote.id,
+            "amount": 100,
+            "sender_id": "123",
+            "receiver_id": "456",
+            "fields": {"transaction": {"bank_account": "fake account"}},
+        },
+        content_type="application/json",
+    )
+    body = response.json()
+    assert response.status_code == 400, response.content
+    assert body == {
+        "error": "'destination_asset' must be provided if 'quote_id' is provided"
+    }
+    mock_sep31_ri.process_post_request.assert_not_called()
+
+
+@pytest.mark.django_db
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch("polaris.sep31.transactions.registered_sep31_receiver_integration")
+def test_send_firm_quote_unknown_destination_asset(
+    mock_sep31_ri, client, usd_asset_factory
+):
+    asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31, "sep38"])
+    offchain_asset = OffChainAsset.objects.create(scheme="test", identifier="test")
+    ExchangePair.objects.create(
+        sell_asset=asset_id_format(asset), buy_asset=offchain_asset.asset
+    )
+    quote = Quote.objects.create(
+        id=str(uuid.uuid4()),
+        stellar_account="test source address",
+        type=Quote.TYPE.firm,
+        sell_asset=asset_id_format(asset),
+        buy_asset=offchain_asset.asset,
+        sell_amount=100,
+        buy_amount=100,
+        price=1,
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+    )
+    response = client.post(
+        transaction_endpoint,
+        {
+            "asset_code": asset.code,
+            "asset_issuer": asset.issuer,
+            "quote_id": quote.id,
+            "destination_asset": "not:test",
+            "amount": 100,
+            "sender_id": "123",
+            "receiver_id": "456",
+            "fields": {"transaction": {"bank_account": "fake account"}},
+        },
+        content_type="application/json",
+    )
+    body = response.json()
+    assert response.status_code == 400, response.content
+    assert body == {
+        "error": "quote 'buy_asset' does not match 'destination_asset' parameter"
+    }
+    mock_sep31_ri.process_post_request.assert_not_called()
+
+
+@pytest.mark.django_db
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch("polaris.sep31.transactions.registered_sep31_receiver_integration")
+def test_send_firm_quote_filters_for_firm_quotes(
+    mock_sep31_ri, client, usd_asset_factory
+):
+    asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31, "sep38"])
+    offchain_asset = OffChainAsset.objects.create(scheme="test", identifier="test")
+    ExchangePair.objects.create(
+        sell_asset=asset_id_format(asset), buy_asset=offchain_asset.asset
+    )
+    quote = Quote.objects.create(
+        id=str(uuid.uuid4()),
+        stellar_account="test source address",
+        type=Quote.TYPE.indicative,
+        sell_asset=asset_id_format(asset),
+        buy_asset=offchain_asset.asset,
+        sell_amount=100,
+        buy_amount=100,
+        price=1,
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+    )
+    response = client.post(
+        transaction_endpoint,
+        {
+            "asset_code": asset.code,
+            "asset_issuer": asset.issuer,
+            "quote_id": quote.id,
+            "destination_asset": offchain_asset.asset,
+            "amount": 100,
+            "sender_id": "123",
+            "receiver_id": "456",
+            "fields": {"transaction": {"bank_account": "fake account"}},
+        },
+        content_type="application/json",
+    )
+    body = response.json()
+    assert response.status_code == 400, response.content
+    assert body == {"error": "quote not found"}
+    mock_sep31_ri.process_post_request.assert_not_called()
+
+
+@pytest.mark.django_db
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch("polaris.sep31.transactions.registered_sep31_receiver_integration")
+def test_send_firm_quote_needs_matching_id(mock_sep31_ri, client, usd_asset_factory):
+    asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31, "sep38"])
+    offchain_asset = OffChainAsset.objects.create(scheme="test", identifier="test")
+    ExchangePair.objects.create(
+        sell_asset=asset_id_format(asset), buy_asset=offchain_asset.asset
+    )
+    Quote.objects.create(
+        id=str(uuid.uuid4()),
+        stellar_account="test source address",
+        type=Quote.TYPE.firm,
+        sell_asset=asset_id_format(asset),
+        buy_asset=offchain_asset.asset,
+        sell_amount=100,
+        buy_amount=100,
+        price=1,
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+    )
+    response = client.post(
+        transaction_endpoint,
+        {
+            "asset_code": asset.code,
+            "asset_issuer": asset.issuer,
+            "quote_id": str(uuid.uuid4()),
+            "destination_asset": offchain_asset.asset,
+            "amount": 100,
+            "sender_id": "123",
+            "receiver_id": "456",
+            "fields": {"transaction": {"bank_account": "fake account"}},
+        },
+        content_type="application/json",
+    )
+    body = response.json()
+    assert response.status_code == 400, response.content
+    assert body == {"error": "quote not found"}
+    mock_sep31_ri.process_post_request.assert_not_called()
+
+
+@pytest.mark.django_db
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch("polaris.sep31.transactions.registered_sep31_receiver_integration")
+def test_send_firm_quote_needs_matching_buy_asset(
+    mock_sep31_ri, client, usd_asset_factory
+):
+    asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31, "sep38"])
+    offchain_asset = OffChainAsset.objects.create(scheme="test", identifier="test")
+    ExchangePair.objects.create(
+        sell_asset=asset_id_format(asset), buy_asset=offchain_asset.asset
+    )
+    quote = Quote.objects.create(
+        id=str(uuid.uuid4()),
+        stellar_account="test source address",
+        type=Quote.TYPE.firm,
+        sell_asset=asset_id_format(asset),
+        buy_asset="not:test",
+        sell_amount=100,
+        buy_amount=100,
+        price=1,
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+    )
+    response = client.post(
+        transaction_endpoint,
+        {
+            "asset_code": asset.code,
+            "asset_issuer": asset.issuer,
+            "quote_id": str(quote.id),
+            "destination_asset": offchain_asset.asset,
+            "amount": 100,
+            "sender_id": "123",
+            "receiver_id": "456",
+            "fields": {"transaction": {"bank_account": "fake account"}},
+        },
+        content_type="application/json",
+    )
+    body = response.json()
+    assert response.status_code == 400, response.content
+    assert body == {
+        "error": "quote 'buy_asset' does not match 'destination_asset' parameter"
+    }
+    mock_sep31_ri.process_post_request.assert_not_called()
+
+
+@pytest.mark.django_db
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch("polaris.sep31.transactions.registered_sep31_receiver_integration")
+def test_send_firm_quote_needs_matching_auth(mock_sep31_ri, client, usd_asset_factory):
+    asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31, "sep38"])
+    offchain_asset = OffChainAsset.objects.create(scheme="test", identifier="test")
+    ExchangePair.objects.create(
+        sell_asset=asset_id_format(asset), buy_asset=offchain_asset.asset
+    )
+    quote = Quote.objects.create(
+        id=str(uuid.uuid4()),
+        stellar_account="not source address",
+        type=Quote.TYPE.firm,
+        sell_asset=asset_id_format(asset),
+        buy_asset=offchain_asset.asset,
+        sell_amount=100,
+        buy_amount=100,
+        price=1,
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+    )
+    response = client.post(
+        transaction_endpoint,
+        {
+            "asset_code": asset.code,
+            "asset_issuer": asset.issuer,
+            "quote_id": str(quote.id),
+            "destination_asset": offchain_asset.asset,
+            "amount": 100,
+            "sender_id": "123",
+            "receiver_id": "456",
+            "fields": {"transaction": {"bank_account": "fake account"}},
+        },
+        content_type="application/json",
+    )
+    body = response.json()
+    assert response.status_code == 400, response.content
+    assert body == {"error": "quote not found"}
+    mock_sep31_ri.process_post_request.assert_not_called()
+
+
+@pytest.mark.django_db
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch("polaris.sep31.transactions.registered_sep31_receiver_integration")
+def test_send_firm_quote_expired(mock_sep31_ri, client, usd_asset_factory):
+    asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31, "sep38"])
+    offchain_asset = OffChainAsset.objects.create(scheme="test", identifier="test")
+    ExchangePair.objects.create(
+        sell_asset=asset_id_format(asset), buy_asset=offchain_asset.asset
+    )
+    quote = Quote.objects.create(
+        id=str(uuid.uuid4()),
+        stellar_account="test source address",
+        type=Quote.TYPE.firm,
+        sell_asset=asset_id_format(asset),
+        buy_asset=offchain_asset.asset,
+        sell_amount=100,
+        buy_amount=100,
+        price=1,
+        expires_at=datetime.now(timezone.utc) - timedelta(hours=1),
+    )
+    response = client.post(
+        transaction_endpoint,
+        {
+            "asset_code": asset.code,
+            "asset_issuer": asset.issuer,
+            "quote_id": str(quote.id),
+            "destination_asset": offchain_asset.asset,
+            "amount": 100,
+            "sender_id": "123",
+            "receiver_id": "456",
+            "fields": {"transaction": {"bank_account": "fake account"}},
+        },
+        content_type="application/json",
+    )
+    body = response.json()
+    assert response.status_code == 400, response.content
+    assert body == {"error": "quote has expired"}
+    mock_sep31_ri.process_post_request.assert_not_called()
+
+
+@pytest.mark.django_db
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch("polaris.sep31.transactions.registered_sep31_receiver_integration")
+def test_send_firm_quote_sell_asset_no_match(mock_sep31_ri, client, usd_asset_factory):
+    asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31, "sep38"])
+    offchain_asset = OffChainAsset.objects.create(scheme="test", identifier="test")
+    ExchangePair.objects.create(
+        sell_asset=asset_id_format(asset), buy_asset=offchain_asset.asset
+    )
+    quote = Quote.objects.create(
+        id=str(uuid.uuid4()),
+        stellar_account="test source address",
+        type=Quote.TYPE.firm,
+        sell_asset="stellar:not:match",
+        buy_asset=offchain_asset.asset,
+        sell_amount=100,
+        buy_amount=100,
+        price=1,
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+    )
+    response = client.post(
+        transaction_endpoint,
+        {
+            "asset_code": asset.code,
+            "asset_issuer": asset.issuer,
+            "quote_id": str(quote.id),
+            "destination_asset": offchain_asset.asset,
+            "amount": 100,
+            "sender_id": "123",
+            "receiver_id": "456",
+            "fields": {"transaction": {"bank_account": "fake account"}},
+        },
+        content_type="application/json",
+    )
+    body = response.json()
+    assert response.status_code == 400, response.content
+    assert body == {
+        "error": "quote 'sell_asset' does not match 'asset_code' and 'asset_issuer' parameters"
+    }
+    mock_sep31_ri.process_post_request.assert_not_called()
+
+
+@pytest.mark.django_db
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch("polaris.sep31.transactions.registered_sep31_receiver_integration")
+def test_send_firm_quote_buy_asset_no_match(mock_sep31_ri, client, usd_asset_factory):
+    asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31, "sep38"])
+    offchain_asset = OffChainAsset.objects.create(scheme="test", identifier="test")
+    ExchangePair.objects.create(
+        sell_asset=asset_id_format(asset), buy_asset=offchain_asset.asset
+    )
+    quote = Quote.objects.create(
+        id=str(uuid.uuid4()),
+        stellar_account="test source address",
+        type=Quote.TYPE.firm,
+        sell_asset=asset_id_format(asset),
+        buy_asset="not:test",
+        sell_amount=100,
+        buy_amount=100,
+        price=1,
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+    )
+    response = client.post(
+        transaction_endpoint,
+        {
+            "asset_code": asset.code,
+            "asset_issuer": asset.issuer,
+            "quote_id": str(quote.id),
+            "destination_asset": offchain_asset.asset,
+            "amount": 100,
+            "sender_id": "123",
+            "receiver_id": "456",
+            "fields": {"transaction": {"bank_account": "fake account"}},
+        },
+        content_type="application/json",
+    )
+    body = response.json()
+    assert response.status_code == 400, response.content
+    assert body == {
+        "error": "quote 'buy_asset' does not match 'destination_asset' parameter"
+    }
+    mock_sep31_ri.process_post_request.assert_not_called()
+
+
+@pytest.mark.django_db
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch("polaris.sep31.transactions.registered_sep31_receiver_integration")
+def test_send_firm_quote_amount_no_match(mock_sep31_ri, client, usd_asset_factory):
+    asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31, "sep38"])
+    offchain_asset = OffChainAsset.objects.create(scheme="test", identifier="test")
+    ExchangePair.objects.create(
+        sell_asset=asset_id_format(asset), buy_asset=offchain_asset.asset
+    )
+    quote = Quote.objects.create(
+        id=str(uuid.uuid4()),
+        stellar_account="test source address",
+        type=Quote.TYPE.firm,
+        sell_asset=asset_id_format(asset),
+        buy_asset=offchain_asset.asset,
+        sell_amount=100,
+        buy_amount=100,
+        price=1,
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+    )
+    response = client.post(
+        transaction_endpoint,
+        {
+            "asset_code": asset.code,
+            "asset_issuer": asset.issuer,
+            "quote_id": str(quote.id),
+            "destination_asset": offchain_asset.asset,
+            "amount": 1000,
+            "sender_id": "123",
+            "receiver_id": "456",
+            "fields": {"transaction": {"bank_account": "fake account"}},
+        },
+        content_type="application/json",
+    )
+    body = response.json()
+    assert response.status_code == 400, response.content
+    assert body == {"error": "quote amount does not patch 'amount' parameter"}
+    mock_sep31_ri.process_post_request.assert_not_called()
+
+
+@pytest.mark.django_db
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch("polaris.sep31.transactions.registered_sep31_receiver_integration")
+def test_send_firm_quote_no_offchain_asset(mock_sep31_ri, client, usd_asset_factory):
+    asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31, "sep38"])
+    ExchangePair.objects.create(
+        sell_asset=asset_id_format(asset), buy_asset="test:test"
+    )
+    quote = Quote.objects.create(
+        id=str(uuid.uuid4()),
+        stellar_account="test source address",
+        type=Quote.TYPE.firm,
+        sell_asset=asset_id_format(asset),
+        buy_asset="test:test",
+        sell_amount=100,
+        buy_amount=100,
+        price=1,
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+    )
+    response = client.post(
+        transaction_endpoint,
+        {
+            "asset_code": asset.code,
+            "asset_issuer": asset.issuer,
+            "quote_id": str(quote.id),
+            "destination_asset": "test:test",
+            "amount": 100,
+            "sender_id": "123",
+            "receiver_id": "456",
+            "fields": {"transaction": {"bank_account": "fake account"}},
+        },
+        content_type="application/json",
+    )
+    body = response.json()
+    assert response.status_code == 400, response.content
+    assert body == {"error": "invalid 'destination_asset'"}
+    mock_sep31_ri.process_post_request.assert_not_called()
 
 
 @pytest.mark.django_db
@@ -186,7 +898,7 @@ def test_missing_amount(client, usd_asset_factory):
         {
             "asset_code": asset.code,
             "asset_issuer": asset.issuer,
-            "fields": {"transaction": {"bank_account": "fake account"},},
+            "fields": {"transaction": {"bank_account": "fake account"}},
         },
         content_type="application/json",
     )
@@ -209,7 +921,7 @@ def test_missing_asset_code(client, usd_asset_factory):
         {
             "asset_issuer": asset.issuer,
             "amount": 100,
-            "fields": {"transaction": {"bank_account": "fake account"},},
+            "fields": {"transaction": {"bank_account": "fake account"}},
         },
         content_type="application/json",
     )
@@ -233,7 +945,7 @@ def test_bad_asset_issuer(client, usd_asset_factory):
             "asset_code": asset.code,
             "asset_issuer": Keypair.random().public_key,
             "amount": 100,
-            "fields": {"transaction": {"bank_account": "fake account"},},
+            "fields": {"transaction": {"bank_account": "fake account"}},
         },
         content_type="application/json",
     )
@@ -257,7 +969,7 @@ def test_bad_asset_code(client, usd_asset_factory):
             "asset_code": "FAKE",
             "asset_issuer": asset.issuer,
             "amount": 100,
-            "fields": {"transaction": {"bank_account": "fake account"},},
+            "fields": {"transaction": {"bank_account": "fake account"}},
         },
         content_type="application/json",
     )
@@ -281,7 +993,7 @@ def test_large_amount(client, usd_asset_factory):
             "asset_code": asset.code,
             "asset_issuer": asset.issuer,
             "amount": 10000,
-            "fields": {"transaction": {"bank_account": "fake account"},},
+            "fields": {"transaction": {"bank_account": "fake account"}},
         },
         content_type="application/json",
     )
@@ -305,7 +1017,7 @@ def test_small_amount(client, usd_asset_factory):
             "asset_code": asset.code,
             "asset_issuer": asset.issuer,
             "amount": 0.001,
-            "fields": {"transaction": {"bank_account": "fake account"},},
+            "fields": {"transaction": {"bank_account": "fake account"}},
         },
         content_type="application/json",
     )
@@ -329,7 +1041,7 @@ def test_transaction_created(client, usd_asset_factory):
             "asset_code": asset.code,
             "asset_issuer": asset.issuer,
             "amount": 100,
-            "fields": {"transaction": {"bank_account": "fake account"},},
+            "fields": {"transaction": {"bank_account": "fake account"}},
         },
         content_type="application/json",
     )
@@ -400,7 +1112,7 @@ def test_bad_customer_info_needed():
     success_send_integration,
 )
 def test_bad_value_for_category_in_response():
-    with pytest.raises(ValueError) as e:
+    with pytest.raises(ValueError):
         process_post_response(
             {"error": "customer_info_needed", "fields": {"sender": True}},
             Mock(id=uuid.uuid4()),
@@ -413,7 +1125,7 @@ def test_bad_value_for_category_in_response():
     success_send_integration,
 )
 def test_bad_field_in_response():
-    with pytest.raises(ValueError) as e:
+    with pytest.raises(ValueError):
         process_post_response(
             {
                 "error": "customer_info_needed",
@@ -431,7 +1143,7 @@ def test_bad_field_in_response():
     success_send_integration,
 )
 def test_bad_field_value_in_response():
-    with pytest.raises(ValueError) as e:
+    with pytest.raises(ValueError):
         process_post_response(
             {
                 "error": "customer_info_needed",
@@ -482,7 +1194,7 @@ def test_bad_save(client, usd_asset_factory):
             "asset_code": asset.code,
             "asset_issuer": asset.issuer,
             "amount": 100,
-            "fields": {"transaction": {"bank_account": "fake account"},},
+            "fields": {"transaction": {"bank_account": "fake account"}},
         },
         content_type="application/json",
     )

@@ -5,7 +5,6 @@ from rest_framework import serializers
 
 from polaris.models import Transaction
 from polaris.settings import DATETIME_FORMAT
-from polaris.sep38.utils import asset_id_format
 
 
 class SEP31TransactionSerializer(serializers.ModelSerializer):
