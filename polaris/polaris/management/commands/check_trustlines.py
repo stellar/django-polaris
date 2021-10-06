@@ -113,7 +113,7 @@ class Command(BaseCommand):
                     transaction.save()
                     continue
             for balance in account["balances"]:
-                if balance.get("asset_type") == "native":
+                if balance.get("asset_type") in ["native", "liquidity_pool_shares"]:
                     continue
                 if (
                     balance["asset_code"] == transaction.asset.code
