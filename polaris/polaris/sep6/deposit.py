@@ -142,7 +142,7 @@ def validate_response(
         response["min_amount"] = integration_response["min_amount"]
     elif (
         transaction.asset.deposit_min_amount
-        > Asset._meta.get_field("deposit_min_amount").default
+        > getattr(Asset, "_meta").get_field("deposit_min_amount").default
     ):
         response["min_amount"] = round(
             transaction.asset.deposit_min_amount, transaction.asset.significant_decimals
@@ -159,7 +159,7 @@ def validate_response(
         response["max_amount"] = integration_response["max_amount"]
     elif (
         transaction.asset.deposit_max_amount
-        < Asset._meta.get_field("deposit_max_amount").default
+        < getattr(Asset, "_meta").get_field("deposit_max_amount").default
     ):
         response["max_amount"] = round(
             transaction.asset.deposit_max_amount, transaction.asset.significant_decimals

@@ -33,13 +33,16 @@ class RailsIntegration:
         """
         Send the amount of the off-chain asset specified by `transaction` minus fees
         to the user associated with `transaction`. This function is used for SEP-6 &
-        SEP-24 withdraws as well as SEP-31 payments.
+        SEP-24 withdraws as well as SEP-31 payments. ``transaction.amount_fee`` and
+        ``transaction.amount_out`` must be assigned in this function if they are not
+        already.
 
         When this function is called, ``transaction.amount_in`` is the amount sent
         to the anchor, `not the amount specified in a SEP-24 or SEP-31 API call`.
         This matters because the amount actually sent to the anchor may differ from
         the amount specified in an API call. That is why you should always validate
-        ``transaction.amount_in`` and calculate ``transaction.amount_fee`` here.
+        ``transaction.amount_in`` and recalculate ``transaction.amount_fee`` and
+        ``transaction.amount_out`` here if necessary.
 
         If the amount is invalid in some way, the anchor must choose how to handle it.
         If you choose to refund the payment in its entirety, change ``transaction.status``
@@ -91,17 +94,21 @@ class RailsIntegration:
         This function should poll the appropriate financial entity for the
         state of all `pending_deposits` and return the ones that have
         externally completed, meaning the off-chain funds are available in the
-        anchor's account.
+        anchor's account. For each returned transaction, ``Transaction.amount_fee``
+        and ``Transaction.amount_out`` must be assigned.
 
-        Make sure to save the transaction's ``from_address`` field with
-        the account the funds originated from.
-
-        Also ensure the amount deposited to the anchor's account matches each
+        Ensure the amount deposited to the anchor's account matches each
         transaction's ``amount_expected`` field. Client applications may send an amount
-        that differs from the amount originally specified prior.
+        that differs from the amount originally specified prior. If this is the case,
+        the transaction should be placed in the ``error`` status or
+        ``Transaction.amount_fee`` and ``Transaction.amount_out`` should be recalculated
+        before returning.
 
         If ``amount_expected`` differs from the amount deposited, assign the amount
         deposited to ``amount_in`` and update ``amount_fee`` to appropriately.
+
+        Also make sure to save the transaction's ``from_address`` field with
+        the account the funds originated from.
 
         Any changes to the a transaction object must be saved to the database
         before it is returned. The transaction object will be refreshed using

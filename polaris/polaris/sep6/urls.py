@@ -16,3 +16,10 @@ if settings.SEP6_USE_MORE_INFO_URL:
     urlpatterns.append(
         path("transaction/more_info", transaction.more_info, name="more_info_sep6"),
     )
+if "sep-38" in settings.ACTIVE_SEPS:
+    urlpatterns.extend(
+        [
+            path("deposit-exchange", deposit.deposit),
+            path("withdraw-exchange", withdraw.withdraw),
+        ]
+    )

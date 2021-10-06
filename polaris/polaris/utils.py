@@ -350,3 +350,7 @@ def validate_patch_request_fields(fields: Dict, transaction: Transaction):
                     gettext("missing %(field)s in %(category)s")
                     % {"field": field, "category": category}
                 )
+
+
+def get_quote_from_request():
+    pass

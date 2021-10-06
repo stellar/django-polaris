@@ -335,11 +335,13 @@ class DepositIntegration:
         add the amount charged as a fee to ``Transaction.amount_in`` and
         ``Transaction.amount_expected``. here. While not required per SEP-6, it is
         encouraged to also populate ``Transaction.amount_fee`` and ``Transaction.amount_out``
-        here as well.
+        here as well. Note that these columns must be assigned before returning the
+        transaction from ``RailsIntegration.poll_pending_deposits()`` though.
 
         Note that the amount sent over the Stellar Network could differ from
         the amount specified in this API call, so fees and the amount delievered may have to
-        be recalculated in ``RailsIntegration.execute_outgoing_transaction()``.
+        be recalculated in ``RailsIntegration.poll_pending_deposits()`` for deposits and
+        ``RailsIntegration.execute_outgoing_transaction()`` for withdrawals.
 
         Polaris responds to requests with the standard status code according the SEP. However,
         if you would like to return a custom error code in the range of 400-599 you may raise
