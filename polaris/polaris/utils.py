@@ -137,7 +137,7 @@ async def get_account_obj_async(kp, server):
 def is_pending_trust(transaction, json_resp):
     pending_trust = True
     for balance in json_resp["balances"]:
-        if balance.get("asset_type") == "native":
+        if balance.get("asset_type") in ["native", "liquidity_pool_shares"]:
             continue
         asset_code = balance["asset_code"]
         asset_issuer = balance["asset_issuer"]
