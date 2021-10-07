@@ -72,14 +72,10 @@ def deposit_logic(token: SEP10Token, request: Request, exchange: bool) -> Respon
         muxed_account=token.muxed_account,
         account_memo=token.memo,
         asset=args["destination_asset" if exchange else "asset"],
-        amount_in_asset=asset_id_format(args["source_asset"]) if exchange else None,
-        amount_out_asset=asset_id_format(args["destination_asset"])
-        if exchange
-        else None,
         amount_in=args.get("amount"),
         amount_expected=args.get("amount"),
         quote=args["quote"],
-        kind=Transaction.KIND.deposit,
+        kind=getattr(Transaction.KIND, "deposit-exchange" if exchange else "deposit"),
         status=Transaction.STATUS.pending_user_transfer_start,
         memo=args["memo"],
         memo_type=args["memo_type"] or Transaction.MEMO_TYPES.text,

@@ -389,7 +389,7 @@ def test_withdraw_missing_asset(client, acc1_usd_withdrawal_transaction_factory)
     response = client.get(WITHDRAW_PATH, {"type": "good type", "dest": "test"})
     content = json.loads(response.content)
     assert response.status_code == 400
-    assert content == {"error": "invalid 'asset_code'"}
+    assert content == {"error": "invalid 'asset_code' or 'source_asset'"}
 
 
 @pytest.mark.django_db
@@ -400,7 +400,7 @@ def test_withdraw_invalid_asset(client):
     )
     content = json.loads(response.content)
     assert response.status_code == 400
-    assert content == {"error": "invalid 'asset_code'"}
+    assert content == {"error": "invalid 'asset_code' or 'source_asset'"}
 
 
 @pytest.mark.django_db

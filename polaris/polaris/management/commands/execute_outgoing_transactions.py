@@ -146,6 +146,17 @@ class Command(BaseCommand):
                 Transaction.STATUS.completed,
             ]:
                 if transaction.amount_fee is None or transaction.amount_out is None:
+                    if transaction.quote:
+                        err_msg = (
+                            f"transaction {transaction.id} uses a quote but was returned "
+                            "from poll_pending_deposits() without amount_fee or amount_out "
+                            "assigned, skipping"
+                        )
+                        logger.error(err_msg)
+                        transaction.message = err_msg
+                        transaction.pending_execution_attempt = False
+                        transaction.save()
+                        continue
                     logger.warning(
                         f"transaction {transaction.id} was returned from execute_outgoing_transaction() "
                         "without Transaction.amount_fee or Transaction.amount_out assigned. Future Polaris "

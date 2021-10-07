@@ -75,14 +75,12 @@ def withdraw_logic(token: SEP10Token, request: Request, exchange: bool):
         muxed_account=token.muxed_account,
         account_memo=token.memo,
         asset=args["source_asset" if exchange else "asset"],
-        amount_in_asset=asset_id_format(args["source_asset"]) if exchange else None,
-        amount_out_asset=asset_id_format(args["destination_asset"])
-        if exchange
-        else None,
         amount_in=args["amount"],
         amount_expected=args["amount"],
         quote=args["quote"],
-        kind=Transaction.KIND.withdrawal,
+        kind=getattr(
+            Transaction.KIND, "withdrawal-exchange" if exchange else "withdrawal"
+        ),
         status=Transaction.STATUS.pending_user_transfer_start,
         receiving_anchor_account=args[
             "source_asset" if exchange else "asset"

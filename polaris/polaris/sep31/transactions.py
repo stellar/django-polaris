@@ -207,8 +207,8 @@ def validate_post_request(token: SEP10Token, request: Request) -> Dict:
         raise ValueError(_("'sender_id' and 'receiver_id' values must be strings"))
     quote, destination_asset = get_quote_and_offchain_destination_asset(
         token=token,
-        quote_id=request.GET.get("quote_id"),
-        destination_asset_str=request.GET.get("destination_asset"),
+        quote_id=request.data.get("quote_id"),
+        destination_asset_str=request.data.get("destination_asset"),
         asset=asset,
         amount=Decimal(amount),
     )
