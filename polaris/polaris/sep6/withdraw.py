@@ -19,6 +19,7 @@ from stellar_sdk.exceptions import (
 )
 
 from polaris import settings
+from polaris.sep38.utils import asset_id_format
 from polaris.utils import (
     getLogger,
     render_error_response,
@@ -26,6 +27,7 @@ from polaris.utils import (
     extract_sep9_fields,
     make_memo,
     memo_hex_to_base64,
+    get_quote_and_offchain_destination_asset,
 )
 from polaris.sep6.utils import validate_403_response
 from polaris.sep10.token import SEP10Token
@@ -47,7 +49,19 @@ logger = getLogger(__name__)
 @renderer_classes([JSONRenderer, BrowsableAPIRenderer])
 @validate_sep10_token()
 def withdraw(token: SEP10Token, request: Request) -> Response:
-    args = parse_request_args(request)
+    return withdraw_logic(token=token, request=request, exchange=False)
+
+
+@api_view(["GET"])
+@parser_classes([MultiPartParser, FormParser, JSONParser])
+@renderer_classes([JSONRenderer, BrowsableAPIRenderer])
+@validate_sep10_token()
+def withdraw_exchange(token: SEP10Token, request: Request) -> Response:
+    return withdraw_logic(token=token, request=request, exchange=False)
+
+
+def withdraw_logic(token: SEP10Token, request: Request, exchange: bool):
+    args = parse_request_args(token, request)
     if "error" in args:
         return args["error"]
 
@@ -60,12 +74,19 @@ def withdraw(token: SEP10Token, request: Request) -> Response:
         stellar_account=token.account,
         muxed_account=token.muxed_account,
         account_memo=token.memo,
-        asset=args["asset"],
-        amount_in=args.get("amount"),
-        amount_expected=args.get("amount"),
+        asset=args["source_asset" if exchange else "asset"],
+        amount_in_asset=asset_id_format(args["source_asset"]) if exchange else None,
+        amount_out_asset=asset_id_format(args["destination_asset"])
+        if exchange
+        else None,
+        amount_in=args["amount"],
+        amount_expected=args["amount"],
+        quote=args["quote"],
         kind=Transaction.KIND.withdrawal,
         status=Transaction.STATUS.pending_user_transfer_start,
-        receiving_anchor_account=args["asset"].distribution_account,
+        receiving_anchor_account=args[
+            "source_asset" if exchange else "asset"
+        ].distribution_account,
         memo=transaction_memo,
         memo_type=Transaction.MEMO_TYPES.hash,
         protocol=Transaction.PROTOCOL.sep6,
@@ -77,10 +98,6 @@ def withdraw(token: SEP10Token, request: Request) -> Response:
         from_address=args.get("account"),
     )
 
-    # All request arguments are validated in parse_request_args()
-    # except 'type', 'dest', and 'dest_extra'. Since Polaris doesn't know
-    # which argument was invalid, the anchor is responsible for raising
-    # an exception with a translated message.
     try:
         integration_response = rwi.process_sep6_request(
             token=token, request=request, params=args, transaction=transaction
@@ -111,7 +128,9 @@ def withdraw(token: SEP10Token, request: Request) -> Response:
     return Response(response, status=status_code)
 
 
-def parse_request_args(request: Request) -> Dict:
+def parse_request_args(
+    token: SEP10Token, request: Request, exchange: bool = False
+) -> Dict:
     account = request.GET.get("account")
     if account and account.startswith("M"):
         try:
@@ -125,10 +144,14 @@ def parse_request_args(request: Request) -> Dict:
             return {"error": render_error_response(_("invalid 'account'"))}
 
     asset = Asset.objects.filter(
-        code=request.GET.get("asset_code"), sep6_enabled=True, withdrawal_enabled=True
+        code=request.GET.get("source_asset" if exchange else "asset_code"),
+        sep6_enabled=True,
+        withdrawal_enabled=True,
     ).first()
     if not asset:
-        return {"error": render_error_response(_("invalid 'asset_code'"))}
+        return {
+            "error": render_error_response(_("invalid 'asset_code' or 'source_asset'"))
+        }
 
     lang = request.GET.get("lang")
     if lang:
@@ -179,9 +202,17 @@ def parse_request_args(request: Request) -> Dict:
                 )
             }
 
+    quote, destination_asset = get_quote_and_offchain_destination_asset(
+        token=token,
+        quote_id=request.GET.get("quote_id"),
+        destination_asset_str=request.GET.get("destination_asset"),
+        asset=asset,
+        amount=amount,
+    )
+
     args = {
         "account": request.GET.get("account"),
-        "asset": asset,
+        "source_asset" if exchange else "asset": asset,
         "memo_type": memo_type,
         "memo": request.GET.get("memo"),
         "lang": request.GET.get("lang"),
@@ -191,6 +222,8 @@ def parse_request_args(request: Request) -> Dict:
         "on_change_callback": on_change_callback,
         "amount": amount,
         "country_code": request.GET.get("country_code"),
+        "quote": quote,
+        "destination_asset": destination_asset,
         **extract_sep9_fields(request.GET),
     }
 
@@ -232,7 +265,7 @@ def validate_response(
             )
     elif (
         transaction.asset.withdrawal_min_amount
-        > Asset._meta.get_field("withdrawal_min_amount").default
+        > getattr(Asset, "_meta").get_field("withdrawal_min_amount").default
     ):
         response["min_amount"] = round(
             transaction.asset.withdrawal_min_amount,
@@ -250,7 +283,7 @@ def validate_response(
         response["max_amount"] = integration_response["max_amount"]
     elif (
         transaction.asset.withdrawal_max_amount
-        < Asset._meta.get_field("withdrawal_max_amount").default
+        < getattr(Asset, "_meta").get_field("withdrawal_max_amount").default
     ):
         response["max_amount"] = round(
             transaction.asset.withdrawal_max_amount,

@@ -1,9 +1,8 @@
-import uuid
 from typing import Dict, Optional
 from decimal import Decimal, InvalidOperation
 from collections import defaultdict
-from polaris.utils import getLogger
-from datetime import datetime, timezone
+
+from polaris.utils import getLogger, get_quote_and_offchain_destination_asset
 
 from django.utils.translation import gettext as _
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
@@ -13,15 +12,12 @@ from rest_framework.response import Response
 from rest_framework.renderers import JSONRenderer, BrowsableAPIRenderer
 from rest_framework.parsers import JSONParser
 
-from polaris.sep38.utils import asset_id_format
 from polaris.locale.utils import _is_supported_language, activate_lang_for_request
 from polaris.sep10.utils import validate_sep10_token
 from polaris.sep10.token import SEP10Token
-from polaris.models import Transaction, Asset, Quote, ExchangePair, OffChainAsset
+from polaris.models import Transaction, Asset, Quote
 from polaris.integrations import registered_sep31_receiver_integration
 from polaris.sep31.serializers import SEP31TransactionSerializer
-from polaris.sep38.utils import asset_id_to_kwargs
-from polaris import settings
 from polaris.utils import (
     render_error_response,
     create_transaction_id,
@@ -209,71 +205,13 @@ def validate_post_request(token: SEP10Token, request: Request) -> Dict:
         and type(request.data.get("receiver_id")) in [str, type(None)]
     ):
         raise ValueError(_("'sender_id' and 'receiver_id' values must be strings"))
-    quote = None
-    destination_asset = None
-    if request.data.get("quote_id"):
-        if "sep-38" not in settings.ACTIVE_SEPS or not asset.sep38_enabled:
-            raise ValueError(_("quotes are not supported"))
-        if not request.data.get("destination_asset"):
-            raise ValueError(
-                _("'destination_asset' must be provided if 'quote_id' is provided")
-            )
-        try:
-            quote = Quote.objects.get(
-                id=str(request.data.get("quote_id")),
-                stellar_account=token.account,
-                account_memo=token.memo,
-                muxed_account=token.muxed_account,
-                type=Quote.TYPE.firm,
-            )
-        except ObjectDoesNotExist:
-            raise ValueError(_("quote not found"))
-        if quote.expires_at < datetime.now(timezone.utc):
-            raise ValueError(_("quote has expired"))
-        if quote.sell_asset != asset_id_format(asset):
-            raise ValueError(
-                _(
-                    "quote 'sell_asset' does not match 'asset_code' and 'asset_issuer' parameters"
-                )
-            )
-        if quote.buy_asset != request.data.get("destination_asset"):
-            raise ValueError(
-                _("quote 'buy_asset' does not match 'destination_asset' parameter")
-            )
-        if quote.sell_amount != amount:
-            raise ValueError(_("quote amount does not patch 'amount' parameter"))
-        try:
-            destination_asset = OffChainAsset.objects.get(
-                **asset_id_to_kwargs(request.data.get("destination_asset"))
-            )
-        except (ValueError, TypeError, ObjectDoesNotExist):
-            raise ValueError(_("invalid 'destination_asset'"))
-    elif request.data.get("destination_asset"):
-        if "sep-38" not in settings.ACTIVE_SEPS or not asset.sep38_enabled:
-            raise ValueError(_("quotes are not supported"))
-        if not ExchangePair.objects.filter(
-            sell_asset=asset_id_format(asset),
-            buy_asset=request.data["destination_asset"],
-        ).exists():
-            raise ValueError(
-                _("unsupported 'destination_asset' for 'asset_code' and 'asset_issuer'")
-            )
-        try:
-            destination_asset = OffChainAsset.objects.get(
-                **asset_id_to_kwargs(request.data.get("destination_asset"))
-            )
-        except (ValueError, TypeError, ObjectDoesNotExist):
-            raise ValueError(_("invalid 'destination_asset'"))
-        quote = Quote(
-            id=str(uuid.uuid4()),
-            type=Quote.TYPE.indicative,
-            stellar_account=token.account,
-            account_memo=token.memo,
-            muxed_account=token.muxed_account,
-            sell_asset=asset_id_format(asset),
-            buy_asset=request.data.get("destination_asset"),
-            sell_amount=amount,
-        )
+    quote, destination_asset = get_quote_and_offchain_destination_asset(
+        token=token,
+        quote_id=request.GET.get("quote_id"),
+        destination_asset_str=request.GET.get("destination_asset"),
+        asset=asset,
+        amount=Decimal(amount),
+    )
     return {
         "asset": asset,
         "amount": amount,

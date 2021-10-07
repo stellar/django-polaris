@@ -322,21 +322,30 @@ class DepositIntegration:
     ) -> Dict:
         """
         .. _deposit: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#deposit
+        .. _deposit-exchange: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#deposit-exchange
         .. _Deposit no additional information needed: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#1-success-no-additional-information-needed
         .. _Customer information needed: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#2-customer-information-needed-non-interactive
         .. _Customer Information Status: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#4-customer-information-status
 
-        Process the request arguments passed to the deposit_ endpoint and return one of the
-        following responses outlined below as a dictionary. Save `transaction` to the DB
-        if you plan to return a success response. If `transaction` is saved to the DB but a
-        failure response is returned, Polaris will return a 500 error to the user.
+        This function is called during requests made to the SEP-6 deposit_ and
+        `deposit-exchange`_ endpoints. The `params` object will contain the parameters
+        included in the request. Note that Polaris will only call this function for
+        `deposit-exchange`_ requests if SEP-38 is added to Polaris' ``ACTIVE_SEPS`` setting
+        and the requested Stellar asset is enabled for SEP-38.
+
+        Process these parameters and return one of the following responses outlined below
+        as a dictionary. Save `transaction` to the DB if you plan to return a success
+        response. If `transaction` is saved to the DB but a failure response is returned,
+        Polaris will return a 500 error to the user.
 
         If you'd like the user to send ``Transaction.amount_in`` `plus the fee amount`,
         add the amount charged as a fee to ``Transaction.amount_in`` and
         ``Transaction.amount_expected``. here. While not required per SEP-6, it is
         encouraged to also populate ``Transaction.amount_fee`` and ``Transaction.amount_out``
-        here as well. Note that these columns must be assigned before returning the
-        transaction from ``RailsIntegration.poll_pending_deposits()`` though.
+        here as well. If this function is called for a `deposit-exchange`_ request,
+        ``Transaction.amount_fee_asset`` should also be assigned. If not assigned here, these
+        columns must be assigned before returning the transaction from
+        ``RailsIntegration.poll_pending_deposits()``.
 
         Note that the amount sent over the Stellar Network could differ from
         the amount specified in this API call, so fees and the amount delievered may have to

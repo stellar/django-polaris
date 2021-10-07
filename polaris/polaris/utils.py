@@ -1,12 +1,15 @@
 """This module defines helpers for various endpoints."""
-import decimal
 import json
 import codecs
 import uuid
+from datetime import datetime, timezone
+from decimal import Decimal
 from typing import Optional, Union, Tuple, Dict
 from logging import getLogger as get_logger, LoggerAdapter
 
 import aiohttp
+from django.utils.translation import gettext as _
+from django.core.exceptions import ObjectDoesNotExist
 from django.utils.translation import gettext
 from rest_framework import status
 from rest_framework.response import Response
@@ -18,7 +21,9 @@ from requests import Response as RequestsResponse, RequestException, post
 from aiohttp import ClientResponse
 
 from polaris import settings
-from polaris.models import Transaction
+from polaris.models import Transaction, Asset, Quote, OffChainAsset, ExchangePair
+from polaris.sep10.token import SEP10Token
+from polaris.sep38.utils import asset_id_format, asset_id_to_kwargs
 from polaris.shared.serializers import TransactionSerializer
 
 
@@ -352,5 +357,149 @@ def validate_patch_request_fields(fields: Dict, transaction: Transaction):
                 )
 
 
-def get_quote_from_request():
-    pass
+def get_quote_and_offchain_destination_asset(
+    token: SEP10Token,
+    quote_id: str,
+    destination_asset_str: str,
+    asset: Asset,
+    amount: Decimal,
+) -> Tuple[Optional[Quote], Optional[OffChainAsset]]:
+    quote = None
+    destination_asset = None
+    if quote_id:
+        if "sep-38" not in settings.ACTIVE_SEPS or not asset.sep38_enabled:
+            raise ValueError(_("quotes are not supported"))
+        if not destination_asset_str:
+            raise ValueError(
+                _("'destination_asset' must be provided if 'quote_id' is provided")
+            )
+        try:
+            quote = Quote.objects.get(
+                id=quote_id,
+                stellar_account=token.account,
+                account_memo=token.memo,
+                muxed_account=token.muxed_account,
+                type=Quote.TYPE.firm,
+            )
+        except ObjectDoesNotExist:
+            raise ValueError(_("quote not found"))
+        if quote.expires_at < datetime.now(timezone.utc):
+            raise ValueError(_("quote has expired"))
+        if quote.sell_asset != asset_id_format(asset):
+            raise ValueError(
+                _(
+                    "quote 'sell_asset' does not match 'asset_code' and 'asset_issuer' parameters"
+                )
+            )
+        if quote.buy_asset != destination_asset_str:
+            raise ValueError(
+                _("quote 'buy_asset' does not match 'destination_asset' parameter")
+            )
+        if quote.sell_amount != amount:
+            raise ValueError(_("quote amount does not patch 'amount' parameter"))
+        try:
+            destination_asset = OffChainAsset.objects.get(
+                **asset_id_to_kwargs(destination_asset_str)
+            )
+        except (ValueError, TypeError, ObjectDoesNotExist):
+            raise ValueError(_("invalid 'destination_asset'"))
+    elif destination_asset_str:
+        if "sep-38" not in settings.ACTIVE_SEPS or not asset.sep38_enabled:
+            raise ValueError(_("quotes are not supported"))
+        if not ExchangePair.objects.filter(
+            sell_asset=asset_id_format(asset), buy_asset=destination_asset_str
+        ).exists():
+            raise ValueError(
+                _("unsupported 'destination_asset' for 'asset_code' and 'asset_issuer'")
+            )
+        try:
+            destination_asset = OffChainAsset.objects.get(
+                **asset_id_to_kwargs(destination_asset_str)
+            )
+        except (ValueError, TypeError, ObjectDoesNotExist):
+            raise ValueError(_("invalid 'destination_asset'"))
+        quote = Quote(
+            id=str(uuid.uuid4()),
+            type=Quote.TYPE.indicative,
+            stellar_account=token.account,
+            account_memo=token.memo,
+            muxed_account=token.muxed_account,
+            sell_asset=asset_id_format(asset),
+            buy_asset=destination_asset_str,
+            sell_amount=amount,
+        )
+    return quote, destination_asset
+
+
+def get_quote_and_offchain_source_asset(
+    token: SEP10Token,
+    quote_id: str,
+    source_asset_str: str,
+    asset: Asset,
+    amount: Decimal,
+) -> Tuple[Optional[Quote], Optional[OffChainAsset]]:
+    quote = None
+    source_asset = None
+    if quote_id:
+        if "sep-38" not in settings.ACTIVE_SEPS or not asset.sep38_enabled:
+            raise ValueError(_("quotes are not supported"))
+        if not source_asset_str:
+            raise ValueError(
+                _("'source_asset' must be provided if 'quote_id' is provided")
+            )
+        try:
+            quote = Quote.objects.get(
+                id=quote_id,
+                stellar_account=token.account,
+                account_memo=token.memo,
+                muxed_account=token.muxed_account,
+                type=Quote.TYPE.firm,
+            )
+        except ObjectDoesNotExist:
+            raise ValueError(_("quote not found"))
+        if quote.expires_at < datetime.now(timezone.utc):
+            raise ValueError(_("quote has expired"))
+        if quote.buy_asset != asset_id_format(asset):
+            raise ValueError(
+                _(
+                    "quote 'buy_asset' does not match 'asset_code' and 'asset_issuer' parameters"
+                )
+            )
+        if quote.sell_asset != source_asset_str:
+            raise ValueError(
+                _("quote 'sell_asset' does not match 'source_asset' parameter")
+            )
+        if quote.sell_amount != amount:
+            raise ValueError(_("quote amount does not patch 'amount' parameter"))
+        try:
+            source_asset = OffChainAsset.objects.get(
+                **asset_id_to_kwargs(source_asset_str)
+            )
+        except (ValueError, TypeError, ObjectDoesNotExist):
+            raise ValueError(_("invalid 'source_asset'"))
+    elif source_asset_str:
+        if "sep-38" not in settings.ACTIVE_SEPS or not asset.sep38_enabled:
+            raise ValueError(_("quotes are not supported"))
+        if not ExchangePair.objects.filter(
+            sell_asset=source_asset_str, buy_asset=asset_id_format(asset)
+        ).exists():
+            raise ValueError(
+                _("unsupported 'source_asset' for 'asset_code' and 'asset_issuer'")
+            )
+        try:
+            source_asset = OffChainAsset.objects.get(
+                **asset_id_to_kwargs(source_asset_str)
+            )
+        except (ValueError, TypeError, ObjectDoesNotExist):
+            raise ValueError(_("invalid 'destination_asset'"))
+        quote = Quote(
+            id=str(uuid.uuid4()),
+            type=Quote.TYPE.indicative,
+            stellar_account=token.account,
+            account_memo=token.memo,
+            muxed_account=token.muxed_account,
+            buy_asset=asset_id_format(asset),
+            sell_asset=source_asset_str,
+            sell_amount=amount,
+        )
+    return quote, source_asset

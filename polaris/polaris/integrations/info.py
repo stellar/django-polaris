@@ -6,7 +6,12 @@ from polaris.models import Asset
 
 
 def default_info_func(
-    request: Request, asset: Asset, lang: Optional[str], *args: List, **kwargs: Dict
+    request: Request,
+    asset: Asset,
+    lang: Optional[str],
+    exchange: bool,
+    *args: List,
+    **kwargs: Dict
 ) -> Dict:
     """
     .. _/info response: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#response-2
@@ -60,6 +65,9 @@ def default_info_func(
         key-value pairs
     :param lang: the language code the client requested for the `description`
         values in the response
+    :param exchange: whether or not the info returned will be used for a
+        `deposit-exchange` or `withdraw-exchange` response object. Only
+        relevant if SEP-38 is enabled.
     """
     raise NotImplementedError()
 

@@ -19,7 +19,7 @@ if settings.SEP6_USE_MORE_INFO_URL:
 if "sep-38" in settings.ACTIVE_SEPS:
     urlpatterns.extend(
         [
-            path("deposit-exchange", deposit.deposit),
-            path("withdraw-exchange", withdraw.withdraw),
+            path("deposit-exchange", deposit.deposit_exchange),
+            path("withdraw-exchange", withdraw.withdraw_exchange),
         ]
     )

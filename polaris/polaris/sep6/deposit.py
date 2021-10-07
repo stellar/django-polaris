@@ -28,6 +28,7 @@ from polaris.utils import (
     create_transaction_id,
     extract_sep9_fields,
     make_memo,
+    get_quote_and_offchain_source_asset,
 )
 from polaris.shared.endpoints import SEP6_MORE_INFO_PATH
 from polaris.sep6.utils import validate_403_response
@@ -38,6 +39,7 @@ from polaris.integrations import (
     registered_fee_func,
     calculate_fee,
 )
+from polaris.sep38.utils import asset_id_format
 
 logger = getLogger(__name__)
 
@@ -47,7 +49,19 @@ logger = getLogger(__name__)
 @parser_classes([MultiPartParser, FormParser, JSONParser])
 @validate_sep10_token()
 def deposit(token: SEP10Token, request: Request) -> Response:
-    args = parse_request_args(request)
+    return deposit_logic(token=token, request=request, exchange=False)
+
+
+@api_view(["GET"])
+@renderer_classes([JSONRenderer, BrowsableAPIRenderer])
+@parser_classes([MultiPartParser, FormParser, JSONParser])
+@validate_sep10_token()
+def deposit_exchange(token: SEP10Token, request: Request) -> Response:
+    return deposit_logic(token=token, request=request, exchange=True)
+
+
+def deposit_logic(token: SEP10Token, request: Request, exchange: bool) -> Response:
+    args = parse_request_args(token, request, exchange)
     if "error" in args:
         return args["error"]
 
@@ -57,9 +71,14 @@ def deposit(token: SEP10Token, request: Request) -> Response:
         stellar_account=token.account,
         muxed_account=token.muxed_account,
         account_memo=token.memo,
-        asset=args["asset"],
+        asset=args["destination_asset" if exchange else "asset"],
+        amount_in_asset=asset_id_format(args["source_asset"]) if exchange else None,
+        amount_out_asset=asset_id_format(args["destination_asset"])
+        if exchange
+        else None,
         amount_in=args.get("amount"),
         amount_expected=args.get("amount"),
+        quote=args["quote"],
         kind=Transaction.KIND.deposit,
         status=Transaction.STATUS.pending_user_transfer_start,
         memo=args["memo"],
@@ -183,7 +202,9 @@ def validate_response(
     return response, 200
 
 
-def parse_request_args(request: Request) -> Dict:
+def parse_request_args(
+    token: SEP10Token, request: Request, exchange: bool = False
+) -> Dict:
     account = request.GET.get("account")
     if account.startswith("M"):
         try:
@@ -197,10 +218,16 @@ def parse_request_args(request: Request) -> Dict:
             return {"error": render_error_response(_("invalid 'account'"))}
 
     asset = Asset.objects.filter(
-        code=request.GET.get("asset_code"), sep6_enabled=True, deposit_enabled=True
+        code=request.GET.get("destination_asset" if exchange else "asset_code"),
+        sep6_enabled=True,
+        deposit_enabled=True,
     ).first()
     if not asset:
-        return {"error": render_error_response(_("invalid 'asset_code'"))}
+        return {
+            "error": render_error_response(
+                _("invalid 'asset_code' or 'destination_asset'")
+            )
+        }
 
     lang = request.GET.get("lang")
     if lang:
@@ -254,13 +281,21 @@ def parse_request_args(request: Request) -> Dict:
         if not (min_amount <= amount <= max_amount):
             return {
                 "error": render_error_response(
-                    _("'amount' must be within [%s, %s]") % (min_amount, min_amount)
+                    _("'amount' must be within [%s, %s]") % (min_amount, max_amount)
                 )
             }
 
+    quote, source_asset = get_quote_and_offchain_source_asset(
+        token=token,
+        quote_id=request.GET.get("quote_id"),
+        source_asset_str=request.GET.get("source_asset"),
+        asset=asset,
+        amount=amount,
+    )
+
     args = {
         "account": request.GET.get("account"),
-        "asset": asset,
+        "destination_asset" if exchange else "asset": asset,
         "memo_type": memo_type,
         "memo": request.GET.get("memo"),
         "lang": lang,
@@ -269,6 +304,8 @@ def parse_request_args(request: Request) -> Dict:
         "on_change_callback": on_change_callback,
         "country_code": request.GET.get("country_code"),
         "amount": amount,
+        "quote": quote,
+        "source_asset": source_asset,
         **extract_sep9_fields(request.GET),
     }
 

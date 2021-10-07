@@ -7,6 +7,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.renderers import JSONRenderer, BrowsableAPIRenderer
 
+from polaris import settings
 from polaris.models import Asset
 from polaris.utils import render_error_response
 from polaris.integrations import (
@@ -31,27 +32,42 @@ def info(request: Request) -> Response:
         "features": {"account_creation": True, "claimable_balances": True},
     }
     for asset in Asset.objects.filter(sep6_enabled=True):
-        try:
-            fields_and_types = registered_info_func(
-                request=request, asset=asset, lang=request.GET.get("lang")
-            )
-        except ValueError:
-            return render_error_response("unsupported 'lang'")
-        try:
-            validate_integration(fields_and_types)
-        except ValueError as e:
-            logger.error(f"info integration error: {str(e)}")
-            return render_error_response(
-                _("unable to process the request"), status_code=500
-            )
-        info_data["deposit"][asset.code] = get_asset_info(
-            asset, "deposit", fields_and_types.get("fields", {})
-        )
-        info_data["withdraw"][asset.code] = get_asset_info(
-            asset, "withdrawal", fields_and_types.get("types", {})
-        )
+        populate_asset_info(request, asset, info_data, False)
+
+    if "sep-38" not in settings.ACTIVE_SEPS:
+        return Response(info_data)
+
+    info_data["deposit-exchange"] = {}
+    info_data["withdraw-exchange"] = {}
+    for asset in Asset.objects.filter(sep6_enabled=True, sep38_enabled=True):
+        populate_asset_info(request, asset, info_data, True)
 
     return Response(info_data)
+
+
+def populate_asset_info(request, asset, info_data, exchange=False):
+    try:
+        fields_and_types = registered_info_func(
+            request=request,
+            asset=asset,
+            lang=request.GET.get("lang"),
+            exchange=exchange,
+        )
+    except ValueError:
+        return render_error_response("unsupported 'lang'")
+    try:
+        validate_integration(fields_and_types)
+    except ValueError as e:
+        logger.error(f"info integration error: {str(e)}")
+        return render_error_response(
+            _("unable to process the request"), status_code=500
+        )
+    info_data["deposit"][asset.code] = get_asset_info(
+        asset, "deposit", fields_and_types.get("fields", {})
+    )
+    info_data["withdraw"][asset.code] = get_asset_info(
+        asset, "withdrawal", fields_and_types.get("types", {})
+    )
 
 
 def validate_integration(fields_and_types: Dict):
