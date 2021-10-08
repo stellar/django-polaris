@@ -757,3 +757,186 @@ def test_deposit_client_domain_saved(mock_deposit, client):
     assert Transaction.objects.count() == 1
     transaction = Transaction.objects.first()
     assert transaction.client_domain == "test.com"
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.deposit.rdi.process_sep6_request")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_deposit_bad_on_change_callback(mock_process_sep6_request, client):
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        deposit_min_amount=10,
+        deposit_max_amount=1000,
+        sep6_enabled=True,
+        deposit_enabled=True,
+    )
+    mock_process_sep6_request.return_value = {
+        "how": "test",
+        "extra_info": {"test": "test"},
+    }
+    response = client.get(
+        DEPOSIT_PATH,
+        {
+            "asset_code": asset.code,
+            "account": Keypair.random().public_key,
+            "on_change_callback": "invalid domain",
+        },
+    )
+    mock_process_sep6_request.assert_not_called()
+    assert response.status_code == 400, response.content
+    assert response.json() == {"error": "invalid callback URL provided"}
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.deposit.rdi.process_sep6_request")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch("polaris.settings.CALLBACK_REQUEST_DOMAIN_DENYLIST", ["example.com"])
+def test_deposit_denied_on_change_callback(mock_process_sep6_request, client):
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        deposit_min_amount=10,
+        deposit_max_amount=1000,
+        sep6_enabled=True,
+        deposit_enabled=True,
+    )
+    mock_process_sep6_request.return_value = {
+        "how": "test",
+        "extra_info": {"test": "test"},
+    }
+    response = client.get(
+        DEPOSIT_PATH,
+        {
+            "asset_code": asset.code,
+            "account": Keypair.random().public_key,
+            "on_change_callback": "https://example.com",
+        },
+    )
+    mock_process_sep6_request.assert_called_once()
+    assert Transaction.objects.count() == 1
+    t = Transaction.objects.first()
+    content = response.json()
+    assert response.status_code == 200
+    assert content == {
+        "id": str(t.id),
+        "how": "test",
+        "min_amount": round(asset.deposit_min_amount, asset.significant_decimals),
+        "max_amount": round(asset.deposit_max_amount, asset.significant_decimals),
+        "extra_info": {"test": "test"},
+        "fee_fixed": round(asset.deposit_fee_fixed, asset.significant_decimals),
+        "fee_percent": asset.deposit_fee_percent,
+    }
+    assert t.on_change_callback is None
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.deposit.rdi.process_sep6_request")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch("polaris.settings.CALLBACK_REQUEST_DOMAIN_DENYLIST", ["notexample.com"])
+def test_deposit_good_on_change_callback(mock_process_sep6_request, client):
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        deposit_min_amount=10,
+        deposit_max_amount=1000,
+        sep6_enabled=True,
+        deposit_enabled=True,
+    )
+    mock_process_sep6_request.return_value = {
+        "how": "test",
+        "extra_info": {"test": "test"},
+    }
+    response = client.get(
+        DEPOSIT_PATH,
+        {
+            "asset_code": asset.code,
+            "account": Keypair.random().public_key,
+            "on_change_callback": "https://example.com",
+        },
+    )
+    mock_process_sep6_request.assert_called_once()
+    assert Transaction.objects.count() == 1
+    t = Transaction.objects.first()
+    content = response.json()
+    assert response.status_code == 200
+    assert content == {
+        "id": str(t.id),
+        "how": "test",
+        "min_amount": round(asset.deposit_min_amount, asset.significant_decimals),
+        "max_amount": round(asset.deposit_max_amount, asset.significant_decimals),
+        "extra_info": {"test": "test"},
+        "fee_fixed": round(asset.deposit_fee_fixed, asset.significant_decimals),
+        "fee_percent": asset.deposit_fee_percent,
+    }
+    assert t.on_change_callback == "https://example.com"
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.deposit.rdi.process_sep6_request")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch("django.conf.settings.LANGUAGES", [("en", "English"), ("es", "Spansh")])
+def test_deposit_good_lang(mock_process_sep6_request, client):
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        deposit_min_amount=10,
+        deposit_max_amount=1000,
+        sep6_enabled=True,
+        deposit_enabled=True,
+    )
+    mock_process_sep6_request.return_value = {
+        "how": "test",
+        "extra_info": {"test": "test"},
+    }
+    response = client.get(
+        DEPOSIT_PATH,
+        {
+            "asset_code": asset.code,
+            "account": Keypair.random().public_key,
+            "lang": "es",
+        },
+    )
+    mock_process_sep6_request.assert_called_once()
+    assert Transaction.objects.count() == 1
+    t = Transaction.objects.first()
+    content = response.json()
+    assert response.status_code == 200
+    assert content == {
+        "id": str(t.id),
+        "how": "test",
+        "min_amount": round(asset.deposit_min_amount, asset.significant_decimals),
+        "max_amount": round(asset.deposit_max_amount, asset.significant_decimals),
+        "extra_info": {"test": "test"},
+        "fee_fixed": round(asset.deposit_fee_fixed, asset.significant_decimals),
+        "fee_percent": asset.deposit_fee_percent,
+    }
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.deposit.rdi.process_sep6_request")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch("django.conf.settings.LANGUAGES", [("en", "English")])
+def test_deposit_bad_lang(mock_process_sep6_request, client):
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        deposit_min_amount=10,
+        deposit_max_amount=1000,
+        sep6_enabled=True,
+        deposit_enabled=True,
+    )
+    mock_process_sep6_request.return_value = {
+        "how": "test",
+        "extra_info": {"test": "test"},
+    }
+    response = client.get(
+        DEPOSIT_PATH,
+        {
+            "asset_code": asset.code,
+            "account": Keypair.random().public_key,
+            "lang": "es",
+        },
+    )
+    assert response.status_code == 400, response.content
+    assert response.json() == {"error": "unsupported language: es"}

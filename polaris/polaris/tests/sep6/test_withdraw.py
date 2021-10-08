@@ -630,3 +630,165 @@ def test_withdraw_client_domain_saved(mock_withdraw, client):
     assert Transaction.objects.count() == 1
     transaction = Transaction.objects.first()
     assert transaction.client_domain == "test.com"
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.withdraw.rwi.process_sep6_request")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch("django.conf.settings.LANGUAGES", [("en", "English"), ("es", "Spansh")])
+def test_withdraw_good_lang(mock_process_sep6_request, client):
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        withdrawal_min_amount=10,
+        withdrawal_max_amount=1000,
+        sep6_enabled=True,
+        withdrawal_enabled=True,
+    )
+    mock_process_sep6_request.return_value = {
+        "how": "test",
+        "extra_info": {"test": "test"},
+    }
+    response = client.get(
+        WITHDRAW_PATH,
+        {
+            "asset_code": asset.code,
+            "account": Keypair.random().public_key,
+            "lang": "es",
+            "type": "good type",
+            "dest": "test bank account number",
+        },
+    )
+    assert response.status_code == 200, response.content
+    assert Transaction.objects.count() == 1
+    mock_process_sep6_request.assert_called_once()
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.withdraw.rwi.process_sep6_request")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch("django.conf.settings.LANGUAGES", [("en", "English")])
+def test_deposit_bad_lang(mock_process_sep6_request, client):
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        withdrawal_min_amount=10,
+        withdrawal_max_amount=1000,
+        sep6_enabled=True,
+        withdrawal_enabled=True,
+    )
+    mock_process_sep6_request.return_value = {
+        "how": "test",
+        "extra_info": {"test": "test"},
+    }
+    response = client.get(
+        WITHDRAW_PATH,
+        {
+            "asset_code": asset.code,
+            "account": Keypair.random().public_key,
+            "lang": "es",
+            "type": "good type",
+            "dest": "test bank account number",
+        },
+    )
+    assert response.status_code == 400, response.content
+    assert response.json() == {"error": "unsupported language: es"}
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.withdraw.rwi.process_sep6_request")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_withdraw_bad_on_change_callback(mock_process_sep6_request, client):
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        withdrawal_min_amount=10,
+        withdrawal_max_amount=1000,
+        sep6_enabled=True,
+        withdrawal_enabled=True,
+    )
+    mock_process_sep6_request.return_value = {
+        "how": "test",
+        "extra_info": {"test": "test"},
+    }
+    response = client.get(
+        WITHDRAW_PATH,
+        {
+            "asset_code": asset.code,
+            "account": Keypair.random().public_key,
+            "on_change_callback": "invalid domain",
+            "type": "good type",
+            "dest": "test bank account number",
+        },
+    )
+    mock_process_sep6_request.assert_not_called()
+    assert response.status_code == 400, response.content
+    assert response.json() == {"error": "invalid callback URL provided"}
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.withdraw.rwi.process_sep6_request")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch("polaris.settings.CALLBACK_REQUEST_DOMAIN_DENYLIST", ["example.com"])
+def test_withdraw_denied_on_change_callback(mock_process_sep6_request, client):
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        withdrawal_min_amount=10,
+        withdrawal_max_amount=1000,
+        sep6_enabled=True,
+        withdrawal_enabled=True,
+    )
+    mock_process_sep6_request.return_value = {
+        "how": "test",
+        "extra_info": {"test": "test"},
+    }
+    response = client.get(
+        WITHDRAW_PATH,
+        {
+            "asset_code": asset.code,
+            "account": Keypair.random().public_key,
+            "on_change_callback": "https://example.com",
+            "type": "good type",
+            "dest": "test bank account number",
+        },
+    )
+    mock_process_sep6_request.assert_called_once()
+    assert Transaction.objects.count() == 1
+    t = Transaction.objects.first()
+    assert response.status_code == 200
+    assert t.on_change_callback is None
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.withdraw.rwi.process_sep6_request")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch("polaris.settings.CALLBACK_REQUEST_DOMAIN_DENYLIST", ["notexample.com"])
+def test_withdraw_good_on_change_callback(mock_process_sep6_request, client):
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        withdrawal_min_amount=10,
+        withdrawal_max_amount=1000,
+        sep6_enabled=True,
+        withdrawal_enabled=True,
+    )
+    mock_process_sep6_request.return_value = {
+        "how": "test",
+        "extra_info": {"test": "test"},
+    }
+    response = client.get(
+        WITHDRAW_PATH,
+        {
+            "asset_code": asset.code,
+            "account": Keypair.random().public_key,
+            "on_change_callback": "https://example.com",
+            "type": "good type",
+            "dest": "test bank account number",
+        },
+    )
+    mock_process_sep6_request.assert_called_once()
+    assert Transaction.objects.count() == 1
+    t = Transaction.objects.first()
+    assert response.status_code == 200
+    assert t.on_change_callback == "https://example.com"
