@@ -186,6 +186,9 @@ def parse_request_args(
             on_change_callback = None
 
     amount = request.GET.get("amount")
+    if exchange and not amount:
+        return {"error": render_error_response(_("'amount' is required"))}
+
     if amount:
         try:
             amount = round(Decimal(amount), asset.significant_decimals)
@@ -200,13 +203,16 @@ def parse_request_args(
                 )
             }
 
-    quote, destination_asset = get_quote_and_offchain_destination_asset(
-        token=token,
-        quote_id=request.GET.get("quote_id"),
-        destination_asset_str=request.GET.get("destination_asset"),
-        asset=asset,
-        amount=amount,
-    )
+    try:
+        quote, destination_asset = get_quote_and_offchain_destination_asset(
+            token=token,
+            quote_id=request.GET.get("quote_id"),
+            destination_asset_str=request.GET.get("destination_asset"),
+            asset=asset,
+            amount=amount,
+        )
+    except ValueError as e:
+        return {"error": render_error_response(str(e))}
 
     args = {
         "account": request.GET.get("account"),

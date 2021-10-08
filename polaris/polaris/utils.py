@@ -470,7 +470,7 @@ def get_quote_and_offchain_source_asset(
                 _("quote 'sell_asset' does not match 'source_asset' parameter")
             )
         if quote.sell_amount != amount:
-            raise ValueError(_("quote amount does not patch 'amount' parameter"))
+            raise ValueError(_("quote amount does not match 'amount' parameter"))
         try:
             source_asset = OffChainAsset.objects.get(
                 **asset_id_to_kwargs(source_asset_str)

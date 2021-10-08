@@ -39,7 +39,7 @@ from polaris.integrations import (
     registered_fee_func,
     calculate_fee,
 )
-from polaris.sep38.utils import asset_id_format
+from polaris.sep38.utils import asset_id_format, asset_id_to_kwargs
 
 logger = getLogger(__name__)
 
@@ -100,7 +100,7 @@ def deposit_logic(token: SEP10Token, request: Request, exchange: bool) -> Respon
 
     try:
         response, status_code = validate_response(
-            token, request, args, integration_response, transaction
+            token, request, args, integration_response, transaction, exchange
         )
     except (ValueError, KeyError) as e:
         logger.error(str(e))
@@ -110,6 +110,8 @@ def deposit_logic(token: SEP10Token, request: Request, exchange: bool) -> Respon
 
     if status_code == 200:
         logger.info(f"Created deposit transaction {transaction.id}")
+        if transaction.quote:
+            transaction.quote.save()
         transaction.save()
     elif Transaction.objects.filter(id=transaction.id).exists():
         logger.error("Do not save transaction objects for invalid SEP-6 requests")
@@ -126,6 +128,7 @@ def validate_response(
     args: Dict,
     integration_response: Dict,
     transaction: Transaction,
+    exchange: bool,
 ) -> Tuple[Dict, int]:
     """
     Validate /deposit response returned from integration function
@@ -136,7 +139,7 @@ def validate_response(
             403,
         )
 
-    asset = args["asset"]
+    asset = args["destination_asset" if exchange else "asset"]
     if not (
         "how" in integration_response and isinstance(integration_response["how"], str)
     ):
@@ -213,15 +216,25 @@ def parse_request_args(
         except Ed25519PublicKeyInvalidError:
             return {"error": render_error_response(_("invalid 'account'"))}
 
+    if exchange:
+        if not request.GET.get("destination_asset"):
+            return {
+                "error": render_error_response(_("'destination_asset' is required"))
+            }
+        parts = request.GET.get("destination_asset").split(":")
+        if len(parts) != 3 or parts[0] != "stellar":
+            return {"error": render_error_response(_("invalid 'destination_asset'"))}
+        asset_query_args = {"code": parts[1], "issuer": parts[2]}
+    else:
+        asset_query_args = {"code": request.GET.get("asset_code")}
+
     asset = Asset.objects.filter(
-        code=request.GET.get("destination_asset" if exchange else "asset_code"),
-        sep6_enabled=True,
-        deposit_enabled=True,
+        sep6_enabled=True, deposit_enabled=True, **asset_query_args
     ).first()
     if not asset:
         return {
             "error": render_error_response(
-                _("invalid 'asset_code' or 'destination_asset'")
+                _("asset not found using 'asset_code' or 'destination_asset'")
             )
         }
 
@@ -267,6 +280,9 @@ def parse_request_args(
             on_change_callback = None
 
     amount = request.GET.get("amount")
+    if exchange and not amount:
+        return {"error": render_error_response(_("'amount' is required"))}
+
     if amount:
         try:
             amount = round(Decimal(amount), asset.significant_decimals)
@@ -281,13 +297,16 @@ def parse_request_args(
                 )
             }
 
-    quote, source_asset = get_quote_and_offchain_source_asset(
-        token=token,
-        quote_id=request.GET.get("quote_id"),
-        source_asset_str=request.GET.get("source_asset"),
-        asset=asset,
-        amount=amount,
-    )
+    try:
+        quote, source_asset = get_quote_and_offchain_source_asset(
+            token=token,
+            quote_id=request.GET.get("quote_id"),
+            source_asset_str=request.GET.get("source_asset"),
+            asset=asset,
+            amount=amount,
+        )
+    except ValueError as e:
+        return {"error": render_error_response(str(e))}
 
     args = {
         "account": request.GET.get("account"),
