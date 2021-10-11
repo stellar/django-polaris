@@ -143,10 +143,10 @@ def get_asset_info(asset: Asset, op_type: str, fields_or_types: Dict) -> Dict:
     if registered_fee_func is calculate_fee:
         # the anchor has not replaced the default fee function
         # so `fee_fixed` and `fee_percent` are still relevant.
-        asset_info.update(
-            fee_fixed=getattr(asset, f"{op_type}_fee_fixed"),
-            fee_percent=getattr(asset, f"{op_type}_fee_percent"),
-        )
+        if getattr(asset, f"{op_type}_fee_fixed") is not None:
+            asset_info["fee_fixed"] = getattr(asset, f"{op_type}_fee_fixed")
+        if getattr(asset, f"{op_type}_fee_percent") is not None:
+            asset_info["fee_percent"] = getattr(asset, f"{op_type}_fee_percent")
 
     if op_type == "deposit":
         asset_info["fields"] = fields_or_types

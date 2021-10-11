@@ -19,7 +19,6 @@ from stellar_sdk.exceptions import (
 )
 
 from polaris import settings
-from polaris.sep38.utils import asset_id_format
 from polaris.utils import (
     getLogger,
     render_error_response,
@@ -57,11 +56,11 @@ def withdraw(token: SEP10Token, request: Request) -> Response:
 @renderer_classes([JSONRenderer, BrowsableAPIRenderer])
 @validate_sep10_token()
 def withdraw_exchange(token: SEP10Token, request: Request) -> Response:
-    return withdraw_logic(token=token, request=request, exchange=False)
+    return withdraw_logic(token=token, request=request, exchange=True)
 
 
 def withdraw_logic(token: SEP10Token, request: Request, exchange: bool):
-    args = parse_request_args(token, request)
+    args = parse_request_args(token, request, exchange)
     if "error" in args:
         return args["error"]
 
@@ -104,7 +103,12 @@ def withdraw_logic(token: SEP10Token, request: Request, exchange: bool):
         return render_error_response(str(e))
     try:
         response, status_code = validate_response(
-            token, request, args, integration_response, transaction
+            token=token,
+            request=request,
+            args=args,
+            integration_response=integration_response,
+            transaction=transaction,
+            exchange=exchange,
         )
     except ValueError as e:
         logger.error(str(e))
@@ -116,6 +120,8 @@ def withdraw_logic(token: SEP10Token, request: Request, exchange: bool):
         response["memo"] = transaction.memo
         response["memo_type"] = transaction.memo_type
         logger.info(f"Created withdraw transaction {transaction.id}")
+        if exchange:
+            transaction.quote.save()
         transaction.save()
     elif Transaction.objects.filter(id=transaction.id).exists():
         logger.error("Do not save transaction objects for invalid SEP-6 requests")
@@ -141,10 +147,20 @@ def parse_request_args(
         except Ed25519PublicKeyInvalidError:
             return {"error": render_error_response(_("invalid 'account'"))}
 
+    if exchange:
+        if not request.GET.get("source_asset"):
+            return {
+                "error": render_error_response(_("'destination_asset' is required"))
+            }
+        parts = request.GET.get("source_asset").split(":")
+        if len(parts) != 3 or parts[0] != "stellar":
+            return {"error": render_error_response(_("invalid 'source_asset'"))}
+        asset_query_args = {"code": parts[1], "issuer": parts[2]}
+    else:
+        asset_query_args = {"code": request.GET.get("asset_code")}
+
     asset = Asset.objects.filter(
-        code=request.GET.get("source_asset" if exchange else "asset_code"),
-        sep6_enabled=True,
-        withdrawal_enabled=True,
+        sep6_enabled=True, withdrawal_enabled=True, **asset_query_args
     ).first()
     if not asset:
         return {
@@ -245,6 +261,7 @@ def validate_response(
     args: Dict,
     integration_response: Dict,
     transaction: Transaction,
+    exchange: bool = False,
 ) -> Tuple[Dict, int]:
     if "type" in integration_response:
         return (
@@ -252,7 +269,7 @@ def validate_response(
             403,
         )
 
-    asset = args["asset"]
+    asset = args["source_asset" if exchange else "asset"]
     response = {
         "account_id": asset.distribution_account,
         "id": transaction.id,
@@ -294,13 +311,18 @@ def validate_response(
             transaction.asset.significant_decimals,
         )
 
-    if calculate_fee == registered_fee_func:
-        # Polaris user has not replaced default fee function, so fee_fixed
-        # and fee_percent are still used.
-        response.update(
-            fee_fixed=round(asset.withdrawal_fee_fixed, asset.significant_decimals),
-            fee_percent=asset.withdrawal_fee_percent,
-        )
+    if calculate_fee == registered_fee_func and not exchange:
+        # return the fixed and percentage fee rates if the registered fee function
+        # has not been implemented AND the request was not for the `/withdraw-exchange`
+        # endpoint.
+        if asset.withdrawal_fee_fixed is not None:
+            response["fee_fixed"] = round(
+                asset.withdrawal_fee_fixed, asset.significant_decimals
+            )
+        if asset.withdrawal_fee_percent is not None:
+            response["fee_percent"] = round(
+                asset.withdrawal_fee_percent, asset.significant_decimals
+            )
 
     if "extra_info" in integration_response:
         if not isinstance(integration_response["extra_info"], dict):

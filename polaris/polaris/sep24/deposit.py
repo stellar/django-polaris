@@ -126,22 +126,26 @@ def post_interactive_deposit(request: Request) -> Response:
         if issubclass(form.__class__, TransactionForm):
             transaction.amount_in = form.cleaned_data["amount"]
             transaction.amount_expected = form.cleaned_data["amount"]
-            transaction.amount_fee = registered_fee_func(
-                request=request,
-                fee_params={
-                    "amount": transaction.amount_in,
-                    "type": form.cleaned_data.get("type"),
-                    "operation": settings.OPERATION_DEPOSIT,
-                    "asset_code": asset.code,
-                },
-            )
-            if settings.ADDITIVE_FEES_ENABLED:
-                transaction.amount_in += transaction.amount_fee
-                transaction.amount_expected += transaction.amount_fee
-            transaction.amount_out = round(
-                transaction.amount_in - transaction.amount_fee,
-                asset.significant_decimals,
-            )
+            try:
+                transaction.amount_fee = registered_fee_func(
+                    request=request,
+                    fee_params={
+                        "amount": transaction.amount_in,
+                        "type": form.cleaned_data.get("type"),
+                        "operation": settings.OPERATION_DEPOSIT,
+                        "asset_code": asset.code,
+                    },
+                )
+            except ValueError:
+                pass
+            else:
+                if settings.ADDITIVE_FEES_ENABLED:
+                    transaction.amount_in += transaction.amount_fee
+                    transaction.amount_expected += transaction.amount_fee
+                transaction.amount_out = round(
+                    transaction.amount_in - transaction.amount_fee,
+                    asset.significant_decimals,
+                )
             transaction.save()
 
         try:

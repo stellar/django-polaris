@@ -319,10 +319,8 @@ class PendingDeposits:
                                 "asset_code": transaction.asset.code,
                             }
                         )
-                    except ValueError as e:
-                        cls.handle_error(transaction, str(e))
-                        maybe_make_callback(transaction)
-                        continue
+                    except ValueError:
+                        transaction.amount_fee = Decimal(0)
                 else:
                     transaction.amount_fee = Decimal(0)
                 transaction.save()

@@ -111,7 +111,7 @@ class Asset(TimeStampedModel):
     """``True`` if deposit for this asset is supported."""
 
     deposit_fee_fixed = models.DecimalField(
-        default=0, blank=True, max_digits=30, decimal_places=7
+        null=True, blank=True, max_digits=30, decimal_places=7
     )
     """
     Optional fixed (base) fee for deposit. In units of the deposited asset. 
@@ -120,7 +120,7 @@ class Asset(TimeStampedModel):
     """
 
     deposit_fee_percent = models.DecimalField(
-        default=0,
+        null=True,
         blank=True,
         max_digits=30,
         decimal_places=7,
@@ -147,7 +147,7 @@ class Asset(TimeStampedModel):
     """``True`` if withdrawal for this asset is supported."""
 
     withdrawal_fee_fixed = models.DecimalField(
-        default=0, blank=True, max_digits=30, decimal_places=7
+        null=True, blank=True, max_digits=30, decimal_places=7
     )
     """
     Optional fixed (base) fee for withdraw. In units of the withdrawn asset. 
@@ -155,7 +155,7 @@ class Asset(TimeStampedModel):
     """
 
     withdrawal_fee_percent = models.DecimalField(
-        default=0,
+        null=True,
         blank=True,
         max_digits=30,
         decimal_places=7,
@@ -177,7 +177,7 @@ class Asset(TimeStampedModel):
     """Optional maximum amount. No limit if not specified."""
 
     send_fee_fixed = models.DecimalField(
-        default=0, blank=True, max_digits=30, decimal_places=7
+        null=True, blank=True, max_digits=30, decimal_places=7
     )
     """
     Optional fixed (base) fee for sending this asset in units of this asset. 
@@ -186,7 +186,7 @@ class Asset(TimeStampedModel):
     """
 
     send_fee_percent = models.DecimalField(
-        default=0,
+        null=True,
         blank=True,
         max_digits=30,
         decimal_places=7,

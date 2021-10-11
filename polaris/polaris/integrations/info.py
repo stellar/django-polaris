@@ -16,9 +16,8 @@ def default_info_func(
     """
     .. _/info response: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#response-2
 
-    Replace this function with another by passing it to
-    ``register_integrations()`` as described in
-    :doc:`Registering Integrations</register_integrations/index>`.
+    Replace this function with another by passing it to ``register_integrations()``
+    as described in :doc:`Registering Integrations</register_integrations/index>`.
 
     Return a dictionary containing the `fields` and `types` key-value pairs
     described in the SEP-6 /info response for the asset passed. Raise a

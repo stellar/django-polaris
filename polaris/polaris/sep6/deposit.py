@@ -39,7 +39,6 @@ from polaris.integrations import (
     registered_fee_func,
     calculate_fee,
 )
-from polaris.sep38.utils import asset_id_format, asset_id_to_kwargs
 
 logger = getLogger(__name__)
 
@@ -183,13 +182,18 @@ def validate_response(
             transaction.asset.deposit_max_amount, transaction.asset.significant_decimals
         )
 
-    if calculate_fee == registered_fee_func:
-        # Polaris user has not replaced default fee function, so fee_fixed
-        # and fee_percent are still used.
-        response.update(
-            fee_fixed=round(asset.deposit_fee_fixed, asset.significant_decimals),
-            fee_percent=asset.deposit_fee_percent,
-        )
+    if calculate_fee == registered_fee_func and not exchange:
+        # return the fixed and percentage fee rates if the registered fee function
+        # has not been implemented AND the request was not for the `/deposit-exchange`
+        # endpoint.
+        if asset.deposit_fee_fixed is not None:
+            response["fee_fixed"] = round(
+                asset.deposit_fee_fixed, asset.significant_decimals
+            )
+        if asset.deposit_fee_percent is not None:
+            response["fee_percent"] = round(
+                asset.deposit_fee_percent, asset.significant_decimals
+            )
 
     if "extra_info" in integration_response:
         response["extra_info"] = integration_response["extra_info"]

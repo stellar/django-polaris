@@ -15,11 +15,14 @@ def calculate_fee(
 
     Calculate the fee to be charged for the transaction described by `fee_params`.
 
-    Replace this function with another by passing it to
-    ``register_integrations()`` as described in
-    :doc:`Registering Integrations</register_integrations/index>` if the fees
-    charged for transactions is not calculated using the asset's ``fee_fixed``
-    and ``fee_percent`` attributes.
+    Note that this endpoint only supports calculating fees expressed in units of a
+    Stellar asset. If fees cannot be calculated using the `fee_params` passed,
+    raise a ``ValueError`` for Polaris to return a 400 Bad Request to the client.
+
+    Replace this function with another by passing it to ``register_integrations()``
+    as described in :doc:`Registering Integrations</register_integrations/index>`
+    if the fees charged for transactions is not calculated using the asset's
+    ``fee_fixed`` and ``fee_percent`` attributes.
 
     If replaced, `/info` responses will no longer contain the ``fee_fixed`` and
     ``fee_percent`` attributes per-asset. This is because Polaris can no longer
@@ -44,11 +47,17 @@ def calculate_fee(
     elif fee_params["operation"] == settings.OPERATION_DEPOSIT:
         fee_percent = asset.deposit_fee_percent
         fee_fixed = asset.deposit_fee_fixed
-    elif fee_params["operation"] == "send":
+    else:  # send
         fee_percent = asset.send_fee_percent
         fee_fixed = asset.send_fee_fixed
-    else:
-        raise ValueError("invalid 'operation'")
+
+    if fee_fixed is None and fee_percent is None:
+        raise ValueError("unable to calculate fees")
+
+    if fee_fixed is None:
+        fee_fixed = Decimal(0)
+    elif fee_percent is None:
+        fee_percent = Decimal(0)
 
     return round(
         fee_fixed + (fee_percent / Decimal("100") * Decimal(amount)),

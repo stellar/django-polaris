@@ -101,8 +101,12 @@ class TransactionForm(forms.Form):
         if transaction.kind == Transaction.KIND.deposit:
             self.min_amount = round(self.asset.deposit_min_amount, self.decimal_places)
             self.max_amount = round(self.asset.deposit_max_amount, self.decimal_places)
-            self.min_default = Asset._meta.get_field("deposit_min_amount").default
-            self.max_default = Asset._meta.get_field("deposit_max_amount").default
+            self.min_default = (
+                getattr(Asset, "_meta").get_field("deposit_min_amount").default
+            )
+            self.max_default = (
+                getattr(Asset, "_meta").get_field("deposit_max_amount").default
+            )
         else:
             self.min_amount = round(
                 self.asset.withdrawal_min_amount, self.decimal_places
@@ -110,8 +114,12 @@ class TransactionForm(forms.Form):
             self.max_amount = round(
                 self.asset.withdrawal_max_amount, self.decimal_places
             )
-            self.min_default = Asset._meta.get_field("withdrawal_min_amount").default
-            self.max_default = Asset._meta.get_field("withdrawal_max_amount").default
+            self.min_default = (
+                getattr(Asset, "_meta").get_field("withdrawal_min_amount").default
+            )
+            self.max_default = (
+                getattr(Asset, "_meta").get_field("withdrawal_max_amount").default
+            )
 
         # Re-initialize the 'amount' field now that we have all the parameters necessary
         self.fields["amount"].__init__(

@@ -46,6 +46,7 @@ def test_success_response(client, usd_asset_factory):
     assert response.status_code == 200
     assert body["receive"][asset.code].pop("enabled") is True
     assert body["receive"][asset.code].pop("fee_fixed") == asset.send_fee_fixed
+    assert body["receive"][asset.code].pop("fee_percent") == asset.send_fee_percent
     assert body["receive"][asset.code].pop("min_amount") == asset.send_min_amount
     assert body["receive"][asset.code].pop("max_amount") == asset.send_max_amount
     assert (

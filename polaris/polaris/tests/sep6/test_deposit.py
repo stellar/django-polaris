@@ -72,8 +72,6 @@ def test_deposit_success(mock_process_sep6_request, client):
         "min_amount": round(asset.deposit_min_amount, asset.significant_decimals),
         "max_amount": round(asset.deposit_max_amount, asset.significant_decimals),
         "extra_info": {"test": "test"},
-        "fee_fixed": round(asset.deposit_fee_fixed, asset.significant_decimals),
-        "fee_percent": asset.deposit_fee_percent,
     }
 
 
@@ -104,8 +102,6 @@ def test_deposit_success_muxed_account(mock_process_sep6_request, client):
         "min_amount": round(asset.deposit_min_amount, asset.significant_decimals),
         "max_amount": round(asset.deposit_max_amount, asset.significant_decimals),
         "extra_info": {"test": "test"},
-        "fee_fixed": round(asset.deposit_fee_fixed, asset.significant_decimals),
-        "fee_percent": asset.deposit_fee_percent,
     }
     mock_process_sep6_request.assert_called_once()
     assert Transaction.objects.count() == 1
@@ -150,8 +146,6 @@ def test_deposit_success_with_memo(mock_process_sep6_request, client):
         "min_amount": round(asset.deposit_min_amount, asset.significant_decimals),
         "max_amount": round(asset.deposit_max_amount, asset.significant_decimals),
         "extra_info": {"test": "test"},
-        "fee_fixed": round(asset.deposit_fee_fixed, asset.significant_decimals),
-        "fee_percent": asset.deposit_fee_percent,
     }
     mock_process_sep6_request.assert_called_once()
     assert Transaction.objects.count() == 1
@@ -204,8 +198,6 @@ def test_deposit_success_no_min_max_amounts(mock_process_sep6_request, client):
         "id": str(Transaction.objects.first().id),
         "how": "test",
         "extra_info": {"test": "test"},
-        "fee_fixed": round(asset.deposit_fee_fixed, asset.significant_decimals),
-        "fee_percent": asset.deposit_fee_percent,
     }
 
 
@@ -241,8 +233,6 @@ def test_deposit_success_custom_min_max_amounts(mock_process_sep6_request, clien
         "min_amount": 1000,
         "max_amount": 10000,
         "extra_info": {"test": "test"},
-        "fee_fixed": round(asset.deposit_fee_fixed, asset.significant_decimals),
-        "fee_percent": asset.deposit_fee_percent,
     }
 
 
@@ -829,8 +819,6 @@ def test_deposit_denied_on_change_callback(mock_process_sep6_request, client):
         "min_amount": round(asset.deposit_min_amount, asset.significant_decimals),
         "max_amount": round(asset.deposit_max_amount, asset.significant_decimals),
         "extra_info": {"test": "test"},
-        "fee_fixed": round(asset.deposit_fee_fixed, asset.significant_decimals),
-        "fee_percent": asset.deposit_fee_percent,
     }
     assert t.on_change_callback is None
 
@@ -871,8 +859,6 @@ def test_deposit_good_on_change_callback(mock_process_sep6_request, client):
         "min_amount": round(asset.deposit_min_amount, asset.significant_decimals),
         "max_amount": round(asset.deposit_max_amount, asset.significant_decimals),
         "extra_info": {"test": "test"},
-        "fee_fixed": round(asset.deposit_fee_fixed, asset.significant_decimals),
-        "fee_percent": asset.deposit_fee_percent,
     }
     assert t.on_change_callback == "https://example.com"
 
@@ -913,8 +899,6 @@ def test_deposit_good_lang(mock_process_sep6_request, client):
         "min_amount": round(asset.deposit_min_amount, asset.significant_decimals),
         "max_amount": round(asset.deposit_max_amount, asset.significant_decimals),
         "extra_info": {"test": "test"},
-        "fee_fixed": round(asset.deposit_fee_fixed, asset.significant_decimals),
-        "fee_percent": asset.deposit_fee_percent,
     }
 
 
@@ -987,8 +971,6 @@ def test_deposit_success_indicative_quote(mock_process_sep6_request, client):
         "min_amount": round(asset.deposit_min_amount, asset.significant_decimals),
         "max_amount": round(asset.deposit_max_amount, asset.significant_decimals),
         "extra_info": {"test": "test"},
-        "fee_fixed": round(asset.deposit_fee_fixed, asset.significant_decimals),
-        "fee_percent": asset.deposit_fee_percent,
     }
     assert Transaction.objects.count() == 1
     t = Transaction.objects.first()
@@ -1052,8 +1034,6 @@ def test_deposit_success_firm_quote(mock_process_sep6_request, client):
         "min_amount": round(asset.deposit_min_amount, asset.significant_decimals),
         "max_amount": round(asset.deposit_max_amount, asset.significant_decimals),
         "extra_info": {"test": "test"},
-        "fee_fixed": round(asset.deposit_fee_fixed, asset.significant_decimals),
-        "fee_percent": asset.deposit_fee_percent,
     }
     assert Transaction.objects.count() == 1
     t = Transaction.objects.first()
