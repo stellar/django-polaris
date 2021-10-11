@@ -74,13 +74,14 @@ class TransactionForm(forms.Form):
     """
     .. _`HiddenInput`: https://docs.djangoproject.com/en/3.0/ref/forms/widgets/#hiddeninput
 
-    Base class for collecting transaction information.
+    A base class for collecting transaction information. Developers must define
+    subclasses to collect additional information and apply additional validation.
 
-    Developers must define subclasses to collect additional information and
-    apply additional validation.
-
-    A subclass of this form should be returned by
-    ``form_for_transaction()`` once for each interactive flow.
+    This form assumes the amount collected is in units of a Stellar asset. If
+    the amount of an off-chain asset must be collected, create a different form.
+    This form must not have a field named `amount`, otherwise Polaris will
+    render a table for displaying fees and will calculate them using the Stellar
+    asset involved in the transaction.
 
     If the default UI is used, Polaris makes calls to the anchor's `/fee` endpoint
     and displays the response value to the user. If your `/fee` endpoint requires

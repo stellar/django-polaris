@@ -96,13 +96,14 @@ class SEP31ReceiverIntegration:
 
         If you'd like the user to send ``Transaction.amount_in`` `plus the fee amount`,
         add the amount charged as a fee to ``Transaction.amount_in`` and
-        ``Transaction.amount_expected`` here. While not required per SEP-31, it is
-        encouraged to also populate ``Transaction.amount_fee``, ``Transaction.fee_asset``
-        (if ``Transaction.quote`` is not ``None``), and
-        ``Transaction.amount_out`` here as well. Note that the amount sent over the
-        Stellar Network could differ from the amount specified in this API call, so
-        fees and the amount delievered may have to be recalculated in
-        ``RailsIntegration.execute_outgoing_transaction()``.
+        ``Transaction.amount_expected`` here.
+
+        While not required per SEP-31, it is encouraged to also populate
+        ``Transaction.amount_fee``, ``Transaction.fee_asset`` (if ``Transaction.quote``
+        is not ``None``), and ``Transaction.amount_out`` here as well. Note that the
+        amount sent over the Stellar Network could differ from the amount specified
+        in this API call, so fees and the amount delievered may have to be recalculated
+        in ``RailsIntegration.execute_outgoing_transaction()``.
 
         Also note that if your anchor service supports SEP-38, ``Transaction.quote``
         may be a firm or indicative ``Quote`` model instance representing the requested

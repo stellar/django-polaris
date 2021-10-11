@@ -205,13 +205,6 @@ class DepositIntegration:
         ``DepositIntegration.form_for_transaction`` is called, store this
         data in a model not used by Polaris.
 
-        Keep in mind that if a ``TransactionForm`` is submitted, Polaris will
-        update the ``Transaction.amount_in``, ``Transaction.amount_fee``, and
-        ``Transaction.amount_out`` fields with the information collected. There is no
-        need to implement that yourself here. However, note that if the amount
-        ultimately delivered to the anchor does not match the amount specified in
-        the form, these attributes must be updated appropriately.
-
         If `form` is the last form to be served to the user, Polaris will update the
         transaction status to ``pending_user_transfer_start``, indicating that the
         anchor is waiting for the user to deliver off-chain funds to the anchor. If
@@ -333,6 +326,9 @@ class DepositIntegration:
         `deposit-exchange`_ requests if SEP-38 is added to Polaris' ``ACTIVE_SEPS`` setting
         and the requested Stellar asset is enabled for SEP-38.
 
+        If a request to the the `deposit-exchange`_ endpoint is made, a ``Quote`` object
+        will be assign to the ``Transaction`` object passed.
+
         Process these parameters and return one of the following responses outlined below
         as a dictionary. Save `transaction` to the DB if you plan to return a success
         response. If `transaction` is saved to the DB but a failure response is returned,
@@ -343,7 +339,7 @@ class DepositIntegration:
         ``Transaction.amount_expected``. here. While not required per SEP-6, it is
         encouraged to also populate ``Transaction.amount_fee`` and ``Transaction.amount_out``
         here as well. If this function is called for a `deposit-exchange`_ request,
-        ``Transaction.amount_fee_asset`` should also be assigned. If not assigned here, these
+        ``Transaction.fee_asset`` should also be assigned. If not assigned here, these
         columns must be assigned before returning the transaction from
         ``RailsIntegration.poll_pending_deposits()``.
 

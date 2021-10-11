@@ -35,7 +35,8 @@ class RailsIntegration:
         to the user associated with `transaction`. This function is used for SEP-6 &
         SEP-24 withdraws as well as SEP-31 payments. ``transaction.amount_fee`` and
         ``transaction.amount_out`` must be assigned in this function if they are not
-        already.
+        already. If the off-chain asset delivered to the user is different than the
+        Stellar asset received on-chain, populate ``transaction.fee_asset`` as well.
 
         When this function is called, ``transaction.amount_in`` is the amount sent
         to the anchor, `not the amount specified in a SEP-24 or SEP-31 API call`.
@@ -95,7 +96,9 @@ class RailsIntegration:
         state of all `pending_deposits` and return the ones that have
         externally completed, meaning the off-chain funds are available in the
         anchor's account. For each returned transaction, ``Transaction.amount_fee``
-        and ``Transaction.amount_out`` must be assigned.
+        and ``Transaction.amount_out`` must be assigned. If the off-chain asset
+        collected from the user is different than the Stellar asset to be sent on-chain,
+        populate ``transaction.fee_asset`` as well.
 
         Ensure the amount deposited to the anchor's account matches each
         transaction's ``amount_expected`` field. Client applications may send an amount
