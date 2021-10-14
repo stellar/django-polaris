@@ -102,27 +102,27 @@ img.logo {
   color: $light_-2;
 }
 
-.fee-table {
+.polaris-fee-table {
   width: 100%;
   border-collapse: collapse;
   line-height: 2;
   background-color: rgba(7, 7, 11, 0.35);
   border-radius: 0.75rem;
 }
-.fee-row {
+.polaris-fee-row {
   border-bottom: 1px solid white;
 }
-.fee-label {
+.polaris-fee-label {
   padding-left: 1rem;
 }
-.amount-out-label {
+.polaris-fee-total-label {
   padding-left: 1rem;
 }
-.fee {
+.polaris-fee-value {
   text-align: right;
   padding-right: 1rem;
 }
-.amount-out {
+.polaris-fee-total-value {
   text-align: right;
   padding-right: 1rem;
 }

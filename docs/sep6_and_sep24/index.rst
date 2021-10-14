@@ -143,12 +143,12 @@ set of integration functions for anchors to implement themselves.
 
 .. autofunction:: polaris.integrations.RailsIntegration.execute_outgoing_transaction
 
-.. _fee_integration:
-
 Template Extensions
 ^^^^^^^^^^^^^^^^^^^
 
 Polaris comes with a good looking interface out of the box, but it also allows anchors to override, extend, or replace Django Templates used to render web pages to the user. Check out the :doc:`Templates</templates/index>` documentation for more info.
+
+.. _fee_integration:
 
 Custom Fee Calculation
 ^^^^^^^^^^^^^^^^^^^^^^
@@ -204,9 +204,10 @@ validate, and process the information you need to collect from users with
 
 Of course, you'll need to collect the amount the user would like to deposit
 or withdraw. Polaris provides a ``TransactionForm`` that can be subclassed to
-add additional fields for this purpose. One ``TransactionForm`` should be rendered
-for every transaction processed. See the :doc:`../forms/index` documentation for
-more information.
+add additional fields to collects amounts of the Stellar ``Asset`` the user would
+like to deposit or withdraw. If the anchor wants to collect the amount of an
+``OffChainAsset``, the anchor must use a different form. See the
+:doc:`../forms/index` documentation for more information.
 
 The functions below facilitate the process of collecting the information needed.
 

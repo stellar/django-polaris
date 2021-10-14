@@ -1,7 +1,7 @@
 "use strict";
 
 // Amount symbol padding
-const amountInputElem = document.querySelector('.amount-input');
+const amountInputElem = document.querySelector('.polaris-transaction-form-amount');
 let icon, iconWidthStr, iconWidthFloat;
 if (amountInputElem) {
   icon = amountInputElem.previousElementSibling;

@@ -15,11 +15,11 @@ function feeTable({
   parseNumber,
   formatNumber
 }) {
-  let amountInput = document.querySelector('.amount-input');
+  let amountInput = document.querySelector('.polaris-transaction-form-amount');
   let typeInput = document.querySelector('#id_type');
-  let feeTag = document.querySelector('.fee');
-  let amountOutTag = document.querySelector('.amount-out');
-  let feeTable = document.querySelector('.fee-table');
+  let feeTag = document.querySelector('.polaris-fee-value');
+  let amountOutTag = document.querySelector('.polaris-fee-total-value');
+  let feeTable = document.querySelector('.polaris-fee-table');
   let op = operation;
   let fee_fixed;
   let fee_percent;

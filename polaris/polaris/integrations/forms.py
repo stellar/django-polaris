@@ -72,22 +72,24 @@ class CreditCardForm(forms.Form):
 
 class TransactionForm(forms.Form):
     """
-    .. _`HiddenInput`: https://docs.djangoproject.com/en/3.0/ref/forms/widgets/#hiddeninput
-
     A base class for collecting transaction information. Developers must define
     subclasses to collect additional information and apply additional validation.
 
-    This form assumes the amount collected is in units of a Stellar asset. If
-    the amount of an off-chain asset must be collected, create a different form.
-    This form must not have a field named `amount`, otherwise Polaris will
-    render a table for displaying fees and will calculate them using the Stellar
-    asset involved in the transaction.
+    This form assumes the amount collected is in units of a Stellar ``Asset``. If
+    the amount of an ``OffChainAsset`` must be collected, create a different form.
 
-    If the default UI is used, Polaris makes calls to the anchor's `/fee` endpoint
-    and displays the response value to the user. If your `/fee` endpoint requires
-    a `type` parameter, add a ``TransactionForm.type`` attribute to the form.
-    Polaris will detect the attribute's presence on the form and include it in
-    `/fee` requests.
+    Note that Polaris' base UI treats the amount field on this form and its
+    subclasses differently than other forms. Specifically, Polaris automatically
+    adds the asset's symbol to the input field, adds a placeholder value of 0,
+    makes the fee table visible, and uses the amount entered to update the fee
+    table on each change.
+
+    Fee calculation within the UI is done using the asset's fixed and percentage
+    fee values saved to the database. If those values are not present, Polaris makes
+    calls to the anchor's `/fee` endpoint and displays the response value to the
+    user. If your `/fee` endpoint requires a `type` parameter, add a
+    ``TransactionForm.type`` attribute to the form. Polaris will detect the
+    attribute's presence on the form and include it in `/fee` requests.
 
     The `amount` field is validated with the :meth:`clean_amount` function,
     which ensures the amount is within the bounds for the asset type.
@@ -126,7 +128,7 @@ class TransactionForm(forms.Form):
         self.fields["amount"].__init__(
             widget=forms.TextInput(
                 attrs={
-                    "class": "input",
+                    "class": "polaris-transaction-form-amount",
                     "inputmode": "decimal",
                     "symbol": self.asset.symbol,
                 }
