@@ -145,18 +145,11 @@ class Command(BaseCommand):
             f"Matched transaction object {transaction.id} for stellar transaction {response['id']}"
         )
 
-        op_results = (
-            Xdr.StellarXDRUnpacker(b64decode(result_xdr))
-            .unpack_TransactionResult()
-            .result.results
-        )
         horion_tx = TransactionEnvelope.from_xdr(
             envelope_xdr, network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
         ).transaction
 
-        payment_data = cls._find_matching_payment_data(
-            response, horion_tx, op_results, transaction
-        )
+        payment_data = cls._find_matching_payment_data(response, horion_tx, transaction)
         if not payment_data:
             logger.warning(f"Transaction matching memo {memo} has no payment operation")
             return
@@ -183,27 +176,23 @@ class Command(BaseCommand):
 
     @classmethod
     def _find_matching_payment_data(
-        cls,
-        response: Dict,
-        horizon_tx: HorizonTransaction,
-        result_ops: List[Xdr.types.OperationResult],
-        transaction: Transaction,
+        cls, response: Dict, horizon_tx: HorizonTransaction, transaction: Transaction,
     ) -> Optional[Dict]:
         matching_payment_data = None
         ops = horizon_tx.operations
-        for idx, op_result in enumerate(result_ops):
-            op, op_result = cls._cast_operation_and_result(ops[idx], op_result)
-            if not op_result:  # not a payment op
+        for idx, op in enumerate(ops):
+            op = cls._cast_operation(op)
+            if not op:  # not a payment op
                 continue
             maybe_payment_data = cls._check_for_payment_match(
-                op, op_result, transaction.asset
+                op, transaction.asset, response["id"]
             )
             if maybe_payment_data:
                 cls._update_transaction_info(
                     transaction,
                     response["id"],
                     response["paging_token"],
-                    ops[idx].source or horizon_tx.source.public_key,
+                    op.source or horizon_tx.source.public_key,
                 )
                 matching_payment_data = maybe_payment_data
                 break
@@ -221,9 +210,9 @@ class Command(BaseCommand):
 
     @classmethod
     def _check_for_payment_match(
-        cls, operation: PaymentOp, op_result: PaymentOpResult, want_asset: Asset
+        cls, operation: PaymentOp, want_asset: Asset, txid: str
     ) -> Optional[Dict]:
-        payment_data = cls._get_payment_values(operation, op_result)
+        payment_data = cls._get_payment_values(operation, txid)
         if (
             payment_data["destination"] == want_asset.distribution_account
             and payment_data["code"] == want_asset.code
@@ -234,33 +223,20 @@ class Command(BaseCommand):
             return None
 
     @classmethod
-    def _cast_operation_and_result(
-        cls, operation: Operation, op_result: Xdr.types.OperationResult
-    ) -> Tuple[Optional[PaymentOp], Optional[PaymentOpResult]]:
+    def _cast_operation(cls, operation: Operation) -> Optional[PaymentOp]:
         code = operation.type_code()
         op_xdr_obj = operation.to_xdr_object()
         if code == Xdr.const.PAYMENT:
-            return (
-                Payment.from_xdr_object(op_xdr_obj),
-                op_result.tr.paymentResult,
-            )
+            return Payment.from_xdr_object(op_xdr_obj)
         elif code == Xdr.const.PATH_PAYMENT_STRICT_SEND:
-            return (
-                PathPaymentStrictSend.from_xdr_object(op_xdr_obj),
-                op_result.tr.pathPaymentStrictSendResult,
-            )
+            return PathPaymentStrictSend.from_xdr_object(op_xdr_obj)
         elif code == Xdr.const.PATH_PAYMENT_STRICT_RECEIVE:
-            return (
-                PathPaymentStrictReceive.from_xdr_object(op_xdr_obj),
-                op_result.tr.pathPaymentStrictReceiveResult,
-            )
+            return PathPaymentStrictReceive.from_xdr_object(op_xdr_obj)
         else:
-            return None, None
+            return None
 
     @classmethod
-    def _get_payment_values(
-        cls, operation: PaymentOp, op_result: PaymentOpResult
-    ) -> Dict:
+    def _get_payment_values(cls, operation: PaymentOp, txid: str) -> Dict:
         values = {
             "destination": operation.destination,
             "amount": None,
@@ -272,15 +248,7 @@ class Command(BaseCommand):
             values["code"] = operation.asset.code
             values["issuer"] = operation.asset.issuer
         elif isinstance(operation, PathPaymentStrictSend):
-            # since the dest amount is not specified in a strict-send op,
-            # we need to get the dest amount from the operation's result
-            #
-            # this method of fetching amounts gives the "raw" amount, so
-            # we need to divide by Operation._ONE: 10000000
-            # (Stellar uses 7 decimals places of precision)
-            values["amount"] = str(
-                Decimal(op_result.success.last.amount) / Operation._ONE
-            )
+            values["amount"] = cls._fetch_received_amount(operation, txid)
             values["code"] = operation.dest_asset.code
             values["issuer"] = operation.dest_asset.issuer
         elif isinstance(operation, PathPaymentStrictReceive):
@@ -290,3 +258,18 @@ class Command(BaseCommand):
         else:
             raise ValueError("Unexpected operation, expected payment or path payment")
         return values
+
+    @classmethod
+    def _fetch_received_amount(cls, operation: PathPaymentStrictSend, txid: str) -> str:
+        with Server(settings.HORIZON_URI) as server:
+            response = server.operations().for_transaction(txid).call()
+            for record in response["_embedded"]["records"]:
+                if (
+                    record.get("type") != "path_payment_strict_send"
+                    or record["to"] != operation.destination
+                    or record["asset_type"] != operation.dest_asset.type
+                    or record["asset_issuer"] != operation.dest_asset.issuer
+                    or record["asset_code"] != operation.dest_asset.code
+                ):
+                    continue
+                return record["amount"]

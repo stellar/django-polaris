@@ -1,5 +1,6 @@
 import pytest
 from copy import deepcopy
+from unittest.mock import Mock, patch
 
 from stellar_sdk.keypair import Keypair
 
@@ -72,6 +73,7 @@ def test_process_response_success(client):
 
 
 @pytest.mark.django_db
+@patch(f"{test_module}.Command._fetch_received_amount", Mock(return_value="1001.00"))
 def test_process_response_strict_send_success(client):
     """
     Tests successful processing of the SUCCESS_PAYMENT_TRANSACTION_JSON
