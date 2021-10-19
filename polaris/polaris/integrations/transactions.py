@@ -162,6 +162,7 @@ class DepositIntegration:
                 return {
                     "title": "Deposit Transaction Form",
                     "guidance": "Please enter the amount you would like to deposit.",
+                    "show_fee_table": True,
                     "icon_label": "Stellar Development Foundation",
                     "icon_path": "images/company-icon.png",
                     # custom field passed by the anchor
@@ -178,6 +179,17 @@ class DepositIntegration:
 
         Finally, if neither are present, Polaris will default to its default image.
         All images will be rendered in a 100 x 150px sized box.
+
+        `show_fee_table` can be returned to instruct Polaris to make the fee table
+        visible on the page rendered to the user. This table is hidden by default unless
+        a ``TransactionForm`` is returned from ``form_for_transaction()``, in which case
+        the fee table will be displayed.
+
+        If the anchor instructs Polaris to display the fee table but a ``TransactionForm``
+        is not present on the page, the anchor is responsible for updating the fee table
+        with the appropriate values. This is useful when the anchor is collecting the
+        amount of an off-chain asset, since ``TransactionForm`` assumes the amount
+        collected is for an on-chain asset.
 
         :param request: a ``rest_framework.request.Request`` instance
         :param template: a ``polaris.templates.Template`` enum value

@@ -13,8 +13,12 @@ function feeTable({
   assetCode,
   languageCode,
   parseNumber,
-  formatNumber
+  formatNumber,
+  showFeeTable
 }) {
+  if (!showFeeTable) {
+    return;
+  }
   let amountInput = document.querySelector('.polaris-transaction-form-amount');
   let typeInput = document.querySelector('#id_type');
   let feeTag = document.querySelector('.polaris-fee-value');
@@ -31,16 +35,15 @@ function feeTable({
     fee_fixed = withdrawalFeeFixed;
     fee_percent = withdrawalFeePercent;
   }
-  if (amountInput) {
-    if (feeTable)
-      feeTable.removeAttribute('hidden');
-    amountInput.addEventListener("keyup", amountInputChange);
-    if (typeInput)
-      typeInput.addEventListener("input", amountInputChange);
-    if (amountInput.value)
-      // calculate value if the value is pre-filled
-      amountInputChange();
-  }
+  feeTable.removeAttribute('hidden');
+  if (!amountInput)
+    return;
+  amountInput.addEventListener("keyup", amountInputChange);
+  if (typeInput)
+    typeInput.addEventListener("input", amountInputChange);
+  if (amountInput.value)
+    // calculate value if the value is pre-filled
+    amountInputChange();
 
   function getFeeTableStrings(fee, amountIn) {
     /*

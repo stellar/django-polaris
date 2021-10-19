@@ -81,8 +81,12 @@ class TransactionForm(forms.Form):
     Note that Polaris' base UI treats the amount field on this form and its
     subclasses differently than other forms. Specifically, Polaris automatically
     adds the asset's symbol to the input field, adds a placeholder value of 0,
-    makes the fee table visible, and uses the amount entered to update the fee
-    table on each change.
+    makes the fee table visible (by default), and uses the amount entered to update
+    the fee table on each change.
+
+    If you do not want the fee table to be displayed when ``TransactionForm`` is
+    rendered, set ``"show_fee_table"`` to ``False`` in the dict returned from
+    ``content_for_template()``.
 
     Fee calculation within the UI is done using the asset's fixed and percentage
     fee values saved to the database. If those values are not present, Polaris makes
