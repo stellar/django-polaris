@@ -8,6 +8,7 @@ TRANSFER_SERVER_SEP0024 = "http://localhost:8000/sep24"
 WEB_AUTH_ENDPOINT = "http://localhost:8000/auth"
 KYC_SERVER = "http://localhost:8000/kyc"
 DIRECT_PAYMENT_SERVER = "http://localhost:8000/sep31"
+QUOTE_SERVER = "http://localhost:8000/sep38"
 
 [[CURRENCIES]]
 code = "SRT"
