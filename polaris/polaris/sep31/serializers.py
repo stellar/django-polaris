@@ -48,6 +48,11 @@ class SEP31TransactionSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         data = super().to_representation(instance)
         self._round_decimals(data, instance)
+        if instance.quote:
+            data["amount_in_asset"] = instance.quote.sell_asset
+            data["amount_out_asset"] = instance.quote.buy_asset
+            if instance.fee_asset:
+                data["amount_fee_asset"] = instance.fee_asset
         return data
 
     @staticmethod

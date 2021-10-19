@@ -26,6 +26,7 @@ from polaris.utils import (
     extract_sep9_fields,
     make_memo,
     memo_hex_to_base64,
+    get_quote_and_offchain_destination_asset,
 )
 from polaris.sep6.utils import validate_403_response
 from polaris.sep10.token import SEP10Token
@@ -47,7 +48,19 @@ logger = getLogger(__name__)
 @renderer_classes([JSONRenderer, BrowsableAPIRenderer])
 @validate_sep10_token()
 def withdraw(token: SEP10Token, request: Request) -> Response:
-    args = parse_request_args(request)
+    return withdraw_logic(token=token, request=request, exchange=False)
+
+
+@api_view(["GET"])
+@parser_classes([MultiPartParser, FormParser, JSONParser])
+@renderer_classes([JSONRenderer, BrowsableAPIRenderer])
+@validate_sep10_token()
+def withdraw_exchange(token: SEP10Token, request: Request) -> Response:
+    return withdraw_logic(token=token, request=request, exchange=True)
+
+
+def withdraw_logic(token: SEP10Token, request: Request, exchange: bool):
+    args = parse_request_args(token, request, exchange)
     if "error" in args:
         return args["error"]
 
@@ -60,12 +73,17 @@ def withdraw(token: SEP10Token, request: Request) -> Response:
         stellar_account=token.account,
         muxed_account=token.muxed_account,
         account_memo=token.memo,
-        asset=args["asset"],
-        amount_in=args.get("amount"),
-        amount_expected=args.get("amount"),
-        kind=Transaction.KIND.withdrawal,
+        asset=args["source_asset" if exchange else "asset"],
+        amount_in=args["amount"],
+        amount_expected=args["amount"],
+        quote=args["quote"],
+        kind=getattr(
+            Transaction.KIND, "withdrawal-exchange" if exchange else "withdrawal"
+        ),
         status=Transaction.STATUS.pending_user_transfer_start,
-        receiving_anchor_account=args["asset"].distribution_account,
+        receiving_anchor_account=args[
+            "source_asset" if exchange else "asset"
+        ].distribution_account,
         memo=transaction_memo,
         memo_type=Transaction.MEMO_TYPES.hash,
         protocol=Transaction.PROTOCOL.sep6,
@@ -77,10 +95,6 @@ def withdraw(token: SEP10Token, request: Request) -> Response:
         from_address=args.get("account"),
     )
 
-    # All request arguments are validated in parse_request_args()
-    # except 'type', 'dest', and 'dest_extra'. Since Polaris doesn't know
-    # which argument was invalid, the anchor is responsible for raising
-    # an exception with a translated message.
     try:
         integration_response = rwi.process_sep6_request(
             token=token, request=request, params=args, transaction=transaction
@@ -89,7 +103,12 @@ def withdraw(token: SEP10Token, request: Request) -> Response:
         return render_error_response(str(e))
     try:
         response, status_code = validate_response(
-            token, request, args, integration_response, transaction
+            token=token,
+            request=request,
+            args=args,
+            integration_response=integration_response,
+            transaction=transaction,
+            exchange=exchange,
         )
     except ValueError as e:
         logger.error(str(e))
@@ -101,6 +120,8 @@ def withdraw(token: SEP10Token, request: Request) -> Response:
         response["memo"] = transaction.memo
         response["memo_type"] = transaction.memo_type
         logger.info(f"Created withdraw transaction {transaction.id}")
+        if exchange:
+            transaction.quote.save()
         transaction.save()
     elif Transaction.objects.filter(id=transaction.id).exists():
         logger.error("Do not save transaction objects for invalid SEP-6 requests")
@@ -111,7 +132,9 @@ def withdraw(token: SEP10Token, request: Request) -> Response:
     return Response(response, status=status_code)
 
 
-def parse_request_args(request: Request) -> Dict:
+def parse_request_args(
+    token: SEP10Token, request: Request, exchange: bool = False
+) -> Dict:
     account = request.GET.get("account")
     if account and account.startswith("M"):
         try:
@@ -124,11 +147,25 @@ def parse_request_args(request: Request) -> Dict:
         except Ed25519PublicKeyInvalidError:
             return {"error": render_error_response(_("invalid 'account'"))}
 
+    if exchange:
+        if not request.GET.get("source_asset"):
+            return {
+                "error": render_error_response(_("'destination_asset' is required"))
+            }
+        parts = request.GET.get("source_asset").split(":")
+        if len(parts) != 3 or parts[0] != "stellar":
+            return {"error": render_error_response(_("invalid 'source_asset'"))}
+        asset_query_args = {"code": parts[1], "issuer": parts[2]}
+    else:
+        asset_query_args = {"code": request.GET.get("asset_code")}
+
     asset = Asset.objects.filter(
-        code=request.GET.get("asset_code"), sep6_enabled=True, withdrawal_enabled=True
+        sep6_enabled=True, withdrawal_enabled=True, **asset_query_args
     ).first()
     if not asset:
-        return {"error": render_error_response(_("invalid 'asset_code'"))}
+        return {
+            "error": render_error_response(_("invalid 'asset_code' or 'source_asset'"))
+        }
 
     lang = request.GET.get("lang")
     if lang:
@@ -165,6 +202,9 @@ def parse_request_args(request: Request) -> Dict:
             on_change_callback = None
 
     amount = request.GET.get("amount")
+    if exchange and not amount:
+        return {"error": render_error_response(_("'amount' is required"))}
+
     if amount:
         try:
             amount = round(Decimal(amount), asset.significant_decimals)
@@ -179,9 +219,20 @@ def parse_request_args(request: Request) -> Dict:
                 )
             }
 
+    try:
+        quote, destination_asset = get_quote_and_offchain_destination_asset(
+            token=token,
+            quote_id=request.GET.get("quote_id"),
+            destination_asset_str=request.GET.get("destination_asset"),
+            asset=asset,
+            amount=amount,
+        )
+    except ValueError as e:
+        return {"error": render_error_response(str(e))}
+
     args = {
         "account": request.GET.get("account"),
-        "asset": asset,
+        "source_asset" if exchange else "asset": asset,
         "memo_type": memo_type,
         "memo": request.GET.get("memo"),
         "lang": request.GET.get("lang"),
@@ -191,6 +242,8 @@ def parse_request_args(request: Request) -> Dict:
         "on_change_callback": on_change_callback,
         "amount": amount,
         "country_code": request.GET.get("country_code"),
+        "quote": quote,
+        "destination_asset": destination_asset,
         **extract_sep9_fields(request.GET),
     }
 
@@ -208,6 +261,7 @@ def validate_response(
     args: Dict,
     integration_response: Dict,
     transaction: Transaction,
+    exchange: bool = False,
 ) -> Tuple[Dict, int]:
     if "type" in integration_response:
         return (
@@ -215,7 +269,7 @@ def validate_response(
             403,
         )
 
-    asset = args["asset"]
+    asset = args["source_asset" if exchange else "asset"]
     response = {
         "account_id": asset.distribution_account,
         "id": transaction.id,
@@ -232,7 +286,7 @@ def validate_response(
             )
     elif (
         transaction.asset.withdrawal_min_amount
-        > Asset._meta.get_field("withdrawal_min_amount").default
+        > getattr(Asset, "_meta").get_field("withdrawal_min_amount").default
     ):
         response["min_amount"] = round(
             transaction.asset.withdrawal_min_amount,
@@ -250,20 +304,25 @@ def validate_response(
         response["max_amount"] = integration_response["max_amount"]
     elif (
         transaction.asset.withdrawal_max_amount
-        < Asset._meta.get_field("withdrawal_max_amount").default
+        < getattr(Asset, "_meta").get_field("withdrawal_max_amount").default
     ):
         response["max_amount"] = round(
             transaction.asset.withdrawal_max_amount,
             transaction.asset.significant_decimals,
         )
 
-    if calculate_fee == registered_fee_func:
-        # Polaris user has not replaced default fee function, so fee_fixed
-        # and fee_percent are still used.
-        response.update(
-            fee_fixed=round(asset.withdrawal_fee_fixed, asset.significant_decimals),
-            fee_percent=asset.withdrawal_fee_percent,
-        )
+    if calculate_fee == registered_fee_func and not exchange:
+        # return the fixed and percentage fee rates if the registered fee function
+        # has not been implemented AND the request was not for the `/withdraw-exchange`
+        # endpoint.
+        if asset.withdrawal_fee_fixed is not None:
+            response["fee_fixed"] = round(
+                asset.withdrawal_fee_fixed, asset.significant_decimals
+            )
+        if asset.withdrawal_fee_percent is not None:
+            response["fee_percent"] = round(
+                asset.withdrawal_fee_percent, asset.significant_decimals
+            )
 
     if "extra_info" in integration_response:
         if not isinstance(integration_response["extra_info"], dict):

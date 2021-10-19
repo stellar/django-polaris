@@ -12,6 +12,7 @@ django-polaris documentation contents
     sep12/index
     sep6_and_sep24/index
     sep31/index
+    sep38/index
     register_integrations/index
     models/index
     forms/index

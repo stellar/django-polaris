@@ -145,8 +145,25 @@ class Command(BaseCommand):
                 Transaction.STATUS.pending_external,
                 Transaction.STATUS.completed,
             ]:
+                if transaction.amount_fee is None or transaction.amount_out is None:
+                    if transaction.quote:
+                        err_msg = (
+                            f"transaction {transaction.id} uses a quote but was returned "
+                            "from poll_pending_deposits() without amount_fee or amount_out "
+                            "assigned, skipping"
+                        )
+                        logger.error(err_msg)
+                        transaction.message = err_msg
+                        transaction.pending_execution_attempt = False
+                        transaction.save()
+                        continue
+                    logger.warning(
+                        f"transaction {transaction.id} was returned from execute_outgoing_transaction() "
+                        "without Transaction.amount_fee or Transaction.amount_out assigned. Future Polaris "
+                        "releases will not calculate fees and delivered amounts."
+                    )
                 if transaction.amount_fee is None:
-                    if registered_fee_func is calculate_fee:
+                    if not transaction.quote and registered_fee_func is calculate_fee:
                         op = {
                             Transaction.KIND.withdrawal: settings.OPERATION_WITHDRAWAL,
                             Transaction.KIND.send: Transaction.KIND.send,
@@ -166,10 +183,11 @@ class Command(BaseCommand):
                             continue
                     else:
                         transaction.amount_fee = Decimal(0)
-                transaction.amount_out = round(
-                    transaction.amount_in - transaction.amount_fee,
-                    transaction.asset.significant_decimals,
-                )
+                if not transaction.quote:
+                    transaction.amount_out = round(
+                        transaction.amount_in - transaction.amount_fee,
+                        transaction.asset.significant_decimals,
+                    )
                 # Anchors can mark transactions as pending_external if the transfer
                 # cannot be completed immediately due to external processing.
                 # poll_outgoing_transactions will check on these transfers and mark them

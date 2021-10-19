@@ -1,3 +1,7 @@
+from datetime import datetime, timezone, timedelta
+import uuid
+from decimal import Decimal
+
 import pytest
 import json
 from unittest.mock import patch, Mock
@@ -6,7 +10,8 @@ from typing import Dict
 from stellar_sdk import Keypair, MuxedAccount
 from rest_framework.request import Request
 
-from polaris.models import Transaction, Asset
+from polaris.models import Transaction, Asset, OffChainAsset, ExchangePair, Quote
+from polaris.sep38.utils import asset_id_format
 from polaris.tests.helpers import (
     mock_check_auth_success,
     mock_check_auth_success_client_domain,
@@ -29,7 +34,7 @@ class GoodDepositIntegration(DepositIntegration):
         params: Dict,
         transaction: Transaction,
         *args,
-        **kwargs
+        **kwargs,
     ) -> Dict:
         if params.get("type") not in [None, "good_type"]:
             raise ValueError("invalid 'type'")
@@ -67,8 +72,6 @@ def test_deposit_success(mock_process_sep6_request, client):
         "min_amount": round(asset.deposit_min_amount, asset.significant_decimals),
         "max_amount": round(asset.deposit_max_amount, asset.significant_decimals),
         "extra_info": {"test": "test"},
-        "fee_fixed": round(asset.deposit_fee_fixed, asset.significant_decimals),
-        "fee_percent": asset.deposit_fee_percent,
     }
 
 
@@ -99,8 +102,6 @@ def test_deposit_success_muxed_account(mock_process_sep6_request, client):
         "min_amount": round(asset.deposit_min_amount, asset.significant_decimals),
         "max_amount": round(asset.deposit_max_amount, asset.significant_decimals),
         "extra_info": {"test": "test"},
-        "fee_fixed": round(asset.deposit_fee_fixed, asset.significant_decimals),
-        "fee_percent": asset.deposit_fee_percent,
     }
     mock_process_sep6_request.assert_called_once()
     assert Transaction.objects.count() == 1
@@ -145,8 +146,6 @@ def test_deposit_success_with_memo(mock_process_sep6_request, client):
         "min_amount": round(asset.deposit_min_amount, asset.significant_decimals),
         "max_amount": round(asset.deposit_max_amount, asset.significant_decimals),
         "extra_info": {"test": "test"},
-        "fee_fixed": round(asset.deposit_fee_fixed, asset.significant_decimals),
-        "fee_percent": asset.deposit_fee_percent,
     }
     mock_process_sep6_request.assert_called_once()
     assert Transaction.objects.count() == 1
@@ -199,8 +198,6 @@ def test_deposit_success_no_min_max_amounts(mock_process_sep6_request, client):
         "id": str(Transaction.objects.first().id),
         "how": "test",
         "extra_info": {"test": "test"},
-        "fee_fixed": round(asset.deposit_fee_fixed, asset.significant_decimals),
-        "fee_percent": asset.deposit_fee_percent,
     }
 
 
@@ -236,8 +233,6 @@ def test_deposit_success_custom_min_max_amounts(mock_process_sep6_request, clien
         "min_amount": 1000,
         "max_amount": 10000,
         "extra_info": {"test": "test"},
-        "fee_fixed": round(asset.deposit_fee_fixed, asset.significant_decimals),
-        "fee_percent": asset.deposit_fee_percent,
     }
 
 
@@ -311,7 +306,7 @@ class MissingHowDepositIntegration(DepositIntegration):
         params: Dict,
         transaction: Transaction,
         *args,
-        **kwargs
+        **kwargs,
     ) -> Dict:
         return {}
 
@@ -341,7 +336,7 @@ class BadExtraInfoDepositIntegration(DepositIntegration):
         params: Dict,
         transaction: Transaction,
         *args,
-        **kwargs
+        **kwargs,
     ) -> Dict:
         transaction.save()
         return {"how": "test", "extra_info": "not a dict"}
@@ -403,7 +398,7 @@ class GoodInfoNeededDepositIntegration(DepositIntegration):
         params: Dict,
         transaction: Transaction,
         *args,
-        **kwargs
+        **kwargs,
     ) -> Dict:
         return {
             "type": "non_interactive_customer_info_needed",
@@ -439,7 +434,7 @@ class BadTypeInfoNeededDepositIntegration(DepositIntegration):
         params: Dict,
         transaction: Transaction,
         *args,
-        **kwargs
+        **kwargs,
     ) -> Dict:
         return {"type": "bad type"}
 
@@ -469,7 +464,7 @@ class MissingFieldsInfoNeededDepositIntegration(DepositIntegration):
         params: Dict,
         transaction: Transaction,
         *args,
-        **kwargs
+        **kwargs,
     ) -> Dict:
         return {"type": "non_interactive_customer_info_needed"}
 
@@ -501,7 +496,7 @@ class BadFieldsInfoNeededDepositIntegration(DepositIntegration):
         params: Dict,
         transaction: Transaction,
         *args,
-        **kwargs
+        **kwargs,
     ) -> Dict:
         return {
             "type": "non_interactive_customer_info_needed",
@@ -534,7 +529,7 @@ class GoodCustomerInfoStatusDepositIntegration(DepositIntegration):
         params: Dict,
         transaction: Transaction,
         *args,
-        **kwargs
+        **kwargs,
     ) -> Dict:
         return {"type": "customer_info_status", "status": "pending"}
 
@@ -566,7 +561,7 @@ class BadStatusCustomerInfoStatusDepositIntegration(DepositIntegration):
         params: Dict,
         transaction: Transaction,
         *args,
-        **kwargs
+        **kwargs,
     ) -> Dict:
         return {"type": "customer_info_status", "status": "approved"}
 
@@ -607,7 +602,7 @@ class BadSaveDepositIntegration(DepositIntegration):
         params: Dict,
         transaction: Transaction,
         *args,
-        **kwargs
+        **kwargs,
     ) -> Dict:
         transaction.save()
         return {
@@ -757,3 +752,945 @@ def test_deposit_client_domain_saved(mock_deposit, client):
     assert Transaction.objects.count() == 1
     transaction = Transaction.objects.first()
     assert transaction.client_domain == "test.com"
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.deposit.rdi.process_sep6_request")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_deposit_bad_on_change_callback(mock_process_sep6_request, client):
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        deposit_min_amount=10,
+        deposit_max_amount=1000,
+        sep6_enabled=True,
+        deposit_enabled=True,
+    )
+    mock_process_sep6_request.return_value = {
+        "how": "test",
+        "extra_info": {"test": "test"},
+    }
+    response = client.get(
+        DEPOSIT_PATH,
+        {
+            "asset_code": asset.code,
+            "account": Keypair.random().public_key,
+            "on_change_callback": "invalid domain",
+        },
+    )
+    mock_process_sep6_request.assert_not_called()
+    assert response.status_code == 400, response.content
+    assert response.json() == {"error": "invalid callback URL provided"}
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.deposit.rdi.process_sep6_request")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch("polaris.settings.CALLBACK_REQUEST_DOMAIN_DENYLIST", ["example.com"])
+def test_deposit_denied_on_change_callback(mock_process_sep6_request, client):
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        deposit_min_amount=10,
+        deposit_max_amount=1000,
+        sep6_enabled=True,
+        deposit_enabled=True,
+    )
+    mock_process_sep6_request.return_value = {
+        "how": "test",
+        "extra_info": {"test": "test"},
+    }
+    response = client.get(
+        DEPOSIT_PATH,
+        {
+            "asset_code": asset.code,
+            "account": Keypair.random().public_key,
+            "on_change_callback": "https://example.com",
+        },
+    )
+    mock_process_sep6_request.assert_called_once()
+    assert Transaction.objects.count() == 1
+    t = Transaction.objects.first()
+    content = response.json()
+    assert response.status_code == 200
+    assert content == {
+        "id": str(t.id),
+        "how": "test",
+        "min_amount": round(asset.deposit_min_amount, asset.significant_decimals),
+        "max_amount": round(asset.deposit_max_amount, asset.significant_decimals),
+        "extra_info": {"test": "test"},
+    }
+    assert t.on_change_callback is None
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.deposit.rdi.process_sep6_request")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch("polaris.settings.CALLBACK_REQUEST_DOMAIN_DENYLIST", ["notexample.com"])
+def test_deposit_good_on_change_callback(mock_process_sep6_request, client):
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        deposit_min_amount=10,
+        deposit_max_amount=1000,
+        sep6_enabled=True,
+        deposit_enabled=True,
+    )
+    mock_process_sep6_request.return_value = {
+        "how": "test",
+        "extra_info": {"test": "test"},
+    }
+    response = client.get(
+        DEPOSIT_PATH,
+        {
+            "asset_code": asset.code,
+            "account": Keypair.random().public_key,
+            "on_change_callback": "https://example.com",
+        },
+    )
+    mock_process_sep6_request.assert_called_once()
+    assert Transaction.objects.count() == 1
+    t = Transaction.objects.first()
+    content = response.json()
+    assert response.status_code == 200
+    assert content == {
+        "id": str(t.id),
+        "how": "test",
+        "min_amount": round(asset.deposit_min_amount, asset.significant_decimals),
+        "max_amount": round(asset.deposit_max_amount, asset.significant_decimals),
+        "extra_info": {"test": "test"},
+    }
+    assert t.on_change_callback == "https://example.com"
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.deposit.rdi.process_sep6_request")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch("django.conf.settings.LANGUAGES", [("en", "English"), ("es", "Spansh")])
+def test_deposit_good_lang(mock_process_sep6_request, client):
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        deposit_min_amount=10,
+        deposit_max_amount=1000,
+        sep6_enabled=True,
+        deposit_enabled=True,
+    )
+    mock_process_sep6_request.return_value = {
+        "how": "test",
+        "extra_info": {"test": "test"},
+    }
+    response = client.get(
+        DEPOSIT_PATH,
+        {
+            "asset_code": asset.code,
+            "account": Keypair.random().public_key,
+            "lang": "es",
+        },
+    )
+    mock_process_sep6_request.assert_called_once()
+    assert Transaction.objects.count() == 1
+    t = Transaction.objects.first()
+    content = response.json()
+    assert response.status_code == 200
+    assert content == {
+        "id": str(t.id),
+        "how": "test",
+        "min_amount": round(asset.deposit_min_amount, asset.significant_decimals),
+        "max_amount": round(asset.deposit_max_amount, asset.significant_decimals),
+        "extra_info": {"test": "test"},
+    }
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.deposit.rdi.process_sep6_request")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch("django.conf.settings.LANGUAGES", [("en", "English")])
+def test_deposit_bad_lang(mock_process_sep6_request, client):
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        deposit_min_amount=10,
+        deposit_max_amount=1000,
+        sep6_enabled=True,
+        deposit_enabled=True,
+    )
+    mock_process_sep6_request.return_value = {
+        "how": "test",
+        "extra_info": {"test": "test"},
+    }
+    response = client.get(
+        DEPOSIT_PATH,
+        {
+            "asset_code": asset.code,
+            "account": Keypair.random().public_key,
+            "lang": "es",
+        },
+    )
+    assert response.status_code == 400, response.content
+    assert response.json() == {"error": "unsupported language: es"}
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.deposit.rdi.process_sep6_request")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_deposit_success_indicative_quote(mock_process_sep6_request, client):
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        deposit_min_amount=10,
+        deposit_max_amount=1000,
+        sep6_enabled=True,
+        deposit_enabled=True,
+        sep38_enabled=True,
+    )
+    offchain_asset = OffChainAsset.objects.create(
+        scheme="iso4217", identifier="BRL", country_codes="BRA"
+    )
+    ExchangePair.objects.create(
+        sell_asset=offchain_asset.asset, buy_asset=asset_id_format(asset)
+    )
+    mock_process_sep6_request.return_value = {
+        "how": "test",
+        "extra_info": {"test": "test"},
+    }
+    response = client.get(
+        DEPOSIT_PATH + "-exchange",
+        {
+            "source_asset": offchain_asset.asset,
+            "destination_asset": asset_id_format(asset),
+            "account": Keypair.random().public_key,
+            "amount": "100.12",
+        },
+    )
+    content = response.json()
+    assert response.status_code == 200, content
+    assert content == {
+        "id": str(Transaction.objects.first().id),
+        "how": "test",
+        "min_amount": round(asset.deposit_min_amount, asset.significant_decimals),
+        "max_amount": round(asset.deposit_max_amount, asset.significant_decimals),
+        "extra_info": {"test": "test"},
+    }
+    assert Transaction.objects.count() == 1
+    t = Transaction.objects.first()
+    mock_process_sep6_request.assert_called_once()
+    assert t.quote
+    assert t.quote.sell_asset == asset_id_format(offchain_asset)
+    assert t.quote.buy_asset == asset_id_format(asset)
+    assert t.quote.sell_amount == Decimal("100.12")
+    assert t.quote.type == Quote.TYPE.indicative
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.deposit.rdi.process_sep6_request")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_deposit_success_firm_quote(mock_process_sep6_request, client):
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        deposit_min_amount=10,
+        deposit_max_amount=1000,
+        sep6_enabled=True,
+        deposit_enabled=True,
+        sep38_enabled=True,
+    )
+    offchain_asset = OffChainAsset.objects.create(
+        scheme="iso4217", identifier="BRL", country_codes="BRA"
+    )
+    ExchangePair.objects.create(
+        sell_asset=offchain_asset.asset, buy_asset=asset_id_format(asset)
+    )
+    quote = Quote.objects.create(
+        id=uuid.uuid4(),
+        stellar_account="test source address",
+        sell_asset=offchain_asset.asset,
+        buy_asset=asset_id_format(asset),
+        price=Decimal(1),
+        sell_amount=Decimal("102.12"),
+        buy_amount=Decimal("102.12"),
+        type=Quote.TYPE.firm,
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+    )
+    mock_process_sep6_request.return_value = {
+        "how": "test",
+        "extra_info": {"test": "test"},
+    }
+    response = client.get(
+        DEPOSIT_PATH + "-exchange",
+        {
+            "source_asset": offchain_asset.asset,
+            "destination_asset": asset_id_format(asset),
+            "quote_id": str(quote.id),
+            "account": Keypair.random().public_key,
+            "amount": "102.12",
+        },
+    )
+    content = response.json()
+    assert response.status_code == 200, content
+    assert content == {
+        "id": str(Transaction.objects.first().id),
+        "how": "test",
+        "min_amount": round(asset.deposit_min_amount, asset.significant_decimals),
+        "max_amount": round(asset.deposit_max_amount, asset.significant_decimals),
+        "extra_info": {"test": "test"},
+    }
+    assert Transaction.objects.count() == 1
+    t = Transaction.objects.first()
+    mock_process_sep6_request.assert_called_once()
+    assert t.quote.id == quote.id
+    assert t.quote.type == Quote.TYPE.firm
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.deposit.rdi.process_sep6_request")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_deposit_no_amount_firm_quote(mock_process_sep6_request, client):
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        deposit_min_amount=10,
+        deposit_max_amount=1000,
+        sep6_enabled=True,
+        deposit_enabled=True,
+        sep38_enabled=True,
+    )
+    offchain_asset = OffChainAsset.objects.create(
+        scheme="iso4217", identifier="BRL", country_codes="BRA"
+    )
+    ExchangePair.objects.create(
+        sell_asset=offchain_asset.asset, buy_asset=asset_id_format(asset)
+    )
+    quote = Quote.objects.create(
+        id=uuid.uuid4(),
+        stellar_account="test source address",
+        sell_asset=offchain_asset.asset,
+        buy_asset=asset_id_format(asset),
+        price=Decimal(1),
+        sell_amount=Decimal("102.12"),
+        buy_amount=Decimal("102.12"),
+        type=Quote.TYPE.firm,
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+    )
+    mock_process_sep6_request.return_value = {
+        "how": "test",
+        "extra_info": {"test": "test"},
+    }
+    response = client.get(
+        DEPOSIT_PATH + "-exchange",
+        {
+            "source_asset": offchain_asset.asset,
+            "destination_asset": asset_id_format(asset),
+            "quote_id": str(quote.id),
+            "account": Keypair.random().public_key,
+        },
+    )
+    content = response.json()
+    assert response.status_code == 400, content
+    assert content == {"error": "'amount' is required"}
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.deposit.rdi.process_sep6_request")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_deposit_no_destination_asset_firm_quote(mock_process_sep6_request, client):
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        deposit_min_amount=10,
+        deposit_max_amount=1000,
+        sep6_enabled=True,
+        deposit_enabled=True,
+        sep38_enabled=True,
+    )
+    offchain_asset = OffChainAsset.objects.create(
+        scheme="iso4217", identifier="BRL", country_codes="BRA"
+    )
+    ExchangePair.objects.create(
+        sell_asset=offchain_asset.asset, buy_asset=asset_id_format(asset)
+    )
+    quote = Quote.objects.create(
+        id=uuid.uuid4(),
+        stellar_account="test source address",
+        sell_asset=offchain_asset.asset,
+        buy_asset=asset_id_format(asset),
+        price=Decimal(1),
+        sell_amount=Decimal("102.12"),
+        buy_amount=Decimal("102.12"),
+        type=Quote.TYPE.firm,
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+    )
+    mock_process_sep6_request.return_value = {
+        "how": "test",
+        "extra_info": {"test": "test"},
+    }
+    response = client.get(
+        DEPOSIT_PATH + "-exchange",
+        {
+            "source_asset": offchain_asset.asset,
+            "quote_id": str(quote.id),
+            "account": Keypair.random().public_key,
+            "amount": "102.12",
+        },
+    )
+    content = response.json()
+    assert response.status_code == 400, content
+    assert content == {"error": "'destination_asset' is required"}
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.deposit.rdi.process_sep6_request")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_deposit_bad_destination_format_indicative_quote(
+    mock_process_sep6_request, client
+):
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        deposit_min_amount=10,
+        deposit_max_amount=1000,
+        sep6_enabled=True,
+        deposit_enabled=True,
+        sep38_enabled=True,
+    )
+    offchain_asset = OffChainAsset.objects.create(
+        scheme="iso4217", identifier="BRL", country_codes="BRA"
+    )
+    ExchangePair.objects.create(
+        sell_asset=offchain_asset.asset, buy_asset=asset_id_format(asset)
+    )
+    mock_process_sep6_request.return_value = {
+        "how": "test",
+        "extra_info": {"test": "test"},
+    }
+    response = client.get(
+        DEPOSIT_PATH + "-exchange",
+        {
+            "source_asset": offchain_asset.asset,
+            "destination_asset": f"{asset.code}:{asset.issuer}",
+            "account": Keypair.random().public_key,
+            "amount": "100.12",
+        },
+    )
+    content = response.json()
+    assert response.status_code == 400, content
+    assert content == {"error": "invalid 'destination_asset'"}
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.deposit.rdi.process_sep6_request")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_deposit_no_asset_indicative_quote(mock_process_sep6_request, client):
+    offchain_asset = OffChainAsset.objects.create(
+        scheme="iso4217", identifier="BRL", country_codes="BRA"
+    )
+    stellar_asset = f"stellar:USD:{Keypair.random().public_key}"
+    ExchangePair.objects.create(
+        sell_asset=offchain_asset.asset, buy_asset=stellar_asset
+    )
+    mock_process_sep6_request.return_value = {
+        "how": "test",
+        "extra_info": {"test": "test"},
+    }
+    response = client.get(
+        DEPOSIT_PATH + "-exchange",
+        {
+            "source_asset": offchain_asset.asset,
+            "destination_asset": stellar_asset,
+            "account": Keypair.random().public_key,
+            "amount": "100.12",
+        },
+    )
+    content = response.json()
+    assert response.status_code == 400, content
+    assert content == {
+        "error": "asset not found using 'asset_code' or 'destination_asset'"
+    }
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.deposit.rdi.process_sep6_request")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_deposit_no_support_indicative_quote(mock_process_sep6_request, client):
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        deposit_min_amount=10,
+        deposit_max_amount=1000,
+        sep6_enabled=True,
+        deposit_enabled=True,
+    )
+    offchain_asset = OffChainAsset.objects.create(
+        scheme="iso4217", identifier="BRL", country_codes="BRA"
+    )
+    ExchangePair.objects.create(
+        sell_asset=offchain_asset.asset, buy_asset=asset_id_format(asset)
+    )
+    mock_process_sep6_request.return_value = {
+        "how": "test",
+        "extra_info": {"test": "test"},
+    }
+    response = client.get(
+        DEPOSIT_PATH + "-exchange",
+        {
+            "source_asset": offchain_asset.asset,
+            "destination_asset": asset_id_format(asset),
+            "account": Keypair.random().public_key,
+            "amount": "100.12",
+        },
+    )
+    content = response.json()
+    assert response.status_code == 400, content
+    assert content == {"error": "quotes are not supported"}
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.deposit.rdi.process_sep6_request")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_deposit_no_source_asset_firm_quote(mock_process_sep6_request, client):
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        deposit_min_amount=10,
+        deposit_max_amount=1000,
+        sep6_enabled=True,
+        deposit_enabled=True,
+        sep38_enabled=True,
+    )
+    offchain_asset = OffChainAsset.objects.create(
+        scheme="iso4217", identifier="BRL", country_codes="BRA"
+    )
+    ExchangePair.objects.create(
+        sell_asset=offchain_asset.asset, buy_asset=asset_id_format(asset)
+    )
+    quote = Quote.objects.create(
+        id=uuid.uuid4(),
+        stellar_account="test source address",
+        sell_asset=offchain_asset.asset,
+        buy_asset=asset_id_format(asset),
+        price=Decimal(1),
+        sell_amount=Decimal("102.12"),
+        buy_amount=Decimal("102.12"),
+        type=Quote.TYPE.firm,
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+    )
+    mock_process_sep6_request.return_value = {
+        "how": "test",
+        "extra_info": {"test": "test"},
+    }
+    response = client.get(
+        DEPOSIT_PATH + "-exchange",
+        {
+            "destination_asset": asset_id_format(asset),
+            "quote_id": str(quote.id),
+            "account": Keypair.random().public_key,
+            "amount": "102.12",
+        },
+    )
+    content = response.json()
+    assert response.status_code == 400, content
+    assert content == {
+        "error": "'source_asset' must be provided if 'quote_id' is provided"
+    }
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.deposit.rdi.process_sep6_request")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_deposit_no_quote_firm_quote(mock_process_sep6_request, client):
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        deposit_min_amount=10,
+        deposit_max_amount=1000,
+        sep6_enabled=True,
+        deposit_enabled=True,
+        sep38_enabled=True,
+    )
+    offchain_asset = OffChainAsset.objects.create(
+        scheme="iso4217", identifier="BRL", country_codes="BRA"
+    )
+    ExchangePair.objects.create(
+        sell_asset=offchain_asset.asset, buy_asset=asset_id_format(asset)
+    )
+    mock_process_sep6_request.return_value = {
+        "how": "test",
+        "extra_info": {"test": "test"},
+    }
+    response = client.get(
+        DEPOSIT_PATH + "-exchange",
+        {
+            "source_asset": asset_id_format(offchain_asset),
+            "destination_asset": asset_id_format(asset),
+            "quote_id": str(uuid.uuid4()),
+            "account": Keypair.random().public_key,
+            "amount": "102.12",
+        },
+    )
+    content = response.json()
+    assert response.status_code == 400, content
+    assert content == {"error": "quote not found"}
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.deposit.rdi.process_sep6_request")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_deposit_expired_firm_quote(mock_process_sep6_request, client):
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        deposit_min_amount=10,
+        deposit_max_amount=1000,
+        sep6_enabled=True,
+        deposit_enabled=True,
+        sep38_enabled=True,
+    )
+    offchain_asset = OffChainAsset.objects.create(
+        scheme="iso4217", identifier="BRL", country_codes="BRA"
+    )
+    ExchangePair.objects.create(
+        sell_asset=offchain_asset.asset, buy_asset=asset_id_format(asset)
+    )
+    quote = Quote.objects.create(
+        id=uuid.uuid4(),
+        stellar_account="test source address",
+        sell_asset=offchain_asset.asset,
+        buy_asset=asset_id_format(asset),
+        price=Decimal(1),
+        sell_amount=Decimal("102.12"),
+        buy_amount=Decimal("102.12"),
+        type=Quote.TYPE.firm,
+        expires_at=datetime.now(timezone.utc) - timedelta(hours=1),
+    )
+    mock_process_sep6_request.return_value = {
+        "how": "test",
+        "extra_info": {"test": "test"},
+    }
+    response = client.get(
+        DEPOSIT_PATH + "-exchange",
+        {
+            "source_asset": asset_id_format(offchain_asset),
+            "destination_asset": asset_id_format(asset),
+            "quote_id": str(quote.id),
+            "account": Keypair.random().public_key,
+            "amount": "102.12",
+        },
+    )
+    content = response.json()
+    assert response.status_code == 400, content
+    assert content == {"error": "quote has expired"}
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.deposit.rdi.process_sep6_request")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_deposit_buy_asset_doesnt_match_firm_quote(mock_process_sep6_request, client):
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        deposit_min_amount=10,
+        deposit_max_amount=1000,
+        sep6_enabled=True,
+        deposit_enabled=True,
+        sep38_enabled=True,
+    )
+    offchain_asset = OffChainAsset.objects.create(
+        scheme="iso4217", identifier="BRL", country_codes="BRA"
+    )
+    ExchangePair.objects.create(
+        sell_asset=offchain_asset.asset, buy_asset=asset_id_format(asset)
+    )
+    quote = Quote.objects.create(
+        id=uuid.uuid4(),
+        stellar_account="test source address",
+        sell_asset=offchain_asset.asset,
+        buy_asset="not the same asset",
+        price=Decimal(1),
+        sell_amount=Decimal("102.12"),
+        buy_amount=Decimal("102.12"),
+        type=Quote.TYPE.firm,
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+    )
+    mock_process_sep6_request.return_value = {
+        "how": "test",
+        "extra_info": {"test": "test"},
+    }
+    response = client.get(
+        DEPOSIT_PATH + "-exchange",
+        {
+            "source_asset": asset_id_format(offchain_asset),
+            "destination_asset": asset_id_format(asset),
+            "quote_id": str(quote.id),
+            "account": Keypair.random().public_key,
+            "amount": "102.12",
+        },
+    )
+    content = response.json()
+    assert response.status_code == 400, content
+    assert content == {
+        "error": "quote 'buy_asset' does not match 'asset_code' and 'asset_issuer' parameters"
+    }
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.deposit.rdi.process_sep6_request")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_deposit_sell_asset_doesnt_match_firm_quote(mock_process_sep6_request, client):
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        deposit_min_amount=10,
+        deposit_max_amount=1000,
+        sep6_enabled=True,
+        deposit_enabled=True,
+        sep38_enabled=True,
+    )
+    offchain_asset = OffChainAsset.objects.create(
+        scheme="iso4217", identifier="BRL", country_codes="BRA"
+    )
+    ExchangePair.objects.create(
+        sell_asset=offchain_asset.asset, buy_asset=asset_id_format(asset)
+    )
+    quote = Quote.objects.create(
+        id=uuid.uuid4(),
+        stellar_account="test source address",
+        sell_asset="asset doesn't match",
+        buy_asset=asset_id_format(asset),
+        price=Decimal(1),
+        sell_amount=Decimal("102.12"),
+        buy_amount=Decimal("102.12"),
+        type=Quote.TYPE.firm,
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+    )
+    mock_process_sep6_request.return_value = {
+        "how": "test",
+        "extra_info": {"test": "test"},
+    }
+    response = client.get(
+        DEPOSIT_PATH + "-exchange",
+        {
+            "source_asset": asset_id_format(offchain_asset),
+            "destination_asset": asset_id_format(asset),
+            "quote_id": str(quote.id),
+            "account": Keypair.random().public_key,
+            "amount": "102.12",
+        },
+    )
+    content = response.json()
+    assert response.status_code == 400, content
+    assert content == {
+        "error": "quote 'sell_asset' does not match 'source_asset' parameter"
+    }
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.deposit.rdi.process_sep6_request")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_deposit_source_asset_not_found_firm_quote(mock_process_sep6_request, client):
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        deposit_min_amount=10,
+        deposit_max_amount=1000,
+        sep6_enabled=True,
+        deposit_enabled=True,
+        sep38_enabled=True,
+    )
+    ExchangePair.objects.create(
+        sell_asset="iso4217:BRL", buy_asset=asset_id_format(asset)
+    )
+    quote = Quote.objects.create(
+        id=uuid.uuid4(),
+        stellar_account="test source address",
+        sell_asset="iso4217:BRL",
+        buy_asset=asset_id_format(asset),
+        price=Decimal(1),
+        sell_amount=Decimal("102.12"),
+        buy_amount=Decimal("102.12"),
+        type=Quote.TYPE.firm,
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+    )
+    mock_process_sep6_request.return_value = {
+        "how": "test",
+        "extra_info": {"test": "test"},
+    }
+    response = client.get(
+        DEPOSIT_PATH + "-exchange",
+        {
+            "source_asset": "iso4217:BRL",
+            "destination_asset": asset_id_format(asset),
+            "quote_id": str(quote.id),
+            "account": Keypair.random().public_key,
+            "amount": "102.12",
+        },
+    )
+    content = response.json()
+    assert response.status_code == 400, content
+    assert content == {"error": "invalid 'source_asset'"}
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.deposit.rdi.process_sep6_request")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_deposit_no_support_firm_quote(mock_process_sep6_request, client):
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        deposit_min_amount=10,
+        deposit_max_amount=1000,
+        sep6_enabled=True,
+        deposit_enabled=True,
+    )
+    offchain_asset = OffChainAsset.objects.create(
+        scheme="iso4217", identifier="BRL", country_codes="BRA"
+    )
+    ExchangePair.objects.create(
+        sell_asset=offchain_asset.asset, buy_asset=asset_id_format(asset)
+    )
+    quote = Quote.objects.create(
+        id=uuid.uuid4(),
+        stellar_account="test source address",
+        sell_asset=offchain_asset.asset,
+        buy_asset=asset_id_format(asset),
+        price=Decimal(1),
+        sell_amount=Decimal("102.12"),
+        buy_amount=Decimal("102.12"),
+        type=Quote.TYPE.firm,
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+    )
+    mock_process_sep6_request.return_value = {
+        "how": "test",
+        "extra_info": {"test": "test"},
+    }
+    response = client.get(
+        DEPOSIT_PATH + "-exchange",
+        {
+            "source_asset": asset_id_format(offchain_asset),
+            "destination_asset": asset_id_format(asset),
+            "quote_id": str(quote.id),
+            "account": Keypair.random().public_key,
+            "amount": "102.12",
+        },
+    )
+    content = response.json()
+    assert response.status_code == 400, content
+    assert content == {"error": "quotes are not supported"}
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.deposit.rdi.process_sep6_request")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_deposit_amounts_dont_match_firm_quote(mock_process_sep6_request, client):
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        deposit_min_amount=10,
+        deposit_max_amount=1000,
+        sep6_enabled=True,
+        deposit_enabled=True,
+        sep38_enabled=True,
+    )
+    offchain_asset = OffChainAsset.objects.create(
+        scheme="iso4217", identifier="BRL", country_codes="BRA"
+    )
+    ExchangePair.objects.create(
+        sell_asset=offchain_asset.asset, buy_asset=asset_id_format(asset)
+    )
+    quote = Quote.objects.create(
+        id=uuid.uuid4(),
+        stellar_account="test source address",
+        sell_asset=offchain_asset.asset,
+        buy_asset=asset_id_format(asset),
+        price=Decimal(1),
+        sell_amount=Decimal("102.12"),
+        buy_amount=Decimal("102.12"),
+        type=Quote.TYPE.firm,
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+    )
+    mock_process_sep6_request.return_value = {
+        "how": "test",
+        "extra_info": {"test": "test"},
+    }
+    response = client.get(
+        DEPOSIT_PATH + "-exchange",
+        {
+            "source_asset": asset_id_format(offchain_asset),
+            "destination_asset": asset_id_format(asset),
+            "quote_id": str(quote.id),
+            "account": Keypair.random().public_key,
+            "amount": "103.12",
+        },
+    )
+    content = response.json()
+    assert response.status_code == 400, content
+    assert content == {"error": "quote amount does not match 'amount' parameter"}
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.deposit.rdi.process_sep6_request")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_deposit_no_pair_indicative_quote(mock_process_sep6_request, client):
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        deposit_min_amount=10,
+        deposit_max_amount=1000,
+        sep6_enabled=True,
+        deposit_enabled=True,
+        sep38_enabled=True,
+    )
+    offchain_asset = OffChainAsset.objects.create(
+        scheme="iso4217", identifier="BRL", country_codes="BRA"
+    )
+    mock_process_sep6_request.return_value = {
+        "how": "test",
+        "extra_info": {"test": "test"},
+    }
+    response = client.get(
+        DEPOSIT_PATH + "-exchange",
+        {
+            "source_asset": asset_id_format(offchain_asset),
+            "destination_asset": asset_id_format(asset),
+            "account": Keypair.random().public_key,
+            "amount": "102.12",
+        },
+    )
+    content = response.json()
+    assert response.status_code == 400, content
+    assert content == {
+        "error": "unsupported 'source_asset' for 'asset_code' and 'asset_issuer'"
+    }
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.deposit.rdi.process_sep6_request")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_deposit_no_offchain_asset_indicative_quote(mock_process_sep6_request, client):
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        deposit_min_amount=10,
+        deposit_max_amount=1000,
+        sep6_enabled=True,
+        deposit_enabled=True,
+        sep38_enabled=True,
+    )
+    ExchangePair.objects.create(
+        sell_asset="iso4217:BRL", buy_asset=asset_id_format(asset)
+    )
+    mock_process_sep6_request.return_value = {
+        "how": "test",
+        "extra_info": {"test": "test"},
+    }
+    response = client.get(
+        DEPOSIT_PATH + "-exchange",
+        {
+            "source_asset": "iso4217:BRL",
+            "destination_asset": asset_id_format(asset),
+            "account": Keypair.random().public_key,
+            "amount": "102.12",
+        },
+    )
+    content = response.json()
+    assert response.status_code == 400, content
+    assert content == {"error": "invalid 'destination_asset'"}

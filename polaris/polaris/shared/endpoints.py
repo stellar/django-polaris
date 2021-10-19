@@ -192,20 +192,23 @@ def fee(request: Request, sep6: bool = False) -> Response:
 
     if error_resp:
         return error_resp
-    else:
-        return Response(
-            {
-                "fee": registered_fee_func(
-                    request=request,
-                    fee_params={
-                        "operation": operation,
-                        "type": op_type,
-                        "asset_code": asset_code,
-                        "amount": amount,
-                    },
-                )
-            }
+
+    try:
+        fee_amount = registered_fee_func(
+            request=request,
+            fee_params={
+                "operation": operation,
+                "type": op_type,
+                "asset_code": asset_code,
+                "amount": amount,
+            },
         )
+    except ValueError:
+        return render_error_response(
+            _("unable to calculate fees for the requested asset")
+        )
+
+    return Response({"fee": fee_amount})
 
 
 def _validate_limit(limit):

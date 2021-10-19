@@ -1,6 +1,13 @@
 from django.contrib import admin
-from django.forms import ModelForm
-from polaris.models import Transaction, Asset
+
+from polaris.models import (
+    Transaction,
+    Asset,
+    Quote,
+    OffChainAsset,
+    DeliveryMethod,
+    ExchangePair,
+)
 
 
 class TransactionAdmin(admin.ModelAdmin):
@@ -30,3 +37,7 @@ class AssetAdmin(admin.ModelAdmin):
 
 admin.site.register(Transaction, TransactionAdmin)
 admin.site.register(Asset, AssetAdmin)
+admin.site.register(DeliveryMethod)
+admin.site.register(Quote)
+admin.site.register(OffChainAsset)
+admin.site.register(ExchangePair)

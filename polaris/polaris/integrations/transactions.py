@@ -162,6 +162,7 @@ class DepositIntegration:
                 return {
                     "title": "Deposit Transaction Form",
                     "guidance": "Please enter the amount you would like to deposit.",
+                    "show_fee_table": True,
                     "icon_label": "Stellar Development Foundation",
                     "icon_path": "images/company-icon.png",
                     # custom field passed by the anchor
@@ -178,6 +179,17 @@ class DepositIntegration:
 
         Finally, if neither are present, Polaris will default to its default image.
         All images will be rendered in a 100 x 150px sized box.
+
+        `show_fee_table` can be returned to instruct Polaris to make the fee table
+        visible on the page rendered to the user. This table is hidden by default unless
+        a ``TransactionForm`` is returned from ``form_for_transaction()``, in which case
+        the fee table will be displayed.
+
+        If the anchor instructs Polaris to display the fee table but a ``TransactionForm``
+        is not present on the page, the anchor is responsible for updating the fee table
+        with the appropriate values. This is useful when the anchor is collecting the
+        amount of an off-chain asset, since ``TransactionForm`` assumes the amount
+        collected is for an on-chain asset.
 
         :param request: a ``rest_framework.request.Request`` instance
         :param template: a ``polaris.templates.Template`` enum value
@@ -204,13 +216,6 @@ class DepositIntegration:
         If you need to store some data to determine which form to return next when
         ``DepositIntegration.form_for_transaction`` is called, store this
         data in a model not used by Polaris.
-
-        Keep in mind that if a ``TransactionForm`` is submitted, Polaris will
-        update the ``Transaction.amount_in``, ``Transaction.amount_fee``, and
-        ``Transaction.amount_out`` fields with the information collected. There is no
-        need to implement that yourself here. However, note that if the amount
-        ultimately delivered to the anchor does not match the amount specified in
-        the form, these attributes must be updated appropriately.
 
         If `form` is the last form to be served to the user, Polaris will update the
         transaction status to ``pending_user_transfer_start``, indicating that the
@@ -322,24 +327,38 @@ class DepositIntegration:
     ) -> Dict:
         """
         .. _deposit: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#deposit
+        .. _deposit-exchange: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#deposit-exchange
         .. _Deposit no additional information needed: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#1-success-no-additional-information-needed
         .. _Customer information needed: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#2-customer-information-needed-non-interactive
         .. _Customer Information Status: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#4-customer-information-status
 
-        Process the request arguments passed to the deposit_ endpoint and return one of the
-        following responses outlined below as a dictionary. Save `transaction` to the DB
-        if you plan to return a success response. If `transaction` is saved to the DB but a
-        failure response is returned, Polaris will return a 500 error to the user.
+        This function is called during requests made to the SEP-6 deposit_ and
+        `deposit-exchange`_ endpoints. The `params` object will contain the parameters
+        included in the request. Note that Polaris will only call this function for
+        `deposit-exchange`_ requests if SEP-38 is added to Polaris' ``ACTIVE_SEPS`` setting
+        and the requested Stellar asset is enabled for SEP-38.
+
+        If a request to the the `deposit-exchange`_ endpoint is made, a ``Quote`` object
+        will be assign to the ``Transaction`` object passed.
+
+        Process these parameters and return one of the following responses outlined below
+        as a dictionary. Save `transaction` to the DB if you plan to return a success
+        response. If `transaction` is saved to the DB but a failure response is returned,
+        Polaris will return a 500 error to the user.
 
         If you'd like the user to send ``Transaction.amount_in`` `plus the fee amount`,
         add the amount charged as a fee to ``Transaction.amount_in`` and
         ``Transaction.amount_expected``. here. While not required per SEP-6, it is
         encouraged to also populate ``Transaction.amount_fee`` and ``Transaction.amount_out``
-        here as well.
+        here as well. If this function is called for a `deposit-exchange`_ request,
+        ``Transaction.fee_asset`` should also be assigned. If not assigned here, these
+        columns must be assigned before returning the transaction from
+        ``RailsIntegration.poll_pending_deposits()``.
 
         Note that the amount sent over the Stellar Network could differ from
         the amount specified in this API call, so fees and the amount delievered may have to
-        be recalculated in ``RailsIntegration.execute_outgoing_transaction()``.
+        be recalculated in ``RailsIntegration.poll_pending_deposits()`` for deposits and
+        ``RailsIntegration.execute_outgoing_transaction()`` for withdrawals.
 
         Polaris responds to requests with the standard status code according the SEP. However,
         if you would like to return a custom error code in the range of 400-599 you may raise

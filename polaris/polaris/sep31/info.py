@@ -10,6 +10,7 @@ from rest_framework.renderers import JSONRenderer, BrowsableAPIRenderer
 from polaris.models import Asset
 from polaris.utils import render_error_response
 from polaris.integrations import registered_sep31_receiver_integration
+from polaris import settings
 
 
 logger = getLogger(__name__)
@@ -139,15 +140,17 @@ def get_asset_info(asset: Asset, fields_and_types: Dict) -> Dict:
     }
     min_amount = getattr(asset, "send_min_amount")
     max_amount = getattr(asset, "send_max_amount")
-    if min_amount > Asset._meta.get_field("send_min_amount").default:
+    if min_amount > getattr(Asset, "_meta").get_field("send_min_amount").default:
         asset_info["min_amount"] = min_amount
-    if max_amount < Asset._meta.get_field("send_max_amount").default:
+    if max_amount < getattr(Asset, "_meta").get_field("send_max_amount").default:
         asset_info["max_amount"] = max_amount
-    if asset.send_fee_fixed:
+    if asset.send_fee_fixed is not None:
         asset_info["fee_fixed"] = round(
             asset.send_fee_fixed, asset.significant_decimals
         )
-    if asset.send_fee_percent:
+    if asset.send_fee_percent is not None:
         asset_info["fee_percent"] = asset.send_fee_percent
+    if "sep-38" in settings.ACTIVE_SEPS:
+        asset_info["quotes_supported"] = asset.sep38_enabled
 
     return asset_info

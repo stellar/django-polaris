@@ -66,6 +66,11 @@ class TransactionSerializer(serializers.ModelSerializer):
         del data["memo_type"]
         del data["memo"]
         del data["receiving_anchor_account"]
+        if instance.quote:
+            data["amount_in_asset"] = instance.quote.sell_asset
+            data["amount_out_asset"] = instance.quote.buy_asset
+            if instance.fee_asset:
+                data["amount_fee_asset"] = instance.fee_asset
         return data
 
     def _round_decimals(self, data, instance):

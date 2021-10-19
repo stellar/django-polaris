@@ -1,7 +1,8 @@
 from typing import Dict, Optional
 from decimal import Decimal, InvalidOperation
 from collections import defaultdict
-from polaris.utils import getLogger
+
+from polaris.utils import getLogger, get_quote_and_offchain_destination_asset
 
 from django.utils.translation import gettext as _
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
@@ -14,7 +15,7 @@ from rest_framework.parsers import JSONParser
 from polaris.locale.utils import _is_supported_language, activate_lang_for_request
 from polaris.sep10.utils import validate_sep10_token
 from polaris.sep10.token import SEP10Token
-from polaris.models import Transaction, Asset
+from polaris.models import Transaction, Asset, Quote
 from polaris.integrations import registered_sep31_receiver_integration
 from polaris.sep31.serializers import SEP31TransactionSerializer
 from polaris.utils import (
@@ -48,11 +49,15 @@ class TransactionsAPIView(APIView):
         elif not transaction_id:
             return render_error_response(_("missing 'id' in URI"))
         try:
-            t = Transaction.objects.filter(
-                id=transaction_id,
-                stellar_account=token.account,
-                protocol=Transaction.PROTOCOL.sep31,
-            ).first()
+            t = (
+                Transaction.objects.filter(
+                    id=transaction_id,
+                    stellar_account=token.account,
+                    protocol=Transaction.PROTOCOL.sep31,
+                )
+                .select_related("quote")
+                .first()
+            )
         except ValidationError:  # bad id parameter
             return render_error_response(_("transaction not found"), status_code=404)
         if not t:
@@ -114,7 +119,7 @@ class TransactionsAPIView(APIView):
             return render_error_response("invalid sending account", status_code=403)
 
         try:
-            params = validate_post_request(request)
+            params = validate_post_request(token, request)
         except ValueError as e:
             return render_error_response(str(e))
 
@@ -147,6 +152,7 @@ class TransactionsAPIView(APIView):
             memo_type=Transaction.MEMO_TYPES.hash,
             receiving_anchor_account=params["asset"].distribution_account,
             client_domain=token.client_domain,
+            quote=params["quote"],
         )
 
         error_data = registered_sep31_receiver_integration.process_post_request(
@@ -159,13 +165,16 @@ class TransactionsAPIView(APIView):
             return render_error_response(
                 _("unable to process the request"), status_code=500
             )
+        if "error" in response_data:
+            return Response(response_data, status=400)
         else:
+            if transaction.quote and transaction.quote.type == Quote.TYPE.indicative:
+                transaction.quote.save()
             transaction.save()
+            return Response(response_data, status=201)
 
-        return Response(response_data, status=400 if "error" in response_data else 201)
 
-
-def validate_post_request(request: Request) -> Dict:
+def validate_post_request(token: SEP10Token, request: Request) -> Dict:
     asset_args = {"code": request.data.get("asset_code")}
     if request.data.get("asset_issuer"):
         asset_args["issuer"] = request.data.get("asset_issuer")
@@ -196,6 +205,13 @@ def validate_post_request(request: Request) -> Dict:
         and type(request.data.get("receiver_id")) in [str, type(None)]
     ):
         raise ValueError(_("'sender_id' and 'receiver_id' values must be strings"))
+    quote, destination_asset = get_quote_and_offchain_destination_asset(
+        token=token,
+        quote_id=request.data.get("quote_id"),
+        destination_asset_str=request.data.get("destination_asset"),
+        asset=asset,
+        amount=Decimal(amount),
+    )
     return {
         "asset": asset,
         "amount": amount,
@@ -204,6 +220,8 @@ def validate_post_request(request: Request) -> Dict:
         "sender_id": request.data.get("sender_id"),
         "receiver_id": request.data.get("receiver_id"),
         "fields": request.data.get("fields"),
+        "destination_asset": destination_asset,
+        "quote": quote,
     }
 
 

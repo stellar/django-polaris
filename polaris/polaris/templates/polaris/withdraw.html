@@ -42,9 +42,9 @@
             </div>
             {% endfor %}
 
-            <table class="fee-table" hidden>
-                <tr class="fee-row"><td class="fee-label">{% trans "Fee" %}</td><td class="fee">{{ asset.symbol }} 0</td></tr>
-                <tr class="amount-out-row"><td class="amount-out-label">{% trans "Total" %}</td><td class="amount-out">{{ asset.symbol }} 0</td></tr>
+            <table class="polaris-fee-table" hidden>
+              <tr class="polaris-fee-row"><td class="polaris-fee-label">{% trans "Fee" %}</td><td class="polaris-fee-value">{{ asset.symbol }} 0</td></tr>
+              <tr class="polaris-fee-total-row"><td class="polaris-fee-total-label">{% trans "Total" %}</td><td class="polaris-fee-total-value">{{ asset.symbol }} 0</td></tr>
             </table>
 
             <div class="field">

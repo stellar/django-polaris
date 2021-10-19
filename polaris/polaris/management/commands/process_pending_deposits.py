@@ -275,6 +275,20 @@ class PendingDeposits:
             ).update(pending_execution_attempt=True)
         verified_ready_transactions = []
         for transaction in ready_transactions:
+            if not transaction.amount_fee or not transaction.amount_out:
+                if transaction.quote:
+                    logger.error(
+                        f"transaction {transaction.id} uses a quote but was returned "
+                        "from poll_pending_deposits() without amount_fee or amount_out "
+                        "assigned, skipping"
+                    )
+                    continue
+                logger.warning(
+                    f"transaction {transaction.id} was returned from "
+                    f"poll_pending_deposits() without Transaction.amount_fee or "
+                    f"Transaction.amount_out assigned. Future Polaris "
+                    "releases will not calculate fees and delivered amounts"
+                )
             # refresh from DB to pull pending_execution_attempt value and to ensure invalid
             # values were not assigned to the transaction in rri.poll_pending_deposits()
             asset = transaction.asset
@@ -305,10 +319,8 @@ class PendingDeposits:
                                 "asset_code": transaction.asset.code,
                             }
                         )
-                    except ValueError as e:
-                        cls.handle_error(transaction, str(e))
-                        maybe_make_callback(transaction)
-                        continue
+                    except ValueError:
+                        transaction.amount_fee = Decimal(0)
                 else:
                     transaction.amount_fee = Decimal(0)
                 transaction.save()
@@ -614,11 +626,12 @@ class PendingDeposits:
         transaction.stellar_transaction_id = response["id"]
         transaction.status = Transaction.STATUS.completed
         transaction.completed_at = datetime.datetime.now(datetime.timezone.utc)
-        transaction.amount_out = round(
-            Decimal(transaction.amount_in) - Decimal(transaction.amount_fee),
-            transaction.asset.significant_decimals,
-        )
         transaction.pending_execution_attempt = False
+        if not transaction.quote:
+            transaction.amount_out = round(
+                Decimal(transaction.amount_in) - Decimal(transaction.amount_fee),
+                transaction.asset.significant_decimals,
+            )
         await sync_to_async(transaction.save)()
         logger.info(f"transaction {transaction.id} completed.")
         await maybe_make_callback_async(transaction)
@@ -648,10 +661,18 @@ class PendingDeposits:
     async def create_deposit_envelope(
         transaction, source_account, server
     ) -> TransactionEnvelope:
-        payment_amount = round(
-            Decimal(transaction.amount_in) - Decimal(transaction.amount_fee),
-            transaction.asset.significant_decimals,
-        )
+        if transaction.amount_out:
+            payment_amount = transaction.amount_out
+        elif transaction.quote:
+            raise RuntimeError(
+                f"transaction {transaction.id} uses a quote but does not have "
+                "amount_out assigned"
+            )
+        else:
+            payment_amount = round(
+                Decimal(transaction.amount_in) - Decimal(transaction.amount_fee),
+                transaction.asset.significant_decimals,
+            )
         builder = TransactionBuilder(
             source_account=source_account,
             network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
