@@ -1,6 +1,9 @@
+from datetime import timezone
+
 from rest_framework import serializers
 
 from polaris.models import Asset, Quote, OffChainAsset, DeliveryMethod
+from polaris.settings import DATETIME_FORMAT
 
 
 class QuoteSerializer(serializers.ModelSerializer):
@@ -13,6 +16,9 @@ class QuoteSerializer(serializers.ModelSerializer):
     price = serializers.SerializerMethodField()
     sell_amount = serializers.SerializerMethodField()
     buy_amount = serializers.SerializerMethodField()
+    expires_at = serializers.DateTimeField(
+        format=DATETIME_FORMAT, default_timezone=timezone.utc
+    )
 
     @staticmethod
     def cache_asset(asset: str, cache: dict):

@@ -49,12 +49,11 @@ def default_data():
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 def test_get_price_success_no_optional_params(mock_rqi, client):
     data = default_data()
-    mock_rqi.get_price = Mock(return_value=Decimal(2.123))
+    mock_rqi.get_price = Mock(return_value=Decimal("2.12"))
     response = client.get(
         PRICE_ENDPOINT,
         {
             "sell_asset": asset_id_format(data["stellar_assets"][0]),
-            "sell_amount": 100,
             "buy_asset": asset_id_format(data["offchain_assets"][0]),
             "buy_amount": 100,
         },
@@ -63,7 +62,7 @@ def test_get_price_success_no_optional_params(mock_rqi, client):
     body = response.json()
     assert body == {
         "price": "2.12",
-        "sell_amount": "100.00",
+        "sell_amount": "212.00",
         "buy_amount": "100.00",
     }
     mock_rqi.get_price.assert_called_once()
@@ -72,7 +71,6 @@ def test_get_price_success_no_optional_params(mock_rqi, client):
     del kwargs["request"]
     assert kwargs == {
         "sell_asset": data["stellar_assets"][0],
-        "sell_amount": Decimal(100),
         "buy_asset": data["offchain_assets"][0],
         "buy_amount": Decimal(100),
         "buy_delivery_method": None,
@@ -86,21 +84,24 @@ def test_get_price_success_no_optional_params(mock_rqi, client):
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 def test_get_price_success_country_code_buy_delivery_method(mock_rqi, client):
     data = default_data()
-    mock_rqi.get_price = Mock(return_value=Decimal(2.123))
+    mock_rqi.get_price = Mock(return_value=Decimal("2.12"))
     response = client.get(
         PRICE_ENDPOINT,
         {
             "sell_asset": asset_id_format(data["stellar_assets"][0]),
             "sell_amount": 100,
             "buy_asset": asset_id_format(data["offchain_assets"][0]),
-            "buy_amount": 100,
             "country_code": "BRA",
             "buy_delivery_method": "cash_pickup",
         },
     )
     assert response.status_code == 200, response.content
     body = response.json()
-    assert body == {"price": "2.12", "sell_amount": "100.00", "buy_amount": "100.00"}
+    assert body == {
+        "price": "2.12",
+        "sell_amount": "100.00",
+        "buy_amount": str(round(Decimal(100) / Decimal(2.12), 2)),
+    }
     mock_rqi.get_price.assert_called_once()
     kwargs = mock_rqi.get_price.call_args[1]
     del kwargs["token"]
@@ -109,7 +110,6 @@ def test_get_price_success_country_code_buy_delivery_method(mock_rqi, client):
         "sell_asset": data["stellar_assets"][0],
         "sell_amount": Decimal(100),
         "buy_asset": data["offchain_assets"][0],
-        "buy_amount": Decimal(100),
         "buy_delivery_method": data["delivery_methods"][0],
         "sell_delivery_method": None,
         "country_code": "BRA",
@@ -126,12 +126,11 @@ def test_get_price_success_country_code_sell_delivery_method(mock_rqi, client):
     pair.sell_asset, pair.buy_asset = pair.buy_asset, pair.sell_asset
     pair.save()
 
-    mock_rqi.get_price = Mock(return_value=Decimal(2.123))
+    mock_rqi.get_price = Mock(return_value=Decimal("2.12"))
     response = client.get(
         PRICE_ENDPOINT,
         {
             "sell_asset": asset_id_format(data["offchain_assets"][0]),
-            "sell_amount": 100,
             "buy_asset": asset_id_format(data["stellar_assets"][0]),
             "buy_amount": 100,
             "country_code": "BRA",
@@ -140,14 +139,13 @@ def test_get_price_success_country_code_sell_delivery_method(mock_rqi, client):
     )
     assert response.status_code == 200, response.content
     body = response.json()
-    assert body == {"price": "2.12", "buy_amount": "100.00", "sell_amount": "100.00"}
+    assert body == {"price": "2.12", "buy_amount": "100.00", "sell_amount": "212.00"}
     mock_rqi.get_price.assert_called_once()
     kwargs = mock_rqi.get_price.call_args[1]
     del kwargs["token"]
     del kwargs["request"]
     assert kwargs == {
         "sell_asset": data["offchain_assets"][0],
-        "sell_amount": Decimal(100),
         "buy_asset": data["stellar_assets"][0],
         "buy_amount": Decimal(100),
         "buy_delivery_method": None,
@@ -165,32 +163,59 @@ def test_get_price_success_no_optional_params_swap_exchange_pair(mock_rqi, clien
     pair.sell_asset, pair.buy_asset = pair.buy_asset, pair.sell_asset
     pair.save()
 
-    mock_rqi.get_price = Mock(return_value=Decimal(2.123))
+    mock_rqi.get_price = Mock(return_value=Decimal("2.12"))
     response = client.get(
         PRICE_ENDPOINT,
         {
             "sell_asset": asset_id_format(data["offchain_assets"][0]),
-            "sell_amount": 100,
-            "buy_amount": 100,
+            "sell_amount": 99,
             "buy_asset": asset_id_format(data["stellar_assets"][0]),
         },
     )
     assert response.status_code == 200, response.content
     body = response.json()
-    assert body == {"price": "2.12", "sell_amount": "100.00", "buy_amount": "100.00"}
+    assert body == {
+        "price": "2.12",
+        "sell_amount": "99.00",
+        "buy_amount": str(round(99 / Decimal("2.12"), 2)),
+    }
     mock_rqi.get_price.assert_called_once()
     kwargs = mock_rqi.get_price.call_args[1]
     del kwargs["token"]
     del kwargs["request"]
     assert kwargs == {
         "sell_asset": data["offchain_assets"][0],
-        "sell_amount": Decimal(100),
+        "sell_amount": Decimal(99),
         "buy_asset": data["stellar_assets"][0],
-        "buy_amount": Decimal(100),
         "buy_delivery_method": None,
         "sell_delivery_method": None,
         "country_code": None,
     }
+
+
+@pytest.mark.django_db
+@patch(f"{code_path}.rqi")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_get_price_failure_both_amounts(mock_rqi, client):
+    data = default_data()
+    mock_rqi.get_price = Mock(return_value=Decimal("2.12"))
+    response = client.get(
+        PRICE_ENDPOINT,
+        {
+            "sell_asset": asset_id_format(data["stellar_assets"][0]),
+            "sell_amount": 100,
+            "buy_amount": 100,
+            "buy_asset": asset_id_format(data["offchain_assets"][0]),
+            "country_code": "BRA",
+            "buy_delivery_method": "cash_pickup",
+        },
+    )
+    assert response.status_code == 400, response.content
+    body = response.json()
+    assert body == {
+        "error": "'sell_amount' or 'buy_amount' is required, but both is invalid"
+    }
+    mock_rqi.get_price.assert_not_called()
 
 
 @pytest.mark.django_db
@@ -202,7 +227,6 @@ def test_get_price_success_no_exchange_pairs(mock_rqi, client):
         PRICE_ENDPOINT,
         {
             "sell_asset": asset_id_format(data["offchain_assets"][0]),
-            "sell_amount": 100,
             "buy_asset": asset_id_format(data["stellar_assets"][0]),
             "buy_amount": 100,
         },
@@ -215,41 +239,15 @@ def test_get_price_success_no_exchange_pairs(mock_rqi, client):
 @pytest.mark.django_db
 @patch(f"{code_path}.rqi")
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-def test_get_price_failure_missing_sell_amount(mock_rqi, client):
-    data = default_data()
-    response = client.get(
-        PRICE_ENDPOINT,
-        {
-            "sell_asset": asset_id_format(data["stellar_assets"][0]),
-            "buy_asset": asset_id_format(data["offchain_assets"][0]),
-            "buy_amount": 100,
-        },
-    )
-    assert response.status_code == 400, response.content
-    assert response.json() == {
-        "error": "missing required parameters. Required: sell_asset, "
-        "sell_amount, buy_asset, buy_amount"
-    }
-    mock_rqi.get_price.assert_not_called()
-
-
-@pytest.mark.django_db
-@patch(f"{code_path}.rqi")
-@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 def test_get_price_failure_missing_sell_asset(mock_rqi, client):
     data = default_data()
     response = client.get(
         PRICE_ENDPOINT,
-        {
-            "sell_amount": 100,
-            "buy_asset": asset_id_format(data["offchain_assets"][0]),
-            "buy_amount": 100,
-        },
+        {"buy_asset": asset_id_format(data["offchain_assets"][0]), "buy_amount": 100,},
     )
     assert response.status_code == 400, response.content
     assert response.json() == {
-        "error": "missing required parameters. Required: sell_asset, "
-        "sell_amount, buy_asset, buy_amount"
+        "error": "missing required parameters. Required: sell_asset, buy_asset"
     }
     mock_rqi.get_price.assert_not_called()
 
@@ -261,37 +259,11 @@ def test_get_price_failure_missing_buy_asset(mock_rqi, client):
     data = default_data()
     response = client.get(
         PRICE_ENDPOINT,
-        {
-            "sell_amount": 100,
-            "sell_asset": asset_id_format(data["stellar_assets"][0]),
-            "buy_amount": 100,
-        },
+        {"sell_asset": asset_id_format(data["stellar_assets"][0]), "buy_amount": 100,},
     )
     assert response.status_code == 400, response.content
     assert response.json() == {
-        "error": "missing required parameters. Required: sell_asset, "
-        "sell_amount, buy_asset, buy_amount"
-    }
-    mock_rqi.get_price.assert_not_called()
-
-
-@pytest.mark.django_db
-@patch(f"{code_path}.rqi")
-@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-def test_get_price_failure_missing_buy_amount(mock_rqi, client):
-    data = default_data()
-    response = client.get(
-        PRICE_ENDPOINT,
-        {
-            "sell_amount": 100,
-            "sell_asset": asset_id_format(data["stellar_assets"][0]),
-            "buy_asset": asset_id_format(data["offchain_assets"][0]),
-        },
-    )
-    assert response.status_code == 400, response.content
-    assert response.json() == {
-        "error": "missing required parameters. Required: sell_asset, "
-        "sell_amount, buy_asset, buy_amount"
+        "error": "missing required parameters. Required: sell_asset, buy_asset"
     }
     mock_rqi.get_price.assert_not_called()
 
@@ -305,7 +277,6 @@ def test_get_price_failure_both_delivery_methods(mock_rqi, client):
         PRICE_ENDPOINT,
         {
             "sell_asset": asset_id_format(data["stellar_assets"][0]),
-            "sell_amount": 100,
             "buy_asset": asset_id_format(data["offchain_assets"][0]),
             "buy_amount": 100,
             "buy_delivery_method": "cash_pickup",
@@ -330,7 +301,6 @@ def test_get_price_failure_sell_stellar_with_sell_delivery_method(mock_rqi, clie
             "sell_asset": asset_id_format(data["stellar_assets"][0]),
             "sell_amount": 100,
             "buy_asset": asset_id_format(data["offchain_assets"][0]),
-            "buy_amount": 100,
             "sell_delivery_method": "cash_dropoff",
         },
     )
@@ -356,7 +326,6 @@ def test_get_price_failure_sell_offchain_with_buy_delivery_method(mock_rqi, clie
         PRICE_ENDPOINT,
         {
             "sell_asset": asset_id_format(data["offchain_assets"][0]),
-            "sell_amount": 100,
             "buy_asset": asset_id_format(data["stellar_assets"][0]),
             "buy_amount": 100,
             "buy_delivery_method": "cash_pickup",
@@ -380,7 +349,6 @@ def test_get_price_failure_bad_sell_stellar_format(mock_rqi, client):
             "sell_asset": f"stellar:USDC",
             "sell_amount": 100,
             "buy_asset": asset_id_format(data["offchain_assets"][0]),
-            "buy_amount": 100,
         },
     )
     assert response.status_code == 400, response.content
@@ -399,7 +367,6 @@ def test_get_price_failure_bad_buy_stellar_format(mock_rqi, client):
             "buy_asset": f"stellar:USDC",
             "buy_amount": 100,
             "sell_asset": asset_id_format(data["offchain_assets"][0]),
-            "sell_amount": 100,
         },
     )
     assert response.status_code == 400, response.content
@@ -418,7 +385,6 @@ def test_get_price_failure_bad_sell_offchain_format(mock_rqi, client):
             "sell_asset": f"USD",
             "sell_amount": 100,
             "buy_asset": asset_id_format(data["stellar_assets"][0]),
-            "buy_amount": 100,
         },
     )
     assert response.status_code == 400, response.content
@@ -435,7 +401,6 @@ def test_get_price_failure_bad_buy_offchain_format(mock_rqi, client):
         PRICE_ENDPOINT,
         {
             "buy_asset": f"USD",
-            "buy_amount": 100,
             "sell_asset": asset_id_format(data["stellar_assets"][0]),
             "sell_amount": 100,
         },
@@ -443,6 +408,26 @@ def test_get_price_failure_bad_buy_offchain_format(mock_rqi, client):
     assert response.status_code == 400, response.content
     assert response.json() == {"error": "invalid 'buy_asset' format"}
     mock_rqi.get_price.assert_not_called()
+
+
+@pytest.mark.django_db
+@patch(f"{code_path}.rqi")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_get_price_error_bad_price(mock_rqi, client):
+    data = default_data()
+    mock_rqi.get_price.return_value = Decimal("2.123")
+
+    response = client.get(
+        PRICE_ENDPOINT,
+        {
+            "sell_asset": asset_id_format(data["stellar_assets"][0]),
+            "sell_amount": 100,
+            "buy_asset": asset_id_format(data["offchain_assets"][0]),
+        },
+    )
+    assert response.status_code == 500, response.content
+    assert response.json() == {"error": "internal server error"}
+    mock_rqi.get_price.assert_called_once()
 
 
 @pytest.mark.django_db
@@ -460,7 +445,6 @@ def test_get_price_failure_sell_stellar_asset_not_found(mock_rqi, client):
             "sell_asset": asset_id_format(data["stellar_assets"][0]),
             "sell_amount": 100,
             "buy_asset": asset_id_format(data["offchain_assets"][0]),
-            "buy_amount": 100,
         },
     )
     assert response.status_code == 400, response.content
@@ -487,7 +471,6 @@ def test_get_price_failure_sell_offchain_asset_not_found(mock_rqi, client):
         PRICE_ENDPOINT,
         {
             "sell_asset": asset_id_format(data["offchain_assets"][0]),
-            "sell_amount": 100,
             "buy_asset": asset_id_format(data["stellar_assets"][0]),
             "buy_amount": 100,
         },
@@ -518,7 +501,6 @@ def test_get_price_failure_buy_stellar_asset_not_found(mock_rqi, client):
             "sell_asset": asset_id_format(data["offchain_assets"][0]),
             "sell_amount": 100,
             "buy_asset": asset_id_format(data["stellar_assets"][0]),
-            "buy_amount": 100,
         },
     )
     assert response.status_code == 400, response.content
@@ -541,7 +523,6 @@ def test_get_price_failure_buy_offchain_asset_not_found(mock_rqi, client):
         PRICE_ENDPOINT,
         {
             "sell_asset": asset_id_format(data["stellar_assets"][0]),
-            "sell_amount": 100,
             "buy_asset": asset_id_format(data["offchain_assets"][0]),
             "buy_amount": 100,
         },
@@ -565,7 +546,6 @@ def test_get_price_failure_bad_buy_delivery_method(mock_rqi, client):
             "sell_asset": asset_id_format(data["stellar_assets"][0]),
             "sell_amount": 100,
             "buy_asset": asset_id_format(data["offchain_assets"][0]),
-            "buy_amount": 100,
             "buy_delivery_method": "bad_delivery_method",
         },
     )
@@ -586,7 +566,6 @@ def test_get_price_failure_bad_country_code(mock_rqi, client):
         PRICE_ENDPOINT,
         {
             "sell_asset": asset_id_format(data["stellar_assets"][0]),
-            "sell_amount": 100,
             "buy_asset": asset_id_format(data["offchain_assets"][0]),
             "buy_amount": 100,
             "country_code": "TEST",
@@ -615,7 +594,6 @@ def test_get_price_failure_bad_sell_delivery_method(mock_rqi, client):
             "sell_asset": asset_id_format(data["offchain_assets"][0]),
             "sell_amount": 100,
             "buy_asset": asset_id_format(data["stellar_assets"][0]),
-            "buy_amount": 100,
             "sell_delivery_method": "bad_delivery_method",
         },
     )
@@ -638,7 +616,6 @@ def test_get_price_failure_bad_sell_amount(mock_rqi, client):
             "sell_asset": asset_id_format(data["stellar_assets"][0]),
             "sell_amount": "test",
             "buy_asset": asset_id_format(data["offchain_assets"][0]),
-            "buy_amount": 100,
         },
     )
     assert response.status_code == 400, response.content
@@ -658,7 +635,6 @@ def test_get_price_failure_bad_buy_amount(mock_rqi, client):
         PRICE_ENDPOINT,
         {
             "sell_asset": asset_id_format(data["stellar_assets"][0]),
-            "sell_amount": 100,
             "buy_asset": asset_id_format(data["offchain_assets"][0]),
             "buy_amount": "test",
         },
@@ -681,7 +657,6 @@ def test_get_price_failure_bad_return_type(mock_rqi, client):
         PRICE_ENDPOINT,
         {
             "sell_asset": asset_id_format(data["stellar_assets"][0]),
-            "sell_amount": 100,
             "buy_asset": asset_id_format(data["offchain_assets"][0]),
             "buy_amount": 100,
         },
@@ -694,7 +669,6 @@ def test_get_price_failure_bad_return_type(mock_rqi, client):
     del kwargs["request"]
     assert kwargs == {
         "sell_asset": data["stellar_assets"][0],
-        "sell_amount": Decimal(100),
         "buy_asset": data["offchain_assets"][0],
         "buy_amount": Decimal(100),
         "buy_delivery_method": None,
@@ -716,7 +690,6 @@ def test_get_price_failure_anchor_raises_value_error(mock_rqi, client):
             "sell_asset": asset_id_format(data["stellar_assets"][0]),
             "sell_amount": 100,
             "buy_asset": asset_id_format(data["offchain_assets"][0]),
-            "buy_amount": 100,
         },
     )
     assert response.status_code == 400, response.content
@@ -729,7 +702,6 @@ def test_get_price_failure_anchor_raises_value_error(mock_rqi, client):
         "sell_asset": data["stellar_assets"][0],
         "sell_amount": Decimal(100),
         "buy_asset": data["offchain_assets"][0],
-        "buy_amount": Decimal(100),
         "buy_delivery_method": None,
         "sell_delivery_method": None,
         "country_code": None,
@@ -747,7 +719,6 @@ def test_get_price_failure_anchor_raises_runtime_error(mock_rqi, client):
         PRICE_ENDPOINT,
         {
             "sell_asset": asset_id_format(data["stellar_assets"][0]),
-            "sell_amount": 100,
             "buy_asset": asset_id_format(data["offchain_assets"][0]),
             "buy_amount": 100,
         },
@@ -760,7 +731,6 @@ def test_get_price_failure_anchor_raises_runtime_error(mock_rqi, client):
     del kwargs["request"]
     assert kwargs == {
         "sell_asset": data["stellar_assets"][0],
-        "sell_amount": Decimal(100),
         "buy_asset": data["offchain_assets"][0],
         "buy_amount": Decimal(100),
         "buy_delivery_method": None,
@@ -781,7 +751,6 @@ def test_get_price_failure_anchor_raises_unexpected_error(mock_rqi, client):
             PRICE_ENDPOINT,
             {
                 "sell_asset": asset_id_format(data["stellar_assets"][0]),
-                "sell_amount": 100,
                 "buy_asset": asset_id_format(data["offchain_assets"][0]),
                 "buy_amount": 100,
             },
@@ -792,7 +761,6 @@ def test_get_price_failure_anchor_raises_unexpected_error(mock_rqi, client):
     del kwargs["request"]
     assert kwargs == {
         "sell_asset": data["stellar_assets"][0],
-        "sell_amount": Decimal(100),
         "buy_asset": data["offchain_assets"][0],
         "buy_amount": Decimal(100),
         "buy_delivery_method": None,

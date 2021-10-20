@@ -29,8 +29,8 @@ class SEP10Token:
         if isinstance(jwt, str):
             try:
                 jwt = decode(jwt, settings.SERVER_JWT_KEY, algorithms=["HS256"])
-            except InvalidTokenError:
-                raise ValueError("unable to decode jwt")
+            except InvalidTokenError as e:
+                raise ValueError("unable to decode jwt" + str(e))
         elif not isinstance(jwt, Dict):
             raise ValueError(
                 "invalid type for 'jwt' parameter: must be a string or dictionary"

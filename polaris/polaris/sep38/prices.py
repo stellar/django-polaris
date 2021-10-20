@@ -10,7 +10,7 @@ from rest_framework.response import Response
 from polaris.sep10.utils import validate_sep10_token
 from polaris.sep10.token import SEP10Token
 from polaris.integrations import registered_quote_integration as rqi
-from polaris.utils import render_error_response
+from polaris.utils import render_error_response, getLogger
 from polaris.models import DeliveryMethod
 from polaris.sep38.utils import (
     asset_id_format,
@@ -19,6 +19,9 @@ from polaris.sep38.utils import (
     get_buy_asset,
     find_delivery_method,
 )
+
+
+logger = getLogger(__name__)
 
 
 @api_view(["GET"])
@@ -38,13 +41,33 @@ def get_price(token: SEP10Token, request: Request) -> Response:
         return render_error_response(str(e), status_code=503)
 
     if not isinstance(price, Decimal):
+        logger.error(
+            "a non-Decimal price was returned from QuoteIntegration.get_price()"
+        )
         return render_error_response(gettext("internal server error"), status_code=500)
+    elif round(price, request_data["sell_asset"].significant_decimals) != price:
+        logger.error(
+            "the price returned from QuoteIntegration.get_price() did not have the correct "
+            "number of significant decimals"
+        )
+        return render_error_response(gettext("internal server error"), status_code=500)
+
+    if request_data.get("sell_amount"):
+        sell_amount = request_data["sell_amount"]
+        buy_amount = round(
+            sell_amount / price, request_data["buy_asset"].significant_decimals
+        )
+    else:
+        buy_amount = request_data["buy_amount"]
+        sell_amount = round(
+            price * buy_amount, request_data["sell_asset"].significant_decimals
+        )
 
     return Response(
         {
             "price": str(round(price, request_data["sell_asset"].significant_decimals)),
-            "sell_amount": str(request_data["sell_amount"]),
-            "buy_amount": str(request_data["buy_amount"]),
+            "sell_amount": str(sell_amount),
+            "buy_amount": str(buy_amount),
         }
     )
 
@@ -143,11 +166,15 @@ def validate_prices_request(token: SEP10Token, request: Request) -> dict:
 
 def validate_price_request(token: SEP10Token, request: Request) -> dict:
     validated_data = {"token": token, "request": request}
-    required_fields = ["sell_asset", "sell_amount", "buy_asset", "buy_amount"]
+    required_fields = ["sell_asset", "buy_asset"]
     if not set(required_fields).issubset(request.GET.keys()):
         raise ValueError(
             gettext("missing required parameters. Required: ")
             + ", ".join(required_fields)
+        )
+    if not (bool(request.GET.get("buy_amount")) ^ bool(request.GET.get("sell_amount"))):
+        raise ValueError(
+            gettext("'sell_amount' or 'buy_amount' is required, but both is invalid")
         )
     if request.GET.get("buy_delivery_method") and request.GET.get(
         "sell_delivery_method"
@@ -170,14 +197,16 @@ def validate_price_request(token: SEP10Token, request: Request) -> dict:
         country_code=request.GET.get("country_code"),
     )
     try:
-        validated_data["buy_amount"] = round(
-            Decimal(request.GET["buy_amount"]),
-            validated_data["buy_asset"].significant_decimals,
-        )
-        validated_data["sell_amount"] = round(
-            Decimal(request.GET["sell_amount"]),
-            validated_data["sell_asset"].significant_decimals,
-        )
+        if request.GET.get("buy_amount"):
+            validated_data["buy_amount"] = round(
+                Decimal(request.GET["buy_amount"]),
+                validated_data["buy_asset"].significant_decimals,
+            )
+        if request.GET.get("sell_amount"):
+            validated_data["sell_amount"] = round(
+                Decimal(request.GET["sell_amount"]),
+                validated_data["sell_asset"].significant_decimals,
+            )
     except DecimalException:
         raise ValueError(
             gettext("invalid 'buy_amount' or 'sell_amount'; Expected decimal strings.")

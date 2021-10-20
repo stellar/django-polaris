@@ -5,7 +5,7 @@ import time
 # Rotates the random number at the specified interval
 from decimal import Decimal
 
-rotation_interval = 300
+rotation_interval = 30
 
 
 def _get_rotating_random_number() -> float:

@@ -58,7 +58,7 @@ def test_post_quote_success_no_optional_params(mock_rqi, client):
     data = default_data()
 
     def mock_post_quote(token, request, quote, *args, **kwargs) -> Quote:
-        quote.price = Decimal(2.12)
+        quote.price = Decimal("2.12")
         quote.expires_at = quote.requested_expire_after or datetime.now(
             timezone.utc
         ) + timedelta(hours=1)
@@ -75,9 +75,9 @@ def test_post_quote_success_no_optional_params(mock_rqi, client):
         json.dumps(
             {
                 "sell_asset": asset_id_format(data["stellar_assets"][0]),
-                "sell_amount": 100,
                 "buy_asset": asset_id_format(data["offchain_assets"][0]),
                 "buy_amount": 100,
+                "buy_delivery_method": "cash_pickup",
             }
         ),
         content_type="application/json",
@@ -88,12 +88,15 @@ def test_post_quote_success_no_optional_params(mock_rqi, client):
     datetime.strptime(body.pop("expires_at"), DATETIME_FORMAT)
     assert body == {
         "price": "2.12",
-        "sell_amount": "100.00",
         "buy_amount": "100.00",
+        "sell_amount": "212.00",
         "sell_asset": asset_id_format(data["stellar_assets"][0]),
         "buy_asset": asset_id_format(data["offchain_assets"][0]),
     }
-    assert Quote.objects.get(id=quote_id)
+    q = Quote.objects.get(id=quote_id)
+    assert q
+    assert q.price == Decimal("2.12")
+    assert q.sell_amount == Decimal("212")
 
 
 @pytest.mark.django_db
@@ -105,7 +108,7 @@ def test_post_quote_success_country_code_buy_delivery_method_expire_after(
     data = default_data()
 
     def mock_post_quote(token, request, quote, *args, **kwargs) -> Quote:
-        quote.price = Decimal(2.12)
+        quote.price = Decimal("2.12")
         quote.expires_at = quote.requested_expire_after or datetime.now(
             timezone.utc
         ) + timedelta(hours=1)
@@ -124,7 +127,6 @@ def test_post_quote_success_country_code_buy_delivery_method_expire_after(
             "sell_asset": asset_id_format(data["stellar_assets"][0]),
             "sell_amount": 100,
             "buy_asset": asset_id_format(data["offchain_assets"][0]),
-            "buy_amount": 100,
             "country_code": "BRA",
             "buy_delivery_method": "cash_pickup",
             "expire_after": expire_after.strftime(DATETIME_FORMAT),
@@ -138,7 +140,7 @@ def test_post_quote_success_country_code_buy_delivery_method_expire_after(
     assert body == {
         "price": "2.12",
         "sell_amount": "100.00",
-        "buy_amount": "100.00",
+        "buy_amount": str(round(Decimal(100) / Decimal("2.12"), 2)),
         "sell_asset": asset_id_format(data["stellar_assets"][0]),
         "buy_asset": asset_id_format(data["offchain_assets"][0]),
     }
@@ -156,7 +158,7 @@ def test_post_quote_success_country_code_sell_delivery_method(mock_rqi, client):
     pair.save()
 
     def mock_post_quote(token, request, quote, *args, **kwargs) -> Quote:
-        quote.price = Decimal(2.12)
+        quote.price = Decimal("2.12")
         quote.expires_at = quote.requested_expire_after or datetime.now(
             timezone.utc
         ) + timedelta(hours=1)
@@ -172,7 +174,6 @@ def test_post_quote_success_country_code_sell_delivery_method(mock_rqi, client):
         ENDPOINT,
         {
             "sell_asset": asset_id_format(data["offchain_assets"][0]),
-            "sell_amount": 100,
             "buy_asset": asset_id_format(data["stellar_assets"][0]),
             "buy_amount": 100,
             "country_code": "BRA",
@@ -187,7 +188,7 @@ def test_post_quote_success_country_code_sell_delivery_method(mock_rqi, client):
     assert body == {
         "price": "2.12",
         "buy_amount": "100.00",
-        "sell_amount": "100.00",
+        "sell_amount": "212.00",
         "buy_asset": asset_id_format(data["stellar_assets"][0]),
         "sell_asset": asset_id_format(data["offchain_assets"][0]),
     }
@@ -204,7 +205,7 @@ def test_post_quote_success_no_optional_params_swap_exchange_pair(mock_rqi, clie
     pair.save()
 
     def mock_post_quote(token, request, quote, *args, **kwargs) -> Quote:
-        quote.price = Decimal(2.12)
+        quote.price = Decimal("2.12")
         quote.expires_at = quote.requested_expire_after or datetime.now(
             timezone.utc
         ) + timedelta(hours=1)
@@ -221,8 +222,8 @@ def test_post_quote_success_no_optional_params_swap_exchange_pair(mock_rqi, clie
         {
             "sell_asset": asset_id_format(data["offchain_assets"][0]),
             "sell_amount": 100,
-            "buy_amount": 100,
             "buy_asset": asset_id_format(data["stellar_assets"][0]),
+            "sell_delivery_method": "cash_dropoff",
         },
         content_type="application/json",
     )
@@ -233,11 +234,37 @@ def test_post_quote_success_no_optional_params_swap_exchange_pair(mock_rqi, clie
     assert body == {
         "price": "2.12",
         "sell_amount": "100.00",
-        "buy_amount": "100.00",
+        "buy_amount": str(round(Decimal(100) / Decimal("2.12"), 2)),
         "buy_asset": asset_id_format(data["stellar_assets"][0]),
         "sell_asset": asset_id_format(data["offchain_assets"][0]),
     }
     assert Quote.objects.get(id=quote_id)
+
+
+@pytest.mark.django_db
+@patch(f"{code_path}.rqi")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_post_quote_failure_both_amounts(mock_rqi, client):
+    data = default_data()
+
+    response = client.post(
+        ENDPOINT,
+        json.dumps(
+            {
+                "sell_asset": asset_id_format(data["stellar_assets"][0]),
+                "buy_asset": asset_id_format(data["offchain_assets"][0]),
+                "buy_amount": 100,
+                "sell_amount": 100,
+                "buy_delivery_method": "cash_pickup",
+            }
+        ),
+        content_type="application/json",
+    )
+    assert response.status_code == 400, response.content
+    assert response.json() == {
+        "error": "'sell_amount' or 'buy_amount' is required, but both is invalid"
+    }
+    mock_rqi.post_quote.assert_not_called()
 
 
 @pytest.mark.django_db
@@ -249,36 +276,14 @@ def test_post_quote_failure_no_exchange_pairs(mock_rqi, client):
         ENDPOINT,
         {
             "sell_asset": asset_id_format(data["offchain_assets"][0]),
-            "sell_amount": 100,
             "buy_asset": asset_id_format(data["stellar_assets"][0]),
             "buy_amount": 100,
+            "sell_delivery_method": "cash_dropoff",
         },
         content_type="application/json",
     )
     assert response.status_code == 400, response.content
     assert response.json() == {"error": "unsupported asset pair"}
-    mock_rqi.post_quote.assert_not_called()
-
-
-@pytest.mark.django_db
-@patch(f"{code_path}.rqi")
-@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-def test_post_quote_failure_missing_sell_amount(mock_rqi, client):
-    data = default_data()
-    response = client.post(
-        ENDPOINT,
-        {
-            "sell_asset": asset_id_format(data["stellar_assets"][0]),
-            "buy_asset": asset_id_format(data["offchain_assets"][0]),
-            "buy_amount": 100,
-        },
-        content_type="application/json",
-    )
-    assert response.status_code == 400, response.content
-    assert response.json() == {
-        "error": "missing required parameters. Required: sell_asset, "
-        "sell_amount, buy_asset, buy_amount"
-    }
     mock_rqi.post_quote.assert_not_called()
 
 
@@ -292,14 +297,13 @@ def test_post_quote_failure_missing_sell_asset(mock_rqi, client):
         {
             "sell_amount": 100,
             "buy_asset": asset_id_format(data["offchain_assets"][0]),
-            "buy_amount": 100,
+            "buy_delivery_method": "cash_pickup",
         },
         content_type="application/json",
     )
     assert response.status_code == 400, response.content
     assert response.json() == {
-        "error": "missing required parameters. Required: sell_asset, "
-        "sell_amount, buy_asset, buy_amount"
+        "error": "missing required parameters. Required: sell_asset, buy_asset"
     }
     mock_rqi.post_quote.assert_not_called()
 
@@ -312,38 +316,15 @@ def test_post_quote_failure_missing_buy_asset(mock_rqi, client):
     response = client.post(
         ENDPOINT,
         {
-            "sell_amount": 100,
             "sell_asset": asset_id_format(data["stellar_assets"][0]),
             "buy_amount": 100,
+            "buy_delivery_method": "cash_pickup",
         },
         content_type="application/json",
     )
     assert response.status_code == 400, response.content
     assert response.json() == {
-        "error": "missing required parameters. Required: sell_asset, "
-        "sell_amount, buy_asset, buy_amount"
-    }
-    mock_rqi.post_quote.assert_not_called()
-
-
-@pytest.mark.django_db
-@patch(f"{code_path}.rqi")
-@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-def test_post_quote_failure_missing_buy_amount(mock_rqi, client):
-    data = default_data()
-    response = client.post(
-        ENDPOINT,
-        {
-            "sell_amount": 100,
-            "sell_asset": asset_id_format(data["stellar_assets"][0]),
-            "buy_asset": asset_id_format(data["offchain_assets"][0]),
-        },
-        content_type="application/json",
-    )
-    assert response.status_code == 400, response.content
-    assert response.json() == {
-        "error": "missing required parameters. Required: sell_asset, "
-        "sell_amount, buy_asset, buy_amount"
+        "error": "missing required parameters. Required: sell_asset, buy_asset"
     }
     mock_rqi.post_quote.assert_not_called()
 
@@ -359,7 +340,6 @@ def test_post_quote_failure_both_delivery_methods(mock_rqi, client):
             "sell_asset": asset_id_format(data["stellar_assets"][0]),
             "sell_amount": 100,
             "buy_asset": asset_id_format(data["offchain_assets"][0]),
-            "buy_amount": 100,
             "buy_delivery_method": "cash_pickup",
             "sell_delivery_method": "cash_dropoff",
         },
@@ -367,7 +347,7 @@ def test_post_quote_failure_both_delivery_methods(mock_rqi, client):
     )
     assert response.status_code == 400, response.content
     assert response.json() == {
-        "error": "'buy_delivery_method' or 'sell_delivery_method' is valid, but not both"
+        "error": "'buy_delivery_method' or 'sell_delivery_method' is required, but both is invalid"
     }
     mock_rqi.post_quote.assert_not_called()
 
@@ -383,7 +363,6 @@ def test_post_quote_failure_sell_stellar_with_sell_delivery_method(mock_rqi, cli
             "sell_asset": asset_id_format(data["stellar_assets"][0]),
             "sell_amount": 100,
             "buy_asset": asset_id_format(data["offchain_assets"][0]),
-            "buy_amount": 100,
             "sell_delivery_method": "cash_dropoff",
         },
         content_type="application/json",
@@ -410,7 +389,6 @@ def test_post_quote_failure_sell_offchain_with_buy_delivery_method(mock_rqi, cli
         ENDPOINT,
         {
             "sell_asset": asset_id_format(data["offchain_assets"][0]),
-            "sell_amount": 100,
             "buy_asset": asset_id_format(data["stellar_assets"][0]),
             "buy_amount": 100,
             "buy_delivery_method": "cash_pickup",
@@ -433,9 +411,9 @@ def test_post_quote_failure_bad_sell_stellar_format(mock_rqi, client):
         ENDPOINT,
         {
             "sell_asset": f"stellar:USDC",
-            "sell_amount": 100,
             "buy_asset": asset_id_format(data["offchain_assets"][0]),
             "buy_amount": 100,
+            "buy_delivery_method": "cash_pickup",
         },
         content_type="application/json",
     )
@@ -453,9 +431,9 @@ def test_post_quote_failure_bad_buy_stellar_format(mock_rqi, client):
         ENDPOINT,
         {
             "buy_asset": f"stellar:USDC",
-            "buy_amount": 100,
             "sell_asset": asset_id_format(data["offchain_assets"][0]),
             "sell_amount": 100,
+            "sell_delivery_method": "cash_dropoff",
         },
         content_type="application/json",
     )
@@ -475,7 +453,7 @@ def test_post_quote_failure_bad_sell_offchain_format(mock_rqi, client):
             "sell_asset": f"USD",
             "sell_amount": 100,
             "buy_asset": asset_id_format(data["stellar_assets"][0]),
-            "buy_amount": 100,
+            "sell_delivery_method": "cash_dropoff",
         },
         content_type="application/json",
     )
@@ -495,7 +473,7 @@ def test_post_quote_failure_bad_buy_offchain_format(mock_rqi, client):
             "buy_asset": f"USD",
             "buy_amount": 100,
             "sell_asset": asset_id_format(data["offchain_assets"][0]),
-            "sell_amount": 100,
+            "sell_delivery_method": "cash_dropoff",
         },
         content_type="application/json",
     )
@@ -517,9 +495,9 @@ def test_post_quote_failure_stellar_asset_not_found(mock_rqi, client):
         ENDPOINT,
         {
             "sell_asset": asset_id_format(data["stellar_assets"][0]),
-            "sell_amount": 100,
             "buy_asset": asset_id_format(data["offchain_assets"][0]),
             "buy_amount": 100,
+            "buy_delivery_method": "cash_dropoff",
         },
         content_type="application/json",
     )
@@ -547,9 +525,9 @@ def test_post_quote_failure_offchain_asset_not_found(mock_rqi, client):
         ENDPOINT,
         {
             "sell_asset": asset_id_format(data["offchain_assets"][0]),
-            "sell_amount": 100,
             "buy_asset": asset_id_format(data["stellar_assets"][0]),
             "buy_amount": 100,
+            "sell_delivery_method": "cash_dropoff",
         },
         content_type="application/json",
     )
@@ -570,7 +548,6 @@ def test_post_quote_failure_bad_buy_delivery_method(mock_rqi, client):
         ENDPOINT,
         {
             "sell_asset": asset_id_format(data["stellar_assets"][0]),
-            "sell_amount": 100,
             "buy_asset": asset_id_format(data["offchain_assets"][0]),
             "buy_amount": 100,
             "buy_delivery_method": "bad_delivery_method",
@@ -596,8 +573,8 @@ def test_post_quote_failure_bad_country_code(mock_rqi, client):
             "sell_asset": asset_id_format(data["stellar_assets"][0]),
             "sell_amount": 100,
             "buy_asset": asset_id_format(data["offchain_assets"][0]),
-            "buy_amount": 100,
             "country_code": "TEST",
+            "buy_delivery_method": "cash_pickup",
         },
         content_type="application/json",
     )
@@ -622,7 +599,6 @@ def test_post_quote_failure_bad_sell_delivery_method(mock_rqi, client):
         ENDPOINT,
         {
             "sell_asset": asset_id_format(data["offchain_assets"][0]),
-            "sell_amount": 100,
             "buy_asset": asset_id_format(data["stellar_assets"][0]),
             "buy_amount": 100,
             "sell_delivery_method": "bad_delivery_method",
@@ -648,7 +624,7 @@ def test_post_quote_failure_bad_sell_amount(mock_rqi, client):
             "sell_asset": asset_id_format(data["stellar_assets"][0]),
             "sell_amount": "test",
             "buy_asset": asset_id_format(data["offchain_assets"][0]),
-            "buy_amount": 100,
+            "buy_delivery_method": "cash_pickup",
         },
         content_type="application/json",
     )
@@ -669,9 +645,9 @@ def test_post_quote_failure_bad_buy_amount(mock_rqi, client):
         ENDPOINT,
         {
             "sell_asset": asset_id_format(data["stellar_assets"][0]),
-            "sell_amount": 100,
             "buy_asset": asset_id_format(data["offchain_assets"][0]),
             "buy_amount": "test",
+            "buy_delivery_method": "cash_pickup",
         },
         content_type="application/json",
     )
@@ -692,10 +668,10 @@ def test_post_quote_failure_bad_expires_at(mock_rqi, client):
         ENDPOINT,
         {
             "sell_asset": asset_id_format(data["stellar_assets"][0]),
-            "sell_amount": 100,
             "buy_asset": asset_id_format(data["offchain_assets"][0]),
             "buy_amount": 100,
             "expire_after": "test",
+            "buy_delivery_method": "cash_pickup",
         },
         content_type="application/json",
     )
@@ -718,10 +694,10 @@ def test_post_quote_failure_expires_at_in_past(mock_rqi, client):
             "sell_asset": asset_id_format(data["stellar_assets"][0]),
             "sell_amount": 100,
             "buy_asset": asset_id_format(data["offchain_assets"][0]),
-            "buy_amount": 100,
             "expire_after": (datetime.now(timezone.utc) - timedelta(hours=1)).strftime(
                 DATETIME_FORMAT
             ),
+            "buy_delivery_method": "cash_pickup",
         },
         content_type="application/json",
     )
@@ -745,7 +721,7 @@ def test_post_quote_failure_anchor_raises_value_error(mock_rqi, client):
             "sell_asset": asset_id_format(data["stellar_assets"][0]),
             "sell_amount": 100,
             "buy_asset": asset_id_format(data["offchain_assets"][0]),
-            "buy_amount": 100,
+            "buy_delivery_method": "cash_pickup",
         },
         content_type="application/json",
     )
@@ -769,9 +745,9 @@ def test_post_quote_failure_anchor_raises_runtime_error(mock_rqi, client):
         ENDPOINT,
         {
             "sell_asset": asset_id_format(data["stellar_assets"][0]),
-            "sell_amount": 100,
             "buy_asset": asset_id_format(data["offchain_assets"][0]),
             "buy_amount": 100,
+            "buy_delivery_method": "cash_pickup",
         },
         content_type="application/json",
     )
@@ -798,7 +774,7 @@ def test_post_quote_failure_anchor_raises_unexpected_error(mock_rqi, client):
                 "sell_asset": asset_id_format(data["stellar_assets"][0]),
                 "sell_amount": 100,
                 "buy_asset": asset_id_format(data["offchain_assets"][0]),
-                "buy_amount": 100,
+                "buy_delivery_method": "cash_pickup",
             },
             content_type="application/json",
         )
@@ -820,9 +796,9 @@ def test_post_quote_failure_anchor_provides_bad_quote(mock_rqi, client):
         ENDPOINT,
         {
             "sell_asset": asset_id_format(data["stellar_assets"][0]),
-            "sell_amount": 100,
             "buy_asset": asset_id_format(data["offchain_assets"][0]),
             "buy_amount": 100,
+            "buy_delivery_method": "cash_pickup",
         },
         content_type="application/json",
     )
@@ -837,7 +813,7 @@ def test_post_quote_failure_anchor_provides_bad_quote(mock_rqi, client):
 
 def test_validate_quote_not_quote():
     with pytest.raises(ValueError, match="object returned is not a Quote"):
-        validate_quote_provided(None, "")
+        validate_quote_provided(None, "", 2)
 
 
 @pytest.mark.django_db
@@ -849,13 +825,62 @@ def test_validate_quote_sell_delivery_method():
             buy_asset="stellar:test:test",
             sell_asset="test:test",
             buy_amount=Decimal(100),
-            sell_amount=Decimal(100),
-            price=Decimal(2.12),
+            price=Decimal("2.12"),
             sell_delivery_method=data["offchain_assets"][0].delivery_methods.first(),
             expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
         ),
         "",
+        2,
     )
+
+
+@pytest.mark.django_db
+def test_validate_quote_bad_price():
+    data = default_data()
+    with pytest.raises(
+        ValueError,
+        match="the price saved to Quote.price did not have the correct number of significant decimals",
+    ):
+        validate_quote_provided(
+            Quote(
+                type=Quote.TYPE.firm,
+                buy_asset="stellar:test:test",
+                sell_asset="test:test",
+                buy_amount=Decimal(100),
+                price=Decimal("2.123"),
+                sell_delivery_method=data["offchain_assets"][
+                    0
+                ].delivery_methods.first(),
+                expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+            ),
+            "",
+            2,
+        )
+
+
+@pytest.mark.django_db
+def test_validate_quote_both_amounts():
+    data = default_data()
+    with pytest.raises(
+        ValueError,
+        match="polaris will calculate the amount not specified in the request",
+    ):
+        validate_quote_provided(
+            Quote(
+                type=Quote.TYPE.firm,
+                buy_asset="stellar:test:test",
+                sell_asset="test:test",
+                buy_amount=Decimal(100),
+                sell_amount=Decimal(100),
+                price=Decimal("2.12"),
+                sell_delivery_method=data["offchain_assets"][
+                    0
+                ].delivery_methods.first(),
+                expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+            ),
+            "",
+            2,
+        )
 
 
 @pytest.mark.django_db
@@ -867,12 +892,12 @@ def test_validate_quote_buy_delivery_method():
             sell_asset="stellar:test:test",
             buy_asset="test:test",
             buy_amount=Decimal(100),
-            sell_amount=Decimal(100),
-            price=Decimal(2.12),
+            price=Decimal("2.12"),
             buy_delivery_method=data["offchain_assets"][0].delivery_methods.first(),
             expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
         ),
         "",
+        2,
     )
 
 
@@ -885,15 +910,15 @@ def test_validate_quote_bad_type():
                 type=Quote.TYPE.indicative,
                 buy_asset="stellar:test:test",
                 sell_asset="test:test",
-                buy_amount=Decimal(100),
                 sell_amount=Decimal(100),
-                price=Decimal(2.12),
+                price=Decimal("2.12"),
                 sell_delivery_method=data["offchain_assets"][
                     0
                 ].delivery_methods.first(),
                 expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
             ),
             "",
+            2,
         )
 
 
@@ -907,13 +932,13 @@ def test_validate_quote_no_price():
                 buy_asset="stellar:test:test",
                 sell_asset="test:test",
                 buy_amount=Decimal(100),
-                sell_amount=Decimal(100),
                 sell_delivery_method=data["offchain_assets"][
                     0
                 ].delivery_methods.first(),
                 expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
             ),
             "",
+            2,
         )
 
 
@@ -928,7 +953,6 @@ def test_validate_quote_bad_amount_types():
                 type=Quote.TYPE.firm,
                 buy_asset="stellar:test:test",
                 sell_asset="test:test",
-                buy_amount=100,
                 sell_amount=100,
                 price=2.12,
                 sell_delivery_method=data["offchain_assets"][
@@ -937,6 +961,7 @@ def test_validate_quote_bad_amount_types():
                 expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
             ),
             "",
+            2,
         )
 
 
@@ -950,14 +975,14 @@ def test_validate_quote_bad_amounts():
                 buy_asset="stellar:test:test",
                 sell_asset="test:test",
                 buy_amount=Decimal(-100),
-                sell_amount=Decimal(100),
-                price=Decimal(2.12),
+                price=Decimal("2.12"),
                 sell_delivery_method=data["offchain_assets"][
                     0
                 ].delivery_methods.first(),
                 expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
             ),
             "",
+            2,
         )
 
 
@@ -970,14 +995,14 @@ def test_validate_quote_no_expiration():
                 type=Quote.TYPE.firm,
                 buy_asset="stellar:test:test",
                 sell_asset="test:test",
-                buy_amount=Decimal(100),
                 sell_amount=Decimal(100),
-                price=Decimal(2.12),
+                price=Decimal("2.12"),
                 sell_delivery_method=data["offchain_assets"][
                     0
                 ].delivery_methods.first(),
             ),
             "",
+            2,
         )
 
 
@@ -991,14 +1016,14 @@ def test_validate_quote_expiration_not_in_the_future():
                 buy_asset="stellar:test:test",
                 sell_asset="test:test",
                 buy_amount=Decimal(100),
-                sell_amount=Decimal(100),
-                price=Decimal(2.12),
+                price=Decimal("2.12"),
                 sell_delivery_method=data["offchain_assets"][
                     0
                 ].delivery_methods.first(),
                 expires_at=datetime.now(timezone.utc) - timedelta(hours=1),
             ),
             "",
+            2,
         )
 
 
@@ -1013,15 +1038,15 @@ def test_validate_quote_expiration_not_after_requested():
                 type=Quote.TYPE.firm,
                 buy_asset="stellar:test:test",
                 sell_asset="test:test",
-                buy_amount=Decimal(100),
                 sell_amount=Decimal(100),
-                price=Decimal(2.12),
+                price=Decimal("2.12"),
                 sell_delivery_method=data["offchain_assets"][
                     0
                 ].delivery_methods.first(),
                 expires_at=datetime.now(timezone.utc) + timedelta(minutes=20),
             ),
             (datetime.now(timezone.utc) + timedelta(hours=1)).strftime(DATETIME_FORMAT),
+            2,
         )
 
 
@@ -1038,8 +1063,7 @@ def test_validate_quote_both_delivery_methods():
                 buy_asset="stellar:test:test",
                 sell_asset="test:test",
                 buy_amount=Decimal(100),
-                sell_amount=Decimal(100),
-                price=Decimal(2.12),
+                price=Decimal("2.12"),
                 sell_delivery_method=data["offchain_assets"][
                     0
                 ].delivery_methods.first(),
@@ -1047,6 +1071,7 @@ def test_validate_quote_both_delivery_methods():
                 expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
             ),
             "",
+            2,
         )
 
 
@@ -1060,12 +1085,12 @@ def test_validate_quote_neither_delivery_methods():
                 type=Quote.TYPE.firm,
                 buy_asset="stellar:test:test",
                 sell_asset="test:test",
-                buy_amount=Decimal(100),
                 sell_amount=Decimal(100),
-                price=Decimal(2.12),
+                price=Decimal("2.12"),
                 expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
             ),
             "",
+            2,
         )
 
 
@@ -1079,14 +1104,14 @@ def test_validate_quote_bad_asset_type():
                 buy_asset=1,
                 sell_asset="test:test",
                 buy_amount=Decimal(100),
-                sell_amount=Decimal(100),
-                price=Decimal(2.12),
+                price=Decimal("2.12"),
                 sell_delivery_method=data["offchain_assets"][
                     0
                 ].delivery_methods.first(),
                 expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
             ),
             "",
+            2,
         )
 
 
@@ -1102,14 +1127,14 @@ def test_validate_quote_both_stellar_assets():
                 buy_asset="stellar:test:test",
                 sell_asset="stellar:test:test",
                 buy_amount=Decimal(100),
-                sell_amount=Decimal(100),
-                price=Decimal(2.12),
+                price=Decimal("2.12"),
                 sell_delivery_method=data["offchain_assets"][
                     0
                 ].delivery_methods.first(),
                 expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
             ),
             "",
+            2,
         )
 
 
@@ -1124,15 +1149,15 @@ def test_validate_quote_both_offchain_assets():
                 type=Quote.TYPE.firm,
                 buy_asset="test:test",
                 sell_asset="test:test",
-                buy_amount=Decimal(100),
                 sell_amount=Decimal(100),
-                price=Decimal(2.12),
+                price=Decimal("2.12"),
                 sell_delivery_method=data["offchain_assets"][
                     0
                 ].delivery_methods.first(),
                 expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
             ),
             "",
+            2,
         )
 
 
@@ -1149,7 +1174,7 @@ def test_get_quote_success(client):
         sell_asset=asset_id_format(data["stellar_assets"][0]),
         buy_amount=Decimal(100),
         sell_amount=Decimal(100),
-        price=Decimal(2.12),
+        price=Decimal("2.12"),
         sell_delivery_method=data["offchain_assets"][0].delivery_methods.first(),
         expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
     )

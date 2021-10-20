@@ -53,17 +53,32 @@ def post_quote(token: SEP10Token, request: Request) -> Response:
 
     quote = make_quote(**request_data)
     try:
-        quote = rqi.post_quote(token=token, request=request, quote=quote,)
+        quote = rqi.post_quote(token=token, request=request, quote=quote)
     except ValueError as e:
         return render_error_response(str(e), status_code=400)
     except RuntimeError as e:
         return render_error_response(str(e), status_code=503)
 
     try:
-        validate_quote_provided(quote, request.data.get("expire_after"))
+        validate_quote_provided(
+            quote,
+            request.data.get("expire_after"),
+            request_data["sell_asset"].significant_decimals,
+        )
     except ValueError as e:
         logger.error(gettext("invalid quote provided: ") + str(e))
         return render_error_response("internal server error", status_code=500)
+
+    if quote.sell_amount:
+        quote.buy_amount = round(
+            quote.sell_amount / quote.price,
+            request_data["buy_asset"].significant_decimals,
+        )
+    else:
+        quote.sell_amount = round(
+            quote.price * quote.buy_amount,
+            request_data["sell_asset"].significant_decimals,
+        )
 
     quote.save()
     return Response(QuoteSerializer(quote).data, status=201)
@@ -71,19 +86,26 @@ def post_quote(token: SEP10Token, request: Request) -> Response:
 
 def validate_quote_request(token: SEP10Token, request: Request) -> dict:
     validated_data: Dict = {"token": token, "request": request}
-    required_fields = ["sell_asset", "sell_amount", "buy_asset", "buy_amount"]
+    required_fields = ["sell_asset", "buy_asset"]
     if not set(required_fields).issubset(request.data.keys()):
         raise ValueError(
             gettext("missing required parameters. Required: ")
             + ", ".join(required_fields)
         )
-    if request.data.get("buy_delivery_method") and request.data.get(
-        "sell_delivery_method"
+    if not (
+        bool(request.data.get("buy_amount")) ^ bool(request.data.get("sell_amount"))
+    ):
+        raise ValueError(
+            gettext("'sell_amount' or 'buy_amount' is required, but both is invalid")
+        )
+    if not (
+        bool(request.data.get("buy_delivery_method"))
+        ^ bool(request.data.get("sell_delivery_method"))
     ):
         raise ValueError(
             gettext(
                 "'buy_delivery_method' or 'sell_delivery_method' "
-                "is valid, but not both"
+                "is required, but both is invalid"
             )
         )
     if request.data.get("expire_after"):
@@ -116,14 +138,16 @@ def validate_quote_request(token: SEP10Token, request: Request) -> dict:
         country_code=request.data.get("country_code"),
     )
     try:
-        validated_data["buy_amount"] = round(
-            Decimal(request.data["buy_amount"]),
-            validated_data["buy_asset"].significant_decimals,
-        )
-        validated_data["sell_amount"] = round(
-            Decimal(request.data["sell_amount"]),
-            validated_data["sell_asset"].significant_decimals,
-        )
+        if request.data.get("buy_amount"):
+            validated_data["buy_amount"] = round(
+                Decimal(request.data["buy_amount"]),
+                validated_data["buy_asset"].significant_decimals,
+            )
+        if request.data.get("sell_amount"):
+            validated_data["sell_amount"] = round(
+                Decimal(request.data["sell_amount"]),
+                validated_data["sell_asset"].significant_decimals,
+            )
     except DecimalException:
         raise ValueError(
             gettext("invalid 'buy_amount' or 'sell_amount'; Expected decimal strings.")
@@ -146,9 +170,9 @@ def make_quote(
     token: SEP10Token,
     request: Request,
     sell_asset: Union[Asset, OffChainAsset],
-    sell_amount: Decimal,
     buy_asset: Union[Asset, OffChainAsset],
-    buy_amount: Decimal,
+    buy_amount: Optional[Decimal] = None,
+    sell_amount: Optional[Decimal] = None,
     sell_delivery_method: Optional[DeliveryMethod] = None,
     buy_delivery_method: Optional[DeliveryMethod] = None,
     country_code: Optional[str] = None,
@@ -171,20 +195,35 @@ def make_quote(
     )
 
 
-def validate_quote_provided(quote: Quote, requested_expire_after: str):
+def validate_quote_provided(
+    quote: Quote, requested_expire_after: str, sell_asset_significant_decimals: int
+):
     if not isinstance(quote, Quote):
         raise ValueError("object returned is not a Quote")
     if quote.type != Quote.TYPE.firm:
         raise ValueError(f"quote is not of type '{Quote.TYPE.firm}'")
     if not quote.price:
         raise ValueError("quote must have price")
+    if round(quote.price, sell_asset_significant_decimals) != quote.price:
+        raise ValueError(
+            "the price saved to Quote.price did not have the correct number "
+            "of significant decimals"
+        )
     if not (
-        isinstance(quote.sell_amount, Decimal)
-        and isinstance(quote.buy_amount, Decimal)
+        (quote.sell_amount is None or isinstance(quote.sell_amount, Decimal))
+        and (quote.buy_amount is None or isinstance(quote.buy_amount, Decimal))
         and isinstance(quote.price, Decimal)
     ):
         raise ValueError("quote amounts must be of type decimal.Decimal")
-    if not (quote.sell_amount > 0 and quote.buy_amount > 0 and quote.price > 0):
+    if not (bool(quote.sell_amount) ^ bool(quote.buy_amount)):
+        raise ValueError(
+            "polaris will calculate the amount not specified in the request"
+        )
+    if not (
+        (quote.sell_amount is None or quote.sell_amount > 0)
+        and (quote.buy_amount is None or quote.buy_amount > 0)
+        and quote.price > 0
+    ):
         raise ValueError("quote amounts must be positive")
     if not quote.expires_at:
         raise ValueError("quote must have expiration")
