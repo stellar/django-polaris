@@ -6,8 +6,9 @@ from django.utils.translation import gettext as _
 from rest_framework.request import Request
 
 from polaris.integrations import WithdrawalIntegration, calculate_fee
-from polaris.models import Transaction, Asset
+from polaris.models import Transaction, Asset, Quote
 from polaris.sep10.token import SEP10Token
+from polaris.sep38.utils import asset_id_format
 from polaris.templates import Template
 from polaris.utils import getLogger
 
@@ -99,9 +100,9 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
     ) -> Dict:
         account = (
             PolarisStellarAccount.objects.filter(
-                account=params["account"],
-                memo=params["memo"],
-                memo_type=params["memo_type"],
+                account=token.account or params["account"],
+                memo=token.memo or params["memo"],
+                memo_type="id" if token.memo else params["memo_type"],
             )
             .select_related("user")
             .first()
@@ -138,37 +139,55 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
             # the flow since this is a reference server.
             pass
 
-        asset = params["asset"]
-        min_amount = round(asset.withdrawal_min_amount, asset.significant_decimals)
-        max_amount = round(asset.withdrawal_max_amount, asset.significant_decimals)
-        if params["amount"]:
-            if not (min_amount <= params["amount"] <= max_amount):
-                raise ValueError(_("invalid 'amount'"))
+        if params.get("amount"):
             transaction.amount_in = params["amount"]
             transaction.amount_fee = calculate_fee(
                 {
                     "amount": params["amount"],
                     "operation": "withdraw",
-                    "asset_code": asset.code,
+                    "asset_code": params[
+                        "asset" if "asset" in params else "source_asset"
+                    ].code,
                 }
             )
-            transaction.amount_out = round(
-                transaction.amount_in - transaction.amount_fee,
-                asset.significant_decimals,
-            )
-            transaction.save()
+            if params.get("source_asset"):
+                transaction.fee_asset = asset_id_format(params["source_asset"])
+                if transaction.quote.type == Quote.TYPE.firm:
+                    transaction.amount_out = round(
+                        transaction.quote.buy_amount
+                        - (transaction.amount_fee / transaction.quote.price),
+                        params["destination_asset"].significant_decimals,
+                    )
+            else:
+                transaction.amount_out = round(
+                    transaction.amount_in - transaction.amount_fee,
+                    params["asset"].significant_decimals,
+                )
 
-        response = {
-            "account_id": asset.distribution_account,
-            "min_amount": min_amount,
-            "max_amount": max_amount,
-            "fee_fixed": round(asset.withdrawal_fee_fixed, asset.significant_decimals),
-            "fee_percent": asset.withdrawal_fee_percent,
-        }
+        stellar_asset = params["asset" if "asset" in params else "source_asset"]
+        response = {"account_id": stellar_asset.distribution_account}
         if params["memo_type"] and params["memo"]:
             response["memo_type"] = params["memo_type"]
             response["memo"] = params["memo"]
+        print(bool(stellar_asset.withdrawal_fee_fixed))
+        if stellar_asset.withdrawal_fee_fixed:
+            response["fee_fixed"] = round(
+                stellar_asset.withdrawal_fee_fixed, stellar_asset.significant_decimals
+            )
+        if stellar_asset.withdrawal_fee_percent:
+            response["fee_percent"] = stellar_asset.withdrawal_fee_percent
+        if (
+            stellar_asset.withdrawal_min_amount
+            > getattr(stellar_asset, "_meta").get_field("withdrawal_min_amount").default
+        ):
+            response["min_amount"] = stellar_asset.withdrawal_min_amount
+        if (
+            stellar_asset.withdrawal_max_amount
+            < getattr(stellar_asset, "_meta").get_field("withdrawal_max_amount").default
+        ):
+            response["max_amount"] = stellar_asset.withdrawal_max_amount
 
+        print(response)
         PolarisUserTransaction.objects.create(
             transaction_id=transaction.id, user=account.user, account=account
         )

@@ -311,7 +311,12 @@ def validate_response(
             transaction.asset.significant_decimals,
         )
 
-    if calculate_fee == registered_fee_func and not exchange:
+    if "fee_fixed" in args or "fee_percent" in integration_response:
+        if "fee_fixed" in integration_response:
+            response["fee_fixed"] = integration_response["fee_fixed"]
+        if "fee_percent" in integration_response:
+            response["fee_percent"] = integration_response["fee_percent"]
+    elif calculate_fee == registered_fee_func and not exchange:
         # return the fixed and percentage fee rates if the registered fee function
         # has not been implemented AND the request was not for the `/withdraw-exchange`
         # endpoint.

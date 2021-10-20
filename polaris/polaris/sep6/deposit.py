@@ -287,7 +287,10 @@ def parse_request_args(
     if exchange and not amount:
         return {"error": render_error_response(_("'amount' is required"))}
 
-    if amount:
+    if amount and not exchange:
+        # Polaris cannot validate the amounts of the off-chain asset, because the minumum and
+        # maximum limits saved to the database are for amounts of the Stellar asset. So, we
+        # only perform this validation if exchange=False.
         try:
             amount = round(Decimal(amount), asset.significant_decimals)
         except DecimalException:

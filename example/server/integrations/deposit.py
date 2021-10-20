@@ -9,14 +9,14 @@ from rest_framework.request import Request
 from stellar_sdk import Keypair
 
 from polaris.integrations import DepositIntegration, TransactionForm, calculate_fee
-from polaris.models import Transaction, Asset
+from polaris.models import Transaction, Asset, Quote, OffChainAsset
 from polaris.sep10.token import SEP10Token
+from polaris.sep38.utils import asset_id_format
 from polaris.templates import Template
 from polaris.utils import getLogger
 
 from .sep24_kyc import SEP24KYC
-from ..models import PolarisStellarAccount, PolarisUserTransaction
-
+from ..models import PolarisStellarAccount, PolarisUserTransaction, OffChainAssetExtra
 
 logger = getLogger(__name__)
 
@@ -135,25 +135,37 @@ class MyDepositIntegration(DepositIntegration):
             # the flow since this is a reference server.
             pass
 
-        asset = params["asset"]
-        min_amount = round(asset.deposit_min_amount, asset.significant_decimals)
-        max_amount = round(asset.deposit_max_amount, asset.significant_decimals)
-        if params["amount"]:
-            if not (min_amount <= params["amount"] <= max_amount):
-                raise ValueError(_("invalid 'amount'"))
+        if params.get("asset") and params.get("amount"):
             transaction.amount_in = params["amount"]
             transaction.amount_fee = calculate_fee(
                 {
                     "amount": params["amount"],
                     "operation": "deposit",
-                    "asset_code": asset.code,
+                    "asset_code": params["asset"].code,
                 }
             )
             transaction.amount_out = round(
                 transaction.amount_in - transaction.amount_fee,
-                asset.significant_decimals,
+                params["asset"].significant_decimals,
             )
-            transaction.save()
+        elif params.get("destination_asset"):  # GET /deposit-exchange
+            offchain_asset_extra = OffChainAssetExtra.objects.get(
+                offchain_asset=params["source_asset"]
+            )
+            transaction.amount_in = params["amount"]
+            transaction.fee_asset = asset_id_format(params["source_asset"])
+            if transaction.quote.type == Quote.TYPE.firm:
+                transaction.amount_fee = round(
+                    offchain_asset_extra.fee_fixed
+                    + (
+                        (offchain_asset_extra.fee_percent / Decimal(100))
+                        * transaction.quote.buy_amount
+                    ),
+                    params["source_asset"].significant_decimals,
+                )
+                transaction.amount_out = (
+                    transaction.quote.buy_amount - transaction.amount_fee
+                )
 
         # request is valid, return success data and add transaction to user model
         PolarisUserTransaction.objects.create(
