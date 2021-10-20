@@ -62,9 +62,9 @@ class QuoteIntegration:
         token: SEP10Token,
         request: Request,
         sell_asset: Union[Asset, OffChainAsset],
-        sell_amount: Decimal,
         buy_asset: Union[Asset, OffChainAsset],
-        buy_amount: Decimal,
+        buy_amount: Optional[Decimal] = None,
+        sell_amount: Optional[Decimal] = None,
         sell_delivery_method: Optional[DeliveryMethod] = None,
         buy_delivery_method: Optional[DeliveryMethod] = None,
         country_code: Optional[str] = None,
@@ -114,8 +114,9 @@ class QuoteIntegration:
         The anchor will be expected to honor the price set when the quote is used in a
         ``Transaction``. Note that the ``Quote`` object passed is not yet saved to the
         database when this function is called. If no exception is raised, Polaris will
-        save the returned quote to the database. However, the anchor is free to save the
-        quote to the database in this function if necessary.
+        calculate the amount of the asset not specified in the request using the price
+        assigned and save the returned quote to the database. However, the anchor is free
+        to save the quote to the database in this function if necessary.
 
         Polaris will ensure that there is an ``ExchangePair`` database record for the
         `sell_asset` and `buy_asset`, that the specified `sell_delivery_method` or
