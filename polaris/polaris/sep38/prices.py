@@ -10,7 +10,7 @@ from rest_framework.response import Response
 from polaris.sep10.utils import validate_sep10_token
 from polaris.sep10.token import SEP10Token
 from polaris.integrations import registered_quote_integration as rqi
-from polaris.utils import render_error_response
+from polaris.utils import render_error_response, getLogger
 from polaris.models import DeliveryMethod
 from polaris.sep38.utils import (
     asset_id_format,
@@ -19,6 +19,9 @@ from polaris.sep38.utils import (
     get_buy_asset,
     find_delivery_method,
 )
+
+
+logger = getLogger(__name__)
 
 
 @api_view(["GET"])
@@ -38,6 +41,15 @@ def get_price(token: SEP10Token, request: Request) -> Response:
         return render_error_response(str(e), status_code=503)
 
     if not isinstance(price, Decimal):
+        logger.error(
+            "a non-Decimal price was returned from QuoteIntegration.get_price()"
+        )
+        return render_error_response(gettext("internal server error"), status_code=500)
+    elif round(price, request_data["sell_asset"].significant_decimals) != price:
+        logger.error(
+            "the price returned from QuoteIntegration.get_price() did not have the correct "
+            "number of significant decimals"
+        )
         return render_error_response(gettext("internal server error"), status_code=500)
 
     if request_data.get("sell_amount"):

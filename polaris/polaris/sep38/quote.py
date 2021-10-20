@@ -53,14 +53,18 @@ def post_quote(token: SEP10Token, request: Request) -> Response:
 
     quote = make_quote(**request_data)
     try:
-        quote = rqi.post_quote(token=token, request=request, quote=quote,)
+        quote = rqi.post_quote(token=token, request=request, quote=quote)
     except ValueError as e:
         return render_error_response(str(e), status_code=400)
     except RuntimeError as e:
         return render_error_response(str(e), status_code=503)
 
     try:
-        validate_quote_provided(quote, request.data.get("expire_after"))
+        validate_quote_provided(
+            quote,
+            request.data.get("expire_after"),
+            request_data["sell_asset"].significant_decimals,
+        )
     except ValueError as e:
         logger.error(gettext("invalid quote provided: ") + str(e))
         return render_error_response("internal server error", status_code=500)
@@ -191,13 +195,20 @@ def make_quote(
     )
 
 
-def validate_quote_provided(quote: Quote, requested_expire_after: str):
+def validate_quote_provided(
+    quote: Quote, requested_expire_after: str, sell_asset_significant_decimals: int
+):
     if not isinstance(quote, Quote):
         raise ValueError("object returned is not a Quote")
     if quote.type != Quote.TYPE.firm:
         raise ValueError(f"quote is not of type '{Quote.TYPE.firm}'")
     if not quote.price:
         raise ValueError("quote must have price")
+    if round(quote.price, sell_asset_significant_decimals) != quote.price:
+        raise ValueError(
+            "the price saved to Quote.price did not have the correct number "
+            "of significant decimals"
+        )
     if not (
         (quote.sell_amount is None or isinstance(quote.sell_amount, Decimal))
         and (quote.buy_amount is None or isinstance(quote.buy_amount, Decimal))
