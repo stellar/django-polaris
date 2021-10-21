@@ -470,7 +470,6 @@ def get_quote_and_offchain_source_asset(
                 _("quote 'sell_asset' does not match 'source_asset' parameter")
             )
         if quote.sell_amount != amount:
-            print(quote.sell_amount, amount, type(quote.sell_amount), type(amount))
             raise ValueError(_("quote amount does not match 'amount' parameter"))
         try:
             source_asset = OffChainAsset.objects.get(
