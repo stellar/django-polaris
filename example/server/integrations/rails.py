@@ -8,7 +8,7 @@ from django.db.models import QuerySet
 
 from polaris import settings
 from polaris.integrations import RailsIntegration, calculate_fee
-from polaris.models import Transaction, OffChainAsset
+from polaris.models import Transaction, OffChainAsset, Quote
 from polaris.utils import getLogger
 from .mock_exchange import get_mock_firm_exchange_price
 
@@ -127,11 +127,18 @@ class MyRailsIntegration(RailsIntegration):
             error()
             return
 
-        if transaction.kind == Transaction.KIND.withdrawal:
+        if transaction.kind in [
+            Transaction.KIND.withdrawal,
+            getattr(Transaction.KIND, "withdrawal-exchange"),
+        ]:
             operation = settings.OPERATION_WITHDRAWAL
         else:
             operation = Transaction.KIND.send
-        if not transaction.amount_fee:
+        logger.info("transaction fee prior to check: " + str(transaction.amount_fee))
+        if (
+            not transaction.amount_fee
+            or transaction.amount_expected != transaction.amount_in
+        ):
             transaction.amount_fee = calculate_fee(
                 {
                     "amount": transaction.amount_in,
@@ -139,12 +146,13 @@ class MyRailsIntegration(RailsIntegration):
                     "asset_code": transaction.asset.code,
                 }
             )
-        if not transaction.amount_out:
-            if transaction.quote:  # indicative quote
-                scheme, identifier = transaction.quote.buy_asset.split(":")
-                buy_asset = OffChainAsset.objects.get(
-                    scheme=scheme, identifier=identifier
-                )
+            logger.info(
+                "transaction fee after calculation: " + str(transaction.amount_fee)
+            )
+        if transaction.quote:
+            scheme, identifier = transaction.quote.buy_asset.split(":")
+            buy_asset = OffChainAsset.objects.get(scheme=scheme, identifier=identifier)
+            if transaction.quote.type == Quote.TYPE.indicative:
                 transaction.quote.price = round(
                     get_mock_firm_exchange_price(),
                     transaction.asset.significant_decimals,
@@ -154,15 +162,20 @@ class MyRailsIntegration(RailsIntegration):
                     transaction.amount_in / transaction.quote.price,
                     buy_asset.significant_decimals,
                 )
-                transaction.amount_out = transaction.quote.buy_amount - round(
-                    transaction.amount_fee / transaction.quote.price,
-                    buy_asset.significant_decimals,
-                )
-            else:
-                transaction.amount_out = round(
-                    transaction.amount_in - transaction.amount_fee,
-                    transaction.asset.significant_decimals,
-                )
+            elif transaction.amount_in != transaction.quote.sell_amount:  # firm
+                transaction.status = Transaction.STATUS.error
+                transaction.status_message = "the amount sent to the anchor does not match the quoted sell amount"
+                transaction.save()
+                return
+            transaction.amount_out = transaction.quote.buy_amount - round(
+                transaction.amount_fee / transaction.quote.price,
+                buy_asset.significant_decimals,
+            )
+        elif not transaction.amount_out:
+            transaction.amount_out = round(
+                transaction.amount_in - transaction.amount_fee,
+                transaction.asset.significant_decimals,
+            )
 
         client = rails.BankAPIClient("fake anchor bank account number")
         response = client.send_funds(
@@ -192,4 +205,6 @@ class MyRailsIntegration(RailsIntegration):
             transaction.required_info_message = response.error.message
             transaction.status = Transaction.STATUS.pending_transaction_info_update
 
+        if transaction.quote:
+            transaction.quote.save()
         transaction.save()

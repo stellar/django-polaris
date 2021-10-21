@@ -11,6 +11,7 @@ from polaris.sep10.token import SEP10Token
 from polaris.sep38.utils import asset_id_format
 from polaris.templates import Template
 from polaris.utils import getLogger
+from polaris import settings
 
 from ..forms import WithdrawForm
 from .sep24_kyc import SEP24KYC
@@ -144,7 +145,7 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
             transaction.amount_fee = calculate_fee(
                 {
                     "amount": params["amount"],
-                    "operation": "withdraw",
+                    "operation": settings.OPERATION_WITHDRAWAL,
                     "asset_code": params[
                         "asset" if "asset" in params else "source_asset"
                     ].code,

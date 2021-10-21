@@ -138,6 +138,8 @@ class Command(BaseCommand):
                 and transaction.status == transaction.STATUS.pending_anchor
             ):
                 transaction.pending_execution_attempt = False
+                if transaction.quote:
+                    transaction.quote.save()
                 transaction.save()
                 logger.error(
                     f"Transaction {transaction.id} status must be "
@@ -158,6 +160,7 @@ class Command(BaseCommand):
                         logger.error(err_msg)
                         transaction.message = err_msg
                         transaction.pending_execution_attempt = False
+                        transaction.quote.save()
                         transaction.save()
                         continue
                     logger.warning(
@@ -204,6 +207,8 @@ class Command(BaseCommand):
                 Transaction.STATUS.pending_customer_info_update,
             ]:
                 transaction.pending_execution_attempt = False
+                if transaction.quote:
+                    transaction.save()
                 transaction.save()
                 logger.error(
                     f"Transaction {transaction.id} was moved to invalid status"
@@ -212,6 +217,8 @@ class Command(BaseCommand):
                 continue
 
             transaction.pending_execution_attempt = False
+            if transaction.quote:
+                transaction.quote.save()
             transaction.save()
             maybe_make_callback(transaction)
 
