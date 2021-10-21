@@ -134,7 +134,6 @@ class MyRailsIntegration(RailsIntegration):
             operation = settings.OPERATION_WITHDRAWAL
         else:
             operation = Transaction.KIND.send
-        logger.info("transaction fee prior to check: " + str(transaction.amount_fee))
         if (
             not transaction.amount_fee
             or transaction.amount_expected != transaction.amount_in
@@ -145,9 +144,6 @@ class MyRailsIntegration(RailsIntegration):
                     "operation": operation,
                     "asset_code": transaction.asset.code,
                 }
-            )
-            logger.info(
-                "transaction fee after calculation: " + str(transaction.amount_fee)
             )
         if transaction.quote:
             scheme, identifier = transaction.quote.buy_asset.split(":")
