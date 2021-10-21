@@ -1,5 +1,6 @@
 import json
 from collections import defaultdict
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import List
 from unittest.mock import Mock
@@ -37,55 +38,68 @@ class MyRailsIntegration(RailsIntegration):
         client = rails.BankAPIClient(mock_bank_account_id)
         for deposit in pending_deposits:
             bank_deposit = client.get_deposit(deposit=deposit)
-            if bank_deposit and bank_deposit.status == "complete":
-                if not deposit.amount_in:
-                    deposit.amount_in = Decimal(103)
-                if deposit.quote:
-                    deposit.quote.sell_amount = bank_deposit.amount
-                offchain_asset = None
-                if bank_deposit.amount != deposit.amount_in or not deposit.amount_fee:
-                    if deposit.quote:  # indicative quote
-                        scheme, identifier = deposit.quote.sell_asset.split(":")
-                        offchain_asset_extra = OffChainAssetExtra.objects.get(
-                            offchain_asset__scheme=scheme,
-                            offchain_asset__identifier=identifier,
-                        )
-                        offchain_asset = offchain_asset_extra.offchain_asset
-                        deposit.amount_fee = offchain_asset_extra.fee_fixed + (
-                            offchain_asset_extra.fee_percent
-                            / Decimal(100)
-                            * deposit.quote.sell_amount
-                        )
-                    else:
-                        deposit.amount_fee = calculate_fee(
-                            {
-                                "amount": deposit.amount_in,
-                                "operation": settings.OPERATION_DEPOSIT,
-                                "asset_code": deposit.asset.code,
-                            }
-                        )
-                if deposit.quote:
-                    deposit.quote.price = round(
-                        get_mock_firm_exchange_price(),
-                        offchain_asset.significant_decimals,
+            if not (bank_deposit and bank_deposit.status == "complete"):
+                continue
+            if not deposit.amount_in:
+                deposit.amount_in = Decimal(103)
+            if deposit.quote and deposit.quote.type == Quote.TYPE.firm:
+                if deposit.amount_in != deposit.quote.sell_amount:
+                    deposit.status = Transaction.STATUS.error
+                    deposit.status_message = (
+                        "the amount received does not match the quoted sell amount"
                     )
-                    deposit.quote.buy_amount = round(
-                        deposit.amount_in / deposit.quote.price,
-                        deposit.asset.significant_decimals,
+                    deposit.save()
+                    continue
+                elif deposit.quote.expires_at < datetime.now(timezone.utc):
+                    deposit.status = Transaction.STATUS.error
+                    deposit.status_message = (
+                        "the quote expired before the user delivered funds"
                     )
-                    deposit.quote.save()
-                    deposit.amount_out = deposit.quote.buy_amount - round(
-                        deposit.amount_fee / deposit.quote.price,
-                        deposit.asset.significant_decimals,
+                    deposit.save()
+                    continue
+            offchain_asset = None
+            if bank_deposit.amount != deposit.amount_in or not deposit.amount_fee:
+                if deposit.quote:  # indicative quote
+                    scheme, identifier = deposit.quote.sell_asset.split(":")
+                    offchain_asset_extra = OffChainAssetExtra.objects.get(
+                        offchain_asset__scheme=scheme,
+                        offchain_asset__identifier=identifier,
+                    )
+                    offchain_asset = offchain_asset_extra.offchain_asset
+                    deposit.amount_fee = offchain_asset_extra.fee_fixed + (
+                        offchain_asset_extra.fee_percent
+                        / Decimal(100)
+                        * deposit.quote.sell_amount
                     )
                 else:
-                    deposit.amount_out = round(
-                        deposit.amount_in - deposit.amount_fee,
-                        deposit.asset.significant_decimals,
+                    deposit.amount_fee = calculate_fee(
+                        {
+                            "amount": deposit.amount_in,
+                            "operation": settings.OPERATION_DEPOSIT,
+                            "asset_code": deposit.asset.code,
+                        }
                     )
+            if deposit.quote and deposit.quote.type == Quote.TYPE.indicative:
+                deposit.quote.price = round(
+                    get_mock_firm_exchange_price(), offchain_asset.significant_decimals,
+                )
+                deposit.quote.buy_amount = round(
+                    deposit.amount_in / deposit.quote.price,
+                    deposit.asset.significant_decimals,
+                )
+                deposit.quote.save()
+                deposit.amount_out = deposit.quote.buy_amount - round(
+                    deposit.amount_fee / deposit.quote.price,
+                    deposit.asset.significant_decimals,
+                )
+            elif not deposit.quote:
+                deposit.amount_out = round(
+                    deposit.amount_in - deposit.amount_fee,
+                    deposit.asset.significant_decimals,
+                )
 
-                deposit.save()
-                ready_deposits.append(deposit)
+            deposit.save()
+            ready_deposits.append(deposit)
 
         return ready_deposits
 
