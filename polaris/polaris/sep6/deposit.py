@@ -20,7 +20,7 @@ from stellar_sdk.exceptions import (
 )
 
 from polaris import settings
-from polaris.models import Asset, Transaction
+from polaris.models import Asset, Transaction, Quote
 from polaris.locale.utils import validate_language, activate_lang_for_request
 from polaris.utils import (
     getLogger,
@@ -287,15 +287,15 @@ def parse_request_args(
     if exchange and not amount:
         return {"error": render_error_response(_("'amount' is required"))}
     if amount:
-        amount = Decimal(amount)
+        try:
+            amount = Decimal(amount)
+        except DecimalException:
+            return {"error": render_error_response(_("invalid 'amount'"))}
         if not exchange:
             # Polaris cannot validate the amounts of the off-chain asset, because the minumum and
             # maximum limits saved to the database are for amounts of the Stellar asset. So, we
             # only perform this validation if exchange=False.
-            try:
-                amount = round(amount, asset.significant_decimals)
-            except DecimalException:
-                return {"error": render_error_response(_("invalid 'amount'"))}
+            amount = round(amount, asset.significant_decimals)
             min_amount = round(asset.deposit_min_amount, asset.significant_decimals)
             max_amount = round(asset.deposit_max_amount, asset.significant_decimals)
             if not (min_amount <= amount <= max_amount):
@@ -315,6 +315,17 @@ def parse_request_args(
         )
     except ValueError as e:
         return {"error": render_error_response(str(e))}
+
+    if (
+        quote
+        and quote.type == Quote.TYPE.firm
+        and Transaction.objects.filter(quote=quote).exists()
+    ):
+        raise {
+            "error": render_error_response(
+                _("quote has already been used in a transaction")
+            )
+        }
 
     args = {
         "account": request.GET.get("account"),
