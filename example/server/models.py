@@ -72,7 +72,9 @@ class OffChainAssetExtra(models.Model):
     Extra information on off-chain assets that Polaris' model doesn't store
     """
 
-    offchain_asset = models.ForeignKey(OffChainAsset, on_delete=models.CASCADE)
+    offchain_asset = models.OneToOneField(
+        OffChainAsset, primary_key=True, on_delete=models.CASCADE
+    )
     fee_fixed = models.DecimalField(default=0, max_digits=30, decimal_places=7)
     fee_percent = models.PositiveIntegerField(default=0)
 

@@ -81,7 +81,10 @@ class Command(BaseCommand):
         sep6_24_qparams = Q(
             protocol__in=[Transaction.PROTOCOL.sep24, Transaction.PROTOCOL.sep6],
             status=Transaction.STATUS.pending_anchor,
-            kind=Transaction.KIND.withdrawal,
+            kind__in=[
+                Transaction.KIND.withdrawal,
+                getattr(Transaction.KIND, "withdrawal-exchange"),
+            ],
         )
         with django.db.transaction.atomic():
             transactions = list(
@@ -149,7 +152,7 @@ class Command(BaseCommand):
                     if transaction.quote:
                         err_msg = (
                             f"transaction {transaction.id} uses a quote but was returned "
-                            "from poll_pending_deposits() without amount_fee or amount_out "
+                            "from execute_outgoing_transaction() without amount_fee or amount_out "
                             "assigned, skipping"
                         )
                         logger.error(err_msg)

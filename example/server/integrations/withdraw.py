@@ -169,7 +169,6 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
         if params["memo_type"] and params["memo"]:
             response["memo_type"] = params["memo_type"]
             response["memo"] = params["memo"]
-        print(bool(stellar_asset.withdrawal_fee_fixed))
         if stellar_asset.withdrawal_fee_fixed:
             response["fee_fixed"] = round(
                 stellar_asset.withdrawal_fee_fixed, stellar_asset.significant_decimals
@@ -187,7 +186,6 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
         ):
             response["max_amount"] = stellar_asset.withdrawal_max_amount
 
-        print(response)
         PolarisUserTransaction.objects.create(
             transaction_id=transaction.id, user=account.user, account=account
         )

@@ -121,9 +121,13 @@ class Command(BaseCommand):
             return
 
         # Query filters for SEP6 and 24
+
         withdraw_filters = Q(
             status=Transaction.STATUS.pending_user_transfer_start,
-            kind=Transaction.KIND.withdrawal,
+            kind__in=[
+                Transaction.KIND.withdrawal,
+                getattr(Transaction.KIND, "withdrawal-exchange"),
+            ],
         )
         # Query filters for SEP31
         send_filters = Q(

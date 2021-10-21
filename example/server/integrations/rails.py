@@ -8,11 +8,12 @@ from django.db.models import QuerySet
 
 from polaris import settings
 from polaris.integrations import RailsIntegration, calculate_fee
-from polaris.models import Transaction
+from polaris.models import Transaction, OffChainAsset
 from polaris.utils import getLogger
+from .mock_exchange import get_mock_firm_exchange_price
 
 from .sep31 import MySEP31ReceiverIntegration
-from ..models import PolarisUserTransaction
+from ..models import PolarisUserTransaction, OffChainAssetExtra
 from . import mock_banking_rails as rails
 
 
@@ -39,19 +40,50 @@ class MyRailsIntegration(RailsIntegration):
             if bank_deposit and bank_deposit.status == "complete":
                 if not deposit.amount_in:
                     deposit.amount_in = Decimal(103)
-
+                if deposit.quote:
+                    deposit.quote.sell_amount = bank_deposit.amount
+                offchain_asset = None
                 if bank_deposit.amount != deposit.amount_in or not deposit.amount_fee:
-                    deposit.amount_fee = calculate_fee(
-                        {
-                            "amount": deposit.amount_in,
-                            "operation": settings.OPERATION_DEPOSIT,
-                            "asset_code": deposit.asset.code,
-                        }
+                    if deposit.quote:  # indicative quote
+                        scheme, identifier = deposit.quote.sell_asset.split(":")
+                        offchain_asset_extra = OffChainAssetExtra.objects.get(
+                            offchain_asset__scheme=scheme,
+                            offchain_asset__identifier=identifier,
+                        )
+                        offchain_asset = offchain_asset_extra.offchain_asset
+                        deposit.amount_fee = offchain_asset_extra.fee_fixed + (
+                            offchain_asset_extra.fee_percent
+                            / Decimal(100)
+                            * deposit.quote.sell_amount
+                        )
+                    else:
+                        deposit.amount_fee = calculate_fee(
+                            {
+                                "amount": deposit.amount_in,
+                                "operation": settings.OPERATION_DEPOSIT,
+                                "asset_code": deposit.asset.code,
+                            }
+                        )
+                if deposit.quote:
+                    deposit.quote.price = round(
+                        get_mock_firm_exchange_price(),
+                        offchain_asset.significant_decimals,
                     )
-                deposit.amount_out = round(
-                    deposit.amount_in - deposit.amount_fee,
-                    deposit.asset.significant_decimals,
-                )
+                    deposit.quote.buy_amount = round(
+                        deposit.amount_in / deposit.quote.price,
+                        deposit.asset.significant_decimals,
+                    )
+                    deposit.quote.save()
+                    deposit.amount_out = deposit.quote.buy_amount - round(
+                        deposit.amount_fee / deposit.quote.price,
+                        deposit.asset.significant_decimals,
+                    )
+                else:
+                    deposit.amount_out = round(
+                        deposit.amount_in - deposit.amount_fee,
+                        deposit.asset.significant_decimals,
+                    )
+
                 deposit.save()
                 ready_deposits.append(deposit)
 
@@ -107,10 +139,31 @@ class MyRailsIntegration(RailsIntegration):
                     "asset_code": transaction.asset.code,
                 }
             )
-        transaction.amount_out = round(
-            transaction.amount_in - transaction.amount_fee,
-            transaction.asset.significant_decimals,
-        )
+        if not transaction.amount_out:
+            if transaction.quote:  # indicative quote
+                scheme, identifier = transaction.quote.buy_asset.split(":")
+                buy_asset = OffChainAsset.objects.get(
+                    scheme=scheme, identifier=identifier
+                )
+                transaction.quote.price = round(
+                    get_mock_firm_exchange_price(),
+                    transaction.asset.significant_decimals,
+                )
+                transaction.quote.sell_amount = transaction.amount_in
+                transaction.quote.buy_amount = round(
+                    transaction.amount_in / transaction.quote.price,
+                    buy_asset.significant_decimals,
+                )
+                transaction.amount_out = transaction.quote.buy_amount - round(
+                    transaction.amount_fee / transaction.quote.price,
+                    buy_asset.significant_decimals,
+                )
+            else:
+                transaction.amount_out = round(
+                    transaction.amount_in - transaction.amount_fee,
+                    transaction.asset.significant_decimals,
+                )
+
         client = rails.BankAPIClient("fake anchor bank account number")
         response = client.send_funds(
             to_account=user.bank_account_number,

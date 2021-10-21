@@ -262,7 +262,10 @@ class PendingDeposits:
                     Transaction.STATUS.pending_user_transfer_start,
                     Transaction.STATUS.pending_external,
                 ],
-                kind=Transaction.KIND.deposit,
+                kind__in=[
+                    Transaction.KIND.deposit,
+                    getattr(Transaction.KIND, "deposit-exchange"),
+                ],
                 pending_execution_attempt=False,
             )
             .select_related("asset")
@@ -292,9 +295,14 @@ class PendingDeposits:
             # refresh from DB to pull pending_execution_attempt value and to ensure invalid
             # values were not assigned to the transaction in rri.poll_pending_deposits()
             asset = transaction.asset
+            quote = transaction.quote
             transaction.refresh_from_db()
             transaction.asset = asset
-            if transaction.kind != transaction.KIND.deposit:
+            transaction.quote = quote
+            if transaction.kind not in [
+                transaction.KIND.deposit,
+                getattr(transaction.KIND, "deposit-exchange"),
+            ]:
                 cls.handle_error(
                     transaction,
                     "poll_pending_deposits() returned a non-deposit transaction",
@@ -809,8 +817,10 @@ class PendingDeposits:
             rdi.create_channel_account(transaction=transaction)
         if not transaction.channel_seed:
             asset = transaction.asset
+            quote = transaction.quote
             transaction.refresh_from_db()
             transaction.asset = asset
+            transaction.quote = quote
         return Keypair.from_secret(transaction.channel_seed)
 
     @classmethod
