@@ -217,11 +217,7 @@ def validate_post_request(token: SEP10Token, request: Request) -> Dict:
         and quote.type == Quote.TYPE.firm
         and Transaction.objects.filter(quote=quote).exists()
     ):
-        raise {
-            "error": render_error_response(
-                _("quote has already been used in a transaction")
-            )
-        }
+        raise ValueError(_("quote has already been used in a transaction"))
     return {
         "asset": asset,
         "amount": amount,

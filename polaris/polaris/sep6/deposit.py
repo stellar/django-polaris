@@ -321,7 +321,7 @@ def parse_request_args(
         and quote.type == Quote.TYPE.firm
         and Transaction.objects.filter(quote=quote).exists()
     ):
-        raise {
+        return {
             "error": render_error_response(
                 _("quote has already been used in a transaction")
             )
