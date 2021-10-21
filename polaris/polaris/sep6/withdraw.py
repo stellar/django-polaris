@@ -311,7 +311,7 @@ def validate_response(
             transaction.asset.significant_decimals,
         )
 
-    if "fee_fixed" in args or "fee_percent" in integration_response:
+    if "fee_fixed" in integration_response or "fee_percent" in integration_response:
         if "fee_fixed" in integration_response:
             response["fee_fixed"] = integration_response["fee_fixed"]
         if "fee_percent" in integration_response:

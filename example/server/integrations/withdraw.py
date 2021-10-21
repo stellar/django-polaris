@@ -165,26 +165,13 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
                 )
 
         stellar_asset = params["asset" if "asset" in params else "source_asset"]
-        response = {"account_id": stellar_asset.distribution_account}
-        if params["memo_type"] and params["memo"]:
-            response["memo_type"] = params["memo_type"]
-            response["memo"] = params["memo"]
+        response = {}
         if stellar_asset.withdrawal_fee_fixed:
             response["fee_fixed"] = round(
                 stellar_asset.withdrawal_fee_fixed, stellar_asset.significant_decimals
             )
         if stellar_asset.withdrawal_fee_percent:
             response["fee_percent"] = stellar_asset.withdrawal_fee_percent
-        if (
-            stellar_asset.withdrawal_min_amount
-            > getattr(stellar_asset, "_meta").get_field("withdrawal_min_amount").default
-        ):
-            response["min_amount"] = stellar_asset.withdrawal_min_amount
-        if (
-            stellar_asset.withdrawal_max_amount
-            < getattr(stellar_asset, "_meta").get_field("withdrawal_max_amount").default
-        ):
-            response["max_amount"] = stellar_asset.withdrawal_max_amount
 
         PolarisUserTransaction.objects.create(
             transaction_id=transaction.id, user=account.user, account=account

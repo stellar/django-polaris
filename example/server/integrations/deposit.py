@@ -159,12 +159,13 @@ class MyDepositIntegration(DepositIntegration):
                     offchain_asset_extra.fee_fixed
                     + (
                         (offchain_asset_extra.fee_percent / Decimal(100))
-                        * transaction.quote.buy_amount
+                        * transaction.quote.sell_amount
                     ),
                     params["source_asset"].significant_decimals,
                 )
-                transaction.amount_out = (
-                    transaction.quote.buy_amount - transaction.amount_fee
+                transaction.amount_out = transaction.quote.buy_amount - round(
+                    transaction.amount_fee / transaction.quote.price,
+                    params["destination_asset"].significant_decimals,
                 )
 
         # request is valid, return success data and add transaction to user model
