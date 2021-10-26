@@ -16,6 +16,7 @@ from polaris.templates import Template
 from polaris.utils import getLogger
 
 from .sep24_kyc import SEP24KYC
+from ..forms import SelectAssetForm, OffChainAssetTransactionForm
 from ..models import PolarisStellarAccount, PolarisUserTransaction, OffChainAssetExtra
 
 logger = getLogger(__name__)
@@ -34,12 +35,24 @@ class MyDepositIntegration(DepositIntegration):
         kyc_form, content = SEP24KYC.check_kyc(transaction, post_data=post_data)
         if kyc_form:
             return kyc_form
-        elif content or transaction.amount_in:
+        if content or transaction.amount_in:
             return None
-        elif post_data:
-            return TransactionForm(transaction, post_data)
+        if not transaction.fee_asset:
+            # we haven't asked the user to select the off-chain asset
+            if post_data:
+                return SelectAssetForm(post_data)
+            else:
+                return SelectAssetForm()
+        elif transaction.fee_asset == asset_id_format(transaction.asset):
+            if post_data:
+                return TransactionForm(transaction, post_data)
+            else:
+                return TransactionForm(transaction, initial={"amount": amount})
         else:
-            return TransactionForm(transaction, initial={"amount": amount})
+            if post_data:
+                return OffChainAssetTransactionForm(post_data)
+            else:
+                return OffChainAssetTransactionForm()
 
     def content_for_template(
         self,
@@ -56,11 +69,23 @@ class MyDepositIntegration(DepositIntegration):
         elif template == Template.DEPOSIT:
             if not form:
                 return None
-            return {
-                "title": _("Polaris Transaction Information"),
-                "guidance": _("Please enter the amount you would like to transfer."),
-                "icon_label": _("Stellar Development Foundation"),
-            }
+            elif isinstance(form, SelectAssetForm):
+                return {
+                    "title": _("Asset Selection Form"),
+                    "guidance": _(
+                        "Please select the asset you would like to "
+                        "provide in order to fund your deposit."
+                    ),
+                    "icon_label": _("Stellar Development Foundation"),
+                }
+            elif isinstance(form, TransactionForm) or isinstance(
+                form, OffChainAssetTransactionForm
+            ):
+                return {
+                    "title": _("Transaction Amount Form"),
+                    "guidance": _("Please enter the amount you would like to provide."),
+                    "icon_label": _("Stellar Development Foundation"),
+                }
         elif template == Template.MORE_INFO:
             content = {
                 "title": _("Polaris Transaction Information"),
@@ -83,6 +108,23 @@ class MyDepositIntegration(DepositIntegration):
         *args,
         **kwargs,
     ):
+        if isinstance(form, SelectAssetForm):
+            # users will be charged fees in the units of the asset provided
+            # to the anchor, not in units of the asset received on Stellar
+            transaction.fee_asset = form.cleaned_data["asset"]
+            transaction.save()
+        if isinstance(form, OffChainAssetTransactionForm):
+            offchain_asset = OffChainAssetExtra.objects.get(
+                offchain_asset__identifier="USD"
+            )
+            transaction.amount_in = round(form.cleaned_data["amount"], 2)
+            transaction.amount_expected = transaction.amount_in
+            transaction.amount_fee = round(
+                offchain_asset.fee_fixed
+                + (offchain_asset.fee_percent / Decimal(100) * transaction.amount_in),
+                2,
+            )
+            transaction.save()
         try:
             SEP24KYC.track_user_activity(form, transaction)
         except RuntimeError:

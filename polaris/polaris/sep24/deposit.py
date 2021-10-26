@@ -338,6 +338,7 @@ def get_interactive_deposit(request: Request) -> Response:
         get_url=get_url,
         operation=settings.OPERATION_DEPOSIT,
         asset=asset,
+        symbol=content.get("symbol", asset.symbol),
         show_fee_table=content.get("show_fee_table", isinstance(form, TransactionForm)),
         use_fee_endpoint=registered_fee_func != calculate_fee,
         org_logo_url=toml_data.get("DOCUMENTATION", {}).get("ORG_LOGO"),

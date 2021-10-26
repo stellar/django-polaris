@@ -125,6 +125,8 @@ class DepositIntegration:
         **kwargs: Dict
     ) -> Optional[Dict]:
         """
+        .. _`widget attributes`: https://docs.djangoproject.com/en/3.2/ref/forms/widgets/#styling-widget-instances
+
         Return a dictionary containing page content to be used in the template passed for the
         given `form` and `transaction`.
 
@@ -163,33 +165,51 @@ class DepositIntegration:
                     "title": "Deposit Transaction Form",
                     "guidance": "Please enter the amount you would like to deposit.",
                     "show_fee_table": True,
+                    "symbol": "$",
                     "icon_label": "Stellar Development Foundation",
                     "icon_path": "images/company-icon.png",
                     # custom field passed by the anchor
                     "username": "John.Doe"
                 }
 
-        `title` is the browser tab's title, and `guidance` is shown as plain text on the
-        page. `icon_label` is the label for the icon specified by `icon_path`.
+        ``"title"``
 
-        `icon_path` should be the relative file path to the image you would like to use
-        as the company icon in the UI. The file path should be relative to the value of
-        your ``STATIC_ROOT`` setting. If `icon_path` is not present, Polaris will use
-        the image specified by your TOML integration function's ``ORG_LOGO`` key.
+            The browser tab's title.
 
-        Finally, if neither are present, Polaris will default to its default image.
-        All images will be rendered in a 100 x 150px sized box.
+        ``"guidance"``
 
-        `show_fee_table` can be returned to instruct Polaris to make the fee table
-        visible on the page rendered to the user. This table is hidden by default unless
-        a ``TransactionForm`` is returned from ``form_for_transaction()``, in which case
-        the fee table will be displayed.
+            A text message displayed on the page that should help guide the user to take
+            the appropriate action(s).
 
-        If the anchor instructs Polaris to display the fee table but a ``TransactionForm``
-        is not present on the page, the anchor is responsible for updating the fee table
-        with the appropriate values. This is useful when the anchor is collecting the
-        amount of an off-chain asset, since ``TransactionForm`` assumes the amount
-        collected is for an on-chain asset.
+        ``"icon_label"``
+
+            The label for the image rendered on the page specified by ``"icon_path"``.
+
+        ``"icon_path"``
+
+            The relative file path to the image you would like to use as the company icon
+            in the UI. The file path should be relative to the value of your ``STATIC_ROOT``
+            setting. If `icon_path` is not present, Polaris will use the image specified by
+            your TOML integration function's ``ORG_LOGO`` key. If neither are present,
+            Polaris will use its default image. All images will be rendered in a 100 x 150px
+            sized box as defined by the default stylesheet.
+
+        ``"show_fee_table"``
+
+            A boolean for whether the fee table in the default template should be visible
+            on the page rendered to the user. This table is hidden by default unless
+            a ``TransactionForm`` is returned from ``form_for_transaction()``, in which
+            case the fee table will be displayed. If the anchor instructs Polaris to display
+            the fee table but a ``TransactionForm`` is not present on the page, the anchor is
+            responsible for updating the fee table with the appropriate values. This is
+            useful when the anchor is collecting the amount of an off-chain asset, since
+            ``TransactionForm`` assumes the amount collected is for an on-chain asset.
+
+        ``"symbol"``
+
+            The character string that precedes the amounts shown on the fee table. It defaults
+            to the Stellar ``Asset.symbol``. Note that the symbol used in input fields must
+            be passed separately using the field's `widget attributes`_.
 
         :param request: a ``rest_framework.request.Request`` instance
         :param template: a ``polaris.templates.Template`` enum value
@@ -339,7 +359,7 @@ class DepositIntegration:
         and the requested Stellar asset is enabled for SEP-38.
 
         If a request to the the `deposit-exchange`_ endpoint is made, a ``Quote`` object
-        will be assign to the ``Transaction`` object passed.
+        will be assigned to the ``Transaction`` object passed.
 
         Process these parameters and return one of the following responses outlined below
         as a dictionary. Save `transaction` to the DB if you plan to return a success

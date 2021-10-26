@@ -353,6 +353,7 @@ def get_interactive_withdraw(request: Request) -> Response:
         get_url=get_url,
         operation=settings.OPERATION_WITHDRAWAL,
         asset=asset,
+        symbol=content.get("symbol", asset.symbol),
         show_fee_table=content.get("show_fee_table", isinstance(form, TransactionForm)),
         use_fee_endpoint=registered_fee_func != calculate_fee,
         additive_fees_enabled=settings.ADDITIVE_FEES_ENABLED,
