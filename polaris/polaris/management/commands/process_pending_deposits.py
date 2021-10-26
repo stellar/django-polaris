@@ -14,7 +14,7 @@ from stellar_sdk import (
     TransactionEnvelope,
     Asset,
     Claimant,
-    Server,
+    ServerAsync,
     MuxedAccount,
 )
 from stellar_sdk.client.aiohttp_client import AiohttpClient
@@ -140,7 +140,7 @@ class Command(BaseCommand):
             "source_accounts": defaultdict(asyncio.Lock),
             "destination_accounts": defaultdict(asyncio.Lock),
         }
-        async with Server(settings.HORIZON_URI, client=AiohttpClient()) as server:
+        async with ServerAsync(settings.HORIZON_URI, client=AiohttpClient()) as server:
             results = await asyncio.gather(
                 *[
                     PendingDeposits.process_deposit(t, server, locks)
@@ -405,7 +405,7 @@ class PendingDeposits:
 
     @classmethod
     async def get_or_create_destination_account(
-        cls, transaction: Transaction, server: Server, locks: Dict
+        cls, transaction: Transaction, server: ServerAsync, locks: Dict
     ) -> Tuple[Account, bool]:
         """
         Returns:
@@ -511,7 +511,7 @@ class PendingDeposits:
 
     @classmethod
     async def check_trustline(
-        cls, transaction: Transaction, server: Server, locks: Dict
+        cls, transaction: Transaction, server: ServerAsync, locks: Dict
     ):
         """
         Load the destination account json to determine if a trustline has been
@@ -554,7 +554,7 @@ class PendingDeposits:
             await sync_to_async(transaction.save)()
 
     @classmethod
-    async def submit(cls, transaction: Transaction, server: Server, locks) -> bool:
+    async def submit(cls, transaction: Transaction, server: ServerAsync, locks) -> bool:
         valid_statuses = [
             Transaction.STATUS.pending_user_transfer_start,
             Transaction.STATUS.pending_external,
@@ -690,8 +690,7 @@ class PendingDeposits:
         )
         payment_op_kwargs = {
             "destination": transaction.to_address,
-            "asset_code": transaction.asset.code,
-            "asset_issuer": transaction.asset.issuer,
+            "asset": Asset(code=transaction.asset.code, issuer=transaction.asset.issuer),
             "amount": str(payment_amount),
             "source": transaction.asset.distribution_account,
         }
@@ -750,7 +749,7 @@ class PendingDeposits:
 
     @classmethod
     async def requires_trustline(
-        cls, transaction: Transaction, server: Server, locks: Dict
+        cls, transaction: Transaction, server: ServerAsync, locks: Dict
     ) -> bool:
         try:
             _, pending_trust = await PendingDeposits.get_or_create_destination_account(

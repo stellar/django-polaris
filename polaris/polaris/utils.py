@@ -107,14 +107,7 @@ def verify_valid_asset_operation(
 
 def load_account(resp):
     sequence = int(resp["sequence"])
-    thresholds = Thresholds(
-        resp["thresholds"]["low_threshold"],
-        resp["thresholds"]["med_threshold"],
-        resp["thresholds"]["high_threshold"],
-    )
-    account = Account(account_id=resp["account_id"], sequence=sequence)
-    account.signers = resp["signers"]
-    account.thresholds = thresholds
+    account = Account(account=resp["account_id"], sequence=sequence, raw_data=resp)
     return account
 
 
@@ -169,7 +162,7 @@ def memo_str(memo: Optional[Memo]) -> Tuple[Optional[str], Optional[str]]:
         raise ValueError()
 
 
-def make_memo(memo: str, memo_type: str) -> Optional[Union[TextMemo, HashMemo, IdMemo]]:
+def make_memo(memo: Optional[str], memo_type: Optional[str]) -> Optional[Union[TextMemo, HashMemo, IdMemo]]:
     if not (memo or memo_type):
         return None
     if memo_type == Transaction.MEMO_TYPES.id:

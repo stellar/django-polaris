@@ -120,7 +120,7 @@ def test_get_invalid_account_provied(client):
 
     content = response.json()
     assert response.status_code == 400, json.dumps(content, indent=2)
-    assert content["error"] == "This is not a valid account."
+    assert content["error"] == "This is not a valid account: test"
 
 
 def test_get_invalid_home_domain(client):

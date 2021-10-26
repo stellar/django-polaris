@@ -32,7 +32,7 @@ def test_load_account():
     assert account.sequence == mock_response["sequence"]
 
     account.load_ed25519_public_key_signers()
-    assert account.signers == mock_response["signers"]
+    assert account.raw_data["signers"] == mock_response["signers"]
     assert account.thresholds == Thresholds(
         mock_response["thresholds"]["low_threshold"],
         mock_response["thresholds"]["med_threshold"],

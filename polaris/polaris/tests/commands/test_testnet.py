@@ -222,7 +222,7 @@ def test_issue_success_accounts_exist():
         distribution_payment_tx.transaction.operations[0].source.account_id
         == issuer_kp.public_key
     )
-    assert distribution_payment_tx.transaction.operations[0].amount == 99000
+    assert distribution_payment_tx.transaction.operations[0].amount == "99000"
     assert (
         distribution_payment_tx.transaction.operations[0].destination.account_id
         == distribution_kp.public_key
@@ -244,7 +244,7 @@ def test_issue_success_accounts_exist():
         client_payment_tx.transaction.operations[1].source.account_id
         == distribution_kp.public_key
     )
-    assert client_payment_tx.transaction.operations[1].amount == 1000
+    assert client_payment_tx.transaction.operations[1].amount == "1000"
     assert (
         client_payment_tx.transaction.operations[1].destination.account_id
         == client_kp.public_key

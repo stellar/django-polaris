@@ -403,7 +403,7 @@ def deposit(token: SEP10Token, request: Request) -> Response:
     # Ensure memo won't cause stellar transaction to fail when submitted
     try:
         make_memo(request.data.get("memo"), request.data.get("memo_type"))
-    except ValueError:
+    except (ValueError, TypeError):
         return render_error_response(_("invalid 'memo' for 'memo_type'"))
 
     # Verify that the asset code exists in our database, with deposit enabled.

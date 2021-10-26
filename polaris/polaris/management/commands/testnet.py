@@ -6,6 +6,7 @@ from logging import getLogger
 from django.core.management.base import BaseCommand, CommandError
 from django.db.models import Q
 from stellar_sdk import Keypair, TransactionBuilder, Server
+from stellar_sdk import Asset as StellarSdkAsset
 from stellar_sdk.account import Account, Thresholds
 from stellar_sdk.exceptions import (
     NotFoundError,
@@ -220,7 +221,7 @@ class Command(BaseCommand):
                 # halve the base_fee because there are 2 operations
                 tb.base_fee = tb.base_fee // 2
             tb.append_change_trust_op(
-                asset_code=code, asset_issuer=issuer.public_key, source=dest.public_key
+                asset=StellarSdkAsset(code=code, issuer=issuer.public_key), source=dest.public_key
             )
             payment_amount = amount
         elif Decimal(balance) < amount:
@@ -237,8 +238,7 @@ class Command(BaseCommand):
         tb.append_payment_op(
             destination=dest.public_key,
             amount=payment_amount,
-            asset_code=code,
-            asset_issuer=issuer.public_key,
+            asset=StellarSdkAsset(code=code, issuer=issuer.public_key),
             source=src.public_key,
         )
         envelope = tb.set_timeout(30).build()
@@ -258,14 +258,7 @@ class Command(BaseCommand):
 
     def account_from_json(self, json):
         sequence = int(json["sequence"])
-        thresholds = Thresholds(
-            json["thresholds"]["low_threshold"],
-            json["thresholds"]["med_threshold"],
-            json["thresholds"]["high_threshold"],
-        )
-        account = Account(account_id=json["id"], sequence=sequence)
-        account.signers = json["signers"]
-        account.thresholds = thresholds
+        account = Account(account=json["id"], sequence=sequence, raw_data=json)
         return account
 
     def get_balance(self, code, issuer_public_key, json) -> Optional[str]:

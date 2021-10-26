@@ -69,7 +69,7 @@ class CustomerAPIView(APIView):
         try:
             # validate memo and memo_type
             make_memo(request.GET.get("memo"), request.GET.get("memo_type"))
-        except ValueError:
+        except (ValueError, TypeError):
             return render_error_response(_("invalid 'memo' for 'memo_type'"))
 
         memo = request.GET.get("memo") or token.memo
@@ -148,7 +148,7 @@ class CustomerAPIView(APIView):
         try:
             # validate memo and memo_type
             make_memo(request.data.get("memo"), request.data.get("memo_type"))
-        except ValueError:
+        except (ValueError, TypeError):
             return render_error_response(_("invalid 'memo' for 'memo_type'"))
 
         memo = request.data.get("memo") or token.memo
@@ -224,7 +224,7 @@ def callback(token: SEP10Token, request: Request) -> Response:
     try:
         # validate memo and memo_type
         make_memo(request.data.get("memo"), request.data.get("memo_type"))
-    except ValueError:
+    except (ValueError, TypeError):
         return render_error_response(_("invalid 'memo' for 'memo_type'"))
 
     memo = request.data.get("memo") or token.memo
@@ -283,7 +283,7 @@ def delete(token: SEP10Token, request: Request, account: str,) -> Response:
         return render_error_response(_("account not found"), status_code=404)
     try:
         make_memo(request.data.get("memo"), request.data.get("memo_type"))
-    except ValueError:
+    except (ValueError, TypeError):
         return render_error_response(_("invalid 'memo' for 'memo_type'"))
     memo = request.data.get("memo") or token.memo
     memo_type = None
