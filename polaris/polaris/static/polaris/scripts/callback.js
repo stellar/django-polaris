@@ -50,7 +50,7 @@ function callback({
       return;
     }
 
-    targetWindow.postMessage(txJSON, "*");
+    targetWindow.postMessage(JSON.parse(txJSON), "*");
     if (onChange) {
       updateURLForOnChangeStatus();
     } else {
