@@ -22,9 +22,9 @@ pytest
 pytest-asyncio
 pytest-cov
 pytest-django
-readthedocs-sphinx-ext<3
-sphinx-rtd-theme<2
-sphinx<5
+readthedocs-sphinx-ext>=2, <3
+sphinx-rtd-theme>=1, <2
+sphinx>=4, <5
 aiohttp>=3.7, <4
 asgiref>=3.2, <4
 cryptography>=3.4, <4.0
