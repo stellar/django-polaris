@@ -132,7 +132,7 @@ class DepositIntegration:
         the template rendered.
 
         The anchor may also pass a special key, `template_name`, which should be a file
-        path relative your Django app's `/static` directory. Polaris will render the
+        path relative your Django app's `/templates` directory. Polaris will render the
         template specified by this key to the user instead of the default templates defined
         below. Note that all of the `Django template variables`_ defined below will still
         be passed to the template specified.

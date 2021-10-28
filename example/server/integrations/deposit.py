@@ -1,4 +1,5 @@
 from base64 import b64encode
+from datetime import datetime, timezone, timedelta
 from decimal import Decimal
 from typing import Optional, Dict, List
 
@@ -14,9 +15,10 @@ from polaris.sep10.token import SEP10Token
 from polaris.sep38.utils import asset_id_format
 from polaris.templates import Template
 from polaris.utils import getLogger
+from .mock_exchange import get_mock_firm_exchange_price
 
 from .sep24_kyc import SEP24KYC
-from ..forms import SelectAssetForm, OffChainAssetTransactionForm
+from ..forms import SelectAssetForm, OffChainAssetTransactionForm, ConfirmationForm
 from ..models import PolarisStellarAccount, PolarisUserTransaction, OffChainAssetExtra
 
 logger = getLogger(__name__)
@@ -33,26 +35,37 @@ class MyDepositIntegration(DepositIntegration):
         **kwargs,
     ) -> Optional[forms.Form]:
         kyc_form, content = SEP24KYC.check_kyc(transaction, post_data=post_data)
-        if kyc_form:
+        if kyc_form:  # we don't have KYC info on this account (& memo)
             return kyc_form
-        if content or transaction.amount_in:
+        if content:  # the user hasn't confirmed their email (or skip confirmation)
             return None
-        if not transaction.fee_asset:
-            # we haven't asked the user to select the off-chain asset
+        if not transaction.fee_asset:  # the user hasn't selected the asset to provide
             if post_data:
                 return SelectAssetForm(post_data)
             else:
                 return SelectAssetForm()
-        elif transaction.fee_asset == asset_id_format(transaction.asset):
-            if post_data:
-                return TransactionForm(transaction, post_data)
+        elif not transaction.amount_in:  # the user hasn't entered the amount to provide
+            if transaction.fee_asset == asset_id_format(transaction.asset):
+                if post_data:
+                    return TransactionForm(transaction, post_data)
+                else:
+                    return TransactionForm(transaction, initial={"amount": amount})
             else:
-                return TransactionForm(transaction, initial={"amount": amount})
-        else:
-            if post_data:
-                return OffChainAssetTransactionForm(post_data)
-            else:
-                return OffChainAssetTransactionForm()
+                if post_data:
+                    return OffChainAssetTransactionForm(post_data)
+                else:
+                    return OffChainAssetTransactionForm()
+        else:  # we have to check if we require the user to confirm the exchange rate
+            transaction_extra = PolarisUserTransaction.objects.get(
+                transaction_id=transaction.id
+            )
+            if (
+                transaction_extra.requires_confirmation
+                and not transaction_extra.confirmed
+            ):
+                return ConfirmationForm(post_data) if post_data else ConfirmationForm()
+            else:  # we're done
+                return None
 
     def content_for_template(
         self,
@@ -64,10 +77,10 @@ class MyDepositIntegration(DepositIntegration):
         **kwargs,
     ) -> Optional[Dict]:
         na, kyc_content = SEP24KYC.check_kyc(transaction)
-        if kyc_content:
+        if kyc_content:  # the user needs to confirm their email (or skip confirmation)
             return kyc_content
         elif template == Template.DEPOSIT:
-            if not form:
+            if not form:  # we're done
                 return None
             elif isinstance(form, SelectAssetForm):
                 return {
@@ -85,6 +98,24 @@ class MyDepositIntegration(DepositIntegration):
                     "title": _("Transaction Amount Form"),
                     "guidance": _("Please enter the amount you would like to provide."),
                     "icon_label": _("Stellar Development Foundation"),
+                }
+            elif isinstance(form, ConfirmationForm):
+                return {
+                    "title": _("Transaction Confirmation Page"),
+                    "guidance": _("Review and confirm the transaction details"),
+                    "icon_label": _("Stellar Development Foundation"),
+                    "template_name": "transaction_confirmation.html",
+                    "amount_in": transaction.amount_in,
+                    "amount_fee": transaction.amount_fee,
+                    "amount_out": transaction.amount_out,
+                    "amount_in_symbol": "USD",
+                    "amount_fee_symbol": "USD",
+                    "amount_out_symbol": transaction.asset.symbol,
+                    "amount_in_significant_decimals": 2,
+                    "amount_fee_significant_decimals": 2,
+                    "amount_out_significant_decimals": transaction.asset.significant_decimals,
+                    "price_significant_decimals": 4,
+                    "one_amount_in_price": 1 / transaction.quote.price,
                 }
         elif template == Template.MORE_INFO:
             content = {
@@ -124,7 +155,35 @@ class MyDepositIntegration(DepositIntegration):
                 + (offchain_asset.fee_percent / Decimal(100) * transaction.amount_in),
                 2,
             )
+            price = round(get_mock_firm_exchange_price(), 2)
+            transaction.quote = Quote.objects.create(
+                type=Quote.TYPE.firm,
+                stellar_account=transaction.stellar_account,
+                account_memo=transaction.account_memo,
+                muxed_account=transaction.muxed_account,
+                price=price,
+                sell_asset="iso4217:USD",
+                buy_asset=asset_id_format(transaction.asset),
+                sell_amount=transaction.amount_in,
+                buy_amount=round(
+                    transaction.amount_in / price,
+                    transaction.asset.significant_decimals,
+                ),
+                expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+            )
+            transaction.amount_out = round(
+                (transaction.amount_in - transaction.amount_fee)
+                / transaction.quote.price,
+                transaction.asset.significant_decimals,
+            )
             transaction.save()
+            PolarisUserTransaction.objects.filter(transaction_id=transaction.id).update(
+                requires_confirmation=True
+            )
+        if isinstance(form, ConfirmationForm):
+            PolarisUserTransaction.objects.filter(transaction_id=transaction.id).update(
+                confirmed=True
+            )
         try:
             SEP24KYC.track_user_activity(form, transaction)
         except RuntimeError:

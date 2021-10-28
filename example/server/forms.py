@@ -101,5 +101,5 @@ class OffChainAssetTransactionForm(forms.Form):
     )
 
 
-class QuoteForm(forms.Form):
+class ConfirmationForm(forms.Form):
     pass

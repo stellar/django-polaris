@@ -491,7 +491,7 @@ def get_quote_and_offchain_source_asset(
                 **asset_id_to_kwargs(source_asset_str)
             )
         except (ValueError, TypeError, ObjectDoesNotExist):
-            raise ValueError(_("invalid 'destination_asset'"))
+            raise ValueError(_("invalid 'source_asset'"))
         quote = Quote(
             id=str(uuid.uuid4()),
             type=Quote.TYPE.indicative,
