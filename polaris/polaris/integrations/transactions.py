@@ -320,6 +320,14 @@ class DepositIntegration:
         ``pending_user_transfer_start`` before including the transaction in calls to
         ``DepositIntegration.poll_pending_deposits()``.
 
+        If the user is requesting a deposit or withdrawal of a Stellar asset in
+        exchange for different off-chain asset, such as requesting a deposit of
+        USDC using fiat mexican pesos, the anchor must assign a ``Quote`` object
+        to ``Transaction.quote`` before the end of the interactive flow. Polaris
+        will check for a ``Quote`` object on the transaction and adjust the UI
+        of the ``MORE_INFO`` template to display the exchange rate and other
+        exchange-related information.
+
         :param request: the ``rest_framework.request.Request`` object
         :param form: the completed ``forms.Form`` submitted by the user
         :param transaction: the ``Transaction`` database object

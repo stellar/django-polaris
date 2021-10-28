@@ -63,7 +63,11 @@ class MyDepositIntegration(DepositIntegration):
                 transaction_extra.requires_confirmation
                 and not transaction_extra.confirmed
             ):
-                return ConfirmationForm(post_data) if post_data else ConfirmationForm()
+                return (
+                    ConfirmationForm(post_data)
+                    if post_data is not None
+                    else ConfirmationForm()
+                )
             else:  # we're done
                 return None
 
@@ -107,6 +111,10 @@ class MyDepositIntegration(DepositIntegration):
                     "template_name": "transaction_confirmation.html",
                     "amount_in": transaction.amount_in,
                     "amount_fee": transaction.amount_fee,
+                    "conversion_amount": round(
+                        transaction.amount_in - transaction.amount_fee,
+                        transaction.asset.significant_decimals,
+                    ),
                     "amount_out": transaction.amount_out,
                     "amount_in_symbol": "USD",
                     "amount_fee_symbol": "USD",

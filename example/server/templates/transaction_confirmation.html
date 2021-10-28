@@ -11,19 +11,27 @@
   </div>
   <hr>
   <div class="confirm-item">
+    <span class="confirm-label">Transfer Amount</span>
+    <span class="confirm-value">{{ amount_in_symbol }} {{ amount_in|floatformat:amount_in_significant_decimals }}</span>
+  </div>
+  <div class="confirm-item">
+    <span class="confirm-label">Fee</span>
+    <span class="confirm-value">{{ amount_fee_symbol }} {{ amount_fee|floatformat:amount_fee_significant_decimals }}</span>
+  </div>
+  <div class="confirm-item">
+    <span class="confirm-label">Conversion Amount</span>
+    <span class="confirm-value">{{ amount_in_symbol }} {{ conversion_amount|floatformat:amount_in_significant_decimals }}</span>
+  </div>
+  <div class="confirm-item">
     <span class="confirm-label">Exchange Rate</span>
     <span class="confirm-value">{{ amount_in_symbol }} 1.00 = {{amount_out_symbol}} {{ one_amount_in_price|floatformat:price_significant_decimals }}</span>
   </div>
   <div class="confirm-item">
-    <span class="confirm-label">Send Amount</span>
-    <span class="confirm-value">{{ amount_in_symbol }} {{ amount_in|floatformat:amount_in_significant_decimals }}</span>
-  </div>
-  <div class="confirm-item">
-    <span class="confirm-label">Fees</span>
-    <span class="confirm-value">{{ amount_fee_symbol }} {{ amount_fee|floatformat:amount_fee_significant_decimals }}</span>
-  </div>
-  <div class="confirm-item">
-    <span class="confirm-label"><strong>Receive Amount:</strong></span>
+    {% if operation == "deposit" %}
+    <span class="confirm-label"><strong>Deposit Amount:</strong></span>
+    {% else %}
+    <span class="confirm-label"><strong>Withdraw Amount:</strong></span>
+    {% endif %}
     <span class="confirm-value"><strong>{{ amount_out_symbol }} {{ amount_out|floatformat:amount_out_significant_decimals }}</strong></span>
   </div>
 </div>
