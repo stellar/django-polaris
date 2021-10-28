@@ -52,21 +52,27 @@ def more_info(request: Request, sep6: bool = False) -> Response:
     }
     try:
         if request_transaction.kind == Transaction.KIND.deposit:
-            content = rdi.content_for_template(
-                request=request,
-                template=Template.MORE_INFO,
-                transaction=request_transaction,
+            content_from_anchor = (
+                rdi.content_for_template(
+                    request=request,
+                    template=Template.MORE_INFO,
+                    transaction=request_transaction,
+                )
+                or {}
             )
         else:
-            content = rwi.content_for_template(
-                request=request,
-                template=Template.MORE_INFO,
-                transaction=request_transaction,
+            content_from_anchor = (
+                rwi.content_for_template(
+                    request=request,
+                    template=Template.MORE_INFO,
+                    transaction=request_transaction,
+                )
+                or {}
             )
     except NotImplementedError:
-        pass
-    else:
-        context.update(content)
+        content_from_anchor = {}
+
+    context.update(content_from_anchor)
 
     # more_info.html will update the 'callback' parameter value to 'success' after
     # making the callback. If the page is then reloaded, the callback is not included
@@ -75,7 +81,12 @@ def more_info(request: Request, sep6: bool = False) -> Response:
     if callback and callback != "success":
         context["callback"] = callback
 
-    return Response(context, template_name="polaris/more_info.html")
+    return Response(
+        context,
+        template_name=content_from_anchor.get(
+            "template_name", "polaris/more_info.html"
+        ),
+    )
 
 
 def transactions(request: Request, token: SEP10Token, sep6: bool = False,) -> Response:

@@ -126,11 +126,19 @@ class DepositIntegration:
     ) -> Optional[Dict]:
         """
         .. _`widget attributes`: https://docs.djangoproject.com/en/3.2/ref/forms/widgets/#styling-widget-instances
+        .. _`Django template variables`: https://docs.djangoproject.com/en/3.2/ref/templates/language/#variables
 
-        Return a dictionary containing page content to be used in the template passed for the
-        given `form` and `transaction`.
+        Return a dictionary containing the `Django template variables`_ to be passed to
+        the template rendered.
 
-        Polaris will pass one of the following ``polaris.templates.Template`` values:
+        The anchor may also pass a special key, `template_name`, which should be a file
+        path relative your Django app's `/static` directory. Polaris will render the
+        template specified by this key to the user instead of the default templates defined
+        below. Note that all of the `Django template variables`_ defined below will still
+        be passed to the template specified.
+
+        Polaris will pass one of the following ``polaris.templates.Template`` values to
+        indicate the default template Polaris will use.
 
         ``Template.DEPOSIT``
 
@@ -152,7 +160,7 @@ class DepositIntegration:
         information for the transaction. Returning content will signal to Polaris that
         the user needs to take some action before receiving the next form, such as
         confirming their email. In this case, make sure to return an appropriate
-        `guidance` message.
+        `guidance` message or return a custom `template_name`.
 
         Using this function, anchors pass key-value pairs to the template being rendered.
         Some of these key-value pairs are used by Polaris, but anchors are allowed and
@@ -172,6 +180,43 @@ class DepositIntegration:
                     "username": "John.Doe"
                 }
 
+        Below are all the keys passed to the template rendered. If the dictionary returned has
+        the same key, the default value Polaris uses will be overwritten.
+
+        For ``Template.DEPOSIT`` and ``Template.WITHDRAW``:
+
+        ``"form"``
+
+            The ``django.forms.Form`` instance returned from ``form_for_transaction()``.
+
+        ``"post_url"``
+
+            The URL to make the POST request containing the form data to.
+
+        ``"operation"``
+
+            Either `deposit` or `withdraw`.
+
+        ``"asset"``
+
+            The ``polaris.models.Asset`` object of the Stellar asset being transacted.
+
+        ``"use_fee_endpoint"``
+
+            A boolean indicating whether or not Polaris should use the ``GET /fee``
+            endpoint when calculating fees and rendering the amounts on the page.
+
+        ``"org_logo_url"``
+
+            A URL for the default logo to render if the anchor has not specified their own
+            via `icon_path`.
+
+        ``"additive_fees_enabled"``
+
+            A boolean indicating whether or not to add fees to the amount entered in
+            ``TransactionForm`` amount fields. ``False`` by default, meaning fees are
+            subtracted from the amounts entered.
+
         ``"title"``
 
             The browser tab's title.
@@ -188,8 +233,8 @@ class DepositIntegration:
         ``"icon_path"``
 
             The relative file path to the image you would like to use as the company icon
-            in the UI. The file path should be relative to the value of your ``STATIC_ROOT``
-            setting. If `icon_path` is not present, Polaris will use the image specified by
+            in the UI. The file path should be relative to your Django app's `/static`
+            directory. If `icon_path` is not present, Polaris will use the image specified by
             your TOML integration function's ``ORG_LOGO`` key. If neither are present,
             Polaris will use its default image. All images will be rendered in a 100 x 150px
             sized box as defined by the default stylesheet.
@@ -210,6 +255,33 @@ class DepositIntegration:
             The character string that precedes the amounts shown on the fee table. It defaults
             to the Stellar ``Asset.symbol``. Note that the symbol used in input fields must
             be passed separately using the field's `widget attributes`_.
+
+        For ``Template.MORE_INFO``
+
+        ``"tx_json"``
+
+            A JSON-serialized string matching the schema returned from `GET /transaction`
+
+        ``"amount_in"``
+
+            A string containing the amount to be displayed on the page as `Amount Sent`
+
+        ``"amount_out"``
+
+
+            A string containing the amount to be displayed on the page as `Amount Received`
+
+        ``"amount_fee"``
+
+            A string containing the amount to be displayed on the page as `Fee`
+
+        ``"transaction"``
+
+            The ``polaris.models.Transaction`` object representing the transaction.
+
+        ``"asset"``
+
+            The ``polaris.models.Asset`` object representing the asset.
 
         :param request: a ``rest_framework.request.Request`` instance
         :param template: a ``polaris.templates.Template`` enum value
@@ -562,16 +634,7 @@ class WithdrawalIntegration:
         **kwargs: Dict
     ) -> Optional[Dict]:
         """
-        Same as ``DepositIntegration.content_for_template``, except the ``Template``
-        values passed will be one of:
-
-        ``Template.WITHDRAW``
-
-            The template used for withdraw flows
-
-        ``Template.MORE_INFO``
-
-            The template used to show transaction details
+        Same as ``DepositIntegration.content_for_template``.
 
         :param request: a ``rest_framework.request.Request`` instance
         :param template: a ``polaris.templates.Template`` enum value

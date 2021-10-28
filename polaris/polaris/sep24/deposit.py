@@ -189,14 +189,17 @@ def post_interactive_deposit(request: Request) -> Response:
 
     else:
         try:
-            content = rdi.content_for_template(
-                request=request,
-                template=Template.DEPOSIT,
-                form=form,
-                transaction=transaction,
+            content_from_anchor = (
+                rdi.content_for_template(
+                    request=request,
+                    template=Template.DEPOSIT,
+                    form=form,
+                    transaction=transaction,
+                )
+                or {}
             )
         except NotImplementedError:
-            content = {}
+            content_from_anchor = {}
 
         url_args = {"transaction_id": transaction.id, "asset_code": asset.code}
         if callback:
@@ -205,20 +208,23 @@ def post_interactive_deposit(request: Request) -> Response:
             url_args["amount"] = amount
 
         post_url = f"{reverse('post_interactive_deposit')}?{urlencode(url_args)}"
-        get_url = f"{reverse('get_interactive_deposit')}?{urlencode(url_args)}"
-        content.update(
-            form=form,
-            post_url=post_url,
-            get_url=get_url,
-            operation=settings.OPERATION_DEPOSIT,
-            asset=asset,
-            show_fee_table=content.get(
-                "show_fee_table", isinstance(form, TransactionForm)
+        content = {
+            "form": form,
+            "post_url": post_url,
+            "operation": settings.OPERATION_DEPOSIT,
+            "asset": asset,
+            "show_fee_table": isinstance(form, TransactionForm),
+            "use_fee_endpoint": registered_fee_func != calculate_fee,
+            "additive_fees_enabled": settings.ADDITIVE_FEES_ENABLED,
+            **content_from_anchor,
+        }
+        return Response(
+            content,
+            template_name=content_from_anchor.get(
+                "template_name", "polaris/deposit.html"
             ),
-            use_fee_endpoint=registered_fee_func != calculate_fee,
-            additive_fees_enabled=settings.ADDITIVE_FEES_ENABLED,
+            status=400,
         )
-        return Response(content, template_name="polaris/deposit.html", status=400)
 
 
 @api_view(["GET"])
@@ -296,16 +302,19 @@ def get_interactive_deposit(request: Request) -> Response:
         request=request, transaction=transaction, amount=amount
     )
     try:
-        content = rdi.content_for_template(
-            request=request,
-            template=Template.DEPOSIT,
-            form=form,
-            transaction=transaction,
+        content_from_anchor = (
+            rdi.content_for_template(
+                request=request,
+                template=Template.DEPOSIT,
+                form=form,
+                transaction=transaction,
+            )
+            or {}
         )
     except NotImplementedError:
-        content = None
+        content_from_anchor = {}
 
-    if not (form or content):
+    if not (form or content_from_anchor):
         logger.error("The anchor did not provide content, unable to serve page.")
         if transaction.status != transaction.STATUS.incomplete:
             return render_error_response(
@@ -320,8 +329,6 @@ def get_interactive_deposit(request: Request) -> Response:
             status_code=500,
             content_type="text/html",
         )
-    elif content is None:
-        content = {}
 
     url_args = {"transaction_id": transaction.id, "asset_code": asset.code}
     if callback:
@@ -331,21 +338,23 @@ def get_interactive_deposit(request: Request) -> Response:
 
     toml_data = registered_toml_func(request=request)
     post_url = f"{reverse('post_interactive_deposit')}?{urlencode(url_args)}"
-    get_url = f"{reverse('get_interactive_deposit')}?{urlencode(url_args)}"
-    content.update(
-        form=form,
-        post_url=post_url,
-        get_url=get_url,
-        operation=settings.OPERATION_DEPOSIT,
-        asset=asset,
-        symbol=content.get("symbol", asset.symbol),
-        show_fee_table=content.get("show_fee_table", isinstance(form, TransactionForm)),
-        use_fee_endpoint=registered_fee_func != calculate_fee,
-        org_logo_url=toml_data.get("DOCUMENTATION", {}).get("ORG_LOGO"),
-        additive_fees_enabled=settings.ADDITIVE_FEES_ENABLED,
-    )
+    content = {
+        "form": form,
+        "post_url": post_url,
+        "operation": settings.OPERATION_DEPOSIT,
+        "asset": asset,
+        "symbol": asset.symbol,
+        "show_fee_table": isinstance(form, TransactionForm),
+        "use_fee_endpoint": registered_fee_func != calculate_fee,
+        "org_logo_url": toml_data.get("DOCUMENTATION", {}).get("ORG_LOGO"),
+        "additive_fees_enabled": settings.ADDITIVE_FEES_ENABLED,
+        **content_from_anchor,
+    }
 
-    return Response(content, template_name="polaris/deposit.html")
+    return Response(
+        content,
+        template_name=content_from_anchor.get("template_name", "polaris/deposit.html"),
+    )
 
 
 @api_view(["POST"])
