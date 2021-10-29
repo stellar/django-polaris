@@ -831,6 +831,14 @@ class OffChainAsset(models.Model):
     """
 
     delivery_methods = models.ManyToManyField("DeliveryMethod")
+    """
+    The list of delivery methods support for collecting and receiving this asset
+    """
+
+    symbol = models.TextField(null=True, blank=True)
+    """
+    The symbol to use when displaying amounts of this asset
+    """
 
     class Meta:
         constraints = [

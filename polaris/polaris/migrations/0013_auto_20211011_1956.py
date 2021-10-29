@@ -212,6 +212,7 @@ class Migration(migrations.Migration):
                     "delivery_methods",
                     models.ManyToManyField(to="polaris.DeliveryMethod"),
                 ),
+                ("symbol", models.TextField(blank=True, null=True)),
             ],
         ),
         migrations.AddConstraint(
