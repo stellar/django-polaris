@@ -129,13 +129,28 @@ class MyDepositIntegration(DepositIntegration):
             content = {
                 "title": _("Polaris Transaction Information"),
                 "icon_label": _("Stellar Development Foundation"),
+                "amount_in_symbol": transaction.asset.symbol,
+                "amount_fee_symbol": transaction.asset.symbol,
+                "amount_out_symbol": transaction.asset.symbol,
+                "amount_in_significant_decimals": transaction.asset.significant_decimals,
+                "amount_fee_significant_decimals": transaction.asset.significant_decimals,
+                "amount_out_significant_decimals": transaction.asset.significant_decimals,
             }
-            if transaction.status == Transaction.STATUS.pending_user_transfer_start:
-                # We're waiting on the user to send an off-chain payment
+            if transaction.quote:
                 content.update(
-                    memo=b64encode(str(hash(transaction)).encode())
-                    .decode()[:10]
-                    .upper()
+                    **{
+                        "amount_in_symbol": "USD",
+                        "amount_fee_symbol": "USD",
+                        "amount_in_significant_decimals": 2,
+                        "amount_fee_significant_decimals": 2,
+                        "price": 1 / transaction.quote.price,
+                        "price_significant_decimals": 4,
+                        "conversion_amount_symbol": "USD",
+                        "conversion_amount": round(
+                            transaction.amount_in - transaction.amount_fee, 2
+                        ),
+                        "conversion_amount_significant_decimals": 2,
+                    }
                 )
             return content
 

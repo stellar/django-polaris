@@ -126,10 +126,32 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
                     )
                 return content
         elif template == Template.MORE_INFO:
-            return {
-                "title": _("Transaction Information"),
+            content = {
+                "title": _("Polaris Transaction Information"),
                 "icon_label": _("Stellar Development Foundation"),
+                "amount_in_symbol": transaction.asset.symbol,
+                "amount_fee_symbol": transaction.asset.symbol,
+                "amount_out_symbol": transaction.asset.symbol,
+                "amount_in_significant_decimals": transaction.asset.significant_decimals,
+                "amount_fee_significant_decimals": transaction.asset.significant_decimals,
+                "amount_out_significant_decimals": transaction.asset.significant_decimals,
             }
+            if transaction.quote:
+                content.update(
+                    **{
+                        "amount_out_symbol": "USD",
+                        "amount_out_significant_decimals": 2,
+                        "price": 1 / transaction.quote.price,
+                        "price_significant_decimals": 4,
+                        "conversion_amount_symbol": transaction.asset.symbol,
+                        "conversion_amount": round(
+                            transaction.amount_in - transaction.amount_fee,
+                            transaction.asset.significant_decimals,
+                        ),
+                        "conversion_amount_significant_decimals": transaction.asset.significant_decimals,
+                    }
+                )
+            return content
 
     def after_form_validation(
         self,
@@ -168,11 +190,11 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
                     buy_amount=round(transaction.amount_in / price, 2),
                     expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
                 )
-            transaction.amount_out = round(
-                (transaction.amount_in - transaction.amount_fee)
-                / transaction.quote.price,
-                transaction.asset.significant_decimals,
-            )
+                transaction.amount_out = round(
+                    (transaction.amount_in - transaction.amount_fee)
+                    / transaction.quote.price,
+                    transaction.asset.significant_decimals,
+                )
             transaction.save()
             PolarisUserTransaction.objects.filter(transaction_id=transaction.id).update(
                 requires_confirmation=True
