@@ -18,14 +18,16 @@
     <span class="confirm-label">Fee</span>
     <span class="confirm-value">{{ amount_fee_symbol }} {{ amount_fee|floatformat:amount_fee_significant_decimals }}</span>
   </div>
+  {% if price %}
   <div class="confirm-item">
     <span class="confirm-label">Conversion Amount</span>
     <span class="confirm-value">{{ amount_in_symbol }} {{ conversion_amount|floatformat:amount_in_significant_decimals }}</span>
   </div>
   <div class="confirm-item">
     <span class="confirm-label">Exchange Rate</span>
-    <span class="confirm-value">{{ amount_in_symbol }} 1.00 = {{amount_out_symbol}} {{ one_amount_in_price|floatformat:price_significant_decimals }}</span>
+    <span class="confirm-value">{{ amount_in_symbol }} 1.00 = {{amount_out_symbol}} {{ price|floatformat:price_significant_decimals }}</span>
   </div>
+  {% endif %}
   <div class="confirm-item">
     {% if operation == "deposit" %}
     <span class="confirm-label"><strong>Deposit Amount:</strong></span>

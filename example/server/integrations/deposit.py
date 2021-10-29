@@ -123,7 +123,7 @@ class MyDepositIntegration(DepositIntegration):
                     "amount_fee_significant_decimals": 2,
                     "amount_out_significant_decimals": transaction.asset.significant_decimals,
                     "price_significant_decimals": 4,
-                    "one_amount_in_price": 1 / transaction.quote.price,
+                    "price": 1 / transaction.quote.price,
                 }
         elif template == Template.MORE_INFO:
             content = {
@@ -147,6 +147,15 @@ class MyDepositIntegration(DepositIntegration):
         *args,
         **kwargs,
     ):
+        try:
+            SEP24KYC.track_user_activity(form, transaction)
+        except RuntimeError:
+            # Since no polaris account exists for this transaction, KYCForm
+            # will be returned from the next form_for_transaction() call
+            logger.exception(
+                f"KYCForm was not served first for unknown account, id: "
+                f"{transaction.stellar_account}"
+            )
         if isinstance(form, SelectAssetForm):
             # users will be charged fees in the units of the asset provided
             # to the anchor, not in units of the asset received on Stellar
@@ -191,15 +200,6 @@ class MyDepositIntegration(DepositIntegration):
         if isinstance(form, ConfirmationForm):
             PolarisUserTransaction.objects.filter(transaction_id=transaction.id).update(
                 confirmed=True
-            )
-        try:
-            SEP24KYC.track_user_activity(form, transaction)
-        except RuntimeError:
-            # Since no polaris account exists for this transaction, KYCForm
-            # will be returned from the next form_for_transaction() call
-            logger.exception(
-                f"KYCForm was not served first for unknown account, id: "
-                f"{transaction.stellar_account}"
             )
 
     def process_sep6_request(
