@@ -405,7 +405,9 @@ class DepositIntegration:
         to ``Transaction.quote`` before the end of the interactive flow. Polaris
         will check for a ``Quote`` object on the transaction and adjust the UI
         of the ``MORE_INFO`` template to display the exchange rate and other
-        exchange-related information.
+        exchange-related information. ``Transaction.fee_asset`` also must be
+        populated with the asset in which fees will be collected, formatted
+        using `SEP-38 Asset Identification Format`_.
 
         :param request: the ``rest_framework.request.Request`` object
         :param form: the completed ``forms.Form`` submitted by the user
