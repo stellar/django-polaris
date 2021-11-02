@@ -10,7 +10,7 @@ from django.utils.translation import gettext as _
 from polaris import settings as polaris_settings
 from polaris.templates import Template
 from polaris.utils import render_error_response, getLogger
-from polaris.models import Transaction, Asset
+from polaris.models import Transaction, Asset, OffChainAsset
 from polaris.integrations import registered_fee_func
 from polaris.sep24.utils import verify_valid_asset_operation
 from polaris.shared.serializers import TransactionSerializer
@@ -27,7 +27,7 @@ SEP6_MORE_INFO_PATH = "/sep6/transaction/more_info"
 
 def more_info(request: Request, sep6: bool = False) -> Response:
     try:
-        request_transaction = _get_transaction_from_request(request, sep6=sep6)
+        transaction = _get_transaction_from_request(request, sep6=sep6)
     except (AttributeError, ValidationError) as exc:
         return render_error_response(str(exc), content_type="text/html")
     except Transaction.DoesNotExist:
@@ -38,7 +38,7 @@ def more_info(request: Request, sep6: bool = False) -> Response:
         )
 
     serializer = TransactionSerializer(
-        request_transaction, context={"request": request, "sep6": sep6}
+        transaction, context={"request": request, "sep6": sep6}
     )
     tx_json = json.dumps({"transaction": serializer.data})
     context = {
@@ -46,17 +46,40 @@ def more_info(request: Request, sep6: bool = False) -> Response:
         "amount_in": serializer.data.get("amount_in"),
         "amount_out": serializer.data.get("amount_out"),
         "amount_fee": serializer.data.get("amount_fee"),
-        "transaction": request_transaction,
-        "asset_code": request_transaction.asset.code,
-        "asset": request_transaction.asset,
+        "amount_in_symbol": transaction.asset.symbol,
+        "amount_fee_symbol": transaction.asset.symbol,
+        "amount_out_symbol": transaction.asset.symbol,
+        "amount_in_significant_decimals": transaction.asset.significant_decimals,
+        "amount_fee_significant_decimals": transaction.asset.significant_decimals,
+        "amount_out_significant_decimals": transaction.asset.significant_decimals,
+        "transaction": transaction,
+        "asset_code": transaction.asset.code,
+        "asset": transaction.asset,
     }
+    if transaction.quote:
+        if "deposit" in transaction.kind:
+            scheme, identifier = transaction.quote.sell_asset.split(":")
+        else:
+            scheme, identifier = transaction.quote.buy_asset.split(":")
+        offchain_asset = OffChainAsset.objects.get(scheme=scheme, identifier=identifier)
+        if "deposit" in transaction.kind:
+            context.update(
+                **{
+                    "offchain_asset": offchain_asset,
+                    "price": 1 / transaction.quote.price,
+                    "amount_in_symbol": offchain_asset.symbol,
+                    "amount_fee_symbol": offchain_asset.symbol,
+                    "amount_in_significant_decimals": offchain_asset.significant_decimals,
+                    "amount_fee_significant_decimals": offchain_asset.significant_decimals,
+                }
+            )
     try:
-        if request_transaction.kind == Transaction.KIND.deposit:
+        if "deposit" in transaction.kind:
             content_from_anchor = (
                 rdi.content_for_template(
                     request=request,
                     template=Template.MORE_INFO,
-                    transaction=request_transaction,
+                    transaction=transaction,
                 )
                 or {}
             )
@@ -65,7 +88,7 @@ def more_info(request: Request, sep6: bool = False) -> Response:
                 rwi.content_for_template(
                     request=request,
                     template=Template.MORE_INFO,
-                    transaction=request_transaction,
+                    transaction=transaction,
                 )
                 or {}
             )
@@ -89,7 +112,9 @@ def more_info(request: Request, sep6: bool = False) -> Response:
     )
 
 
-def transactions(request: Request, token: SEP10Token, sep6: bool = False,) -> Response:
+def transactions_request(
+    request: Request, token: SEP10Token, sep6: bool = False,
+) -> Response:
     try:
         limit = _validate_limit(request.GET.get("limit"))
     except ValueError:
@@ -143,7 +168,9 @@ def transactions(request: Request, token: SEP10Token, sep6: bool = False,) -> Re
     return Response({"transactions": serializer.data})
 
 
-def transaction(request: Request, token: SEP10Token, sep6: bool = False,) -> Response:
+def transaction_request(
+    request: Request, token: SEP10Token, sep6: bool = False,
+) -> Response:
     try:
         request_transaction = _get_transaction_from_request(
             request, token=token, sep6=sep6,

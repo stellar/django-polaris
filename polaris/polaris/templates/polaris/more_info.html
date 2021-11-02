@@ -45,18 +45,31 @@
             {% endif %}
         </div>
         <div class="field-value">
-            {{ transaction.amount_in|floatformat:asset.significant_decimals }}
+            {{ amount_in_symbol }} {{ transaction.amount_in|floatformat:amount_in_significant_decimals }}
         </div>
     </div>
 
+    {% if transaction.amount_fee %}
     <div class="info-item">
         <div class="info-label">
             {% trans "fees" %}
         </div>
         <div class="field-value">
-            {{ transaction.amount_fee|floatformat:asset.significant_decimals }}
+            {{ amount_fee_symbol }} {{ transaction.amount_fee|floatformat:amount_fee_significant_decimals }}
         </div>
     </div>
+    {% endif %}
+
+    {% if transaction.quote and transaction.quote.price %}
+    <div class="info-item">
+        <div class="info-label">
+            {% trans "exchange rate" %}
+        </div>
+        <div class="field-value">
+            {{ amount_in_symbol }} 1.00 = {{ amount_out_symbol }} {{ price|floatformat:amount_out_significant_decimals }}
+        </div>
+    </div>
+    {% endif %}
 
     {% if transaction.amount_out %}
     <div class="info-item">
@@ -68,7 +81,7 @@
             {% endif %}
         </div>
         <div class="field-value">
-            {{ transaction.amount_out|floatformat:asset.significant_decimals }}
+            {{ amount_out_symbol }} {{ transaction.amount_out|floatformat:amount_out_significant_decimals }}
         </div>
     </div>
     {% endif %}

@@ -29,7 +29,6 @@ class Migration(migrations.Migration):
                     models.DecimalField(decimal_places=7, default=0, max_digits=30),
                 ),
                 ("fee_percent", models.PositiveIntegerField(default=0)),
-                ("symbol", models.TextField(default="")),
             ],
         ),
     ]

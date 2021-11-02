@@ -79,7 +79,6 @@ class OffChainAssetExtra(models.Model):
     )
     fee_fixed = models.DecimalField(default=0, max_digits=30, decimal_places=7)
     fee_percent = models.PositiveIntegerField(default=0)
-    symbol = models.TextField(default="")
 
     objects = models.Manager()
 

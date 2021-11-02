@@ -7,7 +7,7 @@ from django.utils.translation import gettext as _
 from rest_framework.request import Request
 
 from polaris.integrations import WithdrawalIntegration, calculate_fee
-from polaris.models import Transaction, Asset, Quote
+from polaris.models import Transaction, Asset, Quote, OffChainAsset
 from polaris.sep10.token import SEP10Token
 from polaris.sep38.utils import asset_id_format
 from polaris.templates import Template
@@ -129,19 +129,11 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
             content = {
                 "title": _("Polaris Transaction Information"),
                 "icon_label": _("Stellar Development Foundation"),
-                "amount_in_symbol": transaction.asset.symbol,
-                "amount_fee_symbol": transaction.asset.symbol,
-                "amount_out_symbol": transaction.asset.symbol,
-                "amount_in_significant_decimals": transaction.asset.significant_decimals,
-                "amount_fee_significant_decimals": transaction.asset.significant_decimals,
-                "amount_out_significant_decimals": transaction.asset.significant_decimals,
             }
             if transaction.quote:
+                scheme, identifier = transaction.quote.buy_asset.split(":")
                 content.update(
                     **{
-                        "amount_out_symbol": "USD",
-                        "amount_out_significant_decimals": 2,
-                        "price": 1 / transaction.quote.price,
                         "price_significant_decimals": 4,
                         "conversion_amount_symbol": transaction.asset.symbol,
                         "conversion_amount": round(

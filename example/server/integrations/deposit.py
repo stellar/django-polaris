@@ -129,27 +129,26 @@ class MyDepositIntegration(DepositIntegration):
             content = {
                 "title": _("Polaris Transaction Information"),
                 "icon_label": _("Stellar Development Foundation"),
-                "amount_in_symbol": transaction.asset.symbol,
-                "amount_fee_symbol": transaction.asset.symbol,
-                "amount_out_symbol": transaction.asset.symbol,
-                "amount_in_significant_decimals": transaction.asset.significant_decimals,
-                "amount_fee_significant_decimals": transaction.asset.significant_decimals,
-                "amount_out_significant_decimals": transaction.asset.significant_decimals,
             }
             if transaction.quote:
+                scheme, identifier = transaction.quote.sell_asset.split(":")
+                offchain_asset = OffChainAsset.objects.get(
+                    scheme=scheme, identifier=identifier
+                )
                 content.update(
                     **{
-                        "amount_in_symbol": "USD",
-                        "amount_fee_symbol": "USD",
-                        "amount_in_significant_decimals": 2,
-                        "amount_fee_significant_decimals": 2,
+                        "amount_in_symbol": offchain_asset.symbol,
+                        "amount_fee_symbol": offchain_asset.symbol,
+                        "amount_in_significant_decimals": offchain_asset.significant_decimals,
+                        "amount_fee_significant_decimals": offchain_asset.significant_decimals,
                         "price": 1 / transaction.quote.price,
                         "price_significant_decimals": 4,
-                        "conversion_amount_symbol": "USD",
+                        "conversion_amount_symbol": offchain_asset.symbol,
                         "conversion_amount": round(
-                            transaction.amount_in - transaction.amount_fee, 2
+                            transaction.amount_in - transaction.amount_fee,
+                            offchain_asset.significant_decimals,
                         ),
-                        "conversion_amount_significant_decimals": 2,
+                        "conversion_amount_significant_decimals": offchain_asset.significant_decimals,
                     }
                 )
             return content
