@@ -50,6 +50,27 @@
     </div>
 
     {% if transaction.amount_fee %}
+    {% if transaction.quote %}
+    {% if transaction.fee_asset == amount_in_asset %}
+    <div class="info-item">
+        <div class="info-label">
+            {% trans "fees" %}
+        </div>
+        <div class="field-value">
+            {{ amount_fee_symbol }} {{ transaction.amount_fee|floatformat:amount_fee_significant_decimals }}
+        </div>
+    </div>
+
+    <div class="info-item">
+        <div class="info-label">
+            {% trans "exchange amount" %}
+        </div>
+        <div class="field-value">
+            {{ amount_fee_symbol }} {{ exchange_amount|floatformat:amount_fee_significant_decimals }}
+        </div>
+    </div>
+    {% endif %}
+    {% else %}
     <div class="info-item">
         <div class="info-label">
             {% trans "fees" %}
@@ -59,6 +80,7 @@
         </div>
     </div>
     {% endif %}
+    {% endif %}
 
     {% if transaction.quote and transaction.quote.price %}
     <div class="info-item">
@@ -66,7 +88,27 @@
             {% trans "exchange rate" %}
         </div>
         <div class="field-value">
-            {{ amount_in_symbol }} 1.00 = {{ amount_out_symbol }} {{ price|floatformat:amount_out_significant_decimals }}
+            {{ amount_in_symbol }} 1.00 = {{ amount_out_symbol }} {{ price_inversion|floatformat:price_inversion_significant_decimals }}
+        </div>
+    </div>
+    {% endif %}
+
+    {% if transaction.amount_fee and transaction.quote and transaction.fee_asset == amount_out_asset %}
+    <div class="info-item">
+        <div class="info-label">
+            {% trans "exchanged amount" %}
+        </div>
+        <div class="field-value">
+            {{ amount_fee_symbol }} {{ exchanged_amount|floatformat:amount_fee_significant_decimals }}
+        </div>
+    </div>
+
+    <div class="info-item">
+        <div class="info-label">
+            {% trans "fees" %}
+        </div>
+        <div class="field-value">
+            {{ amount_fee_symbol }} {{ transaction.amount_fee|floatformat:amount_fee_significant_decimals }}
         </div>
     </div>
     {% endif %}

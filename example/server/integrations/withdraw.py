@@ -131,7 +131,6 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
                 "icon_label": _("Stellar Development Foundation"),
             }
             if transaction.quote:
-                scheme, identifier = transaction.quote.buy_asset.split(":")
                 content.update(
                     **{
                         "price_significant_decimals": 4,
