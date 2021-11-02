@@ -127,6 +127,7 @@ class DepositIntegration:
         """
         .. _`widget attributes`: https://docs.djangoproject.com/en/3.2/ref/forms/widgets/#styling-widget-instances
         .. _`Django template variables`: https://docs.djangoproject.com/en/3.2/ref/templates/language/#variables
+        .. _`SEP-38 Asset Identification Format`: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0038.md#asset-identification-format
 
         Return a dictionary containing the `Django template variables`_ to be passed to
         the template rendered.
@@ -262,18 +263,65 @@ class DepositIntegration:
 
             A JSON-serialized string matching the schema returned from `GET /transaction`
 
+        ``amount_in_asset``
+
+            The string representation of the asset given to the anchor by the user,
+            formatted using `SEP-38 Asset Identification Format`_.
+
+        `amount_out_asset``
+
+            The string representation of the asset sent from the anchor to the user,
+            formatted using `SEP-38 Asset Identification Format`_.
+
         ``"amount_in"``
 
             A string containing the amount to be displayed on the page as `Amount Sent`
 
         ``"amount_out"``
 
-
             A string containing the amount to be displayed on the page as `Amount Received`
 
         ``"amount_fee"``
 
             A string containing the amount to be displayed on the page as `Fee`
+
+        ``amount_in_symbol``
+
+            ``Asset.symbol`` or ``OffChainAsset.symbol``, depending on whether or not
+            asset sent to the anchor is on or off chain. If ``Transaction.quote`` is
+            null, the value will always match ``Asset.symbol``.
+
+        ``amount_fee_symbol``
+
+            ``Asset.symbol`` or ``OffChainAsset.symbol``, depending on the value of
+            ``Transaction.fee_asset``. If ``Transaction.quote`` is null, the value will
+            always be ``Asset.symbol``.
+
+        ``amount_out_symbol``
+
+            ``Asset.symbol`` or ``OffChainAsset.symbol``, depending on whether or not
+            asset sent by the anchor is on or off chain. If ``Transaction.quote`` is
+            null, the value will always match ``Asset.symbol``.
+
+        ``amount_in_significant_decimals``
+
+            The number of decimals to display for amounts of ``Transaction.amount_in``.
+            Derived from ``Asset.significant_decimals`` or ``OffChainAsset.decimals``.
+            If ``Transaction.quote`` is null, the value will always match
+            ``Asset.significant_decimals``.
+
+        ``amount_fee_significant_decimals``
+
+            The number of decimals to display for amounts of ``Transaction.amount_fee``.
+            Derived from ``Asset.significant_decimals`` or ``OffChainAsset.decimals``,
+            depending on the value of ``Transaction.fee_asset``.
+
+        ``amount_out_significant_decimals``
+
+            The number of decimals to display for amounts of ``Transaction.amount_out``.
+            Derived from ``Asset.significant_decimals`` or ``OffChainAsset.decimals``.
+            If ``Transaction.quote`` is null, the value will always match
+            ``Asset.significant_decimals``.
 
         ``"transaction"``
 
@@ -282,6 +330,37 @@ class DepositIntegration:
         ``"asset"``
 
             The ``polaris.models.Asset`` object representing the asset.
+
+        ``offchain_asset``
+
+            The ``OffChainAsset`` object used in the ``Transaction.quote``, if present.
+
+        ``price``
+
+            ``Transaction.quote.price``, if present.
+
+        ``price_inversion``
+
+            ``1 / Transaction.quote.price``, if ``price`` is present. The default
+            `more_info.html` template uses this number for displaying exchange rates
+            when quotes are used.
+
+        ``price_inversion_significant_decimals``
+
+            The number of decimals to display for exchange rates. Polaris calculates
+            this to ensure the rate displayed is always correct.
+
+        ``exchange_amount``
+
+            If ``Transaction.quote`` is not ``None``, ``exchange_amount`` is the
+            value of ``Transaction.amount_out`` expressed in units of
+            ``Transaction.amount_in``.
+
+        ``exchanged_amount``
+
+            If ``Transaction.quote`` is not ``None``, ``exchanged_amount`` is the
+            value of ``Transaction.amount_in`` expressed in units of
+            ``Transaction.amount_out``.
 
         :param request: a ``rest_framework.request.Request`` instance
         :param template: a ``polaris.templates.Template`` enum value

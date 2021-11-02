@@ -56,7 +56,6 @@ def more_info(request: Request, sep6: bool = False) -> Response:
         "amount_fee_significant_decimals": transaction.asset.significant_decimals,
         "amount_out_significant_decimals": transaction.asset.significant_decimals,
         "transaction": transaction,
-        "asset_code": transaction.asset.code,
         "asset": transaction.asset,
         "offchain_asset": None,
         "price": None,
