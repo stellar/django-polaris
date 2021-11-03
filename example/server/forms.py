@@ -72,3 +72,34 @@ class AllFieldsForm(forms.Form):
     password = forms.CharField(
         widget=forms.PasswordInput, required=False, label=_("Password")
     )
+
+
+class SelectAssetForm(forms.Form):
+    asset = forms.ChoiceField(
+        choices=[
+            (
+                "stellar:SRT:GCDNJUBQSX7AJWLJACMJ7I4BC3Z47BQUTMHEICZLE6MU4KQBRYG5JY6B",
+                "Stellar Reference Token (SRT)",
+            ),
+            ("iso4217:USD", "United States Dollar (USD)"),
+        ]
+    )
+
+
+class OffChainAssetTransactionForm(forms.Form):
+    amount = forms.DecimalField(
+        widget=forms.TextInput(
+            attrs={
+                "class": "usd-offchain-asset-transaction-form",
+                "symbol": "USD",
+                "placeholder": "0",
+            },
+        ),
+        label=_("Amount"),
+        localize=True,
+        decimal_places=2,
+    )
+
+
+class ConfirmationForm(forms.Form):
+    pass

@@ -3,7 +3,7 @@ from uuid import uuid4
 from django.core.validators import MinLengthValidator
 from django.db import models
 
-from polaris.models import Transaction
+from polaris.models import Transaction, OffChainAsset
 
 
 def get_new_token():
@@ -56,6 +56,8 @@ class PolarisUserTransaction(models.Model):
     account = models.ForeignKey(
         PolarisStellarAccount, on_delete=models.CASCADE, null=True
     )
+    requires_confirmation = models.BooleanField(default=False)
+    confirmed = models.BooleanField(default=False)
 
     @property
     def transaction(self):
@@ -65,3 +67,20 @@ class PolarisUserTransaction(models.Model):
 
     def __str__(self):
         return f"{str(self.account)}: {str(self.transaction)}"
+
+
+class OffChainAssetExtra(models.Model):
+    """
+    Extra information on off-chain assets that Polaris' model doesn't store
+    """
+
+    offchain_asset = models.OneToOneField(
+        OffChainAsset, primary_key=True, on_delete=models.CASCADE
+    )
+    fee_fixed = models.DecimalField(default=0, max_digits=30, decimal_places=7)
+    fee_percent = models.PositiveIntegerField(default=0)
+
+    objects = models.Manager()
+
+    def __str__(self):
+        return f"OffChainAsset: {self.offchain_asset.asset}"

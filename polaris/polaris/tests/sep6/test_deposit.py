@@ -1693,4 +1693,4 @@ def test_deposit_no_offchain_asset_indicative_quote(mock_process_sep6_request, c
     )
     content = response.json()
     assert response.status_code == 400, content
-    assert content == {"error": "invalid 'destination_asset'"}
+    assert content == {"error": "invalid 'source_asset'"}

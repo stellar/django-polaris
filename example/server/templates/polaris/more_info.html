@@ -1,7 +1,7 @@
-{% extends "polaris/more_info.html" %} {% load i18n %}
+{% extends "polaris/more_info.html" %} {% load i18n %} {% load tz %}
 
 {% block "instructions" %}
-{% if transaction.status == "pending_user_transfer_start" and transaction.kind == "deposit" %}
+{% if transaction.status == "pending_user_transfer_start" and "deposit" in transaction.kind %}
 
 <div class="info-item">
     <div class="info-label">
@@ -16,4 +16,3 @@
 
 {% endif %}
 {% endblock %}
-

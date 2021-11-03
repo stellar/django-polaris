@@ -33,7 +33,7 @@ from polaris.sep10.token import SEP10Token
 from polaris.sep10.utils import validate_sep10_token
 from polaris.shared.endpoints import SEP6_MORE_INFO_PATH
 from polaris.locale.utils import validate_language, activate_lang_for_request
-from polaris.models import Asset, Transaction
+from polaris.models import Asset, Transaction, Quote
 from polaris.integrations import (
     registered_withdrawal_integration as rwi,
     registered_fee_func,
@@ -230,6 +230,17 @@ def parse_request_args(
     except ValueError as e:
         return {"error": render_error_response(str(e))}
 
+    if (
+        quote
+        and quote.type == Quote.TYPE.firm
+        and Transaction.objects.filter(quote=quote).exists()
+    ):
+        return {
+            "error": render_error_response(
+                _("quote has already been used in a transaction")
+            )
+        }
+
     args = {
         "account": request.GET.get("account"),
         "source_asset" if exchange else "asset": asset,
@@ -311,7 +322,12 @@ def validate_response(
             transaction.asset.significant_decimals,
         )
 
-    if calculate_fee == registered_fee_func and not exchange:
+    if "fee_fixed" in integration_response or "fee_percent" in integration_response:
+        if "fee_fixed" in integration_response:
+            response["fee_fixed"] = integration_response["fee_fixed"]
+        if "fee_percent" in integration_response:
+            response["fee_percent"] = integration_response["fee_percent"]
+    elif calculate_fee == registered_fee_func and not exchange:
         # return the fixed and percentage fee rates if the registered fee function
         # has not been implemented AND the request was not for the `/withdraw-exchange`
         # endpoint.

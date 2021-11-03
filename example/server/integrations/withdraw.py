@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Optional, Dict, List
 
@@ -6,12 +7,15 @@ from django.utils.translation import gettext as _
 from rest_framework.request import Request
 
 from polaris.integrations import WithdrawalIntegration, calculate_fee
-from polaris.models import Transaction, Asset
+from polaris.models import Transaction, Asset, Quote, OffChainAsset
 from polaris.sep10.token import SEP10Token
+from polaris.sep38.utils import asset_id_format
 from polaris.templates import Template
 from polaris.utils import getLogger
+from polaris import settings
+from .mock_exchange import get_mock_firm_exchange_price
 
-from ..forms import WithdrawForm
+from ..forms import WithdrawForm, SelectAssetForm, ConfirmationForm
 from .sep24_kyc import SEP24KYC
 from ..models import PolarisStellarAccount, PolarisUserTransaction
 
@@ -29,15 +33,36 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
         *args,
         **kwargs,
     ) -> Optional[forms.Form]:
-        kyc_form, content = SEP24KYC.check_kyc(transaction, post_data)
-        if kyc_form:
+        kyc_form, content = SEP24KYC.check_kyc(transaction, post_data=post_data)
+        if kyc_form:  # we don't have KYC info on this account (& memo)
             return kyc_form
-        elif content or transaction.amount_in:
+        if content:  # the user hasn't confirmed their email (or skip confirmation)
             return None
-        elif post_data:
-            return WithdrawForm(transaction, post_data)
-        else:
-            return WithdrawForm(transaction, initial={"amount": amount})
+        elif not transaction.amount_in:  # the user hasn't entered the amount to provide
+            if post_data:
+                return WithdrawForm(transaction, post_data)
+            else:
+                return WithdrawForm(transaction, initial={"amount": amount})
+        if not transaction.fee_asset:  # the user hasn't selected the asset to receive
+            if post_data:
+                return SelectAssetForm(post_data)
+            else:
+                return SelectAssetForm()
+        else:  # we have to check if we require the user to confirm the exchange rate
+            transaction_extra = PolarisUserTransaction.objects.get(
+                transaction_id=transaction.id
+            )
+            if (
+                transaction_extra.requires_confirmation
+                and not transaction_extra.confirmed
+            ):
+                return (
+                    ConfirmationForm(post_data)
+                    if post_data is not None
+                    else ConfirmationForm()
+                )
+            else:  # we're done
+                return None
 
     def content_for_template(
         self,
@@ -52,23 +77,72 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
         if content:
             return content
         elif template == Template.WITHDRAW:
-            if not form:
+            if not form:  # we're done
                 return None
-            return {
-                "title": _("Polaris Transaction Information"),
-                "icon_label": _("Stellar Development Foundation"),
-                "guidance": (
-                    _(
-                        "Please enter the banking details for the account "
-                        "you would like to receive your funds."
+            elif isinstance(form, SelectAssetForm):
+                return {
+                    "title": _("Asset Selection"),
+                    "guidance": _(
+                        "Please select the asset you would like to "
+                        "receive after withdrawing SRT from Stellar."
+                    ),
+                    "icon_label": _("Stellar Development Foundation"),
+                }
+            elif isinstance(form, WithdrawForm):
+                return {
+                    "title": _("Withdraw Amount"),
+                    "guidance": _(
+                        "Please enter the amount you would like to withdraw from Stellar."
+                    ),
+                    "icon_label": _("Stellar Development Foundation"),
+                    "show_fee_table": False,
+                }
+            elif isinstance(form, ConfirmationForm):
+                content = {
+                    "title": _("Transaction Confirmation"),
+                    "guidance": _("Review and confirm the transaction details"),
+                    "icon_label": _("Stellar Development Foundation"),
+                    "template_name": "transaction_confirmation.html",
+                    "amount_in": transaction.amount_in,
+                    "amount_fee": transaction.amount_fee,
+                    "amount_out": transaction.amount_out,
+                    "amount_in_symbol": transaction.asset.symbol,
+                    "amount_fee_symbol": transaction.asset.symbol,
+                    "amount_out_symbol": transaction.asset.symbol,
+                    "amount_in_significant_decimals": transaction.asset.significant_decimals,
+                    "amount_fee_significant_decimals": transaction.asset.significant_decimals,
+                    "amount_out_significant_decimals": transaction.asset.significant_decimals,
+                }
+                if transaction.quote:
+                    content.update(
+                        price_significant_decimals=4,
+                        price=1 / transaction.quote.price,
+                        amount_out_significant_decimals=2,
+                        amount_out_symbol="USD",
+                        conversion_amount=round(
+                            transaction.amount_in - transaction.amount_fee,
+                            transaction.asset.significant_decimals,
+                        ),
                     )
-                ),
-            }
-        else:  # template == Template.MORE_INFO
-            return {
+                return content
+        elif template == Template.MORE_INFO:
+            content = {
                 "title": _("Polaris Transaction Information"),
                 "icon_label": _("Stellar Development Foundation"),
             }
+            if transaction.quote:
+                content.update(
+                    **{
+                        "price_significant_decimals": 4,
+                        "conversion_amount_symbol": transaction.asset.symbol,
+                        "conversion_amount": round(
+                            transaction.amount_in - transaction.amount_fee,
+                            transaction.asset.significant_decimals,
+                        ),
+                        "conversion_amount_significant_decimals": transaction.asset.significant_decimals,
+                    }
+                )
+            return content
 
     def after_form_validation(
         self,
@@ -87,6 +161,46 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
                 f"KYCForm was not served first for unknown account, id: "
                 f"{transaction.stellar_account}"
             )
+        if isinstance(form, SelectAssetForm):
+            # users will be charged fees in the units of the asset on Stellar
+            transaction.fee_asset = asset_id_format(transaction.asset)
+            if form.cleaned_data["asset"] == "iso4217:USD":
+                scheme, identifier = form.cleaned_data["asset"].split(":")
+                offchain_asset = OffChainAsset.objects.get(
+                    scheme=scheme, identifier=identifier
+                )
+                price = round(
+                    get_mock_firm_exchange_price(),
+                    transaction.asset.significant_decimals,
+                )
+                transaction.quote = Quote.objects.create(
+                    type=Quote.TYPE.firm,
+                    stellar_account=transaction.stellar_account,
+                    account_memo=transaction.account_memo,
+                    muxed_account=transaction.muxed_account,
+                    price=price,
+                    sell_asset=asset_id_format(transaction.asset),
+                    buy_asset=offchain_asset.asset,
+                    sell_amount=transaction.amount_in,
+                    buy_amount=round(
+                        transaction.amount_in / price,
+                        offchain_asset.significant_decimals,
+                    ),
+                    expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+                )
+                transaction.amount_out = round(
+                    (transaction.amount_in - transaction.amount_fee)
+                    / transaction.quote.price,
+                    offchain_asset.significant_decimals,
+                )
+            transaction.save()
+            PolarisUserTransaction.objects.filter(transaction_id=transaction.id).update(
+                requires_confirmation=True
+            )
+        if isinstance(form, ConfirmationForm):
+            PolarisUserTransaction.objects.filter(transaction_id=transaction.id).update(
+                confirmed=True
+            )
 
     def process_sep6_request(
         self,
@@ -99,9 +213,9 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
     ) -> Dict:
         account = (
             PolarisStellarAccount.objects.filter(
-                account=params["account"],
-                memo=params["memo"],
-                memo_type=params["memo_type"],
+                account=token.account or params["account"],
+                memo=token.memo or params["memo"],
+                memo_type="id" if token.memo else params["memo_type"],
             )
             .select_related("user")
             .first()
@@ -138,36 +252,39 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
             # the flow since this is a reference server.
             pass
 
-        asset = params["asset"]
-        min_amount = round(asset.withdrawal_min_amount, asset.significant_decimals)
-        max_amount = round(asset.withdrawal_max_amount, asset.significant_decimals)
-        if params["amount"]:
-            if not (min_amount <= params["amount"] <= max_amount):
-                raise ValueError(_("invalid 'amount'"))
+        if params.get("amount"):
             transaction.amount_in = params["amount"]
             transaction.amount_fee = calculate_fee(
                 {
                     "amount": params["amount"],
-                    "operation": "withdraw",
-                    "asset_code": asset.code,
+                    "operation": settings.OPERATION_WITHDRAWAL,
+                    "asset_code": params[
+                        "asset" if "asset" in params else "source_asset"
+                    ].code,
                 }
             )
-            transaction.amount_out = round(
-                transaction.amount_in - transaction.amount_fee,
-                asset.significant_decimals,
-            )
-            transaction.save()
+            if params.get("source_asset"):
+                transaction.fee_asset = asset_id_format(params["source_asset"])
+                if transaction.quote.type == Quote.TYPE.firm:
+                    transaction.amount_out = round(
+                        transaction.quote.buy_amount
+                        - (transaction.amount_fee / transaction.quote.price),
+                        params["destination_asset"].significant_decimals,
+                    )
+            else:
+                transaction.amount_out = round(
+                    transaction.amount_in - transaction.amount_fee,
+                    params["asset"].significant_decimals,
+                )
 
-        response = {
-            "account_id": asset.distribution_account,
-            "min_amount": min_amount,
-            "max_amount": max_amount,
-            "fee_fixed": round(asset.withdrawal_fee_fixed, asset.significant_decimals),
-            "fee_percent": asset.withdrawal_fee_percent,
-        }
-        if params["memo_type"] and params["memo"]:
-            response["memo_type"] = params["memo_type"]
-            response["memo"] = params["memo"]
+        stellar_asset = params["asset" if "asset" in params else "source_asset"]
+        response = {}
+        if stellar_asset.withdrawal_fee_fixed:
+            response["fee_fixed"] = round(
+                stellar_asset.withdrawal_fee_fixed, stellar_asset.significant_decimals
+            )
+        if stellar_asset.withdrawal_fee_percent:
+            response["fee_percent"] = stellar_asset.withdrawal_fee_percent
 
         PolarisUserTransaction.objects.create(
             transaction_id=transaction.id, user=account.user, account=account

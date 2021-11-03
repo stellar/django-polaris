@@ -125,10 +125,21 @@ class DepositIntegration:
         **kwargs: Dict
     ) -> Optional[Dict]:
         """
-        Return a dictionary containing page content to be used in the template passed for the
-        given `form` and `transaction`.
+        .. _`widget attributes`: https://docs.djangoproject.com/en/3.2/ref/forms/widgets/#styling-widget-instances
+        .. _`Django template variables`: https://docs.djangoproject.com/en/3.2/ref/templates/language/#variables
+        .. _`SEP-38 Asset Identification Format`: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0038.md#asset-identification-format
 
-        Polaris will pass one of the following ``polaris.templates.Template`` values:
+        Return a dictionary containing the `Django template variables`_ to be passed to
+        the template rendered.
+
+        The anchor may also pass a special key, `template_name`, which should be a file
+        path relative your Django app's `/templates` directory. Polaris will render the
+        template specified by this key to the user instead of the default templates defined
+        below. Note that all of the `Django template variables`_ defined below will still
+        be passed to the template specified.
+
+        Polaris will pass one of the following ``polaris.templates.Template`` values to
+        indicate the default template Polaris will use.
 
         ``Template.DEPOSIT``
 
@@ -150,7 +161,7 @@ class DepositIntegration:
         information for the transaction. Returning content will signal to Polaris that
         the user needs to take some action before receiving the next form, such as
         confirming their email. In this case, make sure to return an appropriate
-        `guidance` message.
+        `guidance` message or return a custom `template_name`.
 
         Using this function, anchors pass key-value pairs to the template being rendered.
         Some of these key-value pairs are used by Polaris, but anchors are allowed and
@@ -163,33 +174,193 @@ class DepositIntegration:
                     "title": "Deposit Transaction Form",
                     "guidance": "Please enter the amount you would like to deposit.",
                     "show_fee_table": True,
+                    "symbol": "$",
                     "icon_label": "Stellar Development Foundation",
                     "icon_path": "images/company-icon.png",
                     # custom field passed by the anchor
                     "username": "John.Doe"
                 }
 
-        `title` is the browser tab's title, and `guidance` is shown as plain text on the
-        page. `icon_label` is the label for the icon specified by `icon_path`.
+        Below are all the keys passed to the template rendered. If the dictionary returned has
+        the same key, the default value Polaris uses will be overwritten.
 
-        `icon_path` should be the relative file path to the image you would like to use
-        as the company icon in the UI. The file path should be relative to the value of
-        your ``STATIC_ROOT`` setting. If `icon_path` is not present, Polaris will use
-        the image specified by your TOML integration function's ``ORG_LOGO`` key.
+        For ``Template.DEPOSIT`` and ``Template.WITHDRAW``:
 
-        Finally, if neither are present, Polaris will default to its default image.
-        All images will be rendered in a 100 x 150px sized box.
+        ``"form"``
 
-        `show_fee_table` can be returned to instruct Polaris to make the fee table
-        visible on the page rendered to the user. This table is hidden by default unless
-        a ``TransactionForm`` is returned from ``form_for_transaction()``, in which case
-        the fee table will be displayed.
+            The ``django.forms.Form`` instance returned from ``form_for_transaction()``.
 
-        If the anchor instructs Polaris to display the fee table but a ``TransactionForm``
-        is not present on the page, the anchor is responsible for updating the fee table
-        with the appropriate values. This is useful when the anchor is collecting the
-        amount of an off-chain asset, since ``TransactionForm`` assumes the amount
-        collected is for an on-chain asset.
+        ``"post_url"``
+
+            The URL to make the POST request containing the form data to.
+
+        ``"operation"``
+
+            Either `deposit` or `withdraw`.
+
+        ``"asset"``
+
+            The ``polaris.models.Asset`` object of the Stellar asset being transacted.
+
+        ``"use_fee_endpoint"``
+
+            A boolean indicating whether or not Polaris should use the ``GET /fee``
+            endpoint when calculating fees and rendering the amounts on the page.
+
+        ``"org_logo_url"``
+
+            A URL for the default logo to render if the anchor has not specified their own
+            via `icon_path`.
+
+        ``"additive_fees_enabled"``
+
+            A boolean indicating whether or not to add fees to the amount entered in
+            ``TransactionForm`` amount fields. ``False`` by default, meaning fees are
+            subtracted from the amounts entered.
+
+        ``"title"``
+
+            The browser tab's title.
+
+        ``"guidance"``
+
+            A text message displayed on the page that should help guide the user to take
+            the appropriate action(s).
+
+        ``"icon_label"``
+
+            The label for the image rendered on the page specified by ``"icon_path"``.
+
+        ``"icon_path"``
+
+            The relative file path to the image you would like to use as the company icon
+            in the UI. The file path should be relative to your Django app's `/static`
+            directory. If `icon_path` is not present, Polaris will use the image specified by
+            your TOML integration function's ``ORG_LOGO`` key. If neither are present,
+            Polaris will use its default image. All images will be rendered in a 100 x 150px
+            sized box as defined by the default stylesheet.
+
+        ``"show_fee_table"``
+
+            A boolean for whether the fee table in the default template should be visible
+            on the page rendered to the user. This table is hidden by default unless
+            a ``TransactionForm`` is returned from ``form_for_transaction()``, in which
+            case the fee table will be displayed. If the anchor instructs Polaris to display
+            the fee table but a ``TransactionForm`` is not present on the page, the anchor is
+            responsible for updating the fee table with the appropriate values. This is
+            useful when the anchor is collecting the amount of an off-chain asset, since
+            ``TransactionForm`` assumes the amount collected is for an on-chain asset.
+
+        ``"symbol"``
+
+            The character string that precedes the amounts shown on the fee table. It defaults
+            to the Stellar ``Asset.symbol``. Note that the symbol used in input fields must
+            be passed separately using the field's `widget attributes`_.
+
+        For ``Template.MORE_INFO``
+
+        ``"tx_json"``
+
+            A JSON-serialized string matching the schema returned from `GET /transaction`
+
+        ``amount_in_asset``
+
+            The string representation of the asset given to the anchor by the user,
+            formatted using `SEP-38 Asset Identification Format`_.
+
+        `amount_out_asset``
+
+            The string representation of the asset sent from the anchor to the user,
+            formatted using `SEP-38 Asset Identification Format`_.
+
+        ``"amount_in"``
+
+            A string containing the amount to be displayed on the page as `Amount Sent`
+
+        ``"amount_out"``
+
+            A string containing the amount to be displayed on the page as `Amount Received`
+
+        ``"amount_fee"``
+
+            A string containing the amount to be displayed on the page as `Fee`
+
+        ``amount_in_symbol``
+
+            ``Asset.symbol`` or ``OffChainAsset.symbol``, depending on whether or not
+            asset sent to the anchor is on or off chain. If ``Transaction.quote`` is
+            null, the value will always match ``Asset.symbol``.
+
+        ``amount_fee_symbol``
+
+            ``Asset.symbol`` or ``OffChainAsset.symbol``, depending on the value of
+            ``Transaction.fee_asset``. If ``Transaction.quote`` is null, the value will
+            always be ``Asset.symbol``.
+
+        ``amount_out_symbol``
+
+            ``Asset.symbol`` or ``OffChainAsset.symbol``, depending on whether or not
+            asset sent by the anchor is on or off chain. If ``Transaction.quote`` is
+            null, the value will always match ``Asset.symbol``.
+
+        ``amount_in_significant_decimals``
+
+            The number of decimals to display for amounts of ``Transaction.amount_in``.
+            Derived from ``Asset.significant_decimals`` or ``OffChainAsset.decimals``.
+            If ``Transaction.quote`` is null, the value will always match
+            ``Asset.significant_decimals``.
+
+        ``amount_fee_significant_decimals``
+
+            The number of decimals to display for amounts of ``Transaction.amount_fee``.
+            Derived from ``Asset.significant_decimals`` or ``OffChainAsset.decimals``,
+            depending on the value of ``Transaction.fee_asset``.
+
+        ``amount_out_significant_decimals``
+
+            The number of decimals to display for amounts of ``Transaction.amount_out``.
+            Derived from ``Asset.significant_decimals`` or ``OffChainAsset.decimals``.
+            If ``Transaction.quote`` is null, the value will always match
+            ``Asset.significant_decimals``.
+
+        ``"transaction"``
+
+            The ``polaris.models.Transaction`` object representing the transaction.
+
+        ``"asset"``
+
+            The ``polaris.models.Asset`` object representing the asset.
+
+        ``offchain_asset``
+
+            The ``OffChainAsset`` object used in the ``Transaction.quote``, if present.
+
+        ``price``
+
+            ``Transaction.quote.price``, if present.
+
+        ``price_inversion``
+
+            ``1 / Transaction.quote.price``, if ``price`` is present. The default
+            `more_info.html` template uses this number for displaying exchange rates
+            when quotes are used.
+
+        ``price_inversion_significant_decimals``
+
+            The number of decimals to display for exchange rates. Polaris calculates
+            this to ensure the rate displayed is always correct.
+
+        ``exchange_amount``
+
+            If ``Transaction.quote`` is not ``None``, ``exchange_amount`` is the
+            value of ``Transaction.amount_out`` expressed in units of
+            ``Transaction.amount_in``.
+
+        ``exchanged_amount``
+
+            If ``Transaction.quote`` is not ``None``, ``exchanged_amount`` is the
+            value of ``Transaction.amount_in`` expressed in units of
+            ``Transaction.amount_out``.
 
         :param request: a ``rest_framework.request.Request`` instance
         :param template: a ``polaris.templates.Template`` enum value
@@ -227,6 +398,16 @@ class DepositIntegration:
         wait until the anchor changes the transaction's status to
         ``pending_user_transfer_start`` before including the transaction in calls to
         ``DepositIntegration.poll_pending_deposits()``.
+
+        If the user is requesting a deposit or withdrawal of a Stellar asset in
+        exchange for different off-chain asset, such as requesting a deposit of
+        USDC using fiat mexican pesos, the anchor must assign a ``Quote`` object
+        to ``Transaction.quote`` before the end of the interactive flow. Polaris
+        will check for a ``Quote`` object on the transaction and adjust the UI
+        of the ``MORE_INFO`` template to display the exchange rate and other
+        exchange-related information. ``Transaction.fee_asset`` also must be
+        populated with the asset in which fees will be collected, formatted
+        using `SEP-38 Asset Identification Format`_.
 
         :param request: the ``rest_framework.request.Request`` object
         :param form: the completed ``forms.Form`` submitted by the user
@@ -339,7 +520,7 @@ class DepositIntegration:
         and the requested Stellar asset is enabled for SEP-38.
 
         If a request to the the `deposit-exchange`_ endpoint is made, a ``Quote`` object
-        will be assign to the ``Transaction`` object passed.
+        will be assigned to the ``Transaction`` object passed.
 
         Process these parameters and return one of the following responses outlined below
         as a dictionary. Save `transaction` to the DB if you plan to return a success
@@ -542,16 +723,7 @@ class WithdrawalIntegration:
         **kwargs: Dict
     ) -> Optional[Dict]:
         """
-        Same as ``DepositIntegration.content_for_template``, except the ``Template``
-        values passed will be one of:
-
-        ``Template.WITHDRAW``
-
-            The template used for withdraw flows
-
-        ``Template.MORE_INFO``
-
-            The template used to show transaction details
+        Same as ``DepositIntegration.content_for_template``.
 
         :param request: a ``rest_framework.request.Request`` instance
         :param template: a ``polaris.templates.Template`` enum value

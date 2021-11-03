@@ -1,3 +1,4 @@
+from decimal import Decimal
 from typing import Optional, Dict
 
 from django.utils.translation import gettext as _
@@ -6,6 +7,7 @@ from rest_framework.request import Request
 from polaris.integrations import SEP31ReceiverIntegration
 from polaris.models import Asset, Transaction
 from polaris.sep10.token import SEP10Token
+from polaris.sep38.utils import asset_id_format
 
 from ..models import PolarisUser, PolarisUserTransaction
 
@@ -72,7 +74,26 @@ class MySEP31ReceiverIntegration(SEP31ReceiverIntegration):
             receiving_user.bank_account_number = transaction_fields["account_number"]
             receiving_user.bank_number = transaction_fields["routing_number"]
             receiving_user.save()
+
+        transaction.amount_fee = round(
+            transaction.asset.send_fee_fixed
+            + (
+                transaction.asset.send_fee_percent
+                / Decimal(100)
+                * transaction.amount_in
+            ),
+            transaction.asset.significant_decimals,
+        )
+        transaction.fee_asset = asset_id_format(params["asset"])
+        if not transaction.quote:
+            transaction.amount_out = round(
+                transaction.amount_in - transaction.amount_fee,
+                transaction.asset.significant_decimals,
+            )
+        else:
+            transaction.quote.save()
         transaction.save()
+
         PolarisUserTransaction.objects.create(
             user=receiving_user, transaction_id=transaction.id
         )

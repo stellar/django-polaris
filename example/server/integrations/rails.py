@@ -1,5 +1,6 @@
 import json
 from collections import defaultdict
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import List
 from unittest.mock import Mock
@@ -8,11 +9,12 @@ from django.db.models import QuerySet
 
 from polaris import settings
 from polaris.integrations import RailsIntegration, calculate_fee
-from polaris.models import Transaction
+from polaris.models import Transaction, OffChainAsset, Quote
 from polaris.utils import getLogger
+from .mock_exchange import get_mock_firm_exchange_price
 
 from .sep31 import MySEP31ReceiverIntegration
-from ..models import PolarisUserTransaction
+from ..models import PolarisUserTransaction, OffChainAssetExtra
 from . import mock_banking_rails as rails
 
 
@@ -36,11 +38,40 @@ class MyRailsIntegration(RailsIntegration):
         client = rails.BankAPIClient(mock_bank_account_id)
         for deposit in pending_deposits:
             bank_deposit = client.get_deposit(deposit=deposit)
-            if bank_deposit and bank_deposit.status == "complete":
-                if not deposit.amount_in:
-                    deposit.amount_in = Decimal(103)
-
-                if bank_deposit.amount != deposit.amount_in or not deposit.amount_fee:
+            if not (bank_deposit and bank_deposit.status == "complete"):
+                continue
+            if not deposit.amount_in:
+                deposit.amount_in = Decimal(103)
+            if deposit.quote and deposit.quote.type == Quote.TYPE.firm:
+                if deposit.amount_in != deposit.quote.sell_amount:
+                    deposit.status = Transaction.STATUS.error
+                    deposit.status_message = (
+                        "the amount received does not match the quoted sell amount"
+                    )
+                    deposit.save()
+                    continue
+                elif deposit.quote.expires_at < datetime.now(timezone.utc):
+                    deposit.status = Transaction.STATUS.error
+                    deposit.status_message = (
+                        "the quote expired before the user delivered funds"
+                    )
+                    deposit.save()
+                    continue
+            offchain_asset = None
+            if bank_deposit.amount != deposit.amount_in or not deposit.amount_fee:
+                if deposit.quote:  # indicative quote
+                    scheme, identifier = deposit.quote.sell_asset.split(":")
+                    offchain_asset_extra = OffChainAssetExtra.objects.get(
+                        offchain_asset__scheme=scheme,
+                        offchain_asset__identifier=identifier,
+                    )
+                    offchain_asset = offchain_asset_extra.offchain_asset
+                    deposit.amount_fee = offchain_asset_extra.fee_fixed + (
+                        offchain_asset_extra.fee_percent
+                        / Decimal(100)
+                        * deposit.quote.sell_amount
+                    )
+                else:
                     deposit.amount_fee = calculate_fee(
                         {
                             "amount": deposit.amount_in,
@@ -48,12 +79,27 @@ class MyRailsIntegration(RailsIntegration):
                             "asset_code": deposit.asset.code,
                         }
                     )
+            if deposit.quote and deposit.quote.type == Quote.TYPE.indicative:
+                deposit.quote.price = round(
+                    get_mock_firm_exchange_price(), offchain_asset.significant_decimals,
+                )
+                deposit.quote.buy_amount = round(
+                    deposit.amount_in / deposit.quote.price,
+                    deposit.asset.significant_decimals,
+                )
+                deposit.quote.save()
+                deposit.amount_out = deposit.quote.buy_amount - round(
+                    deposit.amount_fee / deposit.quote.price,
+                    deposit.asset.significant_decimals,
+                )
+            elif not deposit.quote:
                 deposit.amount_out = round(
                     deposit.amount_in - deposit.amount_fee,
                     deposit.asset.significant_decimals,
                 )
-                deposit.save()
-                ready_deposits.append(deposit)
+
+            deposit.save()
+            ready_deposits.append(deposit)
 
         return ready_deposits
 
@@ -95,11 +141,17 @@ class MyRailsIntegration(RailsIntegration):
             error()
             return
 
-        if transaction.kind == Transaction.KIND.withdrawal:
+        if transaction.kind in [
+            Transaction.KIND.withdrawal,
+            getattr(Transaction.KIND, "withdrawal-exchange"),
+        ]:
             operation = settings.OPERATION_WITHDRAWAL
         else:
             operation = Transaction.KIND.send
-        if not transaction.amount_fee:
+        if (
+            not transaction.amount_fee
+            or transaction.amount_expected != transaction.amount_in
+        ):
             transaction.amount_fee = calculate_fee(
                 {
                     "amount": transaction.amount_in,
@@ -107,10 +159,34 @@ class MyRailsIntegration(RailsIntegration):
                     "asset_code": transaction.asset.code,
                 }
             )
-        transaction.amount_out = round(
-            transaction.amount_in - transaction.amount_fee,
-            transaction.asset.significant_decimals,
-        )
+        if transaction.quote:
+            scheme, identifier = transaction.quote.buy_asset.split(":")
+            buy_asset = OffChainAsset.objects.get(scheme=scheme, identifier=identifier)
+            if transaction.quote.type == Quote.TYPE.indicative:
+                transaction.quote.price = round(
+                    get_mock_firm_exchange_price(),
+                    transaction.asset.significant_decimals,
+                )
+                transaction.quote.sell_amount = transaction.amount_in
+                transaction.quote.buy_amount = round(
+                    transaction.amount_in / transaction.quote.price,
+                    buy_asset.significant_decimals,
+                )
+            elif transaction.amount_in != transaction.quote.sell_amount:  # firm
+                transaction.status = Transaction.STATUS.error
+                transaction.status_message = "the amount sent to the anchor does not match the quoted sell amount"
+                transaction.save()
+                return
+            transaction.amount_out = transaction.quote.buy_amount - round(
+                transaction.amount_fee / transaction.quote.price,
+                buy_asset.significant_decimals,
+            )
+        elif not transaction.amount_out:
+            transaction.amount_out = round(
+                transaction.amount_in - transaction.amount_fee,
+                transaction.asset.significant_decimals,
+            )
+
         client = rails.BankAPIClient("fake anchor bank account number")
         response = client.send_funds(
             to_account=user.bank_account_number,
@@ -139,4 +215,6 @@ class MyRailsIntegration(RailsIntegration):
             transaction.required_info_message = response.error.message
             transaction.status = Transaction.STATUS.pending_transaction_info_update
 
+        if transaction.quote:
+            transaction.quote.save()
         transaction.save()

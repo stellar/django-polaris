@@ -34,7 +34,14 @@ class MyQuoteIntegration(QuoteIntegration):
         prices = []
         for _ in buy_assets:
             try:
-                prices.append(get_mock_indicative_exchange_price())
+                prices.append(
+                    Decimal(
+                        round(
+                            get_mock_indicative_exchange_price(),
+                            sell_asset.significant_decimals,
+                        )
+                    )
+                )
             except RequestException:
                 raise RuntimeError("unable to fetch prices")
         return prices
@@ -54,7 +61,12 @@ class MyQuoteIntegration(QuoteIntegration):
         **kwargs,
     ) -> Decimal:
         try:
-            return get_mock_indicative_exchange_price()
+            return Decimal(
+                round(
+                    get_mock_indicative_exchange_price(),
+                    sell_asset.significant_decimals,
+                )
+            )
         except RequestException:
             raise RuntimeError("unable to fetch price")
 
@@ -71,8 +83,18 @@ class MyQuoteIntegration(QuoteIntegration):
             raise ValueError(
                 f"expiration ({quote.requested_expire_after.strftime(settings.DATETIME_FORMAT)}) cannot be provided.",
             )
+        if quote.sell_asset.startswith("stellar"):
+            _, code, issuer = quote.sell_asset.split(":")
+            asset = Asset.objects.get(code=code, issuer=issuer)
+            significant_decimals = asset.significant_decimals
+        else:
+            scheme, identifier = quote.sell_asset.split(":")
+            offchain_asset = OffChainAsset.objects.get(
+                scheme=scheme, identifier=identifier
+            )
+            significant_decimals = offchain_asset.significant_decimals
         try:
-            quote.price = get_mock_firm_exchange_price()
+            quote.price = round(get_mock_firm_exchange_price(), significant_decimals)
         except RequestException:
             raise RuntimeError("unable to fetch price for quote")
         quote.expires_at = datetime.now(timezone.utc) + timedelta(

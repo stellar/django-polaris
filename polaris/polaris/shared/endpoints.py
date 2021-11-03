@@ -4,13 +4,14 @@ from decimal import Decimal, DecimalException
 from rest_framework import status
 from rest_framework.request import Request
 from rest_framework.response import Response
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from django.utils.translation import gettext as _
 
 from polaris import settings as polaris_settings
+from polaris.sep38.utils import asset_id_format
 from polaris.templates import Template
 from polaris.utils import render_error_response, getLogger
-from polaris.models import Transaction, Asset
+from polaris.models import Transaction, Asset, OffChainAsset
 from polaris.integrations import registered_fee_func
 from polaris.sep24.utils import verify_valid_asset_operation
 from polaris.shared.serializers import TransactionSerializer
@@ -27,10 +28,10 @@ SEP6_MORE_INFO_PATH = "/sep6/transaction/more_info"
 
 def more_info(request: Request, sep6: bool = False) -> Response:
     try:
-        request_transaction = _get_transaction_from_request(request, sep6=sep6)
+        transaction = _get_transaction_from_request(request, sep6=sep6)
     except (AttributeError, ValidationError) as exc:
         return render_error_response(str(exc), content_type="text/html")
-    except Transaction.DoesNotExist:
+    except ObjectDoesNotExist:
         return render_error_response(
             _("transaction not found"),
             status_code=status.HTTP_404_NOT_FOUND,
@@ -38,35 +39,108 @@ def more_info(request: Request, sep6: bool = False) -> Response:
         )
 
     serializer = TransactionSerializer(
-        request_transaction, context={"request": request, "sep6": sep6}
+        transaction, context={"request": request, "sep6": sep6}
     )
     tx_json = json.dumps({"transaction": serializer.data})
     context = {
         "tx_json": tx_json,
+        "amount_in_asset": asset_id_format(transaction.asset),
+        "amount_out_asset": asset_id_format(transaction.asset),
         "amount_in": serializer.data.get("amount_in"),
         "amount_out": serializer.data.get("amount_out"),
         "amount_fee": serializer.data.get("amount_fee"),
-        "transaction": request_transaction,
-        "asset_code": request_transaction.asset.code,
-        "asset": request_transaction.asset,
+        "amount_in_symbol": transaction.asset.symbol,
+        "amount_fee_symbol": transaction.asset.symbol,
+        "amount_out_symbol": transaction.asset.symbol,
+        "amount_in_significant_decimals": transaction.asset.significant_decimals,
+        "amount_fee_significant_decimals": transaction.asset.significant_decimals,
+        "amount_out_significant_decimals": transaction.asset.significant_decimals,
+        "transaction": transaction,
+        "asset": transaction.asset,
+        "offchain_asset": None,
+        "price": None,
+        "price_inversion": None,
+        "price_inversion_significant_decimals": None,
+        "exchange_amount": None,
+        "exchanged_amount": None,
     }
-    try:
-        if request_transaction.kind == Transaction.KIND.deposit:
-            content = rdi.content_for_template(
-                request=request,
-                template=Template.MORE_INFO,
-                transaction=request_transaction,
+    if transaction.quote:
+        if "deposit" in transaction.kind:
+            scheme, identifier = transaction.quote.sell_asset.split(":")
+        else:
+            scheme, identifier = transaction.quote.buy_asset.split(":")
+        offchain_asset = OffChainAsset.objects.get(scheme=scheme, identifier=identifier)
+        if "deposit" in transaction.kind:
+            context.update(
+                **{
+                    "amount_in_asset": offchain_asset.asset,
+                    "amount_in_symbol": offchain_asset.symbol,
+                    "amount_in_significant_decimals": offchain_asset.significant_decimals,
+                }
             )
         else:
-            content = rwi.content_for_template(
-                request=request,
-                template=Template.MORE_INFO,
-                transaction=request_transaction,
+            context.update(
+                **{
+                    "amount_out_asset": offchain_asset.asset,
+                    "amount_out_symbol": offchain_asset.symbol,
+                    "amount_out_significant_decimals": offchain_asset.significant_decimals,
+                }
             )
+        if transaction.fee_asset == offchain_asset.asset:
+            context.update(
+                **{
+                    "amount_fee_symbol": offchain_asset.symbol,
+                    "amount_fee_significant_decimals": offchain_asset.significant_decimals,
+                }
+            )
+        price_inversion = 1 / transaction.quote.price
+        price_inversion_sd = min(
+            transaction.asset.significant_decimals, offchain_asset.significant_decimals
+        )
+        while (
+            calc_amount_out_with_price_inversion(
+                transaction, price_inversion, price_inversion_sd, context
+            )
+            != transaction.amount_out
+            and price_inversion_sd < 7
+        ):
+            price_inversion_sd += 1
+        if (
+            transaction.fee_asset == offchain_asset.asset
+            and "deposit" in transaction.kind
+        ) or (
+            transaction.fee_asset == asset_id_format(transaction.asset)
+            and "withdrawal" in transaction.kind
+        ):
+            context["exchange_amount"] = transaction.amount_in - transaction.amount_fee
+        else:
+            context["exchanged_amount"] = round(
+                transaction.amount_in * price_inversion,
+                context["amount_out_significant_decimals"],
+            )
+        context.update(
+            **{
+                "offchain_asset": offchain_asset,
+                "price": transaction.quote.price,
+                "price_inversion": round(
+                    1 / transaction.quote.price, price_inversion_sd
+                ),
+                "price_inversion_significant_decimals": price_inversion_sd,
+            }
+        )
+
+    integration_class = rdi if "deposit" in transaction.kind else rwi
+    try:
+        content_from_anchor = (
+            integration_class.content_for_template(
+                request=request, template=Template.MORE_INFO, transaction=transaction,
+            )
+            or {}
+        )
     except NotImplementedError:
-        pass
-    else:
-        context.update(content)
+        content_from_anchor = {}
+
+    context.update(content_from_anchor)
 
     # more_info.html will update the 'callback' parameter value to 'success' after
     # making the callback. If the page is then reloaded, the callback is not included
@@ -75,10 +149,44 @@ def more_info(request: Request, sep6: bool = False) -> Response:
     if callback and callback != "success":
         context["callback"] = callback
 
-    return Response(context, template_name="polaris/more_info.html")
+    return Response(
+        context,
+        template_name=content_from_anchor.get(
+            "template_name", "polaris/more_info.html"
+        ),
+    )
 
 
-def transactions(request: Request, token: SEP10Token, sep6: bool = False,) -> Response:
+def calc_amount_out_with_price_inversion(
+    transaction: Transaction,
+    price_inversion: Decimal,
+    price_inversion_significant_decimals: int,
+    context: dict,
+):
+    if (
+        transaction.fee_asset == asset_id_format(transaction.asset)
+        and "deposit" not in transaction.kind
+    ) or (
+        transaction.fee_asset != asset_id_format(transaction.asset)
+        and "deposit" in transaction.kind
+    ):
+        return round(
+            round(price_inversion, price_inversion_significant_decimals)
+            * (transaction.amount_in - transaction.amount_fee),
+            context["amount_out_significant_decimals"],
+        )
+    else:
+        return round(
+            round(price_inversion, price_inversion_significant_decimals)
+            * transaction.amount_in
+            - transaction.amount_fee,
+            context["amount_out_significant_decimals"],
+        )
+
+
+def transactions_request(
+    request: Request, token: SEP10Token, sep6: bool = False,
+) -> Response:
     try:
         limit = _validate_limit(request.GET.get("limit"))
     except ValueError:
@@ -112,7 +220,7 @@ def transactions(request: Request, token: SEP10Token, sep6: bool = False,) -> Re
     if paging_id:
         try:
             start_transaction = Transaction.objects.get(id=paging_id)
-        except Transaction.DoesNotExist:
+        except ObjectDoesNotExist:
             return render_error_response(
                 "invalid paging_id", status_code=status.HTTP_400_BAD_REQUEST
             )
@@ -132,14 +240,16 @@ def transactions(request: Request, token: SEP10Token, sep6: bool = False,) -> Re
     return Response({"transactions": serializer.data})
 
 
-def transaction(request: Request, token: SEP10Token, sep6: bool = False,) -> Response:
+def transaction_request(
+    request: Request, token: SEP10Token, sep6: bool = False,
+) -> Response:
     try:
         request_transaction = _get_transaction_from_request(
             request, token=token, sep6=sep6,
         )
     except (AttributeError, ValidationError) as exc:
         return render_error_response(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
-    except Transaction.DoesNotExist:
+    except ObjectDoesNotExist:
         return render_error_response(
             "transaction not found", status_code=status.HTTP_404_NOT_FOUND
         )

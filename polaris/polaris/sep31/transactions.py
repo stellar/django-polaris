@@ -212,6 +212,12 @@ def validate_post_request(token: SEP10Token, request: Request) -> Dict:
         asset=asset,
         amount=Decimal(amount),
     )
+    if (
+        quote
+        and quote.type == Quote.TYPE.firm
+        and Transaction.objects.filter(quote=quote).exists()
+    ):
+        raise ValueError(_("quote has already been used in a transaction"))
     return {
         "asset": asset,
         "amount": amount,

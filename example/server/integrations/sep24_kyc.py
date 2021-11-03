@@ -66,7 +66,6 @@ class SEP24KYC:
                     last_name=data.get("last_name"),
                     email=data.get("email"),
                 )
-
             account = PolarisStellarAccount.objects.create(
                 user=user,
                 account=transaction.stellar_account,
@@ -77,7 +76,8 @@ class SEP24KYC:
                 else None,
             )
             if server_settings.EMAIL_HOST_USER:
-                send_confirmation_email(user, account)
+                # this would be where a confirmation email is sent
+                pass
         else:
             try:
                 account = PolarisStellarAccount.objects.get(
@@ -89,10 +89,12 @@ class SEP24KYC:
                 raise RuntimeError(
                     f"Unknown address: {transaction.stellar_account}, KYC required."
                 )
-
-        PolarisUserTransaction.objects.get_or_create(
-            user=account.user, account=account, transaction_id=transaction.id
-        )
+        if not PolarisUserTransaction.objects.filter(
+            transaction_id=transaction.id
+        ).exists():
+            PolarisUserTransaction.objects.create(
+                user=account.user, account=account, transaction_id=transaction.id
+            )
 
     @staticmethod
     def check_kyc(

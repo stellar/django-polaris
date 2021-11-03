@@ -1,0 +1,47 @@
+{% extends "polaris/deposit.html" %} {% load i18n %} {% load static %}
+
+{% block "extra_head" %}
+<link rel="stylesheet" href="{% static 'css/transaction_confirmation.css' %}">
+{% endblock %}
+
+{% block "form" %}
+<div class="transaction-confirmation-info">
+  <div class="confirm-item" style="padding-top: 2rem">
+    <span class="confirm-title"><strong>Transaction Information</strong></span>
+  </div>
+  <hr>
+  <div class="confirm-item">
+    <span class="confirm-label">Transfer Amount</span>
+    <span class="confirm-value">{{ amount_in_symbol }} {{ amount_in|floatformat:amount_in_significant_decimals }}</span>
+  </div>
+  <div class="confirm-item">
+    <span class="confirm-label">Fee</span>
+    <span class="confirm-value">{{ amount_fee_symbol }} {{ amount_fee|floatformat:amount_fee_significant_decimals }}</span>
+  </div>
+  {% if price %}
+  <div class="confirm-item">
+    <span class="confirm-label">Exchange Amount</span>
+    <span class="confirm-value">{{ amount_in_symbol }} {{ conversion_amount|floatformat:amount_in_significant_decimals }}</span>
+  </div>
+  <div class="confirm-item">
+    <span class="confirm-label">Exchange Rate</span>
+    <span class="confirm-value">{{ amount_in_symbol }} 1.00 = {{amount_out_symbol}} {{ price|floatformat:price_significant_decimals }}</span>
+  </div>
+  {% endif %}
+  <div class="confirm-item">
+    {% if operation == "deposit" %}
+    <span class="confirm-label"><strong>Deposit Amount:</strong></span>
+    {% else %}
+    <span class="confirm-label"><strong>Withdraw Amount:</strong></span>
+    {% endif %}
+    <span class="confirm-value"><strong>{{ amount_out_symbol }} {{ amount_out|floatformat:amount_out_significant_decimals }}</strong></span>
+  </div>
+</div>
+<form method="post" action="{{ post_url }}">
+  <div class="field at-bottom">
+    <div class="control">
+      <button class="button submit" type="submit">{% trans "Confirm Transaction" %}</button>
+    </div>
+  </div>
+</form>
+{% endblock %}
