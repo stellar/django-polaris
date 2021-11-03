@@ -82,7 +82,10 @@ class SelectAssetForm(forms.Form):
                 "Stellar Reference Token (SRT)",
             ),
             ("iso4217:USD", "United States Dollar (USD)"),
-        ]
+        ],
+        # this is to remove the '*' character on the template
+        # one of the choices will always be selected anyway
+        required=False,
     )
 
 
