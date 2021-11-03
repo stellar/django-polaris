@@ -186,52 +186,52 @@ class DepositIntegration:
 
         For ``Template.DEPOSIT`` and ``Template.WITHDRAW``:
 
-        ``"form"``
+        ``form``
 
             The ``django.forms.Form`` instance returned from ``form_for_transaction()``.
 
-        ``"post_url"``
+        ``post_url``
 
             The URL to make the POST request containing the form data to.
 
-        ``"operation"``
+        ``operation``
 
             Either `deposit` or `withdraw`.
 
-        ``"asset"``
+        ``asset``
 
             The ``polaris.models.Asset`` object of the Stellar asset being transacted.
 
-        ``"use_fee_endpoint"``
+        ``use_fee_endpoint``
 
             A boolean indicating whether or not Polaris should use the ``GET /fee``
             endpoint when calculating fees and rendering the amounts on the page.
 
-        ``"org_logo_url"``
+        ``org_logo_url``
 
             A URL for the default logo to render if the anchor has not specified their own
             via `icon_path`.
 
-        ``"additive_fees_enabled"``
+        ``additive_fees_enabled``
 
             A boolean indicating whether or not to add fees to the amount entered in
             ``TransactionForm`` amount fields. ``False`` by default, meaning fees are
             subtracted from the amounts entered.
 
-        ``"title"``
+        ``title``
 
             The browser tab's title.
 
-        ``"guidance"``
+        ``guidance``
 
             A text message displayed on the page that should help guide the user to take
             the appropriate action(s).
 
-        ``"icon_label"``
+        ``icon_label``
 
             The label for the image rendered on the page specified by ``"icon_path"``.
 
-        ``"icon_path"``
+        ``icon_path``
 
             The relative file path to the image you would like to use as the company icon
             in the UI. The file path should be relative to your Django app's `/static`
@@ -240,7 +240,7 @@ class DepositIntegration:
             Polaris will use its default image. All images will be rendered in a 100 x 150px
             sized box as defined by the default stylesheet.
 
-        ``"show_fee_table"``
+        ``show_fee_table``
 
             A boolean for whether the fee table in the default template should be visible
             on the page rendered to the user. This table is hidden by default unless
@@ -251,7 +251,7 @@ class DepositIntegration:
             useful when the anchor is collecting the amount of an off-chain asset, since
             ``TransactionForm`` assumes the amount collected is for an on-chain asset.
 
-        ``"symbol"``
+        ``symbol``
 
             The character string that precedes the amounts shown on the fee table. It defaults
             to the Stellar ``Asset.symbol``. Note that the symbol used in input fields must
@@ -259,7 +259,7 @@ class DepositIntegration:
 
         For ``Template.MORE_INFO``
 
-        ``"tx_json"``
+        ``tx_json``
 
             A JSON-serialized string matching the schema returned from `GET /transaction`
 
@@ -268,20 +268,20 @@ class DepositIntegration:
             The string representation of the asset given to the anchor by the user,
             formatted using `SEP-38 Asset Identification Format`_.
 
-        `amount_out_asset``
+        ``amount_out_asset``
 
             The string representation of the asset sent from the anchor to the user,
             formatted using `SEP-38 Asset Identification Format`_.
 
-        ``"amount_in"``
+        ``amount_in``
 
             A string containing the amount to be displayed on the page as `Amount Sent`
 
-        ``"amount_out"``
+        ``amount_out``
 
             A string containing the amount to be displayed on the page as `Amount Received`
 
-        ``"amount_fee"``
+        ``amount_fee``
 
             A string containing the amount to be displayed on the page as `Fee`
 
@@ -323,11 +323,11 @@ class DepositIntegration:
             If ``Transaction.quote`` is null, the value will always match
             ``Asset.significant_decimals``.
 
-        ``"transaction"``
+        ``transaction``
 
             The ``polaris.models.Transaction`` object representing the transaction.
 
-        ``"asset"``
+        ``asset``
 
             The ``polaris.models.Asset`` object representing the asset.
 
