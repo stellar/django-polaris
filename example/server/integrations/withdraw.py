@@ -84,7 +84,9 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
                     "title": _("Asset Selection"),
                     "guidance": _(
                         "Please select the asset you would like to "
-                        "receive after withdrawing SRT from Stellar."
+                        "receive after withdrawing SRT from Stellar. "
+                        "(This is just for demonstration, no off-chain "
+                        "asset will be delivered after withdrawing SRT."
                     ),
                     "icon_label": _("Stellar Development Foundation"),
                 }
