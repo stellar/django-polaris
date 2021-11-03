@@ -7,7 +7,7 @@ from django.utils.translation import gettext as _
 from rest_framework.request import Request
 
 from polaris.integrations import WithdrawalIntegration, calculate_fee
-from polaris.models import Transaction, Asset, Quote
+from polaris.models import Transaction, Asset, Quote, OffChainAsset
 from polaris.sep10.token import SEP10Token
 from polaris.sep38.utils import asset_id_format
 from polaris.templates import Template
@@ -165,6 +165,10 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
             # users will be charged fees in the units of the asset on Stellar
             transaction.fee_asset = asset_id_format(transaction.asset)
             if form.cleaned_data["asset"] == "iso4217:USD":
+                scheme, identifier = form.cleaned_data["asset"].split(":")
+                offchain_asset = OffChainAsset.objects.get(
+                    scheme=scheme, identifier=identifier
+                )
                 price = round(
                     get_mock_firm_exchange_price(),
                     transaction.asset.significant_decimals,
@@ -176,15 +180,18 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
                     muxed_account=transaction.muxed_account,
                     price=price,
                     sell_asset=asset_id_format(transaction.asset),
-                    buy_asset="iso4217:USD",
+                    buy_asset=offchain_asset.asset,
                     sell_amount=transaction.amount_in,
-                    buy_amount=round(transaction.amount_in / price, 2),
+                    buy_amount=round(
+                        transaction.amount_in / price,
+                        offchain_asset.significant_decimals,
+                    ),
                     expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
                 )
                 transaction.amount_out = round(
                     (transaction.amount_in - transaction.amount_fee)
                     / transaction.quote.price,
-                    transaction.asset.significant_decimals,
+                    offchain_asset.significant_decimals,
                 )
             transaction.save()
             PolarisUserTransaction.objects.filter(transaction_id=transaction.id).update(

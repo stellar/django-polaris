@@ -174,24 +174,34 @@ class MyDepositIntegration(DepositIntegration):
             transaction.fee_asset = form.cleaned_data["asset"]
             transaction.save()
         if isinstance(form, OffChainAssetTransactionForm):
-            offchain_asset = OffChainAssetExtra.objects.get(
-                offchain_asset__identifier="USD"
+            offchain_asset_extra = OffChainAssetExtra.objects.select_related(
+                "offchain_asset"
+            ).get(offchain_asset__identifier="USD")
+            transaction.amount_in = round(
+                form.cleaned_data["amount"],
+                offchain_asset_extra.offchain_asset.significant_decimals,
             )
-            transaction.amount_in = round(form.cleaned_data["amount"], 2)
             transaction.amount_expected = transaction.amount_in
             transaction.amount_fee = round(
-                offchain_asset.fee_fixed
-                + (offchain_asset.fee_percent / Decimal(100) * transaction.amount_in),
-                2,
+                offchain_asset_extra.fee_fixed
+                + (
+                    offchain_asset_extra.fee_percent
+                    / Decimal(100)
+                    * transaction.amount_in
+                ),
+                offchain_asset_extra.offchain_asset.significant_decimals,
             )
-            price = round(get_mock_firm_exchange_price(), 2)
+            price = round(
+                get_mock_firm_exchange_price(),
+                offchain_asset_extra.offchain_asset.significant_decimals,
+            )
             transaction.quote = Quote.objects.create(
                 type=Quote.TYPE.firm,
                 stellar_account=transaction.stellar_account,
                 account_memo=transaction.account_memo,
                 muxed_account=transaction.muxed_account,
                 price=price,
-                sell_asset="iso4217:USD",
+                sell_asset=offchain_asset_extra.offchain_asset.asset,
                 buy_asset=asset_id_format(transaction.asset),
                 sell_amount=transaction.amount_in,
                 buy_amount=round(

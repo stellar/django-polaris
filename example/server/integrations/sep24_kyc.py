@@ -76,6 +76,7 @@ class SEP24KYC:
                 else None,
             )
             if server_settings.EMAIL_HOST_USER:
+                # this would be where a confirmation email is sent
                 pass
         else:
             try:
