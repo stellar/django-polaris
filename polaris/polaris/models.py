@@ -241,6 +241,13 @@ class Asset(TimeStampedModel):
             return None
         return Keypair.from_secret(str(self.distribution_seed)).public_key
 
+    @property
+    def asset_identification_format(self):
+        """
+        SEP-38 asset identification format
+        """
+        return f"stellar:{self.code}:{self.issuer}"
+
     def get_distribution_account_data(self, refresh=False):
         if refresh or self.distribution_account not in ASSET_DISTRIBUTION_ACCOUNT_MAP:
             account_json = (
@@ -850,7 +857,7 @@ class OffChainAsset(models.Model):
     objects = models.Manager()
 
     @property
-    def asset(self):
+    def asset_identification_format(self):
         return f"{self.scheme}:{self.identifier}"
 
 

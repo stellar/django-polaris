@@ -165,7 +165,7 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
             )
         if isinstance(form, SelectAssetForm):
             # users will be charged fees in the units of the asset on Stellar
-            transaction.fee_asset = asset_id_format(transaction.asset)
+            transaction.fee_asset = transaction.asset.asset_identification_format
             if form.cleaned_data["asset"] == "iso4217:USD":
                 scheme, identifier = form.cleaned_data["asset"].split(":")
                 offchain_asset = OffChainAsset.objects.get(
@@ -181,8 +181,8 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
                     account_memo=transaction.account_memo,
                     muxed_account=transaction.muxed_account,
                     price=price,
-                    sell_asset=asset_id_format(transaction.asset),
-                    buy_asset=offchain_asset.asset,
+                    sell_asset=transaction.asset.asset_identification_format,
+                    buy_asset=offchain_asset.asset_identification_format,
                     sell_amount=transaction.amount_in,
                     buy_amount=round(
                         transaction.amount_in / price,
@@ -266,7 +266,9 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
                 }
             )
             if params.get("source_asset"):
-                transaction.fee_asset = asset_id_format(params["source_asset"])
+                transaction.fee_asset = params[
+                    "source_asset"
+                ].asset_identification_format
                 if transaction.quote.type == Quote.TYPE.firm:
                     transaction.amount_out = round(
                         transaction.quote.buy_amount

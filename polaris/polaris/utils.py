@@ -23,7 +23,7 @@ from aiohttp import ClientResponse
 from polaris import settings
 from polaris.models import Transaction, Asset, Quote, OffChainAsset, ExchangePair
 from polaris.sep10.token import SEP10Token
-from polaris.sep38.utils import asset_id_format, asset_id_to_kwargs
+from polaris.sep38.utils import asset_id_to_kwargs
 from polaris.shared.serializers import TransactionSerializer
 
 
@@ -385,7 +385,7 @@ def get_quote_and_offchain_destination_asset(
             raise ValueError(_("quote not found"))
         if quote.expires_at < datetime.now(timezone.utc):
             raise ValueError(_("quote has expired"))
-        if quote.sell_asset != asset_id_format(asset):
+        if quote.sell_asset != asset.asset_identification_format:
             raise ValueError(
                 _(
                     "quote 'sell_asset' does not match 'asset_code' and 'asset_issuer' parameters"
@@ -407,7 +407,8 @@ def get_quote_and_offchain_destination_asset(
         if "sep-38" not in settings.ACTIVE_SEPS or not asset.sep38_enabled:
             raise ValueError(_("quotes are not supported"))
         if not ExchangePair.objects.filter(
-            sell_asset=asset_id_format(asset), buy_asset=destination_asset_str
+            sell_asset=asset.asset_identification_format,
+            buy_asset=destination_asset_str,
         ).exists():
             raise ValueError(
                 _("unsupported 'destination_asset' for 'asset_code' and 'asset_issuer'")
@@ -424,7 +425,7 @@ def get_quote_and_offchain_destination_asset(
             stellar_account=token.account,
             account_memo=token.memo,
             muxed_account=token.muxed_account,
-            sell_asset=asset_id_format(asset),
+            sell_asset=asset.asset_identification_format,
             buy_asset=destination_asset_str,
             sell_amount=amount,
         )
@@ -459,7 +460,7 @@ def get_quote_and_offchain_source_asset(
             raise ValueError(_("quote not found"))
         if quote.expires_at < datetime.now(timezone.utc):
             raise ValueError(_("quote has expired"))
-        if quote.buy_asset != asset_id_format(asset):
+        if quote.buy_asset != asset.asset_identification_format:
             raise ValueError(
                 _(
                     "quote 'buy_asset' does not match 'asset_code' and 'asset_issuer' parameters"
@@ -481,7 +482,7 @@ def get_quote_and_offchain_source_asset(
         if "sep-38" not in settings.ACTIVE_SEPS or not asset.sep38_enabled:
             raise ValueError(_("quotes are not supported"))
         if not ExchangePair.objects.filter(
-            sell_asset=source_asset_str, buy_asset=asset_id_format(asset)
+            sell_asset=source_asset_str, buy_asset=asset.asset_identification_format
         ).exists():
             raise ValueError(
                 _("unsupported 'source_asset' for 'asset_code' and 'asset_issuer'")
@@ -498,7 +499,7 @@ def get_quote_and_offchain_source_asset(
             stellar_account=token.account,
             account_memo=token.memo,
             muxed_account=token.muxed_account,
-            buy_asset=asset_id_format(asset),
+            buy_asset=asset.asset_identification_format,
             sell_asset=source_asset_str,
             sell_amount=amount,
         )

@@ -4,7 +4,6 @@ from unittest.mock import patch, Mock
 
 from stellar_sdk import Keypair
 
-from polaris.sep38.utils import asset_id_format
 from polaris.models import Asset, OffChainAsset, DeliveryMethod, ExchangePair
 from polaris.tests.helpers import mock_check_auth_success
 
@@ -34,7 +33,8 @@ def default_data():
     ]
     brl_offchain.delivery_methods.add(*delivery_methods)
     pair = ExchangePair.objects.create(
-        buy_asset=asset_id_format(brl_offchain), sell_asset=asset_id_format(usd_stellar)
+        buy_asset=brl_offchain.asset_identification_format,
+        sell_asset=usd_stellar.asset_identification_format,
     )
     return {
         "stellar_assets": [usd_stellar],
@@ -52,14 +52,17 @@ def test_get_prices_success_no_optional_params(mock_rqi, client):
     mock_rqi.get_prices = Mock(return_value=[Decimal(2.123)])
     response = client.get(
         PRICES_ENDPOINT,
-        {"sell_asset": asset_id_format(data["stellar_assets"][0]), "sell_amount": 100,},
+        {
+            "sell_asset": data["stellar_assets"][0].asset_identification_format,
+            "sell_amount": 100,
+        },
     )
     assert response.status_code == 200, response.content
     body = response.json()
     assert body == {
         "buy_assets": [
             {
-                "asset": asset_id_format(data["offchain_assets"][0]),
+                "asset": data["offchain_assets"][0].asset_identification_format,
                 "price": "2.12",
                 "decimals": data["offchain_assets"][0].significant_decimals,
             }
@@ -88,7 +91,7 @@ def test_get_prices_success_country_code_buy_delivery_method(mock_rqi, client):
     response = client.get(
         PRICES_ENDPOINT,
         {
-            "sell_asset": asset_id_format(data["stellar_assets"][0]),
+            "sell_asset": data["stellar_assets"][0].asset_identification_format,
             "sell_amount": 100,
             "country_code": "BRA",
             "buy_delivery_method": "cash_pickup",
@@ -99,7 +102,7 @@ def test_get_prices_success_country_code_buy_delivery_method(mock_rqi, client):
     assert body == {
         "buy_assets": [
             {
-                "asset": asset_id_format(data["offchain_assets"][0]),
+                "asset": data["offchain_assets"][0].asset_identification_format,
                 "price": "2.12",
                 "decimals": data["offchain_assets"][0].significant_decimals,
             }
@@ -133,7 +136,7 @@ def test_get_prices_success_country_code_sell_delivery_method(mock_rqi, client):
     response = client.get(
         PRICES_ENDPOINT,
         {
-            "sell_asset": asset_id_format(data["offchain_assets"][0]),
+            "sell_asset": data["offchain_assets"][0].asset_identification_format,
             "sell_amount": 100,
             "country_code": "BRA",
             "sell_delivery_method": "cash_dropoff",
@@ -144,7 +147,7 @@ def test_get_prices_success_country_code_sell_delivery_method(mock_rqi, client):
     assert body == {
         "buy_assets": [
             {
-                "asset": asset_id_format(data["stellar_assets"][0]),
+                "asset": data["stellar_assets"][0].asset_identification_format,
                 "price": "2.12",
                 "decimals": data["stellar_assets"][0].significant_decimals,
             }
@@ -177,7 +180,7 @@ def test_get_prices_success_no_optional_params_swap_exchange_pair(mock_rqi, clie
     response = client.get(
         PRICES_ENDPOINT,
         {
-            "sell_asset": asset_id_format(data["offchain_assets"][0]),
+            "sell_asset": data["offchain_assets"][0].asset_identification_format,
             "sell_amount": 100,
         },
     )
@@ -186,7 +189,7 @@ def test_get_prices_success_no_optional_params_swap_exchange_pair(mock_rqi, clie
     assert body == {
         "buy_assets": [
             {
-                "asset": asset_id_format(data["stellar_assets"][0]),
+                "asset": data["stellar_assets"][0].asset_identification_format,
                 "price": "2.12",
                 "decimals": data["stellar_assets"][0].significant_decimals,
             }
@@ -214,7 +217,7 @@ def test_get_prices_success_no_exchange_pairs(mock_rqi, client):
     response = client.get(
         PRICES_ENDPOINT,
         {
-            "sell_asset": asset_id_format(data["offchain_assets"][0]),
+            "sell_asset": data["offchain_assets"][0].asset_identification_format,
             "sell_amount": 100,
         },
     )
@@ -231,7 +234,8 @@ def test_get_prices_success_no_exchange_pairs(mock_rqi, client):
 def test_get_prices_failure_missing_sell_amount(mock_rqi, client):
     data = default_data()
     response = client.get(
-        PRICES_ENDPOINT, {"sell_asset": asset_id_format(data["stellar_assets"][0])}
+        PRICES_ENDPOINT,
+        {"sell_asset": data["stellar_assets"][0].asset_identification_format},
     )
     assert response.status_code == 400, response.content
     assert response.json() == {
@@ -261,7 +265,7 @@ def test_get_prices_failure_both_delivery_methods(mock_rqi, client):
     response = client.get(
         PRICES_ENDPOINT,
         {
-            "sell_asset": asset_id_format(data["stellar_assets"][0]),
+            "sell_asset": data["stellar_assets"][0].asset_identification_format,
             "sell_amount": 100,
             "buy_delivery_method": "cash_pickup",
             "sell_delivery_method": "cash_dropoff",
@@ -282,7 +286,7 @@ def test_get_prices_failure_sell_stellar_with_sell_delivery_method(mock_rqi, cli
     response = client.get(
         PRICES_ENDPOINT,
         {
-            "sell_asset": asset_id_format(data["stellar_assets"][0]),
+            "sell_asset": data["stellar_assets"][0].asset_identification_format,
             "sell_amount": 100,
             "sell_delivery_method": "cash_dropoff",
         },
@@ -308,7 +312,7 @@ def test_get_prices_failure_sell_offchain_with_buy_delivery_method(mock_rqi, cli
     response = client.get(
         PRICES_ENDPOINT,
         {
-            "sell_asset": asset_id_format(data["offchain_assets"][0]),
+            "sell_asset": data["offchain_assets"][0].asset_identification_format,
             "sell_amount": 100,
             "buy_delivery_method": "cash_pickup",
         },
@@ -355,7 +359,10 @@ def test_get_prices_failure_stellar_asset_not_found(mock_rqi, client):
 
     response = client.get(
         PRICES_ENDPOINT,
-        {"sell_asset": asset_id_format(data["stellar_assets"][0]), "sell_amount": 100,},
+        {
+            "sell_asset": data["stellar_assets"][0].asset_identification_format,
+            "sell_amount": 100,
+        },
     )
     assert response.status_code == 400, response.content
     assert response.json() == {
@@ -380,7 +387,7 @@ def test_get_prices_failure_offchain_asset_not_found(mock_rqi, client):
     response = client.get(
         PRICES_ENDPOINT,
         {
-            "sell_asset": asset_id_format(data["offchain_assets"][0]),
+            "sell_asset": data["offchain_assets"][0].asset_identification_format,
             "sell_amount": 100,
         },
     )
@@ -400,7 +407,7 @@ def test_get_prices_failure_bad_buy_delivery_method(mock_rqi, client):
     response = client.get(
         PRICES_ENDPOINT,
         {
-            "sell_asset": asset_id_format(data["stellar_assets"][0]),
+            "sell_asset": data["stellar_assets"][0].asset_identification_format,
             "sell_amount": 100,
             "buy_delivery_method": "bad_delivery_method",
         },
@@ -421,7 +428,7 @@ def test_get_prices_failure_bad_country_code(mock_rqi, client):
     response = client.get(
         PRICES_ENDPOINT,
         {
-            "sell_asset": asset_id_format(data["stellar_assets"][0]),
+            "sell_asset": data["stellar_assets"][0].asset_identification_format,
             "sell_amount": 100,
             "country_code": "TEST",
         },
@@ -446,7 +453,7 @@ def test_get_prices_failure_bad_sell_delivery_method(mock_rqi, client):
     response = client.get(
         PRICES_ENDPOINT,
         {
-            "sell_asset": asset_id_format(data["offchain_assets"][0]),
+            "sell_asset": data["offchain_assets"][0].asset_identification_format,
             "sell_amount": 100,
             "sell_delivery_method": "bad_delivery_method",
         },
@@ -467,7 +474,7 @@ def test_get_prices_failure_bad_sell_amount(mock_rqi, client):
     response = client.get(
         PRICES_ENDPOINT,
         {
-            "sell_asset": asset_id_format(data["stellar_assets"][0]),
+            "sell_asset": data["stellar_assets"][0].asset_identification_format,
             "sell_amount": "test",
         },
     )
@@ -487,7 +494,10 @@ def test_get_prices_failure_not_enough_prices_returned(mock_rqi, client):
 
     response = client.get(
         PRICES_ENDPOINT,
-        {"sell_asset": asset_id_format(data["stellar_assets"][0]), "sell_amount": 100},
+        {
+            "sell_asset": data["stellar_assets"][0].asset_identification_format,
+            "sell_amount": 100,
+        },
     )
     assert response.status_code == 500, response.content
     mock_rqi.get_prices.assert_called_once()
@@ -515,7 +525,7 @@ def test_get_prices_failure_bad_return_type(mock_rqi, client):
         client.get(
             PRICES_ENDPOINT,
             {
-                "sell_asset": asset_id_format(data["stellar_assets"][0]),
+                "sell_asset": data["stellar_assets"][0].asset_identification_format,
                 "sell_amount": 100,
             },
         )
@@ -542,7 +552,10 @@ def test_get_prices_failure_num_prices_dont_match(mock_rqi, client):
 
     response = client.get(
         PRICES_ENDPOINT,
-        {"sell_asset": asset_id_format(data["stellar_assets"][0]), "sell_amount": 100},
+        {
+            "sell_asset": data["stellar_assets"][0].asset_identification_format,
+            "sell_amount": 100,
+        },
     )
     assert response.status_code == 500, response.content
     mock_rqi.get_prices.assert_called_once()
@@ -568,7 +581,10 @@ def test_get_prices_failure_anchor_raises_value_error(mock_rqi, client):
 
     response = client.get(
         PRICES_ENDPOINT,
-        {"sell_asset": asset_id_format(data["stellar_assets"][0]), "sell_amount": 100},
+        {
+            "sell_asset": data["stellar_assets"][0].asset_identification_format,
+            "sell_amount": 100,
+        },
     )
     assert response.status_code == 400, response.content
     assert response.json() == {"error": "test"}
@@ -595,7 +611,10 @@ def test_get_prices_failure_anchor_raises_runtime_error(mock_rqi, client):
 
     response = client.get(
         PRICES_ENDPOINT,
-        {"sell_asset": asset_id_format(data["stellar_assets"][0]), "sell_amount": 100},
+        {
+            "sell_asset": data["stellar_assets"][0].asset_identification_format,
+            "sell_amount": 100,
+        },
     )
     assert response.status_code == 503, response.content
     assert response.json() == {"error": "test"}
@@ -624,7 +643,7 @@ def test_get_prices_failure_anchor_raises_unexpected_error(mock_rqi, client):
         client.get(
             PRICES_ENDPOINT,
             {
-                "sell_asset": asset_id_format(data["stellar_assets"][0]),
+                "sell_asset": data["stellar_assets"][0].asset_identification_format,
                 "sell_amount": 100,
             },
         )

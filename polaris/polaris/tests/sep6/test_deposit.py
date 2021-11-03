@@ -11,7 +11,6 @@ from stellar_sdk import Keypair, MuxedAccount
 from rest_framework.request import Request
 
 from polaris.models import Transaction, Asset, OffChainAsset, ExchangePair, Quote
-from polaris.sep38.utils import asset_id_format
 from polaris.tests.helpers import (
     mock_check_auth_success,
     mock_check_auth_success_client_domain,
@@ -321,7 +320,7 @@ def test_deposit_missing_integration_response(
     deposit = acc1_usd_deposit_transaction_factory(protocol=Transaction.PROTOCOL.sep6)
     response = client.get(
         DEPOSIT_PATH,
-        {"asset_code": deposit.asset.code, "account": deposit.stellar_account,},
+        {"asset_code": deposit.asset.code, "account": deposit.stellar_account},
     )
     content = json.loads(response.content)
     assert response.status_code == 500
@@ -352,7 +351,7 @@ def test_deposit_bad_extra_info_integration(
     deposit = acc1_usd_deposit_transaction_factory(protocol=Transaction.PROTOCOL.sep6)
     response = client.get(
         DEPOSIT_PATH,
-        {"asset_code": deposit.asset.code, "account": deposit.stellar_account,},
+        {"asset_code": deposit.asset.code, "account": deposit.stellar_account},
     )
     content = json.loads(response.content)
     assert response.status_code == 500
@@ -416,7 +415,7 @@ def test_deposit_non_interactive_customer_info_needed(
     deposit = acc1_usd_deposit_transaction_factory(protocol=Transaction.PROTOCOL.sep6)
     response = client.get(
         DEPOSIT_PATH,
-        {"asset_code": deposit.asset.code, "account": deposit.stellar_account,},
+        {"asset_code": deposit.asset.code, "account": deposit.stellar_account},
     )
     content = json.loads(response.content)
     assert response.status_code == 403
@@ -449,7 +448,7 @@ def test_deposit_bad_integration_bad_type(
     deposit = acc1_usd_deposit_transaction_factory(protocol=Transaction.PROTOCOL.sep6)
     response = client.get(
         DEPOSIT_PATH,
-        {"asset_code": deposit.asset.code, "account": deposit.stellar_account,},
+        {"asset_code": deposit.asset.code, "account": deposit.stellar_account},
     )
     content = json.loads(response.content)
     assert response.status_code == 500
@@ -481,7 +480,7 @@ def test_deposit_missing_fields_integration(
     deposit = acc1_usd_deposit_transaction_factory(protocol=Transaction.PROTOCOL.sep6)
     response = client.get(
         DEPOSIT_PATH,
-        {"asset_code": deposit.asset.code, "account": deposit.stellar_account,},
+        {"asset_code": deposit.asset.code, "account": deposit.stellar_account},
     )
     content = json.loads(response.content)
     assert response.status_code == 500
@@ -514,7 +513,7 @@ def test_deposit_bad_fields_integration(
     deposit = acc1_usd_deposit_transaction_factory(protocol=Transaction.PROTOCOL.sep6)
     response = client.get(
         DEPOSIT_PATH,
-        {"asset_code": deposit.asset.code, "account": deposit.stellar_account,},
+        {"asset_code": deposit.asset.code, "account": deposit.stellar_account},
     )
     content = json.loads(response.content)
     assert response.status_code == 500
@@ -546,7 +545,7 @@ def test_deposit_good_integration_customer_info(
     deposit = acc1_usd_deposit_transaction_factory(protocol=Transaction.PROTOCOL.sep6)
     response = client.get(
         DEPOSIT_PATH,
-        {"asset_code": deposit.asset.code, "account": deposit.stellar_account,},
+        {"asset_code": deposit.asset.code, "account": deposit.stellar_account},
     )
     content = json.loads(response.content)
     assert response.status_code == 403
@@ -579,7 +578,7 @@ def test_deposit_bad_integration_bad_status(
     deposit = acc1_usd_deposit_transaction_factory(protocol=Transaction.PROTOCOL.sep6)
     response = client.get(
         DEPOSIT_PATH,
-        {"asset_code": deposit.asset.code, "account": deposit.stellar_account,},
+        {"asset_code": deposit.asset.code, "account": deposit.stellar_account},
     )
     content = json.loads(response.content)
     assert response.status_code == 500
@@ -948,7 +947,8 @@ def test_deposit_success_indicative_quote(mock_process_sep6_request, client):
         scheme="iso4217", identifier="BRL", country_codes="BRA"
     )
     ExchangePair.objects.create(
-        sell_asset=offchain_asset.asset, buy_asset=asset_id_format(asset)
+        sell_asset=offchain_asset.asset_identification_format,
+        buy_asset=asset.asset_identification_format,
     )
     mock_process_sep6_request.return_value = {
         "how": "test",
@@ -957,8 +957,8 @@ def test_deposit_success_indicative_quote(mock_process_sep6_request, client):
     response = client.get(
         DEPOSIT_PATH + "-exchange",
         {
-            "source_asset": offchain_asset.asset,
-            "destination_asset": asset_id_format(asset),
+            "source_asset": offchain_asset.asset_identification_format,
+            "destination_asset": asset.asset_identification_format,
             "account": Keypair.random().public_key,
             "amount": "100.12",
         },
@@ -976,8 +976,8 @@ def test_deposit_success_indicative_quote(mock_process_sep6_request, client):
     t = Transaction.objects.first()
     mock_process_sep6_request.assert_called_once()
     assert t.quote
-    assert t.quote.sell_asset == asset_id_format(offchain_asset)
-    assert t.quote.buy_asset == asset_id_format(asset)
+    assert t.quote.sell_asset == offchain_asset.asset_identification_format
+    assert t.quote.buy_asset == asset.asset_identification_format
     assert t.quote.sell_amount == Decimal("100.12")
     assert t.quote.type == Quote.TYPE.indicative
 
@@ -999,13 +999,14 @@ def test_deposit_success_firm_quote(mock_process_sep6_request, client):
         scheme="iso4217", identifier="BRL", country_codes="BRA"
     )
     ExchangePair.objects.create(
-        sell_asset=offchain_asset.asset, buy_asset=asset_id_format(asset)
+        sell_asset=offchain_asset.asset_identification_format,
+        buy_asset=asset.asset_identification_format,
     )
     quote = Quote.objects.create(
         id=uuid.uuid4(),
         stellar_account="test source address",
-        sell_asset=offchain_asset.asset,
-        buy_asset=asset_id_format(asset),
+        sell_asset=offchain_asset.asset_identification_format,
+        buy_asset=asset.asset_identification_format,
         price=Decimal(1),
         sell_amount=Decimal("102.12"),
         buy_amount=Decimal("102.12"),
@@ -1019,8 +1020,8 @@ def test_deposit_success_firm_quote(mock_process_sep6_request, client):
     response = client.get(
         DEPOSIT_PATH + "-exchange",
         {
-            "source_asset": offchain_asset.asset,
-            "destination_asset": asset_id_format(asset),
+            "source_asset": offchain_asset.asset_identification_format,
+            "destination_asset": asset.asset_identification_format,
             "quote_id": str(quote.id),
             "account": Keypair.random().public_key,
             "amount": "102.12",
@@ -1059,13 +1060,14 @@ def test_deposit_no_amount_firm_quote(mock_process_sep6_request, client):
         scheme="iso4217", identifier="BRL", country_codes="BRA"
     )
     ExchangePair.objects.create(
-        sell_asset=offchain_asset.asset, buy_asset=asset_id_format(asset)
+        sell_asset=offchain_asset.asset_identification_format,
+        buy_asset=asset.asset_identification_format,
     )
     quote = Quote.objects.create(
         id=uuid.uuid4(),
         stellar_account="test source address",
-        sell_asset=offchain_asset.asset,
-        buy_asset=asset_id_format(asset),
+        sell_asset=offchain_asset.asset_identification_format,
+        buy_asset=asset.asset_identification_format,
         price=Decimal(1),
         sell_amount=Decimal("102.12"),
         buy_amount=Decimal("102.12"),
@@ -1079,8 +1081,8 @@ def test_deposit_no_amount_firm_quote(mock_process_sep6_request, client):
     response = client.get(
         DEPOSIT_PATH + "-exchange",
         {
-            "source_asset": offchain_asset.asset,
-            "destination_asset": asset_id_format(asset),
+            "source_asset": offchain_asset.asset_identification_format,
+            "destination_asset": asset.asset_identification_format,
             "quote_id": str(quote.id),
             "account": Keypair.random().public_key,
         },
@@ -1107,13 +1109,14 @@ def test_deposit_no_destination_asset_firm_quote(mock_process_sep6_request, clie
         scheme="iso4217", identifier="BRL", country_codes="BRA"
     )
     ExchangePair.objects.create(
-        sell_asset=offchain_asset.asset, buy_asset=asset_id_format(asset)
+        sell_asset=offchain_asset.asset_identification_format,
+        buy_asset=asset.asset_identification_format,
     )
     quote = Quote.objects.create(
         id=uuid.uuid4(),
         stellar_account="test source address",
-        sell_asset=offchain_asset.asset,
-        buy_asset=asset_id_format(asset),
+        sell_asset=offchain_asset.asset_identification_format,
+        buy_asset=asset.asset_identification_format,
         price=Decimal(1),
         sell_amount=Decimal("102.12"),
         buy_amount=Decimal("102.12"),
@@ -1127,7 +1130,7 @@ def test_deposit_no_destination_asset_firm_quote(mock_process_sep6_request, clie
     response = client.get(
         DEPOSIT_PATH + "-exchange",
         {
-            "source_asset": offchain_asset.asset,
+            "source_asset": offchain_asset.asset_identification_format,
             "quote_id": str(quote.id),
             "account": Keypair.random().public_key,
             "amount": "102.12",
@@ -1157,7 +1160,8 @@ def test_deposit_bad_destination_format_indicative_quote(
         scheme="iso4217", identifier="BRL", country_codes="BRA"
     )
     ExchangePair.objects.create(
-        sell_asset=offchain_asset.asset, buy_asset=asset_id_format(asset)
+        sell_asset=offchain_asset.asset_identification_format,
+        buy_asset=asset.asset_identification_format,
     )
     mock_process_sep6_request.return_value = {
         "how": "test",
@@ -1166,7 +1170,7 @@ def test_deposit_bad_destination_format_indicative_quote(
     response = client.get(
         DEPOSIT_PATH + "-exchange",
         {
-            "source_asset": offchain_asset.asset,
+            "source_asset": offchain_asset.asset_identification_format,
             "destination_asset": f"{asset.code}:{asset.issuer}",
             "account": Keypair.random().public_key,
             "amount": "100.12",
@@ -1186,7 +1190,7 @@ def test_deposit_no_asset_indicative_quote(mock_process_sep6_request, client):
     )
     stellar_asset = f"stellar:USD:{Keypair.random().public_key}"
     ExchangePair.objects.create(
-        sell_asset=offchain_asset.asset, buy_asset=stellar_asset
+        sell_asset=offchain_asset.asset_identification_format, buy_asset=stellar_asset
     )
     mock_process_sep6_request.return_value = {
         "how": "test",
@@ -1195,7 +1199,7 @@ def test_deposit_no_asset_indicative_quote(mock_process_sep6_request, client):
     response = client.get(
         DEPOSIT_PATH + "-exchange",
         {
-            "source_asset": offchain_asset.asset,
+            "source_asset": offchain_asset.asset_identification_format,
             "destination_asset": stellar_asset,
             "account": Keypair.random().public_key,
             "amount": "100.12",
@@ -1224,7 +1228,8 @@ def test_deposit_no_support_indicative_quote(mock_process_sep6_request, client):
         scheme="iso4217", identifier="BRL", country_codes="BRA"
     )
     ExchangePair.objects.create(
-        sell_asset=offchain_asset.asset, buy_asset=asset_id_format(asset)
+        sell_asset=offchain_asset.asset_identification_format,
+        buy_asset=asset.asset_identification_format,
     )
     mock_process_sep6_request.return_value = {
         "how": "test",
@@ -1233,8 +1238,8 @@ def test_deposit_no_support_indicative_quote(mock_process_sep6_request, client):
     response = client.get(
         DEPOSIT_PATH + "-exchange",
         {
-            "source_asset": offchain_asset.asset,
-            "destination_asset": asset_id_format(asset),
+            "source_asset": offchain_asset.asset_identification_format,
+            "destination_asset": asset.asset_identification_format,
             "account": Keypair.random().public_key,
             "amount": "100.12",
         },
@@ -1261,13 +1266,14 @@ def test_deposit_no_source_asset_firm_quote(mock_process_sep6_request, client):
         scheme="iso4217", identifier="BRL", country_codes="BRA"
     )
     ExchangePair.objects.create(
-        sell_asset=offchain_asset.asset, buy_asset=asset_id_format(asset)
+        sell_asset=offchain_asset.asset_identification_format,
+        buy_asset=asset.asset_identification_format,
     )
     quote = Quote.objects.create(
         id=uuid.uuid4(),
         stellar_account="test source address",
-        sell_asset=offchain_asset.asset,
-        buy_asset=asset_id_format(asset),
+        sell_asset=offchain_asset.asset_identification_format,
+        buy_asset=asset.asset_identification_format,
         price=Decimal(1),
         sell_amount=Decimal("102.12"),
         buy_amount=Decimal("102.12"),
@@ -1281,7 +1287,7 @@ def test_deposit_no_source_asset_firm_quote(mock_process_sep6_request, client):
     response = client.get(
         DEPOSIT_PATH + "-exchange",
         {
-            "destination_asset": asset_id_format(asset),
+            "destination_asset": asset.asset_identification_format,
             "quote_id": str(quote.id),
             "account": Keypair.random().public_key,
             "amount": "102.12",
@@ -1311,7 +1317,8 @@ def test_deposit_no_quote_firm_quote(mock_process_sep6_request, client):
         scheme="iso4217", identifier="BRL", country_codes="BRA"
     )
     ExchangePair.objects.create(
-        sell_asset=offchain_asset.asset, buy_asset=asset_id_format(asset)
+        sell_asset=offchain_asset.asset_identification_format,
+        buy_asset=asset.asset_identification_format,
     )
     mock_process_sep6_request.return_value = {
         "how": "test",
@@ -1320,8 +1327,8 @@ def test_deposit_no_quote_firm_quote(mock_process_sep6_request, client):
     response = client.get(
         DEPOSIT_PATH + "-exchange",
         {
-            "source_asset": asset_id_format(offchain_asset),
-            "destination_asset": asset_id_format(asset),
+            "source_asset": offchain_asset.asset_identification_format,
+            "destination_asset": asset.asset_identification_format,
             "quote_id": str(uuid.uuid4()),
             "account": Keypair.random().public_key,
             "amount": "102.12",
@@ -1349,13 +1356,14 @@ def test_deposit_expired_firm_quote(mock_process_sep6_request, client):
         scheme="iso4217", identifier="BRL", country_codes="BRA"
     )
     ExchangePair.objects.create(
-        sell_asset=offchain_asset.asset, buy_asset=asset_id_format(asset)
+        sell_asset=offchain_asset.asset_identification_format,
+        buy_asset=asset.asset_identification_format,
     )
     quote = Quote.objects.create(
         id=uuid.uuid4(),
         stellar_account="test source address",
-        sell_asset=offchain_asset.asset,
-        buy_asset=asset_id_format(asset),
+        sell_asset=offchain_asset.asset_identification_format,
+        buy_asset=asset.asset_identification_format,
         price=Decimal(1),
         sell_amount=Decimal("102.12"),
         buy_amount=Decimal("102.12"),
@@ -1369,8 +1377,8 @@ def test_deposit_expired_firm_quote(mock_process_sep6_request, client):
     response = client.get(
         DEPOSIT_PATH + "-exchange",
         {
-            "source_asset": asset_id_format(offchain_asset),
-            "destination_asset": asset_id_format(asset),
+            "source_asset": offchain_asset.asset_identification_format,
+            "destination_asset": asset.asset_identification_format,
             "quote_id": str(quote.id),
             "account": Keypair.random().public_key,
             "amount": "102.12",
@@ -1398,12 +1406,13 @@ def test_deposit_buy_asset_doesnt_match_firm_quote(mock_process_sep6_request, cl
         scheme="iso4217", identifier="BRL", country_codes="BRA"
     )
     ExchangePair.objects.create(
-        sell_asset=offchain_asset.asset, buy_asset=asset_id_format(asset)
+        sell_asset=offchain_asset.asset_identification_format,
+        buy_asset=asset.asset_identification_format,
     )
     quote = Quote.objects.create(
         id=uuid.uuid4(),
         stellar_account="test source address",
-        sell_asset=offchain_asset.asset,
+        sell_asset=offchain_asset.asset_identification_format,
         buy_asset="not the same asset",
         price=Decimal(1),
         sell_amount=Decimal("102.12"),
@@ -1418,8 +1427,8 @@ def test_deposit_buy_asset_doesnt_match_firm_quote(mock_process_sep6_request, cl
     response = client.get(
         DEPOSIT_PATH + "-exchange",
         {
-            "source_asset": asset_id_format(offchain_asset),
-            "destination_asset": asset_id_format(asset),
+            "source_asset": offchain_asset.asset_identification_format,
+            "destination_asset": asset.asset_identification_format,
             "quote_id": str(quote.id),
             "account": Keypair.random().public_key,
             "amount": "102.12",
@@ -1449,13 +1458,14 @@ def test_deposit_sell_asset_doesnt_match_firm_quote(mock_process_sep6_request, c
         scheme="iso4217", identifier="BRL", country_codes="BRA"
     )
     ExchangePair.objects.create(
-        sell_asset=offchain_asset.asset, buy_asset=asset_id_format(asset)
+        sell_asset=offchain_asset.asset_identification_format,
+        buy_asset=asset.asset_identification_format,
     )
     quote = Quote.objects.create(
         id=uuid.uuid4(),
         stellar_account="test source address",
         sell_asset="asset doesn't match",
-        buy_asset=asset_id_format(asset),
+        buy_asset=asset.asset_identification_format,
         price=Decimal(1),
         sell_amount=Decimal("102.12"),
         buy_amount=Decimal("102.12"),
@@ -1469,8 +1479,8 @@ def test_deposit_sell_asset_doesnt_match_firm_quote(mock_process_sep6_request, c
     response = client.get(
         DEPOSIT_PATH + "-exchange",
         {
-            "source_asset": asset_id_format(offchain_asset),
-            "destination_asset": asset_id_format(asset),
+            "source_asset": offchain_asset.asset_identification_format,
+            "destination_asset": asset.asset_identification_format,
             "quote_id": str(quote.id),
             "account": Keypair.random().public_key,
             "amount": "102.12",
@@ -1497,13 +1507,13 @@ def test_deposit_source_asset_not_found_firm_quote(mock_process_sep6_request, cl
         sep38_enabled=True,
     )
     ExchangePair.objects.create(
-        sell_asset="iso4217:BRL", buy_asset=asset_id_format(asset)
+        sell_asset="iso4217:BRL", buy_asset=asset.asset_identification_format
     )
     quote = Quote.objects.create(
         id=uuid.uuid4(),
         stellar_account="test source address",
         sell_asset="iso4217:BRL",
-        buy_asset=asset_id_format(asset),
+        buy_asset=asset.asset_identification_format,
         price=Decimal(1),
         sell_amount=Decimal("102.12"),
         buy_amount=Decimal("102.12"),
@@ -1518,7 +1528,7 @@ def test_deposit_source_asset_not_found_firm_quote(mock_process_sep6_request, cl
         DEPOSIT_PATH + "-exchange",
         {
             "source_asset": "iso4217:BRL",
-            "destination_asset": asset_id_format(asset),
+            "destination_asset": asset.asset_identification_format,
             "quote_id": str(quote.id),
             "account": Keypair.random().public_key,
             "amount": "102.12",
@@ -1545,13 +1555,14 @@ def test_deposit_no_support_firm_quote(mock_process_sep6_request, client):
         scheme="iso4217", identifier="BRL", country_codes="BRA"
     )
     ExchangePair.objects.create(
-        sell_asset=offchain_asset.asset, buy_asset=asset_id_format(asset)
+        sell_asset=offchain_asset.asset_identification_format,
+        buy_asset=asset.asset_identification_format,
     )
     quote = Quote.objects.create(
         id=uuid.uuid4(),
         stellar_account="test source address",
-        sell_asset=offchain_asset.asset,
-        buy_asset=asset_id_format(asset),
+        sell_asset=offchain_asset.asset_identification_format,
+        buy_asset=asset.asset_identification_format,
         price=Decimal(1),
         sell_amount=Decimal("102.12"),
         buy_amount=Decimal("102.12"),
@@ -1565,8 +1576,8 @@ def test_deposit_no_support_firm_quote(mock_process_sep6_request, client):
     response = client.get(
         DEPOSIT_PATH + "-exchange",
         {
-            "source_asset": asset_id_format(offchain_asset),
-            "destination_asset": asset_id_format(asset),
+            "source_asset": offchain_asset.asset_identification_format,
+            "destination_asset": asset.asset_identification_format,
             "quote_id": str(quote.id),
             "account": Keypair.random().public_key,
             "amount": "102.12",
@@ -1594,13 +1605,14 @@ def test_deposit_amounts_dont_match_firm_quote(mock_process_sep6_request, client
         scheme="iso4217", identifier="BRL", country_codes="BRA"
     )
     ExchangePair.objects.create(
-        sell_asset=offchain_asset.asset, buy_asset=asset_id_format(asset)
+        sell_asset=offchain_asset.asset_identification_format,
+        buy_asset=asset.asset_identification_format,
     )
     quote = Quote.objects.create(
         id=uuid.uuid4(),
         stellar_account="test source address",
-        sell_asset=offchain_asset.asset,
-        buy_asset=asset_id_format(asset),
+        sell_asset=offchain_asset.asset_identification_format,
+        buy_asset=asset.asset_identification_format,
         price=Decimal(1),
         sell_amount=Decimal("102.12"),
         buy_amount=Decimal("102.12"),
@@ -1614,8 +1626,8 @@ def test_deposit_amounts_dont_match_firm_quote(mock_process_sep6_request, client
     response = client.get(
         DEPOSIT_PATH + "-exchange",
         {
-            "source_asset": asset_id_format(offchain_asset),
-            "destination_asset": asset_id_format(asset),
+            "source_asset": offchain_asset.asset_identification_format,
+            "destination_asset": asset.asset_identification_format,
             "quote_id": str(quote.id),
             "account": Keypair.random().public_key,
             "amount": "103.12",
@@ -1649,8 +1661,8 @@ def test_deposit_no_pair_indicative_quote(mock_process_sep6_request, client):
     response = client.get(
         DEPOSIT_PATH + "-exchange",
         {
-            "source_asset": asset_id_format(offchain_asset),
-            "destination_asset": asset_id_format(asset),
+            "source_asset": offchain_asset.asset_identification_format,
+            "destination_asset": asset.asset_identification_format,
             "account": Keypair.random().public_key,
             "amount": "102.12",
         },
@@ -1676,7 +1688,7 @@ def test_deposit_no_offchain_asset_indicative_quote(mock_process_sep6_request, c
         sep38_enabled=True,
     )
     ExchangePair.objects.create(
-        sell_asset="iso4217:BRL", buy_asset=asset_id_format(asset)
+        sell_asset="iso4217:BRL", buy_asset=asset.asset_identification_format
     )
     mock_process_sep6_request.return_value = {
         "how": "test",
@@ -1686,7 +1698,7 @@ def test_deposit_no_offchain_asset_indicative_quote(mock_process_sep6_request, c
         DEPOSIT_PATH + "-exchange",
         {
             "source_asset": "iso4217:BRL",
-            "destination_asset": asset_id_format(asset),
+            "destination_asset": asset.asset_identification_format,
             "account": Keypair.random().public_key,
             "amount": "102.12",
         },

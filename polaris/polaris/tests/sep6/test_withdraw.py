@@ -10,7 +10,6 @@ from unittest.mock import patch, Mock
 from stellar_sdk import Keypair, MuxedAccount
 from rest_framework.request import Request
 
-from polaris.sep38.utils import asset_id_format
 from polaris.tests.conftest import USD_DISTRIBUTION_SEED
 from polaris.tests.helpers import (
     mock_check_auth_success,
@@ -806,14 +805,15 @@ def test_withdraw_success_indicative_quote(mock_process_sep6_request, client):
         scheme="iso4217", identifier="BRL", country_codes="BRA"
     )
     ExchangePair.objects.create(
-        buy_asset=offchain_asset.asset, sell_asset=asset_id_format(asset)
+        buy_asset=offchain_asset.asset_identification_format,
+        sell_asset=asset.asset_identification_format,
     )
     mock_process_sep6_request.return_value = {}
     response = client.get(
         WITHDRAW_PATH + "-exchange",
         {
-            "destination_asset": offchain_asset.asset,
-            "source_asset": asset_id_format(asset),
+            "destination_asset": offchain_asset.asset_identification_format,
+            "source_asset": asset.asset_identification_format,
             "amount": "100.12",
             "type": "good type",
             "dest": "an offchain bank account",
@@ -833,8 +833,8 @@ def test_withdraw_success_indicative_quote(mock_process_sep6_request, client):
     t = Transaction.objects.first()
     mock_process_sep6_request.assert_called_once()
     assert t.quote
-    assert t.quote.buy_asset == asset_id_format(offchain_asset)
-    assert t.quote.sell_asset == asset_id_format(asset)
+    assert t.quote.buy_asset == offchain_asset.asset_identification_format
+    assert t.quote.sell_asset == asset.asset_identification_format
     assert t.quote.sell_amount == Decimal("100.12")
     assert t.quote.type == Quote.TYPE.indicative
 
@@ -857,13 +857,14 @@ def test_withdraw_success_firm_quote(mock_process_sep6_request, client):
         scheme="iso4217", identifier="BRL", country_codes="BRA"
     )
     ExchangePair.objects.create(
-        buy_asset=offchain_asset.asset, sell_asset=asset_id_format(asset)
+        buy_asset=offchain_asset.asset_identification_format,
+        sell_asset=asset.asset_identification_format,
     )
     quote = Quote.objects.create(
         id=uuid.uuid4(),
         stellar_account="test source address",
-        buy_asset=offchain_asset.asset,
-        sell_asset=asset_id_format(asset),
+        buy_asset=offchain_asset.asset_identification_format,
+        sell_asset=asset.asset_identification_format,
         price=Decimal(1),
         sell_amount=Decimal("102.12"),
         buy_amount=Decimal("102.12"),
@@ -874,8 +875,8 @@ def test_withdraw_success_firm_quote(mock_process_sep6_request, client):
     response = client.get(
         WITHDRAW_PATH + "-exchange",
         {
-            "source_asset": asset_id_format(asset),
-            "destination_asset": offchain_asset.asset,
+            "source_asset": asset.asset_identification_format,
+            "destination_asset": offchain_asset.asset_identification_format,
             "quote_id": str(quote.id),
             "amount": "102.12",
             "type": "good type",

@@ -8,7 +8,6 @@ from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from django.utils.translation import gettext as _
 
 from polaris import settings as polaris_settings
-from polaris.sep38.utils import asset_id_format
 from polaris.templates import Template
 from polaris.utils import render_error_response, getLogger
 from polaris.models import Transaction, Asset, OffChainAsset
@@ -44,8 +43,8 @@ def more_info(request: Request, sep6: bool = False) -> Response:
     tx_json = json.dumps({"transaction": serializer.data})
     context = {
         "tx_json": tx_json,
-        "amount_in_asset": asset_id_format(transaction.asset),
-        "amount_out_asset": asset_id_format(transaction.asset),
+        "amount_in_asset": transaction.asset.asset_identification_format,
+        "amount_out_asset": transaction.asset.asset_identification_format,
         "amount_in": serializer.data.get("amount_in"),
         "amount_out": serializer.data.get("amount_out"),
         "amount_fee": serializer.data.get("amount_fee"),
@@ -73,7 +72,7 @@ def more_info(request: Request, sep6: bool = False) -> Response:
         if "deposit" in transaction.kind:
             context.update(
                 **{
-                    "amount_in_asset": offchain_asset.asset,
+                    "amount_in_asset": offchain_asset.asset_identification_format,
                     "amount_in_symbol": offchain_asset.symbol,
                     "amount_in_significant_decimals": offchain_asset.significant_decimals,
                 }
@@ -81,12 +80,12 @@ def more_info(request: Request, sep6: bool = False) -> Response:
         else:
             context.update(
                 **{
-                    "amount_out_asset": offchain_asset.asset,
+                    "amount_out_asset": offchain_asset.asset_identification_format,
                     "amount_out_symbol": offchain_asset.symbol,
                     "amount_out_significant_decimals": offchain_asset.significant_decimals,
                 }
             )
-        if transaction.fee_asset == offchain_asset.asset:
+        if transaction.fee_asset == offchain_asset.asset_identification_format:
             context.update(
                 **{
                     "amount_fee_symbol": offchain_asset.symbol,
@@ -106,10 +105,10 @@ def more_info(request: Request, sep6: bool = False) -> Response:
         ):
             price_inversion_sd += 1
         if (
-            transaction.fee_asset == offchain_asset.asset
+            transaction.fee_asset == offchain_asset.asset_identification_format
             and "deposit" in transaction.kind
         ) or (
-            transaction.fee_asset == asset_id_format(transaction.asset)
+            transaction.fee_asset == transaction.asset.asset_identification_format
             and "withdrawal" in transaction.kind
         ):
             context["exchange_amount"] = transaction.amount_in - transaction.amount_fee
@@ -164,10 +163,10 @@ def calc_amount_out_with_price_inversion(
     context: dict,
 ):
     if (
-        transaction.fee_asset == asset_id_format(transaction.asset)
+        transaction.fee_asset == transaction.asset.asset_identification_format
         and "deposit" not in transaction.kind
     ) or (
-        transaction.fee_asset != asset_id_format(transaction.asset)
+        transaction.fee_asset != transaction.asset.asset_identification_format
         and "deposit" in transaction.kind
     ):
         return round(

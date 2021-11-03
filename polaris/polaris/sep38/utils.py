@@ -7,13 +7,6 @@ from django.db.models import Q
 from polaris.models import OffChainAsset, Asset, ExchangePair, DeliveryMethod
 
 
-def asset_id_format(asset: Union[Asset, OffChainAsset]) -> str:
-    if isinstance(asset, Asset):
-        return f"stellar:{asset.code}:{asset.issuer}"
-    else:
-        return asset.asset
-
-
 def asset_id_to_kwargs(asset_id: str) -> dict:
     if asset_id.startswith("stellar"):
         _, code, issuer = asset_id.split(":")
@@ -32,7 +25,7 @@ def get_buy_assets(
     buy_delivery_method: Optional[str],
     country_code: Optional[str],
 ) -> List[Union[Asset, OffChainAsset]]:
-    asset_str = asset_id_format(sell_asset)
+    asset_str = sell_asset.asset_identification_format
     pairs = ExchangePair.objects.filter(sell_asset=asset_str).all()
     if not pairs:
         return []
@@ -116,7 +109,7 @@ def get_buy_asset(
                 )
             )
     if not ExchangePair.objects.filter(
-        sell_asset=asset_id_format(sell_asset), buy_asset=buy_asset_str
+        sell_asset=sell_asset.asset_identification_format, buy_asset=buy_asset_str
     ).exists():
         raise ValueError(gettext("unsupported asset pair"))
     return buy_asset

@@ -83,4 +83,4 @@ class OffChainAssetExtra(models.Model):
     objects = models.Manager()
 
     def __str__(self):
-        return f"OffChainAsset: {self.offchain_asset.asset}"
+        return f"OffChainAsset: {self.offchain_asset.asset_identification_format}"

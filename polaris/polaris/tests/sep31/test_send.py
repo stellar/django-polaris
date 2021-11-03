@@ -9,7 +9,6 @@ from rest_framework.request import Request
 from polaris.tests.helpers import mock_check_auth_success
 from polaris.models import Transaction, OffChainAsset, ExchangePair, Quote
 from polaris.sep31.transactions import process_post_response
-from polaris.sep38.utils import asset_id_format
 
 
 transaction_endpoint = "/sep31/transactions"
@@ -82,14 +81,15 @@ def test_successful_send_indicative_quote(client, usd_asset_factory):
     asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31, "sep38"])
     offchain_asset = OffChainAsset.objects.create(scheme="test", identifier="test")
     ExchangePair.objects.create(
-        sell_asset=asset_id_format(asset), buy_asset=offchain_asset.asset
+        sell_asset=asset.asset_identification_format,
+        buy_asset=offchain_asset.asset_identification_format,
     )
     response = client.post(
         transaction_endpoint,
         {
             "asset_code": asset.code,
             "asset_issuer": asset.issuer,
-            "destination_asset": offchain_asset.asset,
+            "destination_asset": offchain_asset.asset_identification_format,
             "amount": 100,
             "sender_id": "123",
             "receiver_id": "456",
@@ -123,8 +123,8 @@ def test_successful_send_indicative_quote(client, usd_asset_factory):
     assert isinstance(transaction.quote, Quote)
     assert transaction.quote.id
     assert transaction.quote.type == Quote.TYPE.indicative
-    assert transaction.quote.sell_asset == asset_id_format(asset)
-    assert transaction.quote.buy_asset == offchain_asset.asset
+    assert transaction.quote.sell_asset == asset.asset_identification_format
+    assert transaction.quote.buy_asset == offchain_asset.asset_identification_format
     assert transaction.quote.sell_amount == transaction.amount_in
 
 
@@ -138,14 +138,15 @@ def test_successful_send_firm_quote(client, usd_asset_factory):
     asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31, "sep38"])
     offchain_asset = OffChainAsset.objects.create(scheme="test", identifier="test")
     ExchangePair.objects.create(
-        sell_asset=asset_id_format(asset), buy_asset=offchain_asset.asset
+        sell_asset=asset.asset_identification_format,
+        buy_asset=offchain_asset.asset_identification_format,
     )
     quote = Quote.objects.create(
         id=str(uuid.uuid4()),
         stellar_account="test source address",
         type=Quote.TYPE.firm,
-        sell_asset=asset_id_format(asset),
-        buy_asset=offchain_asset.asset,
+        sell_asset=asset.asset_identification_format,
+        buy_asset=offchain_asset.asset_identification_format,
         sell_amount=100,
         buy_amount=100,
         price=1,
@@ -156,7 +157,7 @@ def test_successful_send_firm_quote(client, usd_asset_factory):
         {
             "asset_code": asset.code,
             "asset_issuer": asset.issuer,
-            "destination_asset": offchain_asset.asset,
+            "destination_asset": offchain_asset.asset_identification_format,
             "quote_id": quote.id,
             "amount": 100,
             "sender_id": "123",
@@ -199,14 +200,15 @@ def test_send_indicative_quote_not_enabled(mock_sep31_ri, client, usd_asset_fact
     asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31])
     offchain_asset = OffChainAsset.objects.create(scheme="test", identifier="test")
     ExchangePair.objects.create(
-        sell_asset=asset_id_format(asset), buy_asset=offchain_asset.asset
+        sell_asset=asset.asset_identification_format,
+        buy_asset=offchain_asset.asset_identification_format,
     )
     response = client.post(
         transaction_endpoint,
         {
             "asset_code": asset.code,
             "asset_issuer": asset.issuer,
-            "destination_asset": offchain_asset.asset,
+            "destination_asset": offchain_asset.asset_identification_format,
             "amount": 100,
             "sender_id": "123",
             "receiver_id": "456",
@@ -233,7 +235,7 @@ def test_send_indicative_quote_no_exchange_pair(
         {
             "asset_code": asset.code,
             "asset_issuer": asset.issuer,
-            "destination_asset": offchain_asset.asset,
+            "destination_asset": offchain_asset.asset_identification_format,
             "amount": 100,
             "sender_id": "123",
             "receiver_id": "456",
@@ -257,7 +259,7 @@ def test_send_indicative_quote_no_offchain_asset(
 ):
     asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31, "sep38"])
     ExchangePair.objects.create(
-        sell_asset=asset_id_format(asset), buy_asset="test:test"
+        sell_asset=asset.asset_identification_format, buy_asset="test:test"
     )
     response = client.post(
         transaction_endpoint,
@@ -285,14 +287,15 @@ def test_send_firm_quote_not_supported(mock_sep31_ri, client, usd_asset_factory)
     asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31])
     offchain_asset = OffChainAsset.objects.create(scheme="test", identifier="test")
     ExchangePair.objects.create(
-        sell_asset=asset_id_format(asset), buy_asset=offchain_asset.asset
+        sell_asset=asset.asset_identification_format,
+        buy_asset=offchain_asset.asset_identification_format,
     )
     quote = Quote.objects.create(
         id=str(uuid.uuid4()),
         stellar_account="test source address",
         type=Quote.TYPE.firm,
-        sell_asset=asset_id_format(asset),
-        buy_asset=offchain_asset.asset,
+        sell_asset=asset.asset_identification_format,
+        buy_asset=offchain_asset.asset_identification_format,
         sell_amount=100,
         buy_amount=100,
         price=1,
@@ -303,7 +306,7 @@ def test_send_firm_quote_not_supported(mock_sep31_ri, client, usd_asset_factory)
         {
             "asset_code": asset.code,
             "asset_issuer": asset.issuer,
-            "destination_asset": offchain_asset.asset,
+            "destination_asset": offchain_asset.asset_identification_format,
             "quote_id": quote.id,
             "amount": 100,
             "sender_id": "123",
@@ -325,14 +328,15 @@ def test_send_firm_quote_no_destination_asset(mock_sep31_ri, client, usd_asset_f
     asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31, "sep38"])
     offchain_asset = OffChainAsset.objects.create(scheme="test", identifier="test")
     ExchangePair.objects.create(
-        sell_asset=asset_id_format(asset), buy_asset=offchain_asset.asset
+        sell_asset=asset.asset_identification_format,
+        buy_asset=offchain_asset.asset_identification_format,
     )
     quote = Quote.objects.create(
         id=str(uuid.uuid4()),
         stellar_account="test source address",
         type=Quote.TYPE.firm,
-        sell_asset=asset_id_format(asset),
-        buy_asset=offchain_asset.asset,
+        sell_asset=asset.asset_identification_format,
+        buy_asset=offchain_asset.asset_identification_format,
         sell_amount=100,
         buy_amount=100,
         price=1,
@@ -368,14 +372,15 @@ def test_send_firm_quote_unknown_destination_asset(
     asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31, "sep38"])
     offchain_asset = OffChainAsset.objects.create(scheme="test", identifier="test")
     ExchangePair.objects.create(
-        sell_asset=asset_id_format(asset), buy_asset=offchain_asset.asset
+        sell_asset=asset.asset_identification_format,
+        buy_asset=offchain_asset.asset_identification_format,
     )
     quote = Quote.objects.create(
         id=str(uuid.uuid4()),
         stellar_account="test source address",
         type=Quote.TYPE.firm,
-        sell_asset=asset_id_format(asset),
-        buy_asset=offchain_asset.asset,
+        sell_asset=asset.asset_identification_format,
+        buy_asset=offchain_asset.asset_identification_format,
         sell_amount=100,
         buy_amount=100,
         price=1,
@@ -412,14 +417,15 @@ def test_send_firm_quote_filters_for_firm_quotes(
     asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31, "sep38"])
     offchain_asset = OffChainAsset.objects.create(scheme="test", identifier="test")
     ExchangePair.objects.create(
-        sell_asset=asset_id_format(asset), buy_asset=offchain_asset.asset
+        sell_asset=asset.asset_identification_format,
+        buy_asset=offchain_asset.asset_identification_format,
     )
     quote = Quote.objects.create(
         id=str(uuid.uuid4()),
         stellar_account="test source address",
         type=Quote.TYPE.indicative,
-        sell_asset=asset_id_format(asset),
-        buy_asset=offchain_asset.asset,
+        sell_asset=asset.asset_identification_format,
+        buy_asset=offchain_asset.asset_identification_format,
         sell_amount=100,
         buy_amount=100,
         price=1,
@@ -431,7 +437,7 @@ def test_send_firm_quote_filters_for_firm_quotes(
             "asset_code": asset.code,
             "asset_issuer": asset.issuer,
             "quote_id": quote.id,
-            "destination_asset": offchain_asset.asset,
+            "destination_asset": offchain_asset.asset_identification_format,
             "amount": 100,
             "sender_id": "123",
             "receiver_id": "456",
@@ -452,14 +458,15 @@ def test_send_firm_quote_needs_matching_id(mock_sep31_ri, client, usd_asset_fact
     asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31, "sep38"])
     offchain_asset = OffChainAsset.objects.create(scheme="test", identifier="test")
     ExchangePair.objects.create(
-        sell_asset=asset_id_format(asset), buy_asset=offchain_asset.asset
+        sell_asset=asset.asset_identification_format,
+        buy_asset=offchain_asset.asset_identification_format,
     )
     Quote.objects.create(
         id=str(uuid.uuid4()),
         stellar_account="test source address",
         type=Quote.TYPE.firm,
-        sell_asset=asset_id_format(asset),
-        buy_asset=offchain_asset.asset,
+        sell_asset=asset.asset_identification_format,
+        buy_asset=offchain_asset.asset_identification_format,
         sell_amount=100,
         buy_amount=100,
         price=1,
@@ -471,7 +478,7 @@ def test_send_firm_quote_needs_matching_id(mock_sep31_ri, client, usd_asset_fact
             "asset_code": asset.code,
             "asset_issuer": asset.issuer,
             "quote_id": str(uuid.uuid4()),
-            "destination_asset": offchain_asset.asset,
+            "destination_asset": offchain_asset.asset_identification_format,
             "amount": 100,
             "sender_id": "123",
             "receiver_id": "456",
@@ -494,13 +501,14 @@ def test_send_firm_quote_needs_matching_buy_asset(
     asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31, "sep38"])
     offchain_asset = OffChainAsset.objects.create(scheme="test", identifier="test")
     ExchangePair.objects.create(
-        sell_asset=asset_id_format(asset), buy_asset=offchain_asset.asset
+        sell_asset=asset.asset_identification_format,
+        buy_asset=offchain_asset.asset_identification_format,
     )
     quote = Quote.objects.create(
         id=str(uuid.uuid4()),
         stellar_account="test source address",
         type=Quote.TYPE.firm,
-        sell_asset=asset_id_format(asset),
+        sell_asset=asset.asset_identification_format,
         buy_asset="not:test",
         sell_amount=100,
         buy_amount=100,
@@ -513,7 +521,7 @@ def test_send_firm_quote_needs_matching_buy_asset(
             "asset_code": asset.code,
             "asset_issuer": asset.issuer,
             "quote_id": str(quote.id),
-            "destination_asset": offchain_asset.asset,
+            "destination_asset": offchain_asset.asset_identification_format,
             "amount": 100,
             "sender_id": "123",
             "receiver_id": "456",
@@ -536,14 +544,15 @@ def test_send_firm_quote_needs_matching_auth(mock_sep31_ri, client, usd_asset_fa
     asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31, "sep38"])
     offchain_asset = OffChainAsset.objects.create(scheme="test", identifier="test")
     ExchangePair.objects.create(
-        sell_asset=asset_id_format(asset), buy_asset=offchain_asset.asset
+        sell_asset=asset.asset_identification_format,
+        buy_asset=offchain_asset.asset_identification_format,
     )
     quote = Quote.objects.create(
         id=str(uuid.uuid4()),
         stellar_account="not source address",
         type=Quote.TYPE.firm,
-        sell_asset=asset_id_format(asset),
-        buy_asset=offchain_asset.asset,
+        sell_asset=asset.asset_identification_format,
+        buy_asset=offchain_asset.asset_identification_format,
         sell_amount=100,
         buy_amount=100,
         price=1,
@@ -555,7 +564,7 @@ def test_send_firm_quote_needs_matching_auth(mock_sep31_ri, client, usd_asset_fa
             "asset_code": asset.code,
             "asset_issuer": asset.issuer,
             "quote_id": str(quote.id),
-            "destination_asset": offchain_asset.asset,
+            "destination_asset": offchain_asset.asset_identification_format,
             "amount": 100,
             "sender_id": "123",
             "receiver_id": "456",
@@ -576,14 +585,15 @@ def test_send_firm_quote_expired(mock_sep31_ri, client, usd_asset_factory):
     asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31, "sep38"])
     offchain_asset = OffChainAsset.objects.create(scheme="test", identifier="test")
     ExchangePair.objects.create(
-        sell_asset=asset_id_format(asset), buy_asset=offchain_asset.asset
+        sell_asset=asset.asset_identification_format,
+        buy_asset=offchain_asset.asset_identification_format,
     )
     quote = Quote.objects.create(
         id=str(uuid.uuid4()),
         stellar_account="test source address",
         type=Quote.TYPE.firm,
-        sell_asset=asset_id_format(asset),
-        buy_asset=offchain_asset.asset,
+        sell_asset=asset.asset_identification_format,
+        buy_asset=offchain_asset.asset_identification_format,
         sell_amount=100,
         buy_amount=100,
         price=1,
@@ -595,7 +605,7 @@ def test_send_firm_quote_expired(mock_sep31_ri, client, usd_asset_factory):
             "asset_code": asset.code,
             "asset_issuer": asset.issuer,
             "quote_id": str(quote.id),
-            "destination_asset": offchain_asset.asset,
+            "destination_asset": offchain_asset.asset_identification_format,
             "amount": 100,
             "sender_id": "123",
             "receiver_id": "456",
@@ -616,14 +626,15 @@ def test_send_firm_quote_sell_asset_no_match(mock_sep31_ri, client, usd_asset_fa
     asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31, "sep38"])
     offchain_asset = OffChainAsset.objects.create(scheme="test", identifier="test")
     ExchangePair.objects.create(
-        sell_asset=asset_id_format(asset), buy_asset=offchain_asset.asset
+        sell_asset=asset.asset_identification_format,
+        buy_asset=offchain_asset.asset_identification_format,
     )
     quote = Quote.objects.create(
         id=str(uuid.uuid4()),
         stellar_account="test source address",
         type=Quote.TYPE.firm,
         sell_asset="stellar:not:match",
-        buy_asset=offchain_asset.asset,
+        buy_asset=offchain_asset.asset_identification_format,
         sell_amount=100,
         buy_amount=100,
         price=1,
@@ -635,7 +646,7 @@ def test_send_firm_quote_sell_asset_no_match(mock_sep31_ri, client, usd_asset_fa
             "asset_code": asset.code,
             "asset_issuer": asset.issuer,
             "quote_id": str(quote.id),
-            "destination_asset": offchain_asset.asset,
+            "destination_asset": offchain_asset.asset_identification_format,
             "amount": 100,
             "sender_id": "123",
             "receiver_id": "456",
@@ -658,13 +669,14 @@ def test_send_firm_quote_buy_asset_no_match(mock_sep31_ri, client, usd_asset_fac
     asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31, "sep38"])
     offchain_asset = OffChainAsset.objects.create(scheme="test", identifier="test")
     ExchangePair.objects.create(
-        sell_asset=asset_id_format(asset), buy_asset=offchain_asset.asset
+        sell_asset=asset.asset_identification_format,
+        buy_asset=offchain_asset.asset_identification_format,
     )
     quote = Quote.objects.create(
         id=str(uuid.uuid4()),
         stellar_account="test source address",
         type=Quote.TYPE.firm,
-        sell_asset=asset_id_format(asset),
+        sell_asset=asset.asset_identification_format,
         buy_asset="not:test",
         sell_amount=100,
         buy_amount=100,
@@ -677,7 +689,7 @@ def test_send_firm_quote_buy_asset_no_match(mock_sep31_ri, client, usd_asset_fac
             "asset_code": asset.code,
             "asset_issuer": asset.issuer,
             "quote_id": str(quote.id),
-            "destination_asset": offchain_asset.asset,
+            "destination_asset": offchain_asset.asset_identification_format,
             "amount": 100,
             "sender_id": "123",
             "receiver_id": "456",
@@ -700,14 +712,15 @@ def test_send_firm_quote_amount_no_match(mock_sep31_ri, client, usd_asset_factor
     asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31, "sep38"])
     offchain_asset = OffChainAsset.objects.create(scheme="test", identifier="test")
     ExchangePair.objects.create(
-        sell_asset=asset_id_format(asset), buy_asset=offchain_asset.asset
+        sell_asset=asset.asset_identification_format,
+        buy_asset=offchain_asset.asset_identification_format,
     )
     quote = Quote.objects.create(
         id=str(uuid.uuid4()),
         stellar_account="test source address",
         type=Quote.TYPE.firm,
-        sell_asset=asset_id_format(asset),
-        buy_asset=offchain_asset.asset,
+        sell_asset=asset.asset_identification_format,
+        buy_asset=offchain_asset.asset_identification_format,
         sell_amount=100,
         buy_amount=100,
         price=1,
@@ -719,7 +732,7 @@ def test_send_firm_quote_amount_no_match(mock_sep31_ri, client, usd_asset_factor
             "asset_code": asset.code,
             "asset_issuer": asset.issuer,
             "quote_id": str(quote.id),
-            "destination_asset": offchain_asset.asset,
+            "destination_asset": offchain_asset.asset_identification_format,
             "amount": 1000,
             "sender_id": "123",
             "receiver_id": "456",
@@ -739,13 +752,13 @@ def test_send_firm_quote_amount_no_match(mock_sep31_ri, client, usd_asset_factor
 def test_send_firm_quote_no_offchain_asset(mock_sep31_ri, client, usd_asset_factory):
     asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31, "sep38"])
     ExchangePair.objects.create(
-        sell_asset=asset_id_format(asset), buy_asset="test:test"
+        sell_asset=asset.asset_identification_format, buy_asset="test:test"
     )
     quote = Quote.objects.create(
         id=str(uuid.uuid4()),
         stellar_account="test source address",
         type=Quote.TYPE.firm,
-        sell_asset=asset_id_format(asset),
+        sell_asset=asset.asset_identification_format,
         buy_asset="test:test",
         sell_amount=100,
         buy_amount=100,

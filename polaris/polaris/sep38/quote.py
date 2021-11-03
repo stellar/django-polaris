@@ -20,7 +20,6 @@ from polaris.sep38.serializers import QuoteSerializer
 from polaris.sep38.utils import (
     get_buy_asset,
     get_sell_asset,
-    asset_id_format,
     find_delivery_method,
 )
 from polaris.utils import getLogger
@@ -184,8 +183,8 @@ def make_quote(
         account_memo=token.memo,
         muxed_account=token.muxed_account,
         type=Quote.TYPE.firm,
-        sell_asset=asset_id_format(sell_asset),
-        buy_asset=asset_id_format(buy_asset),
+        sell_asset=sell_asset.asset_identification_format,
+        buy_asset=buy_asset.asset_identification_format,
         sell_amount=sell_amount,
         buy_amount=buy_amount,
         buy_delivery_method=buy_delivery_method,
