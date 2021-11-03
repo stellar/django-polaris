@@ -91,7 +91,9 @@ class MyDepositIntegration(DepositIntegration):
                     "title": _("Asset Selection Form"),
                     "guidance": _(
                         "Please select the asset you would like to "
-                        "provide in order to fund your deposit."
+                        "provide in order to fund your deposit. (This is "
+                        "just for demonstration, you don't need to provide "
+                        "any off-chain asset to receive SRT."
                     ),
                     "icon_label": _("Stellar Development Foundation"),
                 }
