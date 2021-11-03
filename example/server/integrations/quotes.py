@@ -3,7 +3,6 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Union, List, Optional
 
-from django.db.models import Q
 from requests import RequestException
 from rest_framework.request import Request
 

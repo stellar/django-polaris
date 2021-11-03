@@ -7,7 +7,7 @@ from django.utils.translation import gettext as _
 from rest_framework.request import Request
 
 from polaris.integrations import WithdrawalIntegration, calculate_fee
-from polaris.models import Transaction, Asset, Quote, OffChainAsset
+from polaris.models import Transaction, Asset, Quote
 from polaris.sep10.token import SEP10Token
 from polaris.sep38.utils import asset_id_format
 from polaris.templates import Template
