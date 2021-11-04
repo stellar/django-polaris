@@ -13,7 +13,6 @@ from polaris.integrations import registered_quote_integration as rqi
 from polaris.utils import render_error_response, getLogger
 from polaris.models import DeliveryMethod
 from polaris.sep38.utils import (
-    asset_id_format,
     get_buy_assets,
     get_sell_asset,
     get_buy_asset,
@@ -96,7 +95,7 @@ def get_prices(token: SEP10Token, request: Request) -> Response:
         price = prices[idx]
         buy_assets.append(
             {
-                "asset": asset_id_format(buy_asset),
+                "asset": buy_asset.asset_identification_format,
                 "price": str(
                     round(price, request_data["sell_asset"].significant_decimals)
                 ),

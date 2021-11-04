@@ -6,7 +6,6 @@ from datetime import datetime
 from polaris.tests.helpers import mock_check_auth_success
 from polaris.models import Transaction, Quote
 from polaris.sep31.serializers import SEP31TransactionSerializer
-from polaris.sep38.utils import asset_id_format
 
 
 endpoint = "/sep31/transactions/"
@@ -30,11 +29,11 @@ def test_successful_call(client, acc1_usd_deposit_transaction_factory):
         id=str(uuid.uuid4()),
         stellar_account=transaction.stellar_account,
         type=Quote.TYPE.indicative,
-        sell_asset=asset_id_format(transaction.asset),
+        sell_asset=transaction.asset.asset_identification_format,
         buy_asset="iso4217:USD",
         sell_amount=transaction.amount_in,
     )
-    transaction.fee_asset = asset_id_format(transaction.asset)
+    transaction.fee_asset = transaction.asset.asset_identification_format
     transaction.save()
     response = client.get(endpoint + str(transaction.id))
     serialization = {"transaction": SEP31TransactionSerializer(transaction).data}

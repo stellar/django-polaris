@@ -35,7 +35,7 @@ def test_info(client):
 
     expected_usd_stellar = {"asset": f"stellar:{usd_stellar.code}:{usd_stellar.issuer}"}
     expected_brl_offchain = {
-        "asset": brl_offchain.asset,
+        "asset": brl_offchain.asset_identification_format,
         "sell_delivery_methods": [
             {"name": "cash_dropoff", "description": "cash drop-off"}
         ],
@@ -47,7 +47,7 @@ def test_info(client):
     for a in body["assets"]:
         if a["asset"] == expected_usd_stellar["asset"]:
             assert a == expected_usd_stellar, (a, expected_usd_stellar)
-        elif a["asset"] == brl_offchain.asset:
+        elif a["asset"] == brl_offchain.asset_identification_format:
             assert a == expected_brl_offchain, (a, expected_brl_offchain)
         else:
             raise ValueError(f"unexpected asset: {a}")

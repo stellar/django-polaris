@@ -84,7 +84,7 @@ class MySEP31ReceiverIntegration(SEP31ReceiverIntegration):
             ),
             transaction.asset.significant_decimals,
         )
-        transaction.fee_asset = asset_id_format(params["asset"])
+        transaction.fee_asset = params["asset"].asset_identification_format
         if not transaction.quote:
             transaction.amount_out = round(
                 transaction.amount_in - transaction.amount_fee,

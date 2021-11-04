@@ -81,7 +81,7 @@ class OffChainAssetSerializer(serializers.ModelSerializer):
 
     @staticmethod
     def get_asset(instance):
-        return instance.asset
+        return instance.asset_identification_format
 
     @staticmethod
     def get_country_codes(instance):

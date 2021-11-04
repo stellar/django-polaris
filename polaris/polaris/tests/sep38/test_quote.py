@@ -9,7 +9,6 @@ from decimal import Decimal
 
 from stellar_sdk import Keypair
 
-from polaris.sep38.utils import asset_id_format
 from polaris.sep38.quote import validate_quote_provided
 from polaris.tests.helpers import mock_check_auth_success
 from polaris.models import DeliveryMethod, Asset, OffChainAsset, ExchangePair, Quote
@@ -41,7 +40,8 @@ def default_data():
     ]
     brl_offchain.delivery_methods.add(*delivery_methods)
     pair = ExchangePair.objects.create(
-        buy_asset=asset_id_format(brl_offchain), sell_asset=asset_id_format(usd_stellar)
+        buy_asset=brl_offchain.asset_identification_format,
+        sell_asset=usd_stellar.asset_identification_format,
     )
     return {
         "stellar_assets": [usd_stellar],
@@ -74,8 +74,8 @@ def test_post_quote_success_no_optional_params(mock_rqi, client):
         ENDPOINT,
         json.dumps(
             {
-                "sell_asset": asset_id_format(data["stellar_assets"][0]),
-                "buy_asset": asset_id_format(data["offchain_assets"][0]),
+                "sell_asset": data["stellar_assets"][0].asset_identification_format,
+                "buy_asset": data["offchain_assets"][0].asset_identification_format,
                 "buy_amount": 100,
                 "buy_delivery_method": "cash_pickup",
             }
@@ -90,8 +90,8 @@ def test_post_quote_success_no_optional_params(mock_rqi, client):
         "price": "2.12",
         "buy_amount": "100.00",
         "sell_amount": "212.00",
-        "sell_asset": asset_id_format(data["stellar_assets"][0]),
-        "buy_asset": asset_id_format(data["offchain_assets"][0]),
+        "sell_asset": data["stellar_assets"][0].asset_identification_format,
+        "buy_asset": data["offchain_assets"][0].asset_identification_format,
     }
     q = Quote.objects.get(id=quote_id)
     assert q
@@ -124,9 +124,9 @@ def test_post_quote_success_country_code_buy_delivery_method_expire_after(
     response = client.post(
         ENDPOINT,
         {
-            "sell_asset": asset_id_format(data["stellar_assets"][0]),
+            "sell_asset": data["stellar_assets"][0].asset_identification_format,
             "sell_amount": 100,
-            "buy_asset": asset_id_format(data["offchain_assets"][0]),
+            "buy_asset": data["offchain_assets"][0].asset_identification_format,
             "country_code": "BRA",
             "buy_delivery_method": "cash_pickup",
             "expire_after": expire_after.strftime(DATETIME_FORMAT),
@@ -141,8 +141,8 @@ def test_post_quote_success_country_code_buy_delivery_method_expire_after(
         "price": "2.12",
         "sell_amount": "100.00",
         "buy_amount": str(round(Decimal(100) / Decimal("2.12"), 2)),
-        "sell_asset": asset_id_format(data["stellar_assets"][0]),
-        "buy_asset": asset_id_format(data["offchain_assets"][0]),
+        "sell_asset": data["stellar_assets"][0].asset_identification_format,
+        "buy_asset": data["offchain_assets"][0].asset_identification_format,
     }
     assert Quote.objects.get(id=quote_id)
 
@@ -173,8 +173,8 @@ def test_post_quote_success_country_code_sell_delivery_method(mock_rqi, client):
     response = client.post(
         ENDPOINT,
         {
-            "sell_asset": asset_id_format(data["offchain_assets"][0]),
-            "buy_asset": asset_id_format(data["stellar_assets"][0]),
+            "sell_asset": data["offchain_assets"][0].asset_identification_format,
+            "buy_asset": data["stellar_assets"][0].asset_identification_format,
             "buy_amount": 100,
             "country_code": "BRA",
             "sell_delivery_method": "cash_dropoff",
@@ -189,8 +189,8 @@ def test_post_quote_success_country_code_sell_delivery_method(mock_rqi, client):
         "price": "2.12",
         "buy_amount": "100.00",
         "sell_amount": "212.00",
-        "buy_asset": asset_id_format(data["stellar_assets"][0]),
-        "sell_asset": asset_id_format(data["offchain_assets"][0]),
+        "buy_asset": data["stellar_assets"][0].asset_identification_format,
+        "sell_asset": data["offchain_assets"][0].asset_identification_format,
     }
     assert Quote.objects.get(id=quote_id)
 
@@ -220,9 +220,9 @@ def test_post_quote_success_no_optional_params_swap_exchange_pair(mock_rqi, clie
     response = client.post(
         ENDPOINT,
         {
-            "sell_asset": asset_id_format(data["offchain_assets"][0]),
+            "sell_asset": data["offchain_assets"][0].asset_identification_format,
             "sell_amount": 100,
-            "buy_asset": asset_id_format(data["stellar_assets"][0]),
+            "buy_asset": data["stellar_assets"][0].asset_identification_format,
             "sell_delivery_method": "cash_dropoff",
         },
         content_type="application/json",
@@ -235,8 +235,8 @@ def test_post_quote_success_no_optional_params_swap_exchange_pair(mock_rqi, clie
         "price": "2.12",
         "sell_amount": "100.00",
         "buy_amount": str(round(Decimal(100) / Decimal("2.12"), 2)),
-        "buy_asset": asset_id_format(data["stellar_assets"][0]),
-        "sell_asset": asset_id_format(data["offchain_assets"][0]),
+        "buy_asset": data["stellar_assets"][0].asset_identification_format,
+        "sell_asset": data["offchain_assets"][0].asset_identification_format,
     }
     assert Quote.objects.get(id=quote_id)
 
@@ -251,8 +251,8 @@ def test_post_quote_failure_both_amounts(mock_rqi, client):
         ENDPOINT,
         json.dumps(
             {
-                "sell_asset": asset_id_format(data["stellar_assets"][0]),
-                "buy_asset": asset_id_format(data["offchain_assets"][0]),
+                "sell_asset": data["stellar_assets"][0].asset_identification_format,
+                "buy_asset": data["offchain_assets"][0].asset_identification_format,
                 "buy_amount": 100,
                 "sell_amount": 100,
                 "buy_delivery_method": "cash_pickup",
@@ -275,8 +275,8 @@ def test_post_quote_failure_no_exchange_pairs(mock_rqi, client):
     response = client.post(
         ENDPOINT,
         {
-            "sell_asset": asset_id_format(data["offchain_assets"][0]),
-            "buy_asset": asset_id_format(data["stellar_assets"][0]),
+            "sell_asset": data["offchain_assets"][0].asset_identification_format,
+            "buy_asset": data["stellar_assets"][0].asset_identification_format,
             "buy_amount": 100,
             "sell_delivery_method": "cash_dropoff",
         },
@@ -296,7 +296,7 @@ def test_post_quote_failure_missing_sell_asset(mock_rqi, client):
         ENDPOINT,
         {
             "sell_amount": 100,
-            "buy_asset": asset_id_format(data["offchain_assets"][0]),
+            "buy_asset": data["offchain_assets"][0].asset_identification_format,
             "buy_delivery_method": "cash_pickup",
         },
         content_type="application/json",
@@ -316,7 +316,7 @@ def test_post_quote_failure_missing_buy_asset(mock_rqi, client):
     response = client.post(
         ENDPOINT,
         {
-            "sell_asset": asset_id_format(data["stellar_assets"][0]),
+            "sell_asset": data["stellar_assets"][0].asset_identification_format,
             "buy_amount": 100,
             "buy_delivery_method": "cash_pickup",
         },
@@ -337,9 +337,9 @@ def test_post_quote_failure_both_delivery_methods(mock_rqi, client):
     response = client.post(
         ENDPOINT,
         {
-            "sell_asset": asset_id_format(data["stellar_assets"][0]),
+            "sell_asset": data["stellar_assets"][0].asset_identification_format,
             "sell_amount": 100,
-            "buy_asset": asset_id_format(data["offchain_assets"][0]),
+            "buy_asset": data["offchain_assets"][0].asset_identification_format,
             "buy_delivery_method": "cash_pickup",
             "sell_delivery_method": "cash_dropoff",
         },
@@ -360,9 +360,9 @@ def test_post_quote_failure_sell_stellar_with_sell_delivery_method(mock_rqi, cli
     response = client.post(
         ENDPOINT,
         {
-            "sell_asset": asset_id_format(data["stellar_assets"][0]),
+            "sell_asset": data["stellar_assets"][0].asset_identification_format,
             "sell_amount": 100,
-            "buy_asset": asset_id_format(data["offchain_assets"][0]),
+            "buy_asset": data["offchain_assets"][0].asset_identification_format,
             "sell_delivery_method": "cash_dropoff",
         },
         content_type="application/json",
@@ -388,8 +388,8 @@ def test_post_quote_failure_sell_offchain_with_buy_delivery_method(mock_rqi, cli
     response = client.post(
         ENDPOINT,
         {
-            "sell_asset": asset_id_format(data["offchain_assets"][0]),
-            "buy_asset": asset_id_format(data["stellar_assets"][0]),
+            "sell_asset": data["offchain_assets"][0].asset_identification_format,
+            "buy_asset": data["stellar_assets"][0].asset_identification_format,
             "buy_amount": 100,
             "buy_delivery_method": "cash_pickup",
         },
@@ -411,7 +411,7 @@ def test_post_quote_failure_bad_sell_stellar_format(mock_rqi, client):
         ENDPOINT,
         {
             "sell_asset": f"stellar:USDC",
-            "buy_asset": asset_id_format(data["offchain_assets"][0]),
+            "buy_asset": data["offchain_assets"][0].asset_identification_format,
             "buy_amount": 100,
             "buy_delivery_method": "cash_pickup",
         },
@@ -431,7 +431,7 @@ def test_post_quote_failure_bad_buy_stellar_format(mock_rqi, client):
         ENDPOINT,
         {
             "buy_asset": f"stellar:USDC",
-            "sell_asset": asset_id_format(data["offchain_assets"][0]),
+            "sell_asset": data["offchain_assets"][0].asset_identification_format,
             "sell_amount": 100,
             "sell_delivery_method": "cash_dropoff",
         },
@@ -452,7 +452,7 @@ def test_post_quote_failure_bad_sell_offchain_format(mock_rqi, client):
         {
             "sell_asset": f"USD",
             "sell_amount": 100,
-            "buy_asset": asset_id_format(data["stellar_assets"][0]),
+            "buy_asset": data["stellar_assets"][0].asset_identification_format,
             "sell_delivery_method": "cash_dropoff",
         },
         content_type="application/json",
@@ -472,7 +472,7 @@ def test_post_quote_failure_bad_buy_offchain_format(mock_rqi, client):
         {
             "buy_asset": f"USD",
             "buy_amount": 100,
-            "sell_asset": asset_id_format(data["offchain_assets"][0]),
+            "sell_asset": data["offchain_assets"][0].asset_identification_format,
             "sell_delivery_method": "cash_dropoff",
         },
         content_type="application/json",
@@ -494,8 +494,8 @@ def test_post_quote_failure_stellar_asset_not_found(mock_rqi, client):
     response = client.post(
         ENDPOINT,
         {
-            "sell_asset": asset_id_format(data["stellar_assets"][0]),
-            "buy_asset": asset_id_format(data["offchain_assets"][0]),
+            "sell_asset": data["stellar_assets"][0].asset_identification_format,
+            "buy_asset": data["offchain_assets"][0].asset_identification_format,
             "buy_amount": 100,
             "buy_delivery_method": "cash_dropoff",
         },
@@ -524,8 +524,8 @@ def test_post_quote_failure_offchain_asset_not_found(mock_rqi, client):
     response = client.post(
         ENDPOINT,
         {
-            "sell_asset": asset_id_format(data["offchain_assets"][0]),
-            "buy_asset": asset_id_format(data["stellar_assets"][0]),
+            "sell_asset": data["offchain_assets"][0].asset_identification_format,
+            "buy_asset": data["stellar_assets"][0].asset_identification_format,
             "buy_amount": 100,
             "sell_delivery_method": "cash_dropoff",
         },
@@ -547,8 +547,8 @@ def test_post_quote_failure_bad_buy_delivery_method(mock_rqi, client):
     response = client.post(
         ENDPOINT,
         {
-            "sell_asset": asset_id_format(data["stellar_assets"][0]),
-            "buy_asset": asset_id_format(data["offchain_assets"][0]),
+            "sell_asset": data["stellar_assets"][0].asset_identification_format,
+            "buy_asset": data["offchain_assets"][0].asset_identification_format,
             "buy_amount": 100,
             "buy_delivery_method": "bad_delivery_method",
         },
@@ -570,9 +570,9 @@ def test_post_quote_failure_bad_country_code(mock_rqi, client):
     response = client.post(
         ENDPOINT,
         {
-            "sell_asset": asset_id_format(data["stellar_assets"][0]),
+            "sell_asset": data["stellar_assets"][0].asset_identification_format,
             "sell_amount": 100,
-            "buy_asset": asset_id_format(data["offchain_assets"][0]),
+            "buy_asset": data["offchain_assets"][0].asset_identification_format,
             "country_code": "TEST",
             "buy_delivery_method": "cash_pickup",
         },
@@ -598,8 +598,8 @@ def test_post_quote_failure_bad_sell_delivery_method(mock_rqi, client):
     response = client.post(
         ENDPOINT,
         {
-            "sell_asset": asset_id_format(data["offchain_assets"][0]),
-            "buy_asset": asset_id_format(data["stellar_assets"][0]),
+            "sell_asset": data["offchain_assets"][0].asset_identification_format,
+            "buy_asset": data["stellar_assets"][0].asset_identification_format,
             "buy_amount": 100,
             "sell_delivery_method": "bad_delivery_method",
         },
@@ -621,9 +621,9 @@ def test_post_quote_failure_bad_sell_amount(mock_rqi, client):
     response = client.post(
         ENDPOINT,
         {
-            "sell_asset": asset_id_format(data["stellar_assets"][0]),
+            "sell_asset": data["stellar_assets"][0].asset_identification_format,
             "sell_amount": "test",
-            "buy_asset": asset_id_format(data["offchain_assets"][0]),
+            "buy_asset": data["offchain_assets"][0].asset_identification_format,
             "buy_delivery_method": "cash_pickup",
         },
         content_type="application/json",
@@ -644,8 +644,8 @@ def test_post_quote_failure_bad_buy_amount(mock_rqi, client):
     response = client.post(
         ENDPOINT,
         {
-            "sell_asset": asset_id_format(data["stellar_assets"][0]),
-            "buy_asset": asset_id_format(data["offchain_assets"][0]),
+            "sell_asset": data["stellar_assets"][0].asset_identification_format,
+            "buy_asset": data["offchain_assets"][0].asset_identification_format,
             "buy_amount": "test",
             "buy_delivery_method": "cash_pickup",
         },
@@ -667,8 +667,8 @@ def test_post_quote_failure_bad_expires_at(mock_rqi, client):
     response = client.post(
         ENDPOINT,
         {
-            "sell_asset": asset_id_format(data["stellar_assets"][0]),
-            "buy_asset": asset_id_format(data["offchain_assets"][0]),
+            "sell_asset": data["stellar_assets"][0].asset_identification_format,
+            "buy_asset": data["offchain_assets"][0].asset_identification_format,
             "buy_amount": 100,
             "expire_after": "test",
             "buy_delivery_method": "cash_pickup",
@@ -691,9 +691,9 @@ def test_post_quote_failure_expires_at_in_past(mock_rqi, client):
     response = client.post(
         ENDPOINT,
         {
-            "sell_asset": asset_id_format(data["stellar_assets"][0]),
+            "sell_asset": data["stellar_assets"][0].asset_identification_format,
             "sell_amount": 100,
-            "buy_asset": asset_id_format(data["offchain_assets"][0]),
+            "buy_asset": data["offchain_assets"][0].asset_identification_format,
             "expire_after": (datetime.now(timezone.utc) - timedelta(hours=1)).strftime(
                 DATETIME_FORMAT
             ),
@@ -718,9 +718,9 @@ def test_post_quote_failure_anchor_raises_value_error(mock_rqi, client):
     response = client.post(
         ENDPOINT,
         {
-            "sell_asset": asset_id_format(data["stellar_assets"][0]),
+            "sell_asset": data["stellar_assets"][0].asset_identification_format,
             "sell_amount": 100,
-            "buy_asset": asset_id_format(data["offchain_assets"][0]),
+            "buy_asset": data["offchain_assets"][0].asset_identification_format,
             "buy_delivery_method": "cash_pickup",
         },
         content_type="application/json",
@@ -744,8 +744,8 @@ def test_post_quote_failure_anchor_raises_runtime_error(mock_rqi, client):
     response = client.post(
         ENDPOINT,
         {
-            "sell_asset": asset_id_format(data["stellar_assets"][0]),
-            "buy_asset": asset_id_format(data["offchain_assets"][0]),
+            "sell_asset": data["stellar_assets"][0].asset_identification_format,
+            "buy_asset": data["offchain_assets"][0].asset_identification_format,
             "buy_amount": 100,
             "buy_delivery_method": "cash_pickup",
         },
@@ -771,9 +771,9 @@ def test_post_quote_failure_anchor_raises_unexpected_error(mock_rqi, client):
         client.post(
             ENDPOINT,
             {
-                "sell_asset": asset_id_format(data["stellar_assets"][0]),
+                "sell_asset": data["stellar_assets"][0].asset_identification_format,
                 "sell_amount": 100,
-                "buy_asset": asset_id_format(data["offchain_assets"][0]),
+                "buy_asset": data["offchain_assets"][0].asset_identification_format,
                 "buy_delivery_method": "cash_pickup",
             },
             content_type="application/json",
@@ -795,8 +795,8 @@ def test_post_quote_failure_anchor_provides_bad_quote(mock_rqi, client):
     response = client.post(
         ENDPOINT,
         {
-            "sell_asset": asset_id_format(data["stellar_assets"][0]),
-            "buy_asset": asset_id_format(data["offchain_assets"][0]),
+            "sell_asset": data["stellar_assets"][0].asset_identification_format,
+            "buy_asset": data["offchain_assets"][0].asset_identification_format,
             "buy_amount": 100,
             "buy_delivery_method": "cash_pickup",
         },
@@ -1170,8 +1170,8 @@ def test_get_quote_success(client):
     data = default_data()
     quote = Quote.objects.create(
         type=Quote.TYPE.firm,
-        buy_asset=asset_id_format(data["offchain_assets"][0]),
-        sell_asset=asset_id_format(data["stellar_assets"][0]),
+        buy_asset=data["offchain_assets"][0].asset_identification_format,
+        sell_asset=data["stellar_assets"][0].asset_identification_format,
         buy_amount=Decimal(100),
         sell_amount=Decimal(100),
         price=Decimal("2.12"),
@@ -1183,8 +1183,8 @@ def test_get_quote_success(client):
     assert response.json() == {
         "id": str(quote.id),
         "expires_at": quote.expires_at.strftime(DATETIME_FORMAT),
-        "buy_asset": asset_id_format(data["offchain_assets"][0]),
-        "sell_asset": asset_id_format(data["stellar_assets"][0]),
+        "buy_asset": data["offchain_assets"][0].asset_identification_format,
+        "sell_asset": data["stellar_assets"][0].asset_identification_format,
         "price": "2.12",
         "sell_amount": "100.00",
         "buy_amount": "100.00",

@@ -45,7 +45,7 @@ class MyDepositIntegration(DepositIntegration):
             else:
                 return SelectAssetForm()
         elif not transaction.amount_in:  # the user hasn't entered the amount to provide
-            if transaction.fee_asset == asset_id_format(transaction.asset):
+            if transaction.fee_asset == transaction.asset.asset_identification_format:
                 if post_data:
                     return TransactionForm(transaction, post_data)
                 else:
@@ -203,8 +203,8 @@ class MyDepositIntegration(DepositIntegration):
                 account_memo=transaction.account_memo,
                 muxed_account=transaction.muxed_account,
                 price=price,
-                sell_asset=offchain_asset_extra.offchain_asset.asset,
-                buy_asset=asset_id_format(transaction.asset),
+                sell_asset=offchain_asset_extra.offchain_asset.asset_identification_format,
+                buy_asset=transaction.asset.asset_identification_format,
                 sell_amount=transaction.amount_in,
                 buy_amount=round(
                     transaction.amount_in / price,
@@ -286,7 +286,7 @@ class MyDepositIntegration(DepositIntegration):
                 offchain_asset=params["source_asset"]
             )
             transaction.amount_in = params["amount"]
-            transaction.fee_asset = asset_id_format(params["source_asset"])
+            transaction.fee_asset = params["source_asset"].asset_identification_format
             if transaction.quote.type == Quote.TYPE.firm:
                 transaction.amount_fee = round(
                     offchain_asset_extra.fee_fixed
