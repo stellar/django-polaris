@@ -85,7 +85,10 @@ class OffChainAssetSerializer(serializers.ModelSerializer):
 
     @staticmethod
     def get_country_codes(instance):
-        return [cc.strip() for cc in instance.country_codes.split(",")]
+        if instance.country_codes:
+            return [cc.strip() for cc in instance.country_codes.split(",")]
+        else:
+            return []
 
     @staticmethod
     def get_sell_delivery_methods(instance):
