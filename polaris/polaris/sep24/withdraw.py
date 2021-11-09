@@ -411,10 +411,9 @@ def withdraw(token: SEP10Token, request: Request,) -> Response:
             # specified in the request.
             return render_error_response(str(e))
         except NotImplementedError:
-            return render_error_response(
-                "passing SEP-9 fields in withdraw requests is not supported",
-                status_code=501,
-            )
+            # the KYC info passed via SEP-9 fields can be ignored if the anchor
+            # wants to re-collect the information
+            pass
 
     transaction_id = create_transaction_id()
     Transaction.objects.create(

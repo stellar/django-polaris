@@ -419,10 +419,9 @@ def deposit(token: SEP10Token, request: Request) -> Response:
             # specified in the request.
             return render_error_response(str(e))
         except NotImplementedError:
-            return render_error_response(
-                "passing SEP-9 fields in deposit requests is not supported",
-                status_code=501,
-            )
+            # the KYC info passed via SEP-9 fields can be ignored if the anchor
+            # wants to re-collect the information
+            pass
 
     # Construct interactive deposit pop-up URL.
     transaction_id = create_transaction_id()
