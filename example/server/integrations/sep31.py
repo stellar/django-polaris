@@ -7,7 +7,6 @@ from rest_framework.request import Request
 from polaris.integrations import SEP31ReceiverIntegration
 from polaris.models import Asset, Transaction
 from polaris.sep10.token import SEP10Token
-from polaris.sep38.utils import asset_id_format
 
 from ..models import PolarisUser, PolarisUserTransaction
 
