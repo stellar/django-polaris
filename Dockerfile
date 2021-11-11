@@ -1,12 +1,12 @@
 # Python version
-FROM python:3.7-alpine
+FROM python:3.7
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 
 # Install system dependencies
-RUN apk update && apk add build-base postgresql-dev postgresql-client libffi-dev python3-dev cargo gettext-dev curl
+RUN apt-get update && apt-get install -y build-essential libssl-dev libffi-dev python3-dev cargo postgresql postgresql-client gettext curl
 
 # Copy files to working directory
 RUN mkdir /code /code/polaris /code/data
