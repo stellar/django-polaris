@@ -6,7 +6,7 @@ with open("README.rst") as f:
 
 setup(
     name="django-polaris",
-    version="2.0.0",
+    version="2.1.0",
     description="An extendable Django server for Stellar Ecosystem Proposals",
     long_description=long_description,
     long_description_content_type="text/x-rst",
@@ -45,9 +45,9 @@ setup(
         "django-model-utils>=4.1,<5.0",
         "djangorestframework<4.0,>=3.12",
         "whitenoise>=5.3,<6.0",
-        "stellar-sdk>=5.0.1,<6.0",
-        "aiohttp>=3.7,<4",
-        "django-cors-headers>=3.7,<4.0",
+        "stellar-sdk<6.0,>=5.0.1",
+        "aiohttp<4,>=3.7",
+        "django-cors-headers<4.0,>=3.7",
         "toml",
         "pyjwt<3.0,>=2.1",
         "cryptography<4.0,>=3.4",
