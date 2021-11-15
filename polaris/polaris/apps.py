@@ -12,9 +12,15 @@ class PolarisConfig(AppConfig):
         """
         Initialize the app
         """
+        from decimal import setcontext, DefaultContext
         from polaris import settings  # loads internal settings
         from polaris import cors  # loads CORS signals
         from polaris.sep24.utils import check_sep24_config
+
+        # Set in-memory precision to match database-level precision
+        # https://adamj.eu/tech/2020/03/23/setting-pythons-decimal-context-for-all-threads/#in-django
+        DefaultContext.prec = 30
+        setcontext(DefaultContext)
 
         self.check_middleware()
         self.check_protocol()
