@@ -155,6 +155,13 @@ def authenticate_session_helper(r: Request):
     except KeyError:
         r.session["transactions"] = [jwt_dict["jti"]]
 
+    # persists the session, generating r.session.session_key
+    #
+    # this session key is passed to the rendered views and
+    # used in client-side JavaScript in requests to the server
+    if not r.session.session_key:
+        r.session.create()
+
 
 def check_authentication_helper(r: Request):
     """
