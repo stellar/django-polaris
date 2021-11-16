@@ -180,7 +180,7 @@ def parse_request_args(
 
     try:
         make_memo(request.GET.get("memo"), memo_type)
-    except (ValueError, MemoInvalidException):
+    except (ValueError, TypeError, MemoInvalidException):
         return {"error": render_error_response(_("invalid 'memo' for 'memo_type'"))}
 
     if not request.GET.get("type"):

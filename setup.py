@@ -45,7 +45,7 @@ setup(
         "django-model-utils>=4.1,<5.0",
         "djangorestframework<4.0,>=3.12",
         "whitenoise>=5.3,<6.0",
-        "stellar-sdk<6.0,>=5.0.1",
+        "stellar-sdk>=6.0.1,<7.0.0",
         "aiohttp<4,>=3.7",
         "django-cors-headers<4.0,>=3.7",
         "toml",

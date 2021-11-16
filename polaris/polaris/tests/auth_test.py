@@ -68,7 +68,7 @@ def test_auth_get_success(client):
 
     tx_hash = envelope_object.hash()
     server_public_key = Keypair.from_public_key(settings.SIGNING_KEY)
-    server_public_key.verify(tx_hash, signatures[0].signature.signature)
+    server_public_key.verify(tx_hash, signatures[0].signature)
 
 
 @patch(
@@ -120,7 +120,7 @@ def test_auth_get_client_attribution_success(client):
 
     tx_hash = envelope_object.hash()
     server_public_key = Keypair.from_public_key(settings.SIGNING_KEY)
-    server_public_key.verify(tx_hash, signatures[0].signature.signature)
+    server_public_key.verify(tx_hash, signatures[0].signature)
 
 
 auth_str = "Bearer {}"
