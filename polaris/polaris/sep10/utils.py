@@ -13,7 +13,7 @@ def check_auth(request, func, *args, **kwargs):
     """
     try:
         token = validate_jwt_request(request)
-    except ValueError as e:
+    except (ValueError, TypeError) as e:
         if "sep6/" in request.path:
             return Response({"type": "authentication_required"}, status=403)
         else:

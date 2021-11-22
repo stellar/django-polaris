@@ -9,7 +9,6 @@ from stellar_sdk.strkey import StrKey
 from stellar_sdk.exceptions import (
     Ed25519PublicKeyInvalidError,
     MuxedEd25519AccountInvalidError,
-    ValueError as StellarSdkValueError,
 )
 
 from polaris import settings
@@ -46,7 +45,7 @@ class SEP10Token:
         if jwt["sub"].startswith("M"):
             try:
                 StrKey.decode_muxed_account(jwt["sub"])
-            except (MuxedEd25519AccountInvalidError, StellarSdkValueError):
+            except (MuxedEd25519AccountInvalidError, ValueError):
                 raise ValueError(f"invalid muxed account address: {jwt['sub']}")
         elif ":" in jwt["sub"]:
             try:
