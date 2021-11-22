@@ -23,7 +23,7 @@ from stellar_sdk.operation import (
     PathPaymentStrictReceive,
     PathPaymentStrictSend,
 )
-from stellar_sdk.server import Server
+from stellar_sdk.server_async import ServerAsync
 from stellar_sdk.client.aiohttp_client import AiohttpClient
 
 from polaris import settings
@@ -72,7 +72,7 @@ class Command(BaseCommand):
         """
         Stream transactions for the server Stellar address.
         """
-        async with Server(settings.HORIZON_URI, client=AiohttpClient()) as server:
+        async with ServerAsync(settings.HORIZON_URI, client=AiohttpClient()) as server:
             try:
                 # Ensure the distribution account actually exists
                 await server.load_account(account)

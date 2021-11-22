@@ -20,7 +20,7 @@ from django.utils.encoding import force_bytes
 from django.utils.translation import gettext_lazy as _
 from model_utils import Choices
 from model_utils.models import TimeStampedModel
-from stellar_sdk import Server
+from stellar_sdk.server_async import ServerAsync
 from stellar_sdk.client.aiohttp_client import AiohttpClient
 from stellar_sdk.exceptions import SdkError
 from stellar_sdk.keypair import Keypair
@@ -287,7 +287,9 @@ class Asset(TimeStampedModel):
 
     async def get_distribution_account_data_async(self, refresh=False):
         if refresh or self.distribution_account not in ASSET_DISTRIBUTION_ACCOUNT_MAP:
-            async with Server(settings.HORIZON_URI, client=AiohttpClient()) as server:
+            async with ServerAsync(
+                settings.HORIZON_URI, client=AiohttpClient()
+            ) as server:
                 account_json = (
                     await server.accounts().account_id(self.distribution_account).call()
                 )
