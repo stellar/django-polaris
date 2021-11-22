@@ -690,7 +690,9 @@ class PendingDeposits:
         )
         payment_op_kwargs = {
             "destination": transaction.to_address,
-            "asset": Asset(code=transaction.asset.code, issuer=transaction.asset.issuer),
+            "asset": Asset(
+                code=transaction.asset.code, issuer=transaction.asset.issuer
+            ),
             "amount": str(payment_amount),
             "source": transaction.asset.distribution_account,
         }

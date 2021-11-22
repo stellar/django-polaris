@@ -8,7 +8,7 @@ from stellar_sdk import Keypair, MuxedAccount
 from stellar_sdk.strkey import StrKey
 from stellar_sdk.exceptions import (
     Ed25519PublicKeyInvalidError,
-    MuxedEd25519AccountInvalidError
+    MuxedEd25519AccountInvalidError,
 )
 
 from polaris import settings
