@@ -221,7 +221,8 @@ class Command(BaseCommand):
                 # halve the base_fee because there are 2 operations
                 tb.base_fee = tb.base_fee // 2
             tb.append_change_trust_op(
-                asset=StellarSdkAsset(code=code, issuer=issuer.public_key), source=dest.public_key
+                asset=StellarSdkAsset(code=code, issuer=issuer.public_key),
+                source=dest.public_key,
             )
             payment_amount = amount
         elif Decimal(balance) < amount:

@@ -162,7 +162,9 @@ def memo_str(memo: Optional[Memo]) -> Tuple[Optional[str], Optional[str]]:
         raise ValueError()
 
 
-def make_memo(memo: Optional[str], memo_type: Optional[str]) -> Optional[Union[TextMemo, HashMemo, IdMemo]]:
+def make_memo(
+    memo: Optional[str], memo_type: Optional[str]
+) -> Optional[Union[TextMemo, HashMemo, IdMemo]]:
     if not (memo or memo_type):
         return None
     if memo_type == Transaction.MEMO_TYPES.id:
