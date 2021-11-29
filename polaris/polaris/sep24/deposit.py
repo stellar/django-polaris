@@ -1,3 +1,5 @@
+import pytz
+from datetime import datetime
 from decimal import Decimal, DecimalException
 from urllib.parse import urlencode
 
@@ -5,6 +7,7 @@ from django.urls import reverse
 from django.shortcuts import redirect
 from django.views.decorators.clickjacking import xframe_options_exempt
 from django.utils.translation import gettext as _
+from django.conf import settings as django_settings
 
 from rest_framework import status
 from rest_framework.decorators import api_view, renderer_classes, parser_classes
@@ -41,6 +44,7 @@ from polaris.sep24.utils import (
     authenticate_session,
     invalidate_session,
     interactive_args_validation,
+    get_timezone_utc_offset,
 )
 from polaris.models import Asset, Transaction
 from polaris.integrations.forms import TransactionForm
@@ -207,15 +211,24 @@ def post_interactive_deposit(request: Request) -> Response:
         if amount:
             url_args["amount"] = amount
 
+        current_offset = get_timezone_utc_offset(
+            request.session.get("timezone") or django_settings.TIME_ZONE
+        )
+        toml_data = registered_toml_func(request=request)
         post_url = f"{reverse('post_interactive_deposit')}?{urlencode(url_args)}"
         content = {
             "form": form,
             "post_url": post_url,
             "operation": settings.OPERATION_DEPOSIT,
             "asset": asset,
+            "symbol": asset.symbol,
             "show_fee_table": isinstance(form, TransactionForm),
             "use_fee_endpoint": registered_fee_func != calculate_fee,
             "additive_fees_enabled": settings.ADDITIVE_FEES_ENABLED,
+            "org_logo_url": toml_data.get("DOCUMENTATION", {}).get("ORG_LOGO"),
+            "timezone_endpoint": reverse("tzinfo"),
+            "session_id": request.session.session_key,
+            "current_offset": current_offset,
             **content_from_anchor,
         }
         return Response(
@@ -336,6 +349,9 @@ def get_interactive_deposit(request: Request) -> Response:
     if amount:
         url_args["amount"] = amount
 
+    current_offset = get_timezone_utc_offset(
+        request.session.get("timezone") or django_settings.TIME_ZONE
+    )
     toml_data = registered_toml_func(request=request)
     post_url = f"{reverse('post_interactive_deposit')}?{urlencode(url_args)}"
     content = {
@@ -348,6 +364,9 @@ def get_interactive_deposit(request: Request) -> Response:
         "use_fee_endpoint": registered_fee_func != calculate_fee,
         "org_logo_url": toml_data.get("DOCUMENTATION", {}).get("ORG_LOGO"),
         "additive_fees_enabled": settings.ADDITIVE_FEES_ENABLED,
+        "timezone_endpoint": reverse("tzinfo"),
+        "session_id": request.session.session_key,
+        "current_offset": current_offset,
         **content_from_anchor,
     }
 

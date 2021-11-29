@@ -1,18 +1,20 @@
 import json
 from decimal import Decimal, DecimalException
 
+from django.urls import reverse
 from rest_framework import status
 from rest_framework.request import Request
 from rest_framework.response import Response
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from django.utils.translation import gettext as _
+from django.conf import settings as django_settings
 
 from polaris import settings as polaris_settings
 from polaris.templates import Template
 from polaris.utils import render_error_response, getLogger
 from polaris.models import Transaction, Asset, OffChainAsset
 from polaris.integrations import registered_fee_func
-from polaris.sep24.utils import verify_valid_asset_operation
+from polaris.sep24.utils import verify_valid_asset_operation, get_timezone_utc_offset
 from polaris.shared.serializers import TransactionSerializer
 from polaris.integrations import (
     registered_deposit_integration as rdi,
@@ -37,6 +39,19 @@ def more_info(request: Request, sep6: bool = False) -> Response:
             content_type="text/html",
         )
 
+    current_offset = get_timezone_utc_offset(
+        request.session.get("timezone") or django_settings.TIME_ZONE
+    )
+    # persists the session, generating r.session.session_key
+    #
+    # this session key is passed to the rendered views and
+    # used in client-side JavaScript in requests to the server
+    if request.session.is_empty():
+        request.session["authenticated"] = False
+    else:
+        request.session.modified = True
+    if not request.session.session_key:
+        request.session.create()
     serializer = TransactionSerializer(
         transaction, context={"request": request, "sep6": sep6}
     )
@@ -62,6 +77,9 @@ def more_info(request: Request, sep6: bool = False) -> Response:
         "price_inversion_significant_decimals": None,
         "exchange_amount": None,
         "exchanged_amount": None,
+        "current_offset": current_offset,
+        "timezone_endpoint": reverse("tzinfo"),
+        "session_id": request.session.session_key,
     }
     if transaction.quote:
         if "deposit" in transaction.kind:

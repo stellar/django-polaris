@@ -21,6 +21,7 @@ django-polaris documentation contents
     CLI commands <deployment/index>
     Multisignature Assets <multisignature_assets/index>
     Shared Accounts <shared_accounts/index>
+    Middleware <middleware/index>
 
 
 Indices and tables

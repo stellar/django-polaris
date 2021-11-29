@@ -1,5 +1,8 @@
 import time
+from datetime import datetime
+
 import jwt
+import pytz
 from jwt import InvalidTokenError, ExpiredSignatureError
 from urllib.parse import urlencode
 from typing import Callable, Dict, Optional
@@ -154,6 +157,13 @@ def authenticate_session_helper(r: Request):
         r.session["transactions"].append(jwt_dict["jti"])
     except KeyError:
         r.session["transactions"] = [jwt_dict["jti"]]
+
+    # persists the session, generating r.session.session_key
+    #
+    # this session key is passed to the rendered views and
+    # used in client-side JavaScript in requests to the server
+    if not r.session.session_key:
+        r.session.create()
 
 
 def check_authentication_helper(r: Request):
@@ -348,3 +358,10 @@ def interactive_url(
     else:
         url_params = f"{reverse('get_interactive_deposit')}?{qparams}"
     return request.build_absolute_uri(url_params)
+
+
+def get_timezone_utc_offset(timezone) -> int:
+    return round(
+        datetime.now().astimezone(pytz.timezone(timezone)).utcoffset().total_seconds()
+        / 60
+    )

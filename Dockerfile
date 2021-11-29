@@ -18,7 +18,7 @@ COPY ./polaris /code/polaris/
 # environment over matching variables in the .env file, so these
 # variables will be overidden in production, and won't be defined
 # if a .env file already exists.
-RUN if [ ! -f /code/.env ]; then echo $'\
+RUN if [ ! -f /code/.env ]; then echo '\
 SIGNING_SEED=SB4XM7E6ZP4NIQF3UNVMX5O5NH7RGHFHDLIS4Z5U4OMNQ7T4EDNKPVNU\n\
 HOST_URL=https://fake.com\n\
 SERVER_JWT_KEY=notsosecretkey\n\
