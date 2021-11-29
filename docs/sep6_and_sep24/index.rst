@@ -93,12 +93,15 @@ so add the follow environment variable.
 
     SERVER_JWT_KEY="yoursupersecretjwtkey"
 
-``SessionMiddleware`` is required for all SEP-24 deployments.
+``SessionMiddleware`` is required for all SEP-24 deployments. ``TimezoneMiddleware``
+is included in Polaris and ensures Django uses the correct timezone when rendering content
+to the user. If included, it must be added *after* ``SessionMiddleware``.
 ::
 
     MIDDLEWARE = [
         ...,
         'django.contrib.sessions.middleware.SessionMiddleware',
+        'polaris.middleware.TimezoneMiddleware',
         ...
     ]
 
