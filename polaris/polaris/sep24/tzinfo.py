@@ -18,7 +18,9 @@ logger = getLogger(__name__)
 @parser_classes([JSONParser])
 @renderer_classes([JSONRenderer])
 def post_tzinfo(request: Request) -> Response:
-    if not (request.data.get("sessionId") and request.data.get("sessionOffset")):
+    if not (
+        request.data.get("sessionId") and request.data.get("sessionOffset") is not None
+    ):
         return render_error_response("missing required parameters")
     now = datetime.now(timezone.utc)
     offset = timedelta(minutes=request.data["sessionOffset"])
