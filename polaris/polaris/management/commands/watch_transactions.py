@@ -93,7 +93,7 @@ class Command(BaseCommand):
             )()
 
             cursor = "0"
-            if last_completed_transaction:
+            if last_completed_transaction and last_completed_transaction.paging_token:
                 cursor = last_completed_transaction.paging_token
 
             logger.info(
