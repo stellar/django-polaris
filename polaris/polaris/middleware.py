@@ -3,6 +3,11 @@ from django.utils import timezone
 
 
 class TimezoneMiddleware:
+    """
+    Adapted from the Django documentation:
+    https://docs.djangoproject.com/en/3.2/topics/i18n/timezones
+    """
+
     def __init__(self, get_response):
         self.get_response = get_response
 

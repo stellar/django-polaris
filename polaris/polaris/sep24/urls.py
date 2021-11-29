@@ -53,10 +53,7 @@ urlpatterns = [
         get_interactive_withdraw,
         name="get_interactive_withdraw",
     ),
-    path("transactions/deposit/webapp/tzinfo", post_tzinfo, name="post_deposit_tzinfo"),
-    path(
-        "transactions/withdraw/webapp/tzinfo", post_tzinfo, name="post_withdraw_tzinfo"
-    ),
+    path("transactions/webapp/tzinfo", post_tzinfo, name="tzinfo"),
     path("info", info),
     path("fee", fee),
     path("transaction", transaction),
