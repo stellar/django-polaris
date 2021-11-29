@@ -40,6 +40,7 @@ from polaris.sep24.utils import (
     authenticate_session,
     invalidate_session,
     interactive_args_validation,
+    get_timezone_utc_offset,
 )
 from polaris.sep10.utils import validate_sep10_token
 from polaris.sep10.token import SEP10Token
@@ -224,13 +225,8 @@ def post_interactive_withdraw(request: Request) -> Response:
         if amount:
             url_args["amount"] = amount
 
-        current_timezone = request.session.get("timezone") or django_settings.TIME_ZONE
-        current_offset = (
-            datetime.now()
-            .astimezone(pytz.timezone(current_timezone))
-            .utcoffset()
-            .total_seconds()
-            / 60
+        current_offset = get_timezone_utc_offset(
+            request.session.get("timezone") or django_settings.TIME_ZONE
         )
         toml_data = registered_toml_func(request=request)
         post_url = f"{reverse('post_interactive_withdraw')}?{urlencode(url_args)}"
@@ -367,13 +363,8 @@ def get_interactive_withdraw(request: Request) -> Response:
     if amount:
         url_args["amount"] = amount
 
-    current_timezone = request.session.get("timezone") or django_settings.TIME_ZONE
-    current_offset = (
-        datetime.now()
-        .astimezone(pytz.timezone(current_timezone))
-        .utcoffset()
-        .total_seconds()
-        / 60
+    current_offset = get_timezone_utc_offset(
+        request.session.get("timezone") or django_settings.TIME_ZONE
     )
     post_url = f"{reverse('post_interactive_withdraw')}?{urlencode(url_args)}"
     toml_data = registered_toml_func(request=request)

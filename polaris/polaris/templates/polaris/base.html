@@ -82,7 +82,7 @@
       fetchTimezone({
         tzEndpoint: "{{ timezone_endpoint }}",
         sessionId: "{{ session_id }}",
-        sessionOffset: {{ current_offset }}
+        sessionOffset: {{ current_offset|default:0 }}
       });
     </script>
 
