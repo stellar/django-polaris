@@ -42,6 +42,16 @@ def more_info(request: Request, sep6: bool = False) -> Response:
     current_offset = get_timezone_utc_offset(
         request.session.get("timezone") or django_settings.TIME_ZONE
     )
+    # persists the session, generating r.session.session_key
+    #
+    # this session key is passed to the rendered views and
+    # used in client-side JavaScript in requests to the server
+    if request.session.is_empty():
+        request.session["authenticated"] = False
+    else:
+        request.session.modified = True
+    if not request.session.session_key:
+        request.session.create()
     serializer = TransactionSerializer(
         transaction, context={"request": request, "sep6": sep6}
     )
