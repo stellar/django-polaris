@@ -1,6 +1,7 @@
 import json
 from decimal import Decimal, DecimalException
 
+from django.urls import reverse
 from rest_framework import status
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -67,6 +68,8 @@ def more_info(request: Request, sep6: bool = False) -> Response:
         "exchange_amount": None,
         "exchanged_amount": None,
         "current_offset": current_offset,
+        "timezone_endpoint": reverse("tzinfo"),
+        "session_id": request.session.session_key,
     }
     if transaction.quote:
         if "deposit" in transaction.kind:
