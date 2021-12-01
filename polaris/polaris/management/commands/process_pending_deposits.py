@@ -599,6 +599,7 @@ class PendingDeposits:
                     transaction, distribution_acc, server
                 )
                 envelope.sign(transaction.asset.distribution_seed)
+                transaction.envelope_xdr = envelope.to_xdr()
 
             transaction.status = Transaction.STATUS.pending_stellar
             await sync_to_async(transaction.save)()
@@ -629,7 +630,6 @@ class PendingDeposits:
         elif transaction.claimable_balance_supported:
             transaction.claimable_balance_id = cls.get_balance_id(response)
 
-        transaction.envelope_xdr = response["envelope_xdr"]
         transaction.paging_token = response["paging_token"]
         transaction.stellar_transaction_id = response["id"]
         transaction.status = Transaction.STATUS.completed
