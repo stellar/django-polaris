@@ -598,7 +598,10 @@ async def test_submit_sucess():
                     await sync_to_async(transaction.refresh_from_db)()
                     assert transaction.status == Transaction.STATUS.completed
                     assert transaction.pending_execution_attempt is False
-                    assert transaction.envelope_xdr == "envelope_xdr"
+                    assert (
+                        transaction.envelope_xdr
+                        == mock_create_deposit_envelope.return_value.to_xdr()
+                    )
                     assert transaction.paging_token == "paging_token"
                     assert transaction.stellar_transaction_id == "id"
                     assert transaction.completed_at
@@ -676,11 +679,14 @@ async def test_submit_request_failed_bad_request():
                     assert transaction.status == Transaction.STATUS.error
                     assert transaction.status_message == "BadRequestError: testing"
                     assert transaction.pending_execution_attempt is False
-                    assert transaction.envelope_xdr is None
                     assert transaction.paging_token is None
                     assert transaction.stellar_transaction_id is None
                     assert transaction.completed_at is None
                     assert transaction.amount_out is None
+                    assert (
+                        transaction.envelope_xdr
+                        == mock_create_deposit_envelope.return_value.to_xdr()
+                    )
 
                     server.submit_transaction.assert_called_once_with(
                         mock_create_deposit_envelope.return_value
@@ -751,11 +757,14 @@ async def test_submit_request_failed_connection_failed():
                     assert transaction.status == Transaction.STATUS.error
                     assert transaction.status_message == "ConnectionError: testing"
                     assert transaction.pending_execution_attempt is False
-                    assert transaction.envelope_xdr is None
                     assert transaction.paging_token is None
                     assert transaction.stellar_transaction_id is None
                     assert transaction.completed_at is None
                     assert transaction.amount_out is None
+                    assert (
+                        transaction.envelope_xdr
+                        == mock_create_deposit_envelope.return_value.to_xdr()
+                    )
 
                     server.submit_transaction.assert_called_once_with(
                         mock_create_deposit_envelope.return_value
@@ -831,7 +840,10 @@ async def test_submit_request_unsuccessful():
                         == "Stellar transaction failed when submitted to horizon: testing"
                     )
                     assert transaction.pending_execution_attempt is False
-                    assert transaction.envelope_xdr is None
+                    assert (
+                        transaction.envelope_xdr
+                        == mock_create_deposit_envelope.return_value.to_xdr()
+                    )
                     assert transaction.paging_token is None
                     assert transaction.stellar_transaction_id is None
                     assert transaction.completed_at is None
@@ -905,7 +917,7 @@ async def test_submit_multisig_success():
                     await sync_to_async(transaction.refresh_from_db)()
                     assert transaction.status == Transaction.STATUS.completed
                     assert transaction.pending_execution_attempt is False
-                    assert transaction.envelope_xdr == "envelope_xdr"
+                    assert transaction.envelope_xdr == envelope.to_xdr()
                     assert transaction.paging_token == "paging_token"
                     assert transaction.stellar_transaction_id == "id"
                     assert transaction.completed_at
