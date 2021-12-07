@@ -5,7 +5,7 @@ import jwt
 from unittest.mock import patch, Mock
 
 import pytest
-from stellar_sdk.keypair import Keypair
+from stellar_sdk import Keypair, MuxedAccount
 
 from polaris import settings
 from polaris.models import Transaction, Asset
@@ -13,7 +13,11 @@ from polaris.integrations import TransactionForm
 from polaris.tests.helpers import (
     mock_check_auth_success,
     mock_check_auth_success_client_domain,
+    mock_check_auth_success_muxed_account,
+    mock_check_auth_success_with_memo,
     interactive_jwt_payload,
+    TEST_MUXED_ACCOUNT,
+    TEST_ACCOUNT_MEMO,
 )
 
 WEBAPP_PATH = "/sep24/transactions/withdraw/webapp"
@@ -42,6 +46,8 @@ def test_withdraw_success(client):
     t = Transaction.objects.filter(id=content.get("id")).first()
     assert t
     assert t.stellar_account == "test source address"
+    assert t.account_memo is None
+    assert t.muxed_account is None
     assert t.asset.code == usd.code
     assert t.protocol == Transaction.PROTOCOL.sep24
     assert t.kind == Transaction.KIND.withdrawal
@@ -49,6 +55,73 @@ def test_withdraw_success(client):
     assert t.receiving_anchor_account is None
     assert t.memo is None
     assert t.memo_type == Transaction.MEMO_TYPES.hash
+    assert t.from_address is None
+
+
+@pytest.mark.django_db
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success_muxed_account)
+def test_withdraw_muxed_account_success(client):
+    """`GET /withdraw` succeeds with no optional arguments."""
+    usd = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        sep24_enabled=True,
+        withdrawal_enabled=True,
+        distribution_seed=Keypair.random().secret,
+    )
+    response = client.post(
+        WITHDRAW_PATH,
+        {"asset_code": usd.code, "amount": "100", "account": TEST_MUXED_ACCOUNT},
+        follow=True,
+    )
+    content = response.json()
+    assert content["type"] == "interactive_customer_info_needed"
+    assert "100" in content["url"]
+    assert content.get("id")
+
+    t = Transaction.objects.filter(id=content.get("id")).first()
+    assert t
+    assert t.stellar_account == MuxedAccount.from_account(TEST_MUXED_ACCOUNT).account_id
+    assert t.muxed_account == TEST_MUXED_ACCOUNT
+    assert t.account_memo is None
+    assert t.asset.code == usd.code
+    assert t.protocol == Transaction.PROTOCOL.sep24
+    assert t.kind == Transaction.KIND.withdrawal
+    assert t.status == Transaction.STATUS.incomplete
+    assert t.memo_type == Transaction.MEMO_TYPES.hash
+    assert t.from_address == TEST_MUXED_ACCOUNT
+
+
+@pytest.mark.django_db
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success_with_memo)
+def test_withdraw_success_with_memo(client):
+    """`GET /withdraw` succeeds with no optional arguments."""
+    usd = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        sep24_enabled=True,
+        withdrawal_enabled=True,
+        distribution_seed=Keypair.random().secret,
+    )
+    response = client.post(
+        WITHDRAW_PATH, {"asset_code": usd.code, "amount": "100"}, follow=True
+    )
+    content = response.json()
+    assert content["type"] == "interactive_customer_info_needed"
+    assert "100" in content["url"]
+    assert content.get("id")
+
+    t = Transaction.objects.filter(id=content.get("id")).first()
+    assert t
+    assert t.stellar_account == "test source address"
+    assert t.account_memo is TEST_ACCOUNT_MEMO
+    assert t.muxed_account is None
+    assert t.asset.code == usd.code
+    assert t.protocol == Transaction.PROTOCOL.sep24
+    assert t.kind == Transaction.KIND.withdrawal
+    assert t.status == Transaction.STATUS.incomplete
+    assert t.memo_type == Transaction.MEMO_TYPES.hash
+    assert t.from_address is None
 
 
 @pytest.mark.django_db

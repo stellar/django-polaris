@@ -34,7 +34,7 @@ from stellar_sdk.exceptions import (
     ConnectionError,
     Ed25519PublicKeyInvalidError,
 )
-from stellar_sdk import Keypair
+from stellar_sdk import Keypair, MuxedAccount
 from stellar_sdk.client.requests_client import RequestsClient
 
 from polaris import settings
@@ -64,6 +64,23 @@ class SEP10Auth(APIView):
             return Response(
                 {"error": "no 'account' provided"}, status=status.HTTP_400_BAD_REQUEST
             )
+
+        memo = request.GET.get("memo")
+        if memo:
+            try:
+                memo = int(memo)
+            except ValueError:
+                return Response(
+                    {"error": "invalid 'memo' value. Expected a 64-bit integer."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if account.startswith("M"):
+                return Response(
+                    {
+                        "error": "'memo' cannot be passed with a muxed client account address (M...)"
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
         home_domain = request.GET.get("home_domain")
         if home_domain and home_domain not in settings.SEP10_HOME_DOMAINS:
@@ -116,7 +133,7 @@ class SEP10Auth(APIView):
 
         try:
             transaction = self._challenge_transaction(
-                account, home_domain, client_domain, client_signing_key
+                account, home_domain, client_domain, client_signing_key, memo
             )
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -131,7 +148,11 @@ class SEP10Auth(APIView):
 
     @staticmethod
     def _challenge_transaction(
-        client_account, home_domain, client_domain=None, client_signing_key=None
+        client_account,
+        home_domain,
+        client_domain=None,
+        client_signing_key=None,
+        memo=None,
     ):
         """
         Generate the challenge transaction for a client account.
@@ -147,6 +168,7 @@ class SEP10Auth(APIView):
             timeout=900,
             client_domain=client_domain,
             client_signing_key=client_signing_key,
+            memo=memo,
         )
 
     ################
@@ -198,8 +220,15 @@ class SEP10Auth(APIView):
                 client_domain = operation.data_value.decode()
                 break
 
+        # extract the Stellar account from the muxed account to check for its existence
+        stellar_account = challenge.client_account_id
+        if challenge.client_account_id.startswith("M"):
+            stellar_account = MuxedAccount.from_account(
+                challenge.client_account_id
+            ).account_id
+
         try:
-            account = settings.HORIZON_SERVER.load_account(challenge.client_account_id)
+            account = settings.HORIZON_SERVER.load_account(stellar_account)
         except NotFoundError:
             logger.info("Account does not exist, using client's master key to verify")
             try:
@@ -263,15 +292,23 @@ class SEP10Auth(APIView):
             network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
         )
         logger.info(
-            f"Challenge verified, generating SEP-10 token for account {challenge.client_account_id}"
+            f"Generating SEP-10 token for account {challenge.client_account_id}"
         )
+
         # set iat value to minimum timebound of the challenge so that the JWT returned
         # for a given challenge is always the same.
         # https://github.com/stellar/stellar-protocol/pull/982
         issued_at = challenge.transaction.transaction.time_bounds.min_time
+
+        # format sub value based on muxed account or memo
+        if challenge.client_account_id.startswith("M") or not challenge.memo:
+            sub = challenge.client_account_id
+        else:
+            sub = f"{challenge.client_account_id}:{challenge.memo}"
+
         jwt_dict = {
             "iss": os.path.join(settings.HOST_URL, "auth"),
-            "sub": challenge.client_account_id,
+            "sub": sub,
             "iat": issued_at,
             "exp": issued_at + 24 * 60 * 60,
             "jti": challenge.transaction.hash().hex(),

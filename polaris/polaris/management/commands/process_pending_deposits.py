@@ -9,7 +9,7 @@ from collections import defaultdict
 
 import django.db.transaction
 from django.core.management import BaseCommand
-from stellar_sdk import Keypair, Server
+from stellar_sdk import Keypair, ServerAsync, MuxedAccount
 from stellar_sdk.client.aiohttp_client import AiohttpClient
 from stellar_sdk.account import Account
 from stellar_sdk.exceptions import (
@@ -134,7 +134,7 @@ class Command(BaseCommand):
             "source_accounts": defaultdict(asyncio.Lock),
             "destination_accounts": defaultdict(asyncio.Lock),
         }
-        async with Server(settings.HORIZON_URI, client=AiohttpClient()) as server:
+        async with ServerAsync(settings.HORIZON_URI, client=AiohttpClient()) as server:
             results = await asyncio.gather(
                 *[
                     PendingDeposits.process_deposit(t, server, locks)
@@ -258,7 +258,10 @@ class PendingDeposits:
                     Transaction.STATUS.pending_user_transfer_start,
                     Transaction.STATUS.pending_external,
                 ],
-                kind=Transaction.KIND.deposit,
+                kind__in=[
+                    Transaction.KIND.deposit,
+                    getattr(Transaction.KIND, "deposit-exchange"),
+                ],
                 pending_execution_attempt=False,
             )
             .select_related("asset")
@@ -271,12 +274,31 @@ class PendingDeposits:
             ).update(pending_execution_attempt=True)
         verified_ready_transactions = []
         for transaction in ready_transactions:
+            if not transaction.amount_fee or not transaction.amount_out:
+                if transaction.quote:
+                    logger.error(
+                        f"transaction {transaction.id} uses a quote but was returned "
+                        "from poll_pending_deposits() without amount_fee or amount_out "
+                        "assigned, skipping"
+                    )
+                    continue
+                logger.warning(
+                    f"transaction {transaction.id} was returned from "
+                    f"poll_pending_deposits() without Transaction.amount_fee or "
+                    f"Transaction.amount_out assigned. Future Polaris "
+                    "releases will not calculate fees and delivered amounts"
+                )
             # refresh from DB to pull pending_execution_attempt value and to ensure invalid
             # values were not assigned to the transaction in rri.poll_pending_deposits()
             asset = transaction.asset
+            quote = transaction.quote
             transaction.refresh_from_db()
             transaction.asset = asset
-            if transaction.kind != transaction.KIND.deposit:
+            transaction.quote = quote
+            if transaction.kind not in [
+                transaction.KIND.deposit,
+                getattr(transaction.KIND, "deposit-exchange"),
+            ]:
                 cls.handle_error(
                     transaction,
                     "poll_pending_deposits() returned a non-deposit transaction",
@@ -301,10 +323,8 @@ class PendingDeposits:
                                 "asset_code": transaction.asset.code,
                             }
                         )
-                    except ValueError as e:
-                        cls.handle_error(transaction, str(e))
-                        maybe_make_callback(transaction)
-                        continue
+                    except ValueError:
+                        transaction.amount_fee = Decimal(0)
                 else:
                     transaction.amount_fee = Decimal(0)
                 transaction.save()
@@ -381,7 +401,7 @@ class PendingDeposits:
 
     @classmethod
     async def get_or_create_destination_account(
-        cls, transaction: Transaction, server: Server, locks: Dict
+        cls, transaction: Transaction, server: ServerAsync, locks: Dict
     ) -> Tuple[Account, bool]:
         """
         Returns:
@@ -405,9 +425,15 @@ class PendingDeposits:
             logger.debug(
                 f"got lock to get or create destination account for transaction {transaction.id}"
             )
+            if transaction.to_address.startswith("M"):
+                destination_account = MuxedAccount.from_account(
+                    transaction.to_address
+                ).account_id
+            else:
+                destination_account = transaction.to_address
             try:
                 account, json_resp = await get_account_obj_async(
-                    Keypair.from_public_key(transaction.to_address), server
+                    Keypair.from_public_key(destination_account), server
                 )
                 logger.debug(f"account for transaction {transaction.id} exists")
                 return account, is_pending_trust(transaction, json_resp)
@@ -473,7 +499,7 @@ class PendingDeposits:
 
     @classmethod
     async def check_trustline(
-        cls, transaction: Transaction, server: Server, locks: Dict
+        cls, transaction: Transaction, server: ServerAsync, locks: Dict
     ):
         """
         Load the destination account json to determine if a trustline has been
@@ -481,18 +507,24 @@ class PendingDeposits:
         transaction is scheduled for processing. If not, the transaction is
         updated to no longer be pending an execution attempt.
         """
+        if transaction.to_address.startswith("M"):
+            destination_account = MuxedAccount.from_account(
+                transaction.to_address
+            ).account_id
+        else:
+            destination_account = transaction.to_address
         try:
             _, account = await get_account_obj_async(
-                Keypair.from_public_key(transaction.to_address), server
+                Keypair.from_public_key(destination_account), server
             )
         except BaseRequestError:
-            logger.exception(f"Failed to load account {transaction.to_address}")
+            logger.exception(f"Failed to load account {destination_account}")
             transaction.pending_execution_attempt = False
             await sync_to_async(transaction.save)()
             return
         trustline_found = False
         for balance in account["balances"]:
-            if balance.get("asset_type") == "native":
+            if balance.get("asset_type") in ["native", "liquidity_pool_shares"]:
                 continue
             if (
                 balance["asset_code"] == transaction.asset.code
@@ -510,7 +542,7 @@ class PendingDeposits:
             await sync_to_async(transaction.save)()
 
     @classmethod
-    async def submit(cls, transaction: Transaction, server: Server, locks) -> bool:
+    async def submit(cls, transaction: Transaction, server: ServerAsync, locks) -> bool:
         valid_statuses = [
             Transaction.STATUS.pending_user_transfer_start,
             Transaction.STATUS.pending_external,
@@ -561,10 +593,6 @@ class PendingDeposits:
                     transaction, destination_account_json
                 ),
             )
-        except Exception as e:
-            # catch and re-raise exception here so we can release the lock if necessary.
-            # the exception will be caught by PendingDeposits.handle_submit()
-            raise e
         finally:
             if (
                 distribution_account in locks["source_accounts"]
@@ -585,16 +613,16 @@ class PendingDeposits:
         if transaction.claimable_balance_supported and rci.claimable_balances_supported:
             transaction.claimable_balance_id = cls.get_balance_id(response)
 
-        transaction.envelope_xdr = response["envelope_xdr"]
         transaction.paging_token = response["paging_token"]
         transaction.stellar_transaction_id = response["id"]
         transaction.status = Transaction.STATUS.completed
         transaction.completed_at = datetime.datetime.now(datetime.timezone.utc)
-        transaction.amount_out = round(
-            Decimal(transaction.amount_in) - Decimal(transaction.amount_fee),
-            transaction.asset.significant_decimals,
-        )
         transaction.pending_execution_attempt = False
+        if not transaction.quote:
+            transaction.amount_out = round(
+                Decimal(transaction.amount_in) - Decimal(transaction.amount_fee),
+                transaction.asset.significant_decimals,
+            )
         await sync_to_async(transaction.save)()
         logger.info(f"transaction {transaction.id} completed.")
         await maybe_make_callback_async(transaction)
@@ -655,7 +683,7 @@ class PendingDeposits:
 
     @classmethod
     async def requires_trustline(
-        cls, transaction: Transaction, server: Server, locks: Dict
+        cls, transaction: Transaction, server: ServerAsync, locks: Dict
     ) -> bool:
         try:
             _, pending_trust = await PendingDeposits.get_or_create_destination_account(

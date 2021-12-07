@@ -23,7 +23,7 @@ from stellar_sdk.operation import (
     PathPaymentStrictReceive,
     PathPaymentStrictSend,
 )
-from stellar_sdk.server import Server
+from stellar_sdk.server_async import ServerAsync
 from stellar_sdk.client.aiohttp_client import AiohttpClient
 
 from polaris import settings
@@ -79,7 +79,7 @@ class Command(BaseCommand):
         """
         Stream transactions for the server Stellar address.
         """
-        async with Server(settings.HORIZON_URI, client=AiohttpClient()) as server:
+        async with ServerAsync(settings.HORIZON_URI, client=AiohttpClient()) as server:
             try:
                 # Ensure the distribution account actually exists
                 await server.load_account(account)
@@ -101,7 +101,7 @@ class Command(BaseCommand):
             )()
 
             cursor = "0"
-            if last_completed_transaction:
+            if last_completed_transaction and last_completed_transaction.paging_token:
                 cursor = last_completed_transaction.paging_token
 
             logger.info(
@@ -129,9 +129,13 @@ class Command(BaseCommand):
             return
 
         # Query filters for SEP6 and 24
+
         withdraw_filters = Q(
             status=Transaction.STATUS.pending_user_transfer_start,
-            kind=Transaction.KIND.withdrawal,
+            kind__in=[
+                Transaction.KIND.withdrawal,
+                getattr(Transaction.KIND, "withdrawal-exchange"),
+            ],
         )
         # Query filters for SEP31
         send_filters = Q(
@@ -212,12 +216,14 @@ class Command(BaseCommand):
                 op, op_result, transaction.asset, transaction
             )
             if maybe_payment_data:
+                if ops[idx].source:
+                    source = ops[idx].source.account_muxed or ops[idx].source.account_id
+                else:
+                    source = (
+                        horizon_tx.source.account_muxed or horizon_tx.source.account_id
+                    )
                 await cls._update_transaction_info(
-                    transaction,
-                    response["id"],
-                    response["paging_token"],
-                    getattr(ops[idx].source, "account_id", None)
-                    or horizon_tx.source.account_id,
+                    transaction, response["id"], response["paging_token"], source
                 )
                 matching_payment_data = maybe_payment_data
                 break

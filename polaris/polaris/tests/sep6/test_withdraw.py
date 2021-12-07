@@ -1,20 +1,28 @@
+import uuid
+from datetime import datetime, timezone, timedelta
+from decimal import Decimal
+
 import pytest
 import json
 from typing import Dict
 from unittest.mock import patch, Mock
 
-from stellar_sdk.keypair import Keypair
+from stellar_sdk import Keypair, MuxedAccount
 from rest_framework.request import Request
 
 from polaris.tests.conftest import USD_DISTRIBUTION_SEED
 from polaris.tests.helpers import (
     mock_check_auth_success,
     mock_check_auth_success_client_domain,
+    mock_check_auth_success_muxed_account,
+    mock_check_auth_success_with_memo,
+    TEST_MUXED_ACCOUNT,
+    TEST_ACCOUNT_MEMO,
 )
 from polaris.integrations import WithdrawalIntegration
-from polaris.models import Transaction, Asset
+from polaris.models import Transaction, Asset, OffChainAsset, ExchangePair, Quote
 from polaris.sep10.token import SEP10Token
-
+from polaris.utils import make_memo
 
 WITHDRAW_PATH = "/sep6/withdraw"
 
@@ -38,7 +46,7 @@ class GoodWithdrawalIntegration(WithdrawalIntegration):
 @pytest.mark.django_db
 @patch("polaris.sep6.withdraw.rwi", GoodWithdrawalIntegration())
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-def test_good_withdrawal_integration(client, usd_asset_factory):
+def test_good_withdrawal_integration(client):
     asset = Asset.objects.create(
         code="USD",
         issuer=Keypair.random().public_key,
@@ -65,10 +73,102 @@ def test_good_withdrawal_integration(client, usd_asset_factory):
         "account_id": asset.distribution_account,
         "min_amount": round(asset.withdrawal_min_amount, asset.significant_decimals),
         "max_amount": round(asset.withdrawal_max_amount, asset.significant_decimals),
-        "fee_fixed": round(asset.withdrawal_fee_fixed, asset.significant_decimals),
-        "fee_percent": asset.withdrawal_fee_percent,
         "extra_info": {"test": "test"},
     }
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.withdraw.rwi", GoodWithdrawalIntegration())
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success_muxed_account)
+def test_success_muxed_account(client):
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        sep6_enabled=True,
+        withdrawal_enabled=True,
+        withdrawal_min_amount=10,
+        withdrawal_max_amount=1000,
+        distribution_seed=Keypair.random().secret,
+    )
+    response = client.get(
+        WITHDRAW_PATH,
+        {
+            "asset_code": asset.code,
+            "type": "bank_account",
+            "dest": "test bank account number",
+        },
+    )
+    content = response.json()
+    assert response.status_code == 200
+    assert content.pop("memo")
+    assert content.pop("memo_type") == Transaction.MEMO_TYPES.hash
+    assert content == {
+        "id": str(Transaction.objects.first().id),
+        "account_id": asset.distribution_account,
+        "min_amount": round(asset.withdrawal_min_amount, asset.significant_decimals),
+        "max_amount": round(asset.withdrawal_max_amount, asset.significant_decimals),
+        "extra_info": {"test": "test"},
+    }
+    assert Transaction.objects.count() == 1
+    t = Transaction.objects.first()
+    assert t.stellar_account == MuxedAccount.from_account(TEST_MUXED_ACCOUNT).account_id
+    assert t.muxed_account == TEST_MUXED_ACCOUNT
+    assert t.account_memo is None
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.withdraw.rwi", GoodWithdrawalIntegration())
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success_with_memo)
+def test_success_with_memo(client):
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        sep6_enabled=True,
+        withdrawal_enabled=True,
+        withdrawal_min_amount=10,
+        withdrawal_max_amount=1000,
+        distribution_seed=Keypair.random().secret,
+    )
+    response = client.get(
+        WITHDRAW_PATH,
+        {
+            "asset_code": asset.code,
+            "type": "bank_account",
+            "dest": "test bank account number",
+        },
+    )
+    content = response.json()
+    assert response.status_code == 200
+    assert content.pop("memo")
+    assert content.pop("memo_type") == Transaction.MEMO_TYPES.hash
+    assert content == {
+        "id": str(Transaction.objects.first().id),
+        "account_id": asset.distribution_account,
+        "min_amount": round(asset.withdrawal_min_amount, asset.significant_decimals),
+        "max_amount": round(asset.withdrawal_max_amount, asset.significant_decimals),
+        "extra_info": {"test": "test"},
+    }
+    assert Transaction.objects.count() == 1
+    t = Transaction.objects.first()
+    assert t.stellar_account == "test source address"
+    assert t.muxed_account is None
+    assert t.account_memo == TEST_ACCOUNT_MEMO
+
+
+@pytest.mark.django_db
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_withdraw_bad_muxed_account(client, acc1_usd_withdrawal_transaction_factory):
+    withdraw = acc1_usd_withdrawal_transaction_factory(
+        protocol=Transaction.PROTOCOL.sep6
+    )
+    asset = withdraw.asset
+    response = client.get(
+        WITHDRAW_PATH,
+        {"asset_code": asset.code, "type": "good type", "dest": "test", "account": "M"},
+    )
+    content = json.loads(response.content)
+    assert response.status_code == 400
+    assert content == {"error": "invalid 'account'"}
 
 
 @pytest.mark.django_db
@@ -103,8 +203,6 @@ def test_withdrawal_success_no_min_max_amounts(mock_process_sep6_request, client
         "id": str(Transaction.objects.first().id),
         "account_id": asset.distribution_account,
         "extra_info": {"test": "test"},
-        "fee_fixed": round(asset.deposit_fee_fixed, asset.significant_decimals),
-        "fee_percent": asset.deposit_fee_percent,
     }
 
 
@@ -146,8 +244,6 @@ def test_withdrawal_success_custom_min_max_amounts(mock_process_sep6_request, cl
         "min_amount": 1000,
         "max_amount": 10000,
         "extra_info": {"test": "test"},
-        "fee_fixed": round(asset.deposit_fee_fixed, asset.significant_decimals),
-        "fee_percent": asset.deposit_fee_percent,
     }
 
 
@@ -287,7 +383,7 @@ def test_withdraw_missing_asset(client, acc1_usd_withdrawal_transaction_factory)
     response = client.get(WITHDRAW_PATH, {"type": "good type", "dest": "test"})
     content = json.loads(response.content)
     assert response.status_code == 400
-    assert content == {"error": "invalid 'asset_code'"}
+    assert content == {"error": "invalid 'asset_code' or 'source_asset'"}
 
 
 @pytest.mark.django_db
@@ -298,7 +394,7 @@ def test_withdraw_invalid_asset(client):
     )
     content = json.loads(response.content)
     assert response.status_code == 400
-    assert content == {"error": "invalid 'asset_code'"}
+    assert content == {"error": "invalid 'asset_code' or 'source_asset'"}
 
 
 @pytest.mark.django_db
@@ -528,3 +624,277 @@ def test_withdraw_client_domain_saved(mock_withdraw, client):
     assert Transaction.objects.count() == 1
     transaction = Transaction.objects.first()
     assert transaction.client_domain == "test.com"
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.withdraw.rwi.process_sep6_request")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch("django.conf.settings.LANGUAGES", [("en", "English"), ("es", "Spansh")])
+def test_withdraw_good_lang(mock_process_sep6_request, client):
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        withdrawal_min_amount=10,
+        withdrawal_max_amount=1000,
+        sep6_enabled=True,
+        withdrawal_enabled=True,
+    )
+    mock_process_sep6_request.return_value = {
+        "how": "test",
+        "extra_info": {"test": "test"},
+    }
+    response = client.get(
+        WITHDRAW_PATH,
+        {
+            "asset_code": asset.code,
+            "account": Keypair.random().public_key,
+            "lang": "es",
+            "type": "good type",
+            "dest": "test bank account number",
+        },
+    )
+    assert response.status_code == 200, response.content
+    assert Transaction.objects.count() == 1
+    mock_process_sep6_request.assert_called_once()
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.withdraw.rwi.process_sep6_request")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch("django.conf.settings.LANGUAGES", [("en", "English")])
+def test_deposit_bad_lang(mock_process_sep6_request, client):
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        withdrawal_min_amount=10,
+        withdrawal_max_amount=1000,
+        sep6_enabled=True,
+        withdrawal_enabled=True,
+    )
+    mock_process_sep6_request.return_value = {
+        "how": "test",
+        "extra_info": {"test": "test"},
+    }
+    response = client.get(
+        WITHDRAW_PATH,
+        {
+            "asset_code": asset.code,
+            "account": Keypair.random().public_key,
+            "lang": "es",
+            "type": "good type",
+            "dest": "test bank account number",
+        },
+    )
+    assert response.status_code == 400, response.content
+    assert response.json() == {"error": "unsupported language: es"}
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.withdraw.rwi.process_sep6_request")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_withdraw_bad_on_change_callback(mock_process_sep6_request, client):
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        withdrawal_min_amount=10,
+        withdrawal_max_amount=1000,
+        sep6_enabled=True,
+        withdrawal_enabled=True,
+    )
+    mock_process_sep6_request.return_value = {
+        "how": "test",
+        "extra_info": {"test": "test"},
+    }
+    response = client.get(
+        WITHDRAW_PATH,
+        {
+            "asset_code": asset.code,
+            "account": Keypair.random().public_key,
+            "on_change_callback": "invalid domain",
+            "type": "good type",
+            "dest": "test bank account number",
+        },
+    )
+    mock_process_sep6_request.assert_not_called()
+    assert response.status_code == 400, response.content
+    assert response.json() == {"error": "invalid callback URL provided"}
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.withdraw.rwi.process_sep6_request")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch("polaris.settings.CALLBACK_REQUEST_DOMAIN_DENYLIST", ["example.com"])
+def test_withdraw_denied_on_change_callback(mock_process_sep6_request, client):
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        withdrawal_min_amount=10,
+        withdrawal_max_amount=1000,
+        sep6_enabled=True,
+        withdrawal_enabled=True,
+    )
+    mock_process_sep6_request.return_value = {
+        "how": "test",
+        "extra_info": {"test": "test"},
+    }
+    response = client.get(
+        WITHDRAW_PATH,
+        {
+            "asset_code": asset.code,
+            "account": Keypair.random().public_key,
+            "on_change_callback": "https://example.com",
+            "type": "good type",
+            "dest": "test bank account number",
+        },
+    )
+    mock_process_sep6_request.assert_called_once()
+    assert Transaction.objects.count() == 1
+    t = Transaction.objects.first()
+    assert response.status_code == 200
+    assert t.on_change_callback is None
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.withdraw.rwi.process_sep6_request")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch("polaris.settings.CALLBACK_REQUEST_DOMAIN_DENYLIST", ["notexample.com"])
+def test_withdraw_good_on_change_callback(mock_process_sep6_request, client):
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        withdrawal_min_amount=10,
+        withdrawal_max_amount=1000,
+        sep6_enabled=True,
+        withdrawal_enabled=True,
+    )
+    mock_process_sep6_request.return_value = {
+        "how": "test",
+        "extra_info": {"test": "test"},
+    }
+    response = client.get(
+        WITHDRAW_PATH,
+        {
+            "asset_code": asset.code,
+            "account": Keypair.random().public_key,
+            "on_change_callback": "https://example.com",
+            "type": "good type",
+            "dest": "test bank account number",
+        },
+    )
+    mock_process_sep6_request.assert_called_once()
+    assert Transaction.objects.count() == 1
+    t = Transaction.objects.first()
+    assert response.status_code == 200
+    assert t.on_change_callback == "https://example.com"
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.withdraw.rwi.process_sep6_request")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_withdraw_success_indicative_quote(mock_process_sep6_request, client):
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        withdrawal_min_amount=10,
+        withdrawal_max_amount=1000,
+        sep6_enabled=True,
+        withdrawal_enabled=True,
+        sep38_enabled=True,
+    )
+    offchain_asset = OffChainAsset.objects.create(
+        scheme="iso4217", identifier="BRL", country_codes="BRA"
+    )
+    ExchangePair.objects.create(
+        buy_asset=offchain_asset.asset_identification_format,
+        sell_asset=asset.asset_identification_format,
+    )
+    mock_process_sep6_request.return_value = {}
+    response = client.get(
+        WITHDRAW_PATH + "-exchange",
+        {
+            "destination_asset": offchain_asset.asset_identification_format,
+            "source_asset": asset.asset_identification_format,
+            "amount": "100.12",
+            "type": "good type",
+            "dest": "an offchain bank account",
+        },
+    )
+    content = response.json()
+    assert response.status_code == 200, content
+    assert uuid.UUID(content.pop("id"))
+    assert make_memo(content.pop("memo"), "hash")
+    assert content == {
+        "account_id": asset.distribution_account,
+        "min_amount": asset.withdrawal_min_amount,
+        "max_amount": asset.withdrawal_max_amount,
+        "memo_type": "hash",
+    }
+    assert Transaction.objects.count() == 1
+    t = Transaction.objects.first()
+    mock_process_sep6_request.assert_called_once()
+    assert t.quote
+    assert t.quote.buy_asset == offchain_asset.asset_identification_format
+    assert t.quote.sell_asset == asset.asset_identification_format
+    assert t.quote.sell_amount == Decimal("100.12")
+    assert t.quote.type == Quote.TYPE.indicative
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.withdraw.rwi.process_sep6_request")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_withdraw_success_firm_quote(mock_process_sep6_request, client):
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        withdrawal_min_amount=10,
+        withdrawal_max_amount=1000,
+        sep6_enabled=True,
+        withdrawal_enabled=True,
+        sep38_enabled=True,
+        distribution_seed=Keypair.random().secret,
+    )
+    offchain_asset = OffChainAsset.objects.create(
+        scheme="iso4217", identifier="BRL", country_codes="BRA"
+    )
+    ExchangePair.objects.create(
+        buy_asset=offchain_asset.asset_identification_format,
+        sell_asset=asset.asset_identification_format,
+    )
+    quote = Quote.objects.create(
+        id=uuid.uuid4(),
+        stellar_account="test source address",
+        buy_asset=offchain_asset.asset_identification_format,
+        sell_asset=asset.asset_identification_format,
+        price=Decimal(1),
+        sell_amount=Decimal("102.12"),
+        buy_amount=Decimal("102.12"),
+        type=Quote.TYPE.firm,
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+    )
+    mock_process_sep6_request.return_value = {}
+    response = client.get(
+        WITHDRAW_PATH + "-exchange",
+        {
+            "source_asset": asset.asset_identification_format,
+            "destination_asset": offchain_asset.asset_identification_format,
+            "quote_id": str(quote.id),
+            "amount": "102.12",
+            "type": "good type",
+            "dest": "test bank account number",
+        },
+    )
+    content = response.json()
+    assert response.status_code == 200, content
+    assert uuid.UUID(content.pop("id"))
+    assert make_memo(content.pop("memo"), "hash")
+    assert content == {
+        "account_id": asset.distribution_account,
+        "min_amount": asset.withdrawal_min_amount,
+        "max_amount": asset.withdrawal_max_amount,
+        "memo_type": "hash",
+    }
+    assert Transaction.objects.count() == 1
+    t = Transaction.objects.first()
+    mock_process_sep6_request.assert_called_once()
+    assert t.quote.id == quote.id
+    assert t.quote.type == Quote.TYPE.firm

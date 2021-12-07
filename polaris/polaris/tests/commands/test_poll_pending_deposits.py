@@ -4,7 +4,7 @@ from unittest.mock import patch, Mock, MagicMock
 from decimal import Decimal
 
 import pytest
-from stellar_sdk import Server
+from stellar_sdk import ServerAsync
 from stellar_sdk.client.aiohttp_client import AiohttpClient
 from stellar_sdk import (
     Keypair,
@@ -196,7 +196,7 @@ async def test_get_or_create_destination_account_exists():
                 account_obj,
                 {"balances": [{"asset_code": "USD", "asset_issuer": usd.issuer}]},
             )
-            async with Server(client=AiohttpClient()) as s:
+            async with ServerAsync(client=AiohttpClient()) as s:
                 locks = {
                     "destination_accounts": defaultdict(asyncio.Lock),
                     "source_accounts": defaultdict(asyncio.Lock),
@@ -234,7 +234,7 @@ async def test_get_or_create_destination_account_exists_different_destination():
                 account_obj,
                 {"balances": [{"asset_code": "USD", "asset_issuer": usd.issuer}]},
             )
-            async with Server(client=AiohttpClient()) as s:
+            async with ServerAsync(client=AiohttpClient()) as s:
                 locks = {
                     "destination_accounts": defaultdict(asyncio.Lock),
                     "source_accounts": defaultdict(asyncio.Lock),
@@ -270,7 +270,7 @@ async def test_get_or_create_destination_account_exists_pending_trust():
         ) as mock_get_account_obj:
             account_obj = Account(transaction.stellar_account, 1)
             mock_get_account_obj.return_value = (account_obj, {"balances": []})
-            async with Server(client=AiohttpClient()) as s:
+            async with ServerAsync(client=AiohttpClient()) as s:
                 locks = {
                     "destination_accounts": defaultdict(asyncio.Lock),
                     "source_accounts": defaultdict(asyncio.Lock),
@@ -305,7 +305,7 @@ async def test_get_or_create_destination_account_exists_pending_trust_different_
         ) as mock_get_account_obj:
             account_obj = Account(transaction.to_address, 1)
             mock_get_account_obj.return_value = (account_obj, {"balances": []})
-            async with Server(client=AiohttpClient()) as s:
+            async with ServerAsync(client=AiohttpClient()) as s:
                 locks = {
                     "destination_accounts": defaultdict(asyncio.Lock),
                     "source_accounts": defaultdict(asyncio.Lock),
@@ -339,7 +339,7 @@ async def test_get_or_create_destination_account_fetch_raises_horizon_error():
             f"{test_module}.get_account_obj_async", new_callable=AsyncMock
         ) as mock_get_account_obj:
             mock_get_account_obj.side_effect = BaseHorizonError(Mock())
-            async with Server(client=AiohttpClient()) as s:
+            async with ServerAsync(client=AiohttpClient()) as s:
                 locks = {
                     "destination_accounts": defaultdict(asyncio.Lock),
                     "source_accounts": defaultdict(asyncio.Lock),
@@ -376,7 +376,7 @@ async def test_get_or_create_destination_account_fetch_raises_connection_error()
             f"{test_module}.get_account_obj_async", new_callable=AsyncMock
         ) as mock_get_account_obj:
             mock_get_account_obj.side_effect = ConnectionError()
-            async with Server(client=AiohttpClient()) as s:
+            async with ServerAsync(client=AiohttpClient()) as s:
                 locks = {
                     "destination_accounts": defaultdict(asyncio.Lock),
                     "source_accounts": defaultdict(asyncio.Lock),
@@ -418,7 +418,7 @@ async def test_get_or_create_destination_account_doesnt_exist_creation_not_suppo
                 raise RuntimeError()
 
         with patch(f"{test_module}.get_account_obj_async", mock_get_account_obj_async):
-            async with Server(client=AiohttpClient()) as s:
+            async with ServerAsync(client=AiohttpClient()) as s:
                 locks = {
                     "destination_accounts": defaultdict(asyncio.Lock),
                     "source_accounts": defaultdict(asyncio.Lock),
@@ -464,7 +464,7 @@ async def test_get_or_create_destination_account_doesnt_exist_has_distribution_a
                 raise RuntimeError()
 
         with patch(f"{test_module}.get_account_obj_async", mock_get_account_obj_async):
-            async with Server(client=AiohttpClient()) as s:
+            async with ServerAsync(client=AiohttpClient()) as s:
                 locks = {
                     "destination_accounts": defaultdict(asyncio.Lock),
                     "source_accounts": defaultdict(asyncio.Lock),
@@ -511,7 +511,7 @@ async def test_get_or_create_destination_account_doesnt_exist_no_distribution_ac
                 raise RuntimeError()
 
         with patch(f"{test_module}.get_account_obj_async", mock_get_account_obj_async):
-            async with Server(client=AiohttpClient()) as s:
+            async with ServerAsync(client=AiohttpClient()) as s:
                 locks = {
                     "destination_accounts": defaultdict(asyncio.Lock),
                     "source_accounts": defaultdict(asyncio.Lock),
@@ -556,7 +556,7 @@ async def test_get_or_create_destination_account_doesnt_exist_distribution_accou
                 raise RuntimeError()
 
         with patch(f"{test_module}.get_account_obj_async", mock_get_account_obj_async):
-            async with Server(client=AiohttpClient()) as s:
+            async with ServerAsync(client=AiohttpClient()) as s:
                 locks = {
                     "destination_accounts": defaultdict(asyncio.Lock),
                     "source_accounts": defaultdict(asyncio.Lock),
@@ -604,7 +604,7 @@ async def test_get_or_create_destination_account_doesnt_exist_creation_raises_ex
                 raise RuntimeError()
 
         with patch(f"{test_module}.get_account_obj_async", mock_get_account_obj_async):
-            async with Server(client=AiohttpClient()) as s:
+            async with ServerAsync(client=AiohttpClient()) as s:
                 locks = {
                     "destination_accounts": defaultdict(asyncio.Lock),
                     "source_accounts": defaultdict(asyncio.Lock),
@@ -662,7 +662,7 @@ async def test_submit_success():
                         ]
                     },
                 )
-                async with Server(client=AiohttpClient()) as server:
+                async with ServerAsync(client=AiohttpClient()) as server:
                     mock_submit_transaction.return_value = {
                         "envelope_xdr": "envelope_xdr",
                         "paging_token": "paging_token",
@@ -681,7 +681,6 @@ async def test_submit_success():
                     await sync_to_async(transaction.refresh_from_db)()
                     assert transaction.status == Transaction.STATUS.completed
                     assert transaction.pending_execution_attempt is False
-                    assert transaction.envelope_xdr == "envelope_xdr"
                     assert transaction.paging_token == "paging_token"
                     assert transaction.stellar_transaction_id == "id"
                     assert transaction.completed_at
@@ -723,7 +722,7 @@ async def test_submit_request_failed_bad_request():
                 None,
                 {"balances": [{"asset_code": usd.code, "asset_issuer": usd.issuer}]},
             )
-            async with Server(client=AiohttpClient()) as server:
+            async with ServerAsync(client=AiohttpClient()) as server:
                 mock_submit_transaction.side_effect = BadRequestError(
                     Mock(status_code=400, text="testing", json=Mock(return_value={}))
                 )
@@ -731,7 +730,6 @@ async def test_submit_request_failed_bad_request():
                     "destination_accounts": defaultdict(asyncio.Lock),
                     "source_accounts": defaultdict(asyncio.Lock),
                 }
-
                 with pytest.raises(BadRequestError):
                     await PendingDeposits.submit(transaction, server, locks)
 
@@ -764,13 +762,12 @@ async def test_submit_request_failed_connection_failed():
                 {"balances": [{"asset_code": usd.code, "asset_issuer": usd.issuer}]},
             )
 
-            async with Server(client=AiohttpClient()) as server:
+            async with ServerAsync(client=AiohttpClient()) as server:
                 mock_submit_transaction.side_effect = ConnectionError("testing")
                 locks = {
                     "destination_accounts": defaultdict(asyncio.Lock),
                     "source_accounts": defaultdict(asyncio.Lock),
                 }
-
                 with pytest.raises(ConnectionError):
                     await PendingDeposits.submit(transaction, server, locks)
 
@@ -809,7 +806,7 @@ async def test_submit_request_unsuccessful():
                         ]
                     },
                 )
-                async with Server(client=AiohttpClient()) as server:
+                async with ServerAsync(client=AiohttpClient()) as server:
                     mock_submit_transaction.return_value = {
                         "successful": False,
                         "result_xdr": "testing",
@@ -831,7 +828,6 @@ async def test_submit_request_unsuccessful():
                         == "Stellar transaction failed when submitted to horizon: testing"
                     )
                     assert transaction.pending_execution_attempt is False
-                    assert transaction.envelope_xdr is None
                     assert transaction.paging_token is None
                     assert transaction.stellar_transaction_id is None
                     assert transaction.completed_at is None
@@ -882,7 +878,7 @@ async def test_submit_multisig_success():
             with patch(
                 f"{test_module}.rci.submit_deposit_transaction",
             ) as mock_submit_transaction:
-                async with Server(client=AiohttpClient()) as server:
+                async with ServerAsync(client=AiohttpClient()) as server:
                     mock_get_account_obj.return_value = (
                         Mock(),
                         {
@@ -909,7 +905,7 @@ async def test_submit_multisig_success():
                     await sync_to_async(transaction.refresh_from_db)()
                     assert transaction.status == Transaction.STATUS.completed
                     assert transaction.pending_execution_attempt is False
-                    assert transaction.envelope_xdr == "envelope_xdr"
+                    assert transaction.envelope_xdr == envelope.to_xdr()
                     assert transaction.paging_token == "paging_token"
                     assert transaction.stellar_transaction_id == "id"
                     assert transaction.completed_at
@@ -941,7 +937,7 @@ async def test_handle_submit_success():
         f"{test_module}.PendingDeposits.submit", new_callable=AsyncMock
     ) as mock_submit:
         with patch(f"{test_module}.rdi") as mock_rdi:
-            async with Server(client=AiohttpClient()) as server:
+            async with ServerAsync(client=AiohttpClient()) as server:
                 mock_submit.return_value = True
 
                 await PendingDeposits.handle_submit(transaction, server, {})
@@ -969,7 +965,7 @@ async def test_handle_submit_unsuccessful():
         f"{test_module}.PendingDeposits.submit", new_callable=AsyncMock
     ) as mock_submit:
         with patch(f"{test_module}.rdi") as mock_rdi:
-            async with Server(client=AiohttpClient()) as server:
+            async with ServerAsync(client=AiohttpClient()) as server:
                 mock_submit.return_value = False
 
                 await PendingDeposits.handle_submit(transaction, server, {})
@@ -998,7 +994,7 @@ async def test_handle_submit_success_after_deposit_exception():
     ) as mock_submit:
         with patch(f"{test_module}.rdi") as mock_rdi:
             with patch(f"{test_module}.logger") as mock_logger:
-                async with Server(client=AiohttpClient()) as server:
+                async with ServerAsync(client=AiohttpClient()) as server:
                     mock_submit.return_value = True
                     mock_rdi.after_deposit.side_effect = KeyError()
 
@@ -1035,7 +1031,7 @@ async def test_handle_submit_unexpected_exception():
                 with patch(
                     f"{test_module}.maybe_make_callback_async", new_callable=AsyncMock
                 ) as mock_maybe_make_callback:
-                    async with Server(client=AiohttpClient()) as server:
+                    async with ServerAsync(client=AiohttpClient()) as server:
                         mock_submit.side_effect = KeyError()
 
                         await PendingDeposits.handle_submit(transaction, server, {})
@@ -1186,7 +1182,7 @@ async def test_requires_trustline_has_trustline():
         with patch(
             f"{test_module}.maybe_make_callback_async", new_callable=AsyncMock
         ) as mock_maybe_make_callback:
-            async with Server(client=AiohttpClient()) as server:
+            async with ServerAsync(client=AiohttpClient()) as server:
                 mock_get_or_create_destination_account.return_value = None, False
                 locks = {
                     "destination_accounts": defaultdict(asyncio.Lock),
@@ -1225,7 +1221,7 @@ async def test_requires_trustline_no_trustline():
         with patch(
             f"{test_module}.maybe_make_callback_async", new_callable=AsyncMock
         ) as mock_maybe_make_callback:
-            async with Server(client=AiohttpClient()) as server:
+            async with ServerAsync(client=AiohttpClient()) as server:
                 mock_get_or_create_destination_account.return_value = None, True
                 locks = {
                     "destination_accounts": defaultdict(asyncio.Lock),
@@ -1262,7 +1258,7 @@ async def test_requires_trustline_create_fails():
         with patch(
             f"{test_module}.maybe_make_callback_async", new_callable=AsyncMock
         ) as mock_maybe_make_callback:
-            async with Server(client=AiohttpClient()) as server:
+            async with ServerAsync(client=AiohttpClient()) as server:
                 mock_get_or_create_destination_account.side_effect = RuntimeError()
                 locks = {
                     "destination_accounts": defaultdict(asyncio.Lock),
@@ -1442,7 +1438,7 @@ async def test_save_as_pending_signatures():
                     ),
                     network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
                 )
-                async with Server(client=AiohttpClient()) as server:
+                async with ServerAsync(client=AiohttpClient()) as server:
                     await PendingDeposits.save_as_pending_signatures(
                         transaction, server
                     )
@@ -1487,7 +1483,7 @@ async def test_save_as_pending_signatures_channel_account_not_found():
             with patch(
                 f"{test_module}.maybe_make_callback_async", new_callable=AsyncMock
             ) as mock_maybe_make_callback:
-                async with Server(client=AiohttpClient()) as server:
+                async with ServerAsync(client=AiohttpClient()) as server:
                     mock_get_account_obj.side_effect = RuntimeError("testing")
 
                     await PendingDeposits.save_as_pending_signatures(
@@ -1526,7 +1522,7 @@ async def test_save_as_pending_signatures_connection_failed():
             with patch(
                 f"{test_module}.maybe_make_callback_async", new_callable=AsyncMock
             ) as mock_maybe_make_callback:
-                async with Server(client=AiohttpClient()) as server:
+                async with ServerAsync(client=AiohttpClient()) as server:
                     mock_get_account_obj.side_effect = ConnectionError("testing")
 
                     await PendingDeposits.save_as_pending_signatures(
@@ -1566,7 +1562,7 @@ async def test_process_deposit_success():
             with patch(
                 f"{test_module}.PendingDeposits.handle_submit", new_callable=AsyncMock
             ) as handle_submit:
-                async with Server(client=AiohttpClient()) as server:
+                async with ServerAsync(client=AiohttpClient()) as server:
                     requires_trustline.return_value = False
                     requires_multisig.return_value = False
 
@@ -1600,7 +1596,7 @@ async def test_process_deposit_requires_trustline():
             with patch(
                 f"{test_module}.PendingDeposits.handle_submit", new_callable=AsyncMock
             ) as handle_submit:
-                async with Server(client=AiohttpClient()) as server:
+                async with ServerAsync(client=AiohttpClient()) as server:
                     requires_trustline.return_value = True
                     requires_multisig.return_value = False
 
@@ -1638,7 +1634,7 @@ async def test_process_deposit_requires_multisig():
                     f"{test_module}.PendingDeposits.save_as_pending_signatures",
                     new_callable=AsyncMock,
                 ) as save_as_pending_signatures:
-                    async with Server(client=AiohttpClient()) as server:
+                    async with ServerAsync(client=AiohttpClient()) as server:
                         requires_trustline.return_value = False
                         requires_multisig.return_value = True
 
@@ -1683,7 +1679,7 @@ async def test_process_deposit_requires_multisig_raises_not_found():
                     f"{test_module}.PendingDeposits.save_as_pending_signatures",
                     new_callable=AsyncMock,
                 ) as save_as_pending_signatures:
-                    async with Server(client=AiohttpClient()) as server:
+                    async with ServerAsync(client=AiohttpClient()) as server:
                         requires_trustline.return_value = False
                         requires_multisig.side_effect = NotFoundError(Mock())
 
@@ -1734,7 +1730,7 @@ async def test_process_deposit_requires_multisig_raises_connection_error():
                     f"{test_module}.PendingDeposits.save_as_pending_signatures",
                     new_callable=AsyncMock,
                 ) as save_as_pending_signatures:
-                    async with Server(client=AiohttpClient()) as server:
+                    async with ServerAsync(client=AiohttpClient()) as server:
                         requires_trustline.return_value = False
                         requires_multisig.side_effect = ConnectionError()
 
@@ -1784,7 +1780,7 @@ async def test_check_trustlines_single_transaction_success():
         with patch(
             f"{test_module}.PendingDeposits.process_deposit", new_callable=AsyncMock
         ) as process_deposit:
-            async with Server(client=AiohttpClient()) as server:
+            async with ServerAsync(client=AiohttpClient()) as server:
                 get_account_obj.return_value = None, account_json
 
                 await PendingDeposits.check_trustline(transaction, server, {})
@@ -1822,7 +1818,7 @@ async def test_check_trustlines_single_transaction_success_different_destination
         with patch(
             f"{test_module}.PendingDeposits.process_deposit", new_callable=AsyncMock
         ) as process_deposit:
-            async with Server(client=AiohttpClient()) as server:
+            async with ServerAsync(client=AiohttpClient()) as server:
                 get_account_obj.return_value = None, account_json
 
                 await PendingDeposits.check_trustline(transaction, server, {})
@@ -1854,7 +1850,7 @@ async def test_check_trustlines_horizon_connection_error():
         with patch(
             f"{test_module}.PendingDeposits.process_deposit", new_callable=AsyncMock
         ) as process_deposit:
-            async with Server(client=AiohttpClient()) as server:
+            async with ServerAsync(client=AiohttpClient()) as server:
                 get_account_obj.side_effect = ConnectionError()
 
                 await PendingDeposits.check_trustline(transaction, server, {})
@@ -1893,7 +1889,7 @@ async def test_check_trustlines_skip_xlm():
         with patch(
             f"{test_module}.PendingDeposits.process_deposit", new_callable=AsyncMock
         ) as process_deposit:
-            async with Server(client=AiohttpClient()) as server:
+            async with ServerAsync(client=AiohttpClient()) as server:
                 get_account_obj.return_value = None, account_json
 
                 await PendingDeposits.check_trustline(transaction, server, {})
@@ -1929,7 +1925,7 @@ async def test_still_pending_trust_transaction():
         with patch(
             f"{test_module}.PendingDeposits.process_deposit", new_callable=AsyncMock
         ) as process_deposit:
-            async with Server(client=AiohttpClient()) as server:
+            async with ServerAsync(client=AiohttpClient()) as server:
                 get_account_obj.return_value = None, account_json
 
                 await PendingDeposits.check_trustline(transaction, server, {})

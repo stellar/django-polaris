@@ -33,13 +33,22 @@ That being said, its important to understand how users are identified and what i
 
     class CustomerStellarAccount(models.Model):
         customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
-        account = models.CharField(max_length=56)
+        stellar_account = models.TextField()
+        muxed_account = models.TextField(null=True, blank=True)
         memo = models.TextField(null=True, blank=True)
-        memo_type = models.CharField(choices=Choices("text", "id", "hash"), max_length=4, null=True, blank=True)
+        memo_type = models.CharField(
+            choices=Choices("text", "id", "hash"),
+            max_length=4,
+            null=True,
+            blank=True
+        )
 
-        models.UniqueConstraint(fields=["account", "memo", "memo_type"], name="account_memo_constraint")
+        models.UniqueConstraint(
+            fields=["account", "muxed_account", "memo", "memo_type"],
+            name="account_memo_constraint"
+        )
 
-SEP-12 uses an ``id`` attribute to uniquely identify users once clients register them using the ``account`` and optional ``memo`` and ``memo_type`` parameters. ``memo`` and ``memo_type`` parameters are used when the customer being registered does not have sole ownership of ``account``, and is instead one of many users associated with ``account``.
+SEP-12 uses an ``id`` attribute to uniquely identify users once clients register them using the ``account`` and optional ``memo`` and ``memo_type`` parameters. See the :doc:`Shared Accounts <../shared_accounts/index>` documentation for more information on how users may use muxed accounts or memos.
 
 Integrations
 ------------

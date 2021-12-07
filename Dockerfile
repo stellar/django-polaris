@@ -1,12 +1,12 @@
 # Python version
-FROM python:3.7-alpine
+FROM python:3.7
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 
 # Install system dependencies
-RUN apk update && apk add build-base postgresql-dev postgresql-client libffi-dev python3-dev cargo gettext-dev curl
+RUN apt-get update && apt-get install -y build-essential libssl-dev libffi-dev python3-dev cargo postgresql postgresql-client gettext curl
 
 # Copy files to working directory
 RUN mkdir /code /code/polaris /code/data
@@ -18,11 +18,12 @@ COPY ./polaris /code/polaris/
 # environment over matching variables in the .env file, so these
 # variables will be overidden in production, and won't be defined
 # if a .env file already exists.
-RUN if [ ! -f /code/.env ]; then echo $'\
+RUN if [ ! -f /code/.env ]; then echo '\
 SIGNING_SEED=SB4XM7E6ZP4NIQF3UNVMX5O5NH7RGHFHDLIS4Z5U4OMNQ7T4EDNKPVNU\n\
 HOST_URL=https://fake.com\n\
 SERVER_JWT_KEY=notsosecretkey\n\
 DJANGO_SECRET_KEY=notsosecretkey\n\
+ENABLE_SEP_0023=True\n\
 ACTIVE_SEPS=\
 ' >> /code/.env; fi
 

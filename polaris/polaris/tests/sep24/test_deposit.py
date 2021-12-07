@@ -9,7 +9,7 @@ import time
 
 
 import pytest
-from stellar_sdk import Keypair
+from stellar_sdk import Keypair, MuxedAccount
 
 from polaris import settings
 from polaris.models import Transaction, Asset
@@ -17,7 +17,11 @@ from polaris.integrations import TransactionForm
 from polaris.tests.helpers import (
     mock_check_auth_success,
     mock_check_auth_success_client_domain,
+    mock_check_auth_success_muxed_account,
+    mock_check_auth_success_with_memo,
     interactive_jwt_payload,
+    TEST_MUXED_ACCOUNT,
+    TEST_ACCOUNT_MEMO,
 )
 
 
@@ -66,6 +70,76 @@ def test_deposit_success(client, acc1_usd_deposit_transaction_factory):
     assert t.completed_at is None
     assert t.from_address is None
     assert t.to_address == deposit.stellar_account
+    assert t.memo is None
+    assert t.claimable_balance_supported is False
+
+
+@pytest.mark.django_db
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success_muxed_account)
+def test_deposit_success_muxed_account(client):
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        sep24_enabled=True,
+        deposit_enabled=True,
+    )
+    response = client.post(
+        DEPOSIT_PATH,
+        {"asset_code": "USD", "account": TEST_MUXED_ACCOUNT, "amount": 100},
+    )
+    content = json.loads(response.content)
+    t = Transaction.objects.first()
+    assert content["type"] == "interactive_customer_info_needed"
+    assert "100" in content["url"]
+    assert t.amount_in is None
+    assert t.amount_out is None
+    assert t.amount_fee is None
+    assert t.kind == Transaction.KIND.deposit
+    assert t.protocol == Transaction.PROTOCOL.sep24
+    assert t.status == Transaction.STATUS.incomplete
+    assert t.stellar_account == MuxedAccount.from_account(TEST_MUXED_ACCOUNT).account_id
+    assert t.muxed_account == TEST_MUXED_ACCOUNT
+    assert t.account_memo is None
+    assert t.asset == asset
+    assert t.started_at
+    assert t.completed_at is None
+    assert t.from_address is None
+    assert t.to_address == TEST_MUXED_ACCOUNT
+    assert t.memo is None
+    assert t.claimable_balance_supported is False
+
+
+@pytest.mark.django_db
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success_with_memo)
+def test_deposit_success_with_auth_memo(client):
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        sep24_enabled=True,
+        deposit_enabled=True,
+    )
+    to_address = Keypair.random().public_key
+    response = client.post(
+        DEPOSIT_PATH, {"asset_code": "USD", "account": to_address, "amount": 100},
+    )
+    content = json.loads(response.content)
+    t = Transaction.objects.first()
+    assert content["type"] == "interactive_customer_info_needed"
+    assert "100" in content["url"]
+    assert t.amount_in is None
+    assert t.amount_out is None
+    assert t.amount_fee is None
+    assert t.kind == Transaction.KIND.deposit
+    assert t.protocol == Transaction.PROTOCOL.sep24
+    assert t.status == Transaction.STATUS.incomplete
+    assert t.stellar_account == "test source address"
+    assert t.muxed_account is None
+    assert t.account_memo is TEST_ACCOUNT_MEMO
+    assert t.asset == asset
+    assert t.started_at
+    assert t.completed_at is None
+    assert t.from_address is None
+    assert t.to_address == to_address
     assert t.memo is None
     assert t.claimable_balance_supported is False
 

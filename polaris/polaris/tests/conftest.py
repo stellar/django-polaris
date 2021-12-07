@@ -150,7 +150,7 @@ def acc1_usd_deposit_transaction_factory(usd_asset_factory):
         else:
             status = Transaction.STATUS.pending_sender
             kind = Transaction.KIND.send
-        usd_asset = usd_asset_factory(protocols=[protocol])
+        usd_asset = usd_asset_factory(protocols=[protocol, "sep38"])
         return Transaction.objects.create(
             stellar_account=stellar_account,
             asset=usd_asset,
@@ -180,7 +180,7 @@ def acc2_eth_CB_deposit_transaction_factory(eth_asset_factory):
         stellar_account: str = STELLAR_ACCOUNT_2,
         protocol: str = Transaction.PROTOCOL.sep24,
     ):
-        eth_asset = eth_asset_factory(protocols=[protocol])
+        eth_asset = eth_asset_factory(protocols=[protocol, "sep38"])
         return Transaction.objects.create(
             stellar_account=stellar_account,
             asset=eth_asset,
@@ -213,7 +213,7 @@ def acc1_usd_withdrawal_transaction_factory(usd_asset_factory):
         stellar_account: str = STELLAR_ACCOUNT_1,
         protocol: str = Transaction.PROTOCOL.sep24,
     ):
-        usd_asset = usd_asset_factory(protocols=[protocol])
+        usd_asset = usd_asset_factory(protocols=[protocol, "sep38"])
         return Transaction.objects.create(
             id="80ea73ea-01d3-411a-8d9c-ea22999eef9e",
             stellar_account=stellar_account,
@@ -242,7 +242,7 @@ def acc2_eth_withdrawal_transaction_factory(eth_asset_factory):
         stellar_account: str = STELLAR_ACCOUNT_2,
         protocol: str = Transaction.PROTOCOL.sep24,
     ):
-        eth_asset = eth_asset_factory(protocols=[protocol])
+        eth_asset = eth_asset_factory(protocols=[protocol, "sep38"])
         return Transaction.objects.create(
             stellar_account=stellar_account,
             asset=eth_asset,
@@ -278,7 +278,7 @@ def acc2_eth_deposit_transaction_factory(eth_asset_factory):
         stellar_account: str = STELLAR_ACCOUNT_2,
         protocol: str = Transaction.PROTOCOL.sep24,
     ):
-        eth_asset = eth_asset_factory(protocols=[protocol])
+        eth_asset = eth_asset_factory(protocols=[protocol, "sep38"])
         return Transaction.objects.create(
             stellar_account=stellar_account,
             asset=eth_asset,

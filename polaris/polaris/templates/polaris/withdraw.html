@@ -7,55 +7,57 @@
 
 {% block "content" %}
 <section class="section">
-    {% if guidance %}
-      <center><i>{{ guidance|safe }}</i></center>
-    {% else %}
-      <center><i>{% trans "Please fill out the fields below." %}</i></center>
-    {% endif %}
+  {% block "guidance" %}
+  {% if guidance %}
+    <center><i>{{ guidance|safe }}</i></center>
+  {% else %}
+    <center><i>{% trans "Please fill out the fields below." %}</i></center>
+  {% endif %}
+  {% endblock %}
 
-    {% if form is not None %}
-        <form method="post" action="{{ post_url }}">
-            {% csrf_token %}
+  {% block "form" %}
+  <form method="post" action="{{ post_url }}">
+    {% csrf_token %}
 
-            {% for hidden in form.hidden_fields %}
-            {{ hidden }}
-            {% endfor %}
+    {% for hidden in form.hidden_fields %}
+    {{ hidden }}
+    {% endfor %}
 
-            {% for field in form.visible_fields %}
-            <div class="field">
-                <div class="label">
-                    {{ field.label }}
-                    {% if field.field.required %}
-                        <span class="required">*</span>
-                    {% endif %}
-                </div>
-                <div class="control">{{ field }}</div>
+    {% for field in form.visible_fields %}
+    <div class="field">
+      <div class="label">
+        {{ field.label }}
+        {% if field.field.required %}
+        <span class="required">*</span>
+        {% endif %}
+      </div>
 
-                {% if field.errors %}
-                <p class="help is-danger">
-                    {% for error in field.errors %}
-                    {{ error }}
-                    {% endfor %}
-                </p>
-                {% endif %}
+      <div class="control">{{ field }}</div>
 
-            </div>
-            {% endfor %}
+      {% if field.errors %}
+      <p class="help is-danger">
+        {% for error in field.errors %}
+        {{ error }}
+        {% endfor %}
+      </p>
+      {% endif %}
+    </div>
+    {% endfor %}
 
-            <table class="fee-table" hidden>
-                <tr class="fee-row"><td class="fee-label">{% trans "Fee" %}</td><td class="fee">{{ asset.symbol }} 0</td></tr>
-                <tr class="amount-out-row"><td class="amount-out-label">{% trans "Total" %}</td><td class="amount-out">{{ asset.symbol }} 0</td></tr>
-            </table>
+    {% block "fee_table" %}
+    <table class="polaris-fee-table" hidden>
+      <tr class="polaris-fee-row"><td class="polaris-fee-label">{% trans "Fee" %}</td><td class="polaris-fee-value">{{ symbol }} 0</td></tr>
+      <tr class="polaris-fee-total-row"><td class="polaris-fee-total-label">{% trans "Total" %}</td><td class="polaris-fee-total-value">{{ symbol }} 0</td></tr>
+    </table>
+    {% endblock %}
 
-            <div class="field">
-                <div class="control">
-                    <button class="button submit" type="submit" test-action="submit">{% trans "Continue" %}</button>
-                </div>
-            </div>
-        </form>
-    {% else %}
-        <br><br>
-        <button class="button" onClick="location.href='{{ get_url }}'">{% trans "Refresh" %}</button>
-    {% endif %}
+    <div class="field at-bottom">
+      <div class="control">
+        <button class="button submit" type="submit">{% trans "Submit" %}</button>
+      </div>
+    </div>
+
+  </form>
+  {% endblock %}
 </section>
 {% endblock %}

@@ -81,7 +81,10 @@ class Command(BaseCommand):
         sep6_24_qparams = Q(
             protocol__in=[Transaction.PROTOCOL.sep24, Transaction.PROTOCOL.sep6],
             status=Transaction.STATUS.pending_anchor,
-            kind=Transaction.KIND.withdrawal,
+            kind__in=[
+                Transaction.KIND.withdrawal,
+                getattr(Transaction.KIND, "withdrawal-exchange"),
+            ],
         )
         with django.db.transaction.atomic():
             transactions = list(
@@ -135,6 +138,8 @@ class Command(BaseCommand):
                 and transaction.status == transaction.STATUS.pending_anchor
             ):
                 transaction.pending_execution_attempt = False
+                if transaction.quote:
+                    transaction.quote.save()
                 transaction.save()
                 logger.error(
                     f"Transaction {transaction.id} status must be "
@@ -145,8 +150,26 @@ class Command(BaseCommand):
                 Transaction.STATUS.pending_external,
                 Transaction.STATUS.completed,
             ]:
+                if transaction.amount_fee is None or transaction.amount_out is None:
+                    if transaction.quote:
+                        err_msg = (
+                            f"transaction {transaction.id} uses a quote but was returned "
+                            "from execute_outgoing_transaction() without amount_fee or amount_out "
+                            "assigned, skipping"
+                        )
+                        logger.error(err_msg)
+                        transaction.message = err_msg
+                        transaction.pending_execution_attempt = False
+                        transaction.quote.save()
+                        transaction.save()
+                        continue
+                    logger.warning(
+                        f"transaction {transaction.id} was returned from execute_outgoing_transaction() "
+                        "without Transaction.amount_fee or Transaction.amount_out assigned. Future Polaris "
+                        "releases will not calculate fees and delivered amounts."
+                    )
                 if transaction.amount_fee is None:
-                    if registered_fee_func is calculate_fee:
+                    if not transaction.quote and registered_fee_func is calculate_fee:
                         op = {
                             Transaction.KIND.withdrawal: settings.OPERATION_WITHDRAWAL,
                             Transaction.KIND.send: Transaction.KIND.send,
@@ -166,10 +189,11 @@ class Command(BaseCommand):
                             continue
                     else:
                         transaction.amount_fee = Decimal(0)
-                transaction.amount_out = round(
-                    transaction.amount_in - transaction.amount_fee,
-                    transaction.asset.significant_decimals,
-                )
+                if not transaction.quote:
+                    transaction.amount_out = round(
+                        transaction.amount_in - transaction.amount_fee,
+                        transaction.asset.significant_decimals,
+                    )
                 # Anchors can mark transactions as pending_external if the transfer
                 # cannot be completed immediately due to external processing.
                 # poll_outgoing_transactions will check on these transfers and mark them
@@ -183,6 +207,8 @@ class Command(BaseCommand):
                 Transaction.STATUS.pending_customer_info_update,
             ]:
                 transaction.pending_execution_attempt = False
+                if transaction.quote:
+                    transaction.save()
                 transaction.save()
                 logger.error(
                     f"Transaction {transaction.id} was moved to invalid status"
@@ -191,6 +217,8 @@ class Command(BaseCommand):
                 continue
 
             transaction.pending_execution_attempt = False
+            if transaction.quote:
+                transaction.quote.save()
             transaction.save()
             maybe_make_callback(transaction)
 

@@ -17,7 +17,7 @@ services:
       - ./example/data:/code/data
     ports:
       - "8000:8000"
-    command: watchmedo auto-restart --recursive --pattern="*.py" --directory="." python manage.py runserver -- --nostatic 0.0.0.0:8000
+    command: watchmedo auto-restart --recursive --pattern="*.py;*.env;*.html" --directory="." python manage.py runserver -- --nostatic 0.0.0.0:8000
     depends_on:
       - db
   watch_transactions:
@@ -30,7 +30,7 @@ services:
       - ./example/data:/code/data
     depends_on:
       - server
-    command: watchmedo auto-restart --recursive --pattern="*.py" --directory="." python manage.py watch_transactions
+    command: watchmedo auto-restart --recursive --pattern="*.py;*.env" --directory="." python manage.py watch_transactions
   process_pending_deposits:
     container_name: process_pending_deposits
     network_mode: host
@@ -41,7 +41,7 @@ services:
       - ./example/data:/code/data
     depends_on:
       - server
-    command: watchmedo auto-restart --recursive --pattern="*.py" --directory="." python manage.py process_pending_deposits -- --loop
+    command: watchmedo auto-restart --recursive --pattern="*.py;*.env" --directory="." python manage.py process_pending_deposits -- --loop
   poll_outgoing_transactions:
     container_name: poll_outgoing_transactions
     network_mode: host
@@ -52,7 +52,7 @@ services:
       - ./example/data:/code/data
     depends_on:
       - server
-    command: watchmedo auto-restart --recursive --pattern="*.py" --directory="." python manage.py poll_outgoing_transactions -- --loop
+    command: watchmedo auto-restart --recursive --pattern="*.py;*.env" --directory="." python manage.py poll_outgoing_transactions -- --loop
   execute_outgoing_transactions:
     container_name: execute_outgoing_transactions
     network_mode: host
@@ -63,7 +63,7 @@ services:
       - ./example/data:/code/data
     depends_on:
       - server
-    command: watchmedo auto-restart --recursive --pattern="*.py" --directory="." python manage.py execute_outgoing_transactions -- --loop
+    command: watchmedo auto-restart --recursive --pattern="*.py;*.env" --directory="." python manage.py execute_outgoing_transactions -- --loop
   sign_multisig_transactions:
     container_name: sign_multisig_transactions
     network_mode: host
@@ -74,4 +74,4 @@ services:
       - ./example/data:/code/data
     depends_on:
       - server
-    command: watchmedo auto-restart --recursive --pattern="*.py" --directory="." python manage.py sign_multisig_transactions -- --loop
+    command: watchmedo auto-restart --recursive --pattern="*.py;*.env" --directory="." python manage.py sign_multisig_transactions -- --loop

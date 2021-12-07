@@ -5,6 +5,7 @@ from django.urls import reverse
 from django.shortcuts import redirect
 from django.views.decorators.clickjacking import xframe_options_exempt
 from django.utils.translation import gettext as _
+from django.conf import settings as django_settings
 
 from rest_framework import status
 from rest_framework.decorators import api_view, renderer_classes, parser_classes
@@ -17,7 +18,12 @@ from rest_framework.renderers import (
 )
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from stellar_sdk.keypair import Keypair
-from stellar_sdk.exceptions import Ed25519PublicKeyInvalidError
+from stellar_sdk.strkey import StrKey
+from stellar_sdk.exceptions import (
+    Ed25519PublicKeyInvalidError,
+    MuxedEd25519AccountInvalidError,
+    ValueError as StellarSdkValueError,
+)
 
 from polaris import settings
 from polaris.templates import Template
@@ -37,6 +43,7 @@ from polaris.sep24.utils import (
     authenticate_session,
     invalidate_session,
     interactive_args_validation,
+    get_timezone_utc_offset,
 )
 from polaris.models import Asset, Transaction
 from polaris.integrations.forms import TransactionForm
@@ -123,22 +130,26 @@ def post_interactive_deposit(request: Request) -> Response:
         if issubclass(form.__class__, TransactionForm):
             transaction.amount_in = form.cleaned_data["amount"]
             transaction.amount_expected = form.cleaned_data["amount"]
-            transaction.amount_fee = registered_fee_func(
-                request=request,
-                fee_params={
-                    "amount": transaction.amount_in,
-                    "type": form.cleaned_data.get("type"),
-                    "operation": settings.OPERATION_DEPOSIT,
-                    "asset_code": asset.code,
-                },
-            )
-            if settings.ADDITIVE_FEES_ENABLED:
-                transaction.amount_in += transaction.amount_fee
-                transaction.amount_expected += transaction.amount_fee
-            transaction.amount_out = round(
-                transaction.amount_in - transaction.amount_fee,
-                asset.significant_decimals,
-            )
+            try:
+                transaction.amount_fee = registered_fee_func(
+                    request=request,
+                    fee_params={
+                        "amount": transaction.amount_in,
+                        "type": form.cleaned_data.get("type"),
+                        "operation": settings.OPERATION_DEPOSIT,
+                        "asset_code": asset.code,
+                    },
+                )
+            except ValueError:
+                pass
+            else:
+                if settings.ADDITIVE_FEES_ENABLED:
+                    transaction.amount_in += transaction.amount_fee
+                    transaction.amount_expected += transaction.amount_fee
+                transaction.amount_out = round(
+                    transaction.amount_in - transaction.amount_fee,
+                    asset.significant_decimals,
+                )
             transaction.save()
 
         try:
@@ -182,14 +193,17 @@ def post_interactive_deposit(request: Request) -> Response:
 
     else:
         try:
-            content = rdi.content_for_template(
-                request=request,
-                template=Template.DEPOSIT,
-                form=form,
-                transaction=transaction,
+            content_from_anchor = (
+                rdi.content_for_template(
+                    request=request,
+                    template=Template.DEPOSIT,
+                    form=form,
+                    transaction=transaction,
+                )
+                or {}
             )
         except NotImplementedError:
-            content = {}
+            content_from_anchor = {}
 
         url_args = {"transaction_id": transaction.id, "asset_code": asset.code}
         if callback:
@@ -197,18 +211,33 @@ def post_interactive_deposit(request: Request) -> Response:
         if amount:
             url_args["amount"] = amount
 
-        post_url = f"{reverse('post_interactive_deposit')}?{urlencode(url_args)}"
-        get_url = f"{reverse('get_interactive_deposit')}?{urlencode(url_args)}"
-        content.update(
-            form=form,
-            post_url=post_url,
-            get_url=get_url,
-            operation=settings.OPERATION_DEPOSIT,
-            asset=asset,
-            use_fee_endpoint=registered_fee_func != calculate_fee,
-            additive_fees_enabled=settings.ADDITIVE_FEES_ENABLED,
+        current_offset = get_timezone_utc_offset(
+            request.session.get("timezone") or django_settings.TIME_ZONE
         )
-        return Response(content, template_name="polaris/deposit.html", status=400)
+        toml_data = registered_toml_func(request=request)
+        post_url = f"{reverse('post_interactive_deposit')}?{urlencode(url_args)}"
+        content = {
+            "form": form,
+            "post_url": post_url,
+            "operation": settings.OPERATION_DEPOSIT,
+            "asset": asset,
+            "symbol": asset.symbol,
+            "show_fee_table": isinstance(form, TransactionForm),
+            "use_fee_endpoint": registered_fee_func != calculate_fee,
+            "additive_fees_enabled": settings.ADDITIVE_FEES_ENABLED,
+            "org_logo_url": toml_data.get("DOCUMENTATION", {}).get("ORG_LOGO"),
+            "timezone_endpoint": reverse("tzinfo"),
+            "session_id": request.session.session_key,
+            "current_offset": current_offset,
+            **content_from_anchor,
+        }
+        return Response(
+            content,
+            template_name=content_from_anchor.get(
+                "template_name", "polaris/deposit.html"
+            ),
+            status=400,
+        )
 
 
 @api_view(["GET"])
@@ -286,16 +315,19 @@ def get_interactive_deposit(request: Request) -> Response:
         request=request, transaction=transaction, amount=amount
     )
     try:
-        content = rdi.content_for_template(
-            request=request,
-            template=Template.DEPOSIT,
-            form=form,
-            transaction=transaction,
+        content_from_anchor = (
+            rdi.content_for_template(
+                request=request,
+                template=Template.DEPOSIT,
+                form=form,
+                transaction=transaction,
+            )
+            or {}
         )
     except NotImplementedError:
-        content = None
+        content_from_anchor = {}
 
-    if not (form or content):
+    if not (form or content_from_anchor):
         logger.error("The anchor did not provide content, unable to serve page.")
         if transaction.status != transaction.STATUS.incomplete:
             return render_error_response(
@@ -310,8 +342,6 @@ def get_interactive_deposit(request: Request) -> Response:
             status_code=500,
             content_type="text/html",
         )
-    elif content is None:
-        content = {}
 
     url_args = {"transaction_id": transaction.id, "asset_code": asset.code}
     if callback:
@@ -319,21 +349,31 @@ def get_interactive_deposit(request: Request) -> Response:
     if amount:
         url_args["amount"] = amount
 
+    current_offset = get_timezone_utc_offset(
+        request.session.get("timezone") or django_settings.TIME_ZONE
+    )
     toml_data = registered_toml_func(request=request)
     post_url = f"{reverse('post_interactive_deposit')}?{urlencode(url_args)}"
-    get_url = f"{reverse('get_interactive_deposit')}?{urlencode(url_args)}"
-    content.update(
-        form=form,
-        post_url=post_url,
-        get_url=get_url,
-        operation=settings.OPERATION_DEPOSIT,
-        asset=asset,
-        use_fee_endpoint=registered_fee_func != calculate_fee,
-        org_logo_url=toml_data.get("DOCUMENTATION", {}).get("ORG_LOGO"),
-        additive_fees_enabled=settings.ADDITIVE_FEES_ENABLED,
-    )
+    content = {
+        "form": form,
+        "post_url": post_url,
+        "operation": settings.OPERATION_DEPOSIT,
+        "asset": asset,
+        "symbol": asset.symbol,
+        "show_fee_table": isinstance(form, TransactionForm),
+        "use_fee_endpoint": registered_fee_func != calculate_fee,
+        "org_logo_url": toml_data.get("DOCUMENTATION", {}).get("ORG_LOGO"),
+        "additive_fees_enabled": settings.ADDITIVE_FEES_ENABLED,
+        "timezone_endpoint": reverse("tzinfo"),
+        "session_id": request.session.session_key,
+        "current_offset": current_offset,
+        **content_from_anchor,
+    }
 
-    return Response(content, template_name="polaris/deposit.html")
+    return Response(
+        content,
+        template_name=content_from_anchor.get("template_name", "polaris/deposit.html"),
+    )
 
 
 @api_view(["POST"])
@@ -382,7 +422,7 @@ def deposit(token: SEP10Token, request: Request) -> Response:
     # Ensure memo won't cause stellar transaction to fail when submitted
     try:
         make_memo(request.data.get("memo"), request.data.get("memo_type"))
-    except ValueError:
+    except (ValueError, TypeError):
         return render_error_response(_("invalid 'memo' for 'memo_type'"))
 
     # Verify that the asset code exists in our database, with deposit enabled.
@@ -401,14 +441,21 @@ def deposit(token: SEP10Token, request: Request) -> Response:
         if not (asset.deposit_min_amount <= amount <= asset.deposit_max_amount):
             return render_error_response(_("invalid 'amount'"))
 
-    try:
-        destination_kp = Keypair.from_public_key(destination_account)
-    except Ed25519PublicKeyInvalidError:
-        return render_error_response(_("invalid 'account'"))
+    stellar_account = destination_account
+    if destination_account.startswith("M"):
+        try:
+            stellar_account = StrKey.decode_muxed_account(destination_account).ed25519
+        except (MuxedEd25519AccountInvalidError, StellarSdkValueError):
+            return render_error_response(_("invalid 'account'"))
+    else:
+        try:
+            Keypair.from_public_key(destination_account)
+        except Ed25519PublicKeyInvalidError:
+            return render_error_response(_("invalid 'account'"))
 
     if not rci.account_creation_supported:
         try:
-            get_account_obj(destination_kp)
+            get_account_obj(Keypair.from_public_key(stellar_account))
         except RuntimeError:
             return render_error_response(
                 _("public key 'account' must be a funded Stellar account")
@@ -420,6 +467,9 @@ def deposit(token: SEP10Token, request: Request) -> Response:
                 token=token,
                 request=request,
                 stellar_account=token.account,
+                muxed_account=token.muxed_account,
+                account_memo=str(token.memo) if token.memo else None,
+                account_memo_type=Transaction.MEMO_TYPES.id if token.memo else None,
                 fields=sep9_fields,
                 language_code=lang,
             )
@@ -429,16 +479,17 @@ def deposit(token: SEP10Token, request: Request) -> Response:
             # specified in the request.
             return render_error_response(str(e))
         except NotImplementedError:
-            return render_error_response(
-                "passing SEP-9 fields in deposit requests is not supported",
-                status_code=501,
-            )
+            # the KYC info passed via SEP-9 fields can be ignored if the anchor
+            # wants to re-collect the information
+            pass
 
     # Construct interactive deposit pop-up URL.
     transaction_id = create_transaction_id()
     Transaction.objects.create(
         id=transaction_id,
         stellar_account=token.account,
+        muxed_account=token.muxed_account,
+        account_memo=token.memo,
         asset=asset,
         kind=Transaction.KIND.deposit,
         status=Transaction.STATUS.incomplete,
@@ -455,12 +506,13 @@ def deposit(token: SEP10Token, request: Request) -> Response:
     logger.info(f"Created deposit transaction {transaction_id}")
 
     url = interactive_url(
-        request,
-        str(transaction_id),
-        token.account,
-        asset_code,
-        settings.OPERATION_DEPOSIT,
-        amount,
+        request=request,
+        transaction_id=str(transaction_id),
+        account=token.muxed_account or token.account,
+        memo=token.memo,
+        asset_code=asset_code,
+        op_type=settings.OPERATION_DEPOSIT,
+        amount=amount,
     )
     return Response(
         {"type": "interactive_customer_info_needed", "url": url, "id": transaction_id},

@@ -1,7 +1,6 @@
 from typing import Dict, Optional
 from decimal import Decimal, InvalidOperation
 from collections import defaultdict
-from polaris.utils import getLogger
 
 from django.utils.translation import gettext as _
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
@@ -14,18 +13,18 @@ from rest_framework.parsers import JSONParser
 from polaris.locale.utils import _is_supported_language, activate_lang_for_request
 from polaris.sep10.utils import validate_sep10_token
 from polaris.sep10.token import SEP10Token
-from polaris.models import Transaction, Asset
 from polaris.integrations import (
     registered_sep31_receiver_integration,
     registered_custody_integration as rci,
 )
+from polaris.models import Transaction, Asset, Quote
 from polaris.sep31.serializers import SEP31TransactionSerializer
 from polaris.utils import (
+    getLogger,
+    get_quote_and_offchain_destination_asset,
     render_error_response,
     create_transaction_id,
-    memo_hex_to_base64,
     validate_patch_request_fields,
-    memo_str,
 )
 
 
@@ -52,9 +51,15 @@ class TransactionsAPIView(APIView):
         elif not transaction_id:
             return render_error_response(_("missing 'id' in URI"))
         try:
-            t = Transaction.objects.filter(
-                id=transaction_id, stellar_account=token.account,
-            ).first()
+            t = (
+                Transaction.objects.filter(
+                    id=transaction_id,
+                    stellar_account=token.account,
+                    protocol=Transaction.PROTOCOL.sep31,
+                )
+                .select_related("quote")
+                .first()
+            )
         except ValidationError:  # bad id parameter
             return render_error_response(_("transaction not found"), status_code=404)
         if not t:
@@ -116,7 +121,7 @@ class TransactionsAPIView(APIView):
             return render_error_response("invalid sending account", status_code=403)
 
         try:
-            params = validate_post_request(request)
+            params = validate_post_request(token, request)
         except ValueError as e:
             return render_error_response(str(e))
 
@@ -141,34 +146,37 @@ class TransactionsAPIView(APIView):
             amount_in=params["amount"],
             amount_expected=params["amount"],
             client_domain=token.client_domain,
+            quote=params["quote"],
         )
 
         error_data = registered_sep31_receiver_integration.process_post_request(
             token=token, request=request, params=params, transaction=transaction
         )
+        try:
+            validate_error_response(error_data, transaction)
+        except ValueError as e:
+            logger.error(str(e))
+            return render_error_response(
+                _("unable to process the request"), status_code=500
+            )
         if error_data:
-            try:
-                validate_post_response(error_data, transaction)
-            except ValueError as e:
-                logger.error(str(e))
-                return render_error_response(
-                    _("unable to process the request"), status_code=500
-                )
-            else:
-                return Response(error_data, status=400)
+            return Response(error_data, status=400)
 
+        if transaction.quote and transaction.quote.type == Quote.TYPE.indicative:
+            transaction.quote.save()
         rci.save_receiving_account_and_memo(request=request, transaction=transaction)
-        transaction.refresh_from_db()
-        response_data = {
-            "id": transaction.id,
-            "stellar_account_id": transaction.receiving_anchor_account,
-            "stellar_memo": transaction.memo,
-            "stellar_memo_type": transaction.memo_type,
-        }
-        return Response(response_data, status=201)
+        return Response(
+            {
+                "id": transaction.id,
+                "stellar_account_id": transaction.receiving_anchor_account,
+                "stellar_memo": transaction.memo,
+                "stellar_memo_type": transaction.memo_type,
+            },
+            status=201,
+        )
 
 
-def validate_post_request(request: Request) -> Dict:
+def validate_post_request(token: SEP10Token, request: Request) -> Dict:
     asset_args = {"code": request.data.get("asset_code")}
     if request.data.get("asset_issuer"):
         asset_args["issuer"] = request.data.get("asset_issuer")
@@ -199,6 +207,19 @@ def validate_post_request(request: Request) -> Dict:
         and type(request.data.get("receiver_id")) in [str, type(None)]
     ):
         raise ValueError(_("'sender_id' and 'receiver_id' values must be strings"))
+    quote, destination_asset = get_quote_and_offchain_destination_asset(
+        token=token,
+        quote_id=request.data.get("quote_id"),
+        destination_asset_str=request.data.get("destination_asset"),
+        asset=asset,
+        amount=Decimal(amount),
+    )
+    if (
+        quote
+        and quote.type == Quote.TYPE.firm
+        and Transaction.objects.filter(quote=quote).exists()
+    ):
+        raise ValueError(_("quote has already been used in a transaction"))
     return {
         "asset": asset,
         "amount": amount,
@@ -207,6 +228,8 @@ def validate_post_request(request: Request) -> Dict:
         "sender_id": request.data.get("sender_id"),
         "receiver_id": request.data.get("receiver_id"),
         "fields": request.data.get("fields"),
+        "destination_asset": destination_asset,
+        "quote": quote,
     }
 
 
@@ -227,15 +250,10 @@ def validate_post_fields(
     return dict(missing_fields)
 
 
-def validate_post_response(error_data: Dict, transaction: Transaction):
-    if error_data is None:
-        return None
-    elif not isinstance(error_data, dict):
-        raise ValueError(
-            "unexpected data type returned from process_post_request() "
-            f"({type(error_data)}), expected dict"
-        )
-    elif Transaction.objects.filter(id=transaction.id).exists():
+def validate_error_response(error_data: Dict, transaction: Transaction):
+    if not error_data:
+        return
+    if Transaction.objects.filter(id=transaction.id).exists():
         raise ValueError(f"transactions should not be created on bad requests")
     elif error_data["error"] == "transaction_info_needed":
         if not isinstance(error_data.get("fields"), dict):

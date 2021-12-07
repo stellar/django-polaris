@@ -33,7 +33,7 @@ def transactions(token: SEP10Token, request: Request,) -> Response:
     Definition of the /transactions endpoint, in accordance with SEP-0024.
     See: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md#transaction-history
     """
-    return endpoints.transactions(request, token.account)
+    return endpoints.transactions_request(request, token)
 
 
 @api_view(["GET"])
@@ -44,4 +44,4 @@ def transaction(token: SEP10Token, request: Request,) -> Response:
     Definition of the /transaction endpoint, in accordance with SEP-0024.
     See: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md#single-historical-transaction
     """
-    return endpoints.transaction(request, token.account)
+    return endpoints.transaction_request(request, token)

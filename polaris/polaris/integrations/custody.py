@@ -190,11 +190,7 @@ class SelfCustodyIntegration(CustodyIntegration):
         Submits ``Transaction.envelope_xdr`` to the Stellar network
         """
         with Server(horizon_url=settings.HORIZON_URI) as server:
-            if transaction.envelope_xdr:
-                envelope = TransactionEnvelope.from_xdr(
-                    transaction.envelope_xdr, settings.STELLAR_NETWORK_PASSPHRASE
-                )
-            else:
+            if not transaction.envelope_xdr:
                 distribution_acc, _ = get_account_obj(
                     Keypair.from_public_key(transaction.asset.distribution_account)
                 )
@@ -206,7 +202,9 @@ class SelfCustodyIntegration(CustodyIntegration):
                     or server.fetch_base_fee(),
                 )
                 envelope.sign(transaction.asset.distribution_seed)
-            return server.submit_transaction(envelope.to_xdr())
+                transaction.envelope_xdr = envelope.to_xdr()
+                transaction.save()
+            return server.submit_transaction(transaction.envelope_xdr)
 
     def create_destination_account(self, transaction: Transaction) -> dict:
         """

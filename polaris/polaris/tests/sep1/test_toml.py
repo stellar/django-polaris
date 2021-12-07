@@ -13,10 +13,6 @@ TEST_MODULE = "polaris.sep1.views"
 
 
 @pytest.mark.django_db
-@patch(
-    f"{TEST_MODULE}.settings.ACTIVE_SEPS",
-    ["sep-1", "sep-6", "sep-10", "sep-12", "sep-24", "sep-31"],
-)
 @patch(f"{TEST_MODULE}.registered_toml_func")
 def test_toml_generated(mock_toml_func, client):
     usd = Asset.objects.create(
@@ -24,7 +20,11 @@ def test_toml_generated(mock_toml_func, client):
         issuer=Keypair.random().public_key,
         distribution_seed=Keypair.random().secret,
     )
-    response = client.get(TOML_PATH)
+    with patch(
+        f"{TEST_MODULE}.settings.ACTIVE_SEPS",
+        ["sep-1", "sep-6", "sep-10", "sep-12", "sep-24", "sep-31", "sep-38"],
+    ):
+        response = client.get(TOML_PATH)
     assert response.status_code == 200
     assert response.content_type == "text/plain"
     assert mock_toml_func.was_called_once()

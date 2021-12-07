@@ -1,0 +1,34 @@
+.confirm-title {
+  text-transform: capitalize;
+  color: white;
+  font-size: 1rem;
+  line-height: 1;
+  float: left;
+}
+
+.confirm-item {
+  padding: 1rem 0;
+}
+
+.confirm-label {
+  text-transform: capitalize;
+  color: white;
+  font-size: 1rem;
+  line-height: 1;
+  float: left;
+}
+
+.confirm-value {
+  color: white;
+  float: right;
+  line-height: 1rem;
+  font-size: 1rem;
+}
+
+.hr {
+  margin-top: 1rem;
+}
+
+.transaction-confirmation-info {
+  margin-bottom: 2rem;
+}

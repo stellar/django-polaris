@@ -1,11 +1,13 @@
 """This module defines a serializer for the transaction model."""
 from decimal import Decimal
+from datetime import timezone
 
 from rest_framework import serializers
 from django.db.models import QuerySet
 
 from polaris import settings
 from polaris.models import Transaction
+from polaris.settings import DATETIME_FORMAT
 
 
 class TransactionSerializer(serializers.ModelSerializer):
@@ -13,6 +15,12 @@ class TransactionSerializer(serializers.ModelSerializer):
 
     id = serializers.CharField()
     message = serializers.CharField()
+    started_at = serializers.DateTimeField(
+        format=DATETIME_FORMAT, default_timezone=timezone.utc
+    )
+    completed_at = serializers.DateTimeField(
+        format=DATETIME_FORMAT, default_timezone=timezone.utc
+    )
 
     def __init__(self, data, *args, **kwargs):
         """
@@ -58,6 +66,11 @@ class TransactionSerializer(serializers.ModelSerializer):
         del data["memo_type"]
         del data["memo"]
         del data["receiving_anchor_account"]
+        if instance.quote:
+            data["amount_in_asset"] = instance.quote.sell_asset
+            data["amount_out_asset"] = instance.quote.buy_asset
+            if instance.fee_asset:
+                data["amount_fee_asset"] = instance.fee_asset
         return data
 
     def _round_decimals(self, data, instance):

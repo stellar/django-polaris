@@ -10,11 +10,17 @@ from rest_framework.response import Response
 from rest_framework.renderers import JSONRenderer, BrowsableAPIRenderer
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.exceptions import APIException
-from stellar_sdk.exceptions import MemoInvalidException, Ed25519PublicKeyInvalidError
-from stellar_sdk.keypair import Keypair
+from stellar_sdk.strkey import StrKey
+from stellar_sdk import Keypair
+from stellar_sdk.exceptions import (
+    MemoInvalidException,
+    Ed25519PublicKeyInvalidError,
+    MuxedEd25519AccountInvalidError,
+    ValueError as StellarSdkValueError,
+)
 
 from polaris import settings
-from polaris.models import Asset, Transaction
+from polaris.models import Asset, Transaction, Quote
 from polaris.locale.utils import validate_language, activate_lang_for_request
 from polaris.utils import (
     getLogger,
@@ -23,6 +29,7 @@ from polaris.utils import (
     extract_sep9_fields,
     make_memo,
     get_account_obj,
+    get_quote_and_offchain_source_asset,
 )
 from polaris.shared.endpoints import SEP6_MORE_INFO_PATH
 from polaris.sep6.utils import validate_403_response
@@ -43,7 +50,19 @@ logger = getLogger(__name__)
 @parser_classes([MultiPartParser, FormParser, JSONParser])
 @validate_sep10_token()
 def deposit(token: SEP10Token, request: Request) -> Response:
-    args = parse_request_args(request)
+    return deposit_logic(token=token, request=request, exchange=False)
+
+
+@api_view(["GET"])
+@renderer_classes([JSONRenderer, BrowsableAPIRenderer])
+@parser_classes([MultiPartParser, FormParser, JSONParser])
+@validate_sep10_token()
+def deposit_exchange(token: SEP10Token, request: Request) -> Response:
+    return deposit_logic(token=token, request=request, exchange=True)
+
+
+def deposit_logic(token: SEP10Token, request: Request, exchange: bool) -> Response:
+    args = parse_request_args(token, request, exchange)
     if "error" in args:
         return args["error"]
 
@@ -51,10 +70,13 @@ def deposit(token: SEP10Token, request: Request) -> Response:
     transaction = Transaction(
         id=transaction_id,
         stellar_account=token.account,
-        asset=args["asset"],
+        muxed_account=token.muxed_account,
+        account_memo=token.memo,
+        asset=args["destination_asset" if exchange else "asset"],
         amount_in=args.get("amount"),
         amount_expected=args.get("amount"),
-        kind=Transaction.KIND.deposit,
+        quote=args["quote"],
+        kind=getattr(Transaction.KIND, "deposit-exchange" if exchange else "deposit"),
         status=Transaction.STATUS.pending_user_transfer_start,
         memo=args["memo"],
         memo_type=args["memo_type"] or Transaction.MEMO_TYPES.text,
@@ -79,7 +101,7 @@ def deposit(token: SEP10Token, request: Request) -> Response:
 
     try:
         response, status_code = validate_response(
-            token, request, args, integration_response, transaction
+            token, request, args, integration_response, transaction, exchange
         )
     except (ValueError, KeyError) as e:
         logger.error(str(e))
@@ -89,6 +111,8 @@ def deposit(token: SEP10Token, request: Request) -> Response:
 
     if status_code == 200:
         logger.info(f"Created deposit transaction {transaction.id}")
+        if transaction.quote:
+            transaction.quote.save()
         transaction.save()
     elif Transaction.objects.filter(id=transaction.id).exists():
         logger.error("Do not save transaction objects for invalid SEP-6 requests")
@@ -105,6 +129,7 @@ def validate_response(
     args: Dict,
     integration_response: Dict,
     transaction: Transaction,
+    exchange: bool,
 ) -> Tuple[Dict, int]:
     """
     Validate /deposit response returned from integration function
@@ -115,7 +140,7 @@ def validate_response(
             403,
         )
 
-    asset = args["asset"]
+    asset = args["destination_asset" if exchange else "asset"]
     if not (
         "how" in integration_response and isinstance(integration_response["how"], str)
     ):
@@ -136,7 +161,7 @@ def validate_response(
         response["min_amount"] = integration_response["min_amount"]
     elif (
         transaction.asset.deposit_min_amount
-        > Asset._meta.get_field("deposit_min_amount").default
+        > getattr(Asset, "_meta").get_field("deposit_min_amount").default
     ):
         response["min_amount"] = round(
             transaction.asset.deposit_min_amount, transaction.asset.significant_decimals
@@ -153,19 +178,24 @@ def validate_response(
         response["max_amount"] = integration_response["max_amount"]
     elif (
         transaction.asset.deposit_max_amount
-        < Asset._meta.get_field("deposit_max_amount").default
+        < getattr(Asset, "_meta").get_field("deposit_max_amount").default
     ):
         response["max_amount"] = round(
             transaction.asset.deposit_max_amount, transaction.asset.significant_decimals
         )
 
-    if calculate_fee == registered_fee_func:
-        # Polaris user has not replaced default fee function, so fee_fixed
-        # and fee_percent are still used.
-        response.update(
-            fee_fixed=round(asset.deposit_fee_fixed, asset.significant_decimals),
-            fee_percent=asset.deposit_fee_percent,
-        )
+    if calculate_fee == registered_fee_func and not exchange:
+        # return the fixed and percentage fee rates if the registered fee function
+        # has not been implemented AND the request was not for the `/deposit-exchange`
+        # endpoint.
+        if asset.deposit_fee_fixed is not None:
+            response["fee_fixed"] = round(
+                asset.deposit_fee_fixed, asset.significant_decimals
+            )
+        if asset.deposit_fee_percent is not None:
+            response["fee_percent"] = round(
+                asset.deposit_fee_percent, asset.significant_decimals
+            )
 
     if "extra_info" in integration_response:
         response["extra_info"] = integration_response["extra_info"]
@@ -177,17 +207,42 @@ def validate_response(
     return response, 200
 
 
-def parse_request_args(request: Request) -> Dict:
-    try:
-        destination_kp = Keypair.from_public_key(request.GET.get("account"))
-    except Ed25519PublicKeyInvalidError:
-        return {"error": render_error_response(_("invalid 'account'"))}
+def parse_request_args(
+    token: SEP10Token, request: Request, exchange: bool = False
+) -> Dict:
+    account = request.GET.get("account")
+    if account.startswith("M"):
+        try:
+            StrKey.decode_muxed_account(account)
+        except (MuxedEd25519AccountInvalidError, StellarSdkValueError):
+            return {"error": render_error_response(_("invalid 'account'"))}
+    else:
+        try:
+            Keypair.from_public_key(account)
+        except Ed25519PublicKeyInvalidError:
+            return {"error": render_error_response(_("invalid 'account'"))}
+
+    if exchange:
+        if not request.GET.get("destination_asset"):
+            return {
+                "error": render_error_response(_("'destination_asset' is required"))
+            }
+        parts = request.GET.get("destination_asset").split(":")
+        if len(parts) != 3 or parts[0] != "stellar":
+            return {"error": render_error_response(_("invalid 'destination_asset'"))}
+        asset_query_args = {"code": parts[1], "issuer": parts[2]}
+    else:
+        asset_query_args = {"code": request.GET.get("asset_code")}
 
     asset = Asset.objects.filter(
-        code=request.GET.get("asset_code"), sep6_enabled=True, deposit_enabled=True
+        sep6_enabled=True, deposit_enabled=True, **asset_query_args
     ).first()
     if not asset:
-        return {"error": render_error_response(_("invalid 'asset_code'"))}
+        return {
+            "error": render_error_response(
+                _("asset not found using 'asset_code' or 'destination_asset'")
+            )
+        }
 
     lang = request.GET.get("lang")
     if lang:
@@ -202,7 +257,7 @@ def parse_request_args(request: Request) -> Dict:
 
     try:
         make_memo(request.GET.get("memo"), memo_type)
-    except (ValueError, MemoInvalidException):
+    except (ValueError, TypeError, MemoInvalidException):
         return {"error": render_error_response(_("invalid 'memo' for 'memo_type'"))}
 
     claimable_balance_supported = request.GET.get(
@@ -231,23 +286,56 @@ def parse_request_args(request: Request) -> Dict:
             on_change_callback = None
 
     amount = request.GET.get("amount")
+    if exchange and not amount:
+        return {"error": render_error_response(_("'amount' is required"))}
     if amount:
         try:
-            amount = round(Decimal(amount), asset.significant_decimals)
+            amount = Decimal(amount)
         except DecimalException:
             return {"error": render_error_response(_("invalid 'amount'"))}
-        min_amount = round(asset.deposit_min_amount, asset.significant_decimals)
-        max_amount = round(asset.deposit_max_amount, asset.significant_decimals)
-        if not (min_amount <= amount <= max_amount):
-            return {
-                "error": render_error_response(
-                    _("'amount' must be within [%s, %s]") % (min_amount, min_amount)
-                )
-            }
+        if not exchange:
+            # Polaris cannot validate the amounts of the off-chain asset, because the minumum and
+            # maximum limits saved to the database are for amounts of the Stellar asset. So, we
+            # only perform this validation if exchange=False.
+            amount = round(amount, asset.significant_decimals)
+            min_amount = round(asset.deposit_min_amount, asset.significant_decimals)
+            max_amount = round(asset.deposit_max_amount, asset.significant_decimals)
+            if not (min_amount <= amount <= max_amount):
+                return {
+                    "error": render_error_response(
+                        _("'amount' must be within [%s, %s]") % (min_amount, max_amount)
+                    )
+                }
+
+    try:
+        quote, source_asset = get_quote_and_offchain_source_asset(
+            token=token,
+            quote_id=request.GET.get("quote_id"),
+            source_asset_str=request.GET.get("source_asset"),
+            asset=asset,
+            amount=amount,
+        )
+    except ValueError as e:
+        return {"error": render_error_response(str(e))}
+
+    if (
+        quote
+        and quote.type == Quote.TYPE.firm
+        and Transaction.objects.filter(quote=quote).exists()
+    ):
+        return {
+            "error": render_error_response(
+                _("quote has already been used in a transaction")
+            )
+        }
 
     if not rci.account_creation_supported:
+        if account.startswith("M"):
+            stellar_account = StrKey.decode_muxed_account(account).ed25519
+        else:
+            stellar_account = account
         try:
-            get_account_obj(destination_kp)
+            get_account_obj(Keypair.from_public_key(stellar_account))
         except RuntimeError:
             return {
                 "error": render_error_response(
@@ -257,7 +345,7 @@ def parse_request_args(request: Request) -> Dict:
 
     args = {
         "account": request.GET.get("account"),
-        "asset": asset,
+        "destination_asset" if exchange else "asset": asset,
         "memo_type": memo_type,
         "memo": request.GET.get("memo"),
         "lang": lang,
@@ -266,6 +354,8 @@ def parse_request_args(request: Request) -> Dict:
         "on_change_callback": on_change_callback,
         "country_code": request.GET.get("country_code"),
         "amount": amount,
+        "quote": quote,
+        "source_asset": source_asset,
         **extract_sep9_fields(request.GET),
     }
 

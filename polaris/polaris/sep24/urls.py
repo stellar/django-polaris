@@ -16,6 +16,7 @@ from polaris.sep24.deposit import (
     post_interactive_deposit,
     get_interactive_deposit,
 )
+from polaris.sep24.tzinfo import post_tzinfo
 
 SEP24_MORE_INFO_PATH = "transaction/more_info"
 
@@ -52,6 +53,7 @@ urlpatterns = [
         get_interactive_withdraw,
         name="get_interactive_withdraw",
     ),
+    path("transactions/webapp/tzinfo", post_tzinfo, name="tzinfo"),
     path("info", info),
     path("fee", fee),
     path("transaction", transaction),

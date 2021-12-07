@@ -12,6 +12,7 @@ django-polaris documentation contents
     sep12/index
     sep6_and_sep24/index
     sep31/index
+    sep38/index
     register_integrations/index
     models/index
     forms/index
@@ -20,6 +21,9 @@ django-polaris documentation contents
     CLI commands <deployment/index>
     Multisignature Assets <multisignature_assets/index>
     Asset Custody <custody/index>
+    Shared Accounts <shared_accounts/index>
+    Middleware <middleware/index>
+
 
 Indices and tables
 ==================

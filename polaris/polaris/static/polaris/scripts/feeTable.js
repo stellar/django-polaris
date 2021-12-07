@@ -10,13 +10,20 @@ function feeTable({
   significantDecimals,
   symbol,
   useFeeEndpoint,
-  assetCode
+  assetCode,
+  languageCode,
+  parseNumber,
+  formatNumber,
+  showFeeTable
 }) {
-  let amountInput = document.querySelector('.amount-input');
+  if (!showFeeTable) {
+    return;
+  }
+  let amountInput = document.querySelector('.polaris-transaction-form-amount');
   let typeInput = document.querySelector('#id_type');
-  let feeTag = document.querySelector('.fee');
-  let amountOutTag = document.querySelector('.amount-out');
-  let feeTable = document.querySelector('.fee-table');
+  let feeTag = document.querySelector('.polaris-fee-value');
+  let amountOutTag = document.querySelector('.polaris-fee-total-value');
+  let feeTable = document.querySelector('.polaris-fee-table');
   let op = operation;
   let fee_fixed;
   let fee_percent;
@@ -28,15 +35,15 @@ function feeTable({
     fee_fixed = withdrawalFeeFixed;
     fee_percent = withdrawalFeePercent;
   }
-  if (amountInput) {
-    feeTable.removeAttribute('hidden');
-    amountInput.addEventListener("keyup", amountInputChange);
-    if (typeInput)
-      typeInput.addEventListener("input", amountInputChange);
-    if (amountInput.value)
-      // calculate value if the value is pre-filled
-      amountInputChange();
-  }
+  feeTable.removeAttribute('hidden');
+  if (!amountInput)
+    return;
+  amountInput.addEventListener("keyup", amountInputChange);
+  if (typeInput)
+    typeInput.addEventListener("input", amountInputChange);
+  if (amountInput.value)
+    // calculate value if the value is pre-filled
+    amountInputChange();
 
   function getFeeTableStrings(fee, amountIn) {
     /*
@@ -45,13 +52,13 @@ function feeTable({
      */
     let feeStr;
     let totalStr;
-    if (Number(amountIn) !== 0) {
+    if (amountIn !== 0) {
       let total = additiveFeesEnabled ? amountIn + fee : amountIn - fee;
-      feeStr = fee.toFixed(significantDecimals);
-      totalStr = total.toFixed(significantDecimals);
+      feeStr = formatNumber(fee, languageCode, { maximumFractionDigits: significantDecimals });
+      totalStr = formatNumber(total, languageCode, { maximumFractionDigits: significantDecimals });
     } else {
       feeStr = "0";
-      totalStr = additiveFeesEnabled ? amountIn.toFixed(significantDecimals) : "0";
+      totalStr = additiveFeesEnabled ? formatNumber(amountIn, languageCode, { maximumFractionDigits: significantDecimals }) : "0";
     }
     return [feeStr, totalStr];
   }
@@ -97,17 +104,19 @@ function feeTable({
   }
 
   function amountInputChange(e) {
-    if (isNaN(amountInput.value)) return;
+    if (!amountInput.value || Number.isNaN(amountInput.value)) return;
     if (typeInput && !typeInput.value) {
       return;
     }
-    let amountIn = Number(amountInput.value);
-    if (!useFeeEndpoint) {
-      let fee = fee_fixed + (amountIn * (fee_percent / 100));
-      let [feeStr, amountOutStr] = getFeeTableStrings(fee, amountIn);
-      updateFeeTableHtml(feeStr, amountOutStr);
-    } else {
-      callFeeEndpoint(amountIn);
+    let amountIn = parseNumber(amountInput.value, languageCode);
+    if (feeTable) {
+      if (!useFeeEndpoint) {
+        let fee = fee_fixed + (amountIn * (fee_percent / 100));
+        let [feeStr, amountOutStr] = getFeeTableStrings(fee, amountIn);
+        updateFeeTableHtml(feeStr, amountOutStr);
+      } else {
+        callFeeEndpoint(amountIn);
+      }
     }
   }
 }

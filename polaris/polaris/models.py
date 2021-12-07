@@ -1,34 +1,32 @@
 """This module defines the models used by Polaris."""
-import uuid
-import decimal
 import datetime
+import decimal
 import secrets
+import uuid
 from base64 import urlsafe_b64encode as b64e, urlsafe_b64decode as b64d
 
 from cryptography.fernet import Fernet
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from stellar_sdk import Server
-from stellar_sdk.client.aiohttp_client import AiohttpClient
-
 from django.core.exceptions import ValidationError
 from django.core.validators import (
     MinLengthValidator,
     MinValueValidator,
     MaxValueValidator,
 )
+from django.db import models
 from django.utils.encoding import force_bytes
 from django.utils.translation import gettext_lazy as _
-from django.db import models
-from model_utils.models import TimeStampedModel
 from model_utils import Choices
+from model_utils.models import TimeStampedModel
+from stellar_sdk.server_async import ServerAsync
+from stellar_sdk.client.aiohttp_client import AiohttpClient
+from stellar_sdk.exceptions import SdkError
 from stellar_sdk.keypair import Keypair
 from stellar_sdk.transaction_envelope import TransactionEnvelope
-from stellar_sdk.exceptions import SdkError
 
 from polaris import settings
-
 
 # Used for loading the distribution signers data onto an Asset obj
 ASSET_DISTRIBUTION_ACCOUNT_MAP = {}
@@ -113,7 +111,7 @@ class Asset(TimeStampedModel):
     """``True`` if deposit for this asset is supported."""
 
     deposit_fee_fixed = models.DecimalField(
-        default=0, blank=True, max_digits=30, decimal_places=7
+        null=True, blank=True, max_digits=30, decimal_places=7
     )
     """
     Optional fixed (base) fee for deposit. In units of the deposited asset. 
@@ -122,7 +120,7 @@ class Asset(TimeStampedModel):
     """
 
     deposit_fee_percent = models.DecimalField(
-        default=0,
+        null=True,
         blank=True,
         max_digits=30,
         decimal_places=7,
@@ -149,7 +147,7 @@ class Asset(TimeStampedModel):
     """``True`` if withdrawal for this asset is supported."""
 
     withdrawal_fee_fixed = models.DecimalField(
-        default=0, blank=True, max_digits=30, decimal_places=7
+        null=True, blank=True, max_digits=30, decimal_places=7
     )
     """
     Optional fixed (base) fee for withdraw. In units of the withdrawn asset. 
@@ -157,7 +155,7 @@ class Asset(TimeStampedModel):
     """
 
     withdrawal_fee_percent = models.DecimalField(
-        default=0,
+        null=True,
         blank=True,
         max_digits=30,
         decimal_places=7,
@@ -179,7 +177,7 @@ class Asset(TimeStampedModel):
     """Optional maximum amount. No limit if not specified."""
 
     send_fee_fixed = models.DecimalField(
-        default=0, blank=True, max_digits=30, decimal_places=7
+        null=True, blank=True, max_digits=30, decimal_places=7
     )
     """
     Optional fixed (base) fee for sending this asset in units of this asset. 
@@ -188,7 +186,7 @@ class Asset(TimeStampedModel):
     """
 
     send_fee_percent = models.DecimalField(
-        default=0,
+        null=True,
         blank=True,
         max_digits=30,
         decimal_places=7,
@@ -226,6 +224,9 @@ class Asset(TimeStampedModel):
     sep31_enabled = models.BooleanField(default=False)
     """`True` if this asset is transferable via SEP-31"""
 
+    sep38_enabled = models.BooleanField(default=False)
+    """`True` if this asset is exchangeable via SEP-38"""
+
     symbol = models.TextField(default="$")
     """The symbol used in HTML pages when displaying amounts of this asset"""
 
@@ -239,6 +240,13 @@ class Asset(TimeStampedModel):
         if not self.distribution_seed:
             return None
         return Keypair.from_secret(str(self.distribution_seed)).public_key
+
+    @property
+    def asset_identification_format(self):
+        """
+        SEP-38 asset identification format
+        """
+        return f"stellar:{self.code}:{self.issuer}"
 
     def get_distribution_account_data(self, refresh=False):
         if refresh or self.distribution_account not in ASSET_DISTRIBUTION_ACCOUNT_MAP:
@@ -279,7 +287,9 @@ class Asset(TimeStampedModel):
 
     async def get_distribution_account_data_async(self, refresh=False):
         if refresh or self.distribution_account not in ASSET_DISTRIBUTION_ACCOUNT_MAP:
-            async with Server(settings.HORIZON_URI, client=AiohttpClient()) as server:
+            async with ServerAsync(
+                settings.HORIZON_URI, client=AiohttpClient()
+            ) as server:
                 account_json = (
                     await server.accounts().account_id(self.distribution_account).call()
                 )
@@ -344,9 +354,10 @@ def deserialize(value):
 
 
 class Transaction(models.Model):
-
-    KIND = PolarisChoices("deposit", "withdrawal", "send")
-    """Choices object for ``deposit``, ``withdrawal``, or ``send``."""
+    KIND = PolarisChoices(
+        "deposit", "withdrawal", "send", "deposit-exchange", "withdrawal-exchange"
+    )
+    """Choices object for the kind of transaction"""
 
     status_to_message = {
         # SEP-6 & SEP-24
@@ -386,10 +397,30 @@ class Transaction(models.Model):
     """The token to be used as a cursor for querying before or after this transaction"""
 
     stellar_account = models.TextField(validators=[MinLengthValidator(1)])
-    """The stellar source account for the transaction."""
+    """
+    The Stellar (G...) account authenticated via SEP-10 that initiated this transaction.
+    Note that if ``Transaction.muxed_account`` is not null, this column's value is 
+    derived from the muxed account.
+    """
+
+    muxed_account = models.TextField(null=True, blank=True)
+    """
+    The muxed (M...) account authenticated via SEP-10 that initiated this transaction.
+    If this column value is not null, ``Transaction.stellar_account`` is derived from
+    this value and ``Transaction.account_memo`` will be null.
+    """
+
+    account_memo = models.PositiveIntegerField(null=True, blank=True)
+    """
+    The ID (64-bit integer) memo identifying the user of the shared Stellar account 
+    authenticated via SEP-10 that initiated this transaction. If this column value
+    is not null, ``Transaction.muxed_account`` will be null.
+    """
 
     asset = models.ForeignKey("Asset", on_delete=models.CASCADE)
     """The Django foreign key to the associated :class:`Asset`"""
+
+    quote = models.ForeignKey("Quote", null=True, blank=True, on_delete=models.CASCADE)
 
     # These fields can be shown through an API:
     kind = models.CharField(choices=KIND, default=KIND.deposit, max_length=20)
@@ -529,6 +560,13 @@ class Transaction(models.Model):
     )
     """Amount of fee charged by anchor."""
 
+    fee_asset = models.TextField(null=True, blank=True)
+    """
+    The string representing the asset in which the fee is charged. The string
+    must be formatted using SEP-38's Asset Identification Format, and is only
+    necessary for transactions using different on and off-chain assets.
+    """
+
     started_at = models.DateTimeField(default=utc_now)
     """Start date and time of transaction."""
 
@@ -548,7 +586,7 @@ class Transaction(models.Model):
     )  # Using to_address for naming consistency
     """
     Sent to address (perhaps BTC, IBAN, or bank account in the case of a 
-    withdrawal or send, Stellar address in the case of a deposit).
+    withdrawal or send, Stellar or muxed address in the case of a deposit).
     """
 
     required_info_updates = models.TextField(null=True, blank=True)
@@ -672,3 +710,210 @@ class Transaction(models.Model):
     class Meta:
         ordering = ("-started_at",)
         app_label = "polaris"
+
+
+class Quote(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
+    """
+    The unique ID for the quote.
+    """
+
+    stellar_account = models.TextField()
+    """
+    The Stellar (G...) account authenticated via SEP-10 when this Quote was created.
+    Note that if ``Quote.muxed_account`` is not null, this column's value is 
+    derived from the muxed account. 
+    """
+
+    account_memo = models.PositiveIntegerField(null=True, blank=True)
+    """
+    The ID (64-bit integer) memo identifying the user of the shared Stellar account 
+    authenticated via SEP-10 when this Quote was created. If this column value
+    is not null, ``Quote.muxed_account`` will be null.
+    """
+
+    muxed_account = models.TextField(null=True, blank=True)
+    """
+    The muxed (M...) account authenticated via SEP-10 when this Quote was created.
+    If this column value is not null, ``Quote.stellar_account`` is derived from
+    this value and ``Quote.account_memo`` will be null.
+    """
+
+    TYPE = PolarisChoices("firm", "indicative")
+    """
+    Choices for type.
+    """
+
+    type = models.TextField(choices=TYPE)
+    """
+    The type of quote. Firm quotes have a non-null price and expiration, indicative quotes 
+    may have a null price and expiration.
+    """
+
+    sell_asset = models.TextField()
+    """
+    The asset the client would like to sell. Ex. USDC:G..., iso4217:ARS
+    """
+
+    buy_asset = models.TextField()
+    """
+    The asset the client would like to receive for some amount of sell_asset.
+    """
+
+    sell_amount = models.DecimalField(max_digits=30, decimal_places=7)
+    """
+    The amount of sell_asset the client would exchange for buy_asset.
+    """
+
+    buy_amount = models.DecimalField(
+        null=True, blank=True, max_digits=30, decimal_places=7
+    )
+    """
+    The amount of buy_asset the client would like to purchase with sell_asset.
+    """
+
+    price = models.DecimalField(null=True, blank=True, max_digits=30, decimal_places=7)
+    """
+    The price offered by the anchor for one unit of buy_asset in terms of sell_asset.
+    """
+
+    expires_at = models.DateTimeField(null=True, blank=True)
+    """
+    The expiration time of the quote. Null if type is Quote.TYPE.indicative.
+    """
+
+    sell_delivery_method = models.ForeignKey(
+        "DeliveryMethod",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="+",
+    )
+    """
+    One of the name values specified by the sell_delivery_methods array.
+    """
+
+    buy_delivery_method = models.ForeignKey(
+        "DeliveryMethod",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="+",
+    )
+    """
+    One of the name values specified by the buy_delivery_methods array.
+    """
+
+    country_code = models.TextField(null=True, blank=True)
+    """
+    The ISO 3166-1 alpha-3 code of the user's current address. 
+    """
+
+    requested_expire_after = models.DateTimeField(null=True, blank=True)
+    """
+    The requested expiration date from the client.
+    """
+
+    objects = models.Manager()
+
+
+class OffChainAsset(models.Model):
+    scheme = models.TextField()
+    """
+    The scheme of the off-chain asset as defined by SEP-38's Asset Identification Format.
+    """
+
+    identifier = models.TextField()
+    """
+    The identifier of the off-chain asset as defined by SEP-38's Asset Identification Format.
+    """
+
+    significant_decimals = models.PositiveIntegerField(default=2)
+    """
+    The number of decimal places Polaris should preserve when collecting & calculating amounts.
+    """
+
+    country_codes = models.TextField(null=True, blank=True)
+    """
+    A comma-separated list of ISO 3166-1 alpha-3 codes of the countries where the anchor 
+    supports delivery of this asset.
+    """
+
+    delivery_methods = models.ManyToManyField("DeliveryMethod")
+    """
+    The list of delivery methods support for collecting and receiving this asset
+    """
+
+    symbol = models.TextField(null=True, blank=True)
+    """
+    The symbol to use when displaying amounts of this asset
+    """
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["scheme", "identifier"], name="offchain_unique_index"
+            )
+        ]
+
+    objects = models.Manager()
+
+    @property
+    def asset_identification_format(self):
+        return f"{self.scheme}:{self.identifier}"
+
+
+class DeliveryMethod(models.Model):
+    TYPE = PolarisChoices("buy", "sell")
+    """
+    The types of delivery methods.
+    """
+
+    type = models.TextField(choices=TYPE)
+    """
+    The type of delivery method. Sell methods describe how a client can deliver funds to the 
+    anchor. Buy methods describe how a client can receive or collect funds from the anchor.
+    """
+
+    name = models.TextField()
+    """
+    The name of the delivery method, to be used in SEP-38 request and response bodies.
+    """
+
+    description = models.TextField()
+    """
+    The human-readable description of the deliver method, to be used in SEP-38 
+    response bodies.
+    """
+
+    objects = models.Manager()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["name", "type"], name="deliverymethod_unique_index"
+            )
+        ]
+
+
+class ExchangePair(models.Model):
+    buy_asset = models.TextField()
+    """
+    The asset the client can purchase with sell_asset using SEP-38's Asset 
+    Identification Format.
+    """
+
+    sell_asset = models.TextField()
+    """
+    The asset the client can provide in exchange for buy_asset using SEP-38's
+    Asset Identification Format.
+    """
+
+    objects = models.Manager()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["buy_asset", "sell_asset"], name="exchangepair_unique_index"
+            )
+        ]

@@ -40,18 +40,25 @@ success_info_response = Mock(
     "polaris.sep31.info.registered_sep31_receiver_integration", success_info_response
 )
 def test_success_response(client, usd_asset_factory):
-    asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31])
+    asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep31, "sep38"])
     response = client.get(endpoint)
     body = response.json()
     assert response.status_code == 200
-    assert body["receive"][asset.code] == {
-        "enabled": True,
-        "fee_fixed": asset.send_fee_fixed,
-        "min_amount": asset.send_min_amount,
-        "max_amount": asset.send_max_amount,
-        "fields": success_info_response.info()["fields"],
-        "sep12": success_info_response.info()["sep12"],
-    }
+    assert body["receive"][asset.code].pop("enabled") is True
+    assert body["receive"][asset.code].pop("fee_fixed") == asset.send_fee_fixed
+    assert body["receive"][asset.code].pop("fee_percent") == asset.send_fee_percent
+    assert body["receive"][asset.code].pop("min_amount") == asset.send_min_amount
+    assert body["receive"][asset.code].pop("max_amount") == asset.send_max_amount
+    assert (
+        body["receive"][asset.code].pop("fields")
+        == success_info_response.info()["fields"]
+    )
+    assert (
+        body["receive"][asset.code].pop("sep12")
+        == success_info_response.info()["sep12"]
+    )
+    assert body["receive"][asset.code].pop("quotes_supported") is True
+    assert body == {"receive": {asset.code: {}}}
 
 
 ###

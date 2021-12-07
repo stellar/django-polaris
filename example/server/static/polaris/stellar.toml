@@ -8,6 +8,7 @@ TRANSFER_SERVER_SEP0024 = "https://testanchor.stellar.org/sep24"
 WEB_AUTH_ENDPOINT = "https://testanchor.stellar.org/auth"
 KYC_SERVER = "https://testanchor.stellar.org/kyc"
 DIRECT_PAYMENT_SERVER = "https://testanchor.stellar.org/sep31"
+QUOTE_SERVER = "https://testanchor.stellar.org/sep38"
 
 [[CURRENCIES]]
 code = "SRT"

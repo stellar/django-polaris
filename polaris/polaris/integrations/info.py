@@ -6,14 +6,18 @@ from polaris.models import Asset
 
 
 def default_info_func(
-    request: Request, asset: Asset, lang: Optional[str], *args: List, **kwargs: Dict
+    request: Request,
+    asset: Asset,
+    lang: Optional[str],
+    exchange: bool,
+    *args: List,
+    **kwargs: Dict
 ) -> Dict:
     """
     .. _/info response: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#response-2
 
-    Replace this function with another by passing it to
-    ``register_integrations()`` as described in
-    :doc:`Registering Integrations</register_integrations/index>`.
+    Replace this function with another by passing it to ``register_integrations()``
+    as described in :doc:`Registering Integrations</register_integrations/index>`.
 
     Return a dictionary containing the `fields` and `types` key-value pairs
     described in the SEP-6 /info response for the asset passed. Raise a
@@ -60,6 +64,9 @@ def default_info_func(
         key-value pairs
     :param lang: the language code the client requested for the `description`
         values in the response
+    :param exchange: whether or not the info returned will be used for a
+        `deposit-exchange` or `withdraw-exchange` response object. Only
+        relevant if SEP-38 is enabled.
     """
     raise NotImplementedError()
 

@@ -7,18 +7,67 @@ from polaris import settings
 from stellar_sdk.keypair import Keypair
 from stellar_sdk.transaction_envelope import TransactionEnvelope
 
+TEST_MUXED_ACCOUNT = (
+    "MDOP36XYBRBRAFHGRP7VPH335XVEQLSCF2UA7PT34TTZOXFMIGJJWAAAAAAAAAAAPMYT4"
+)
+TEST_ACCOUNT_MEMO = 123
+
 
 def mock_check_auth_success(request, func, **kwargs):
     """Mocks `sep10.utils.check_auth`, for success."""
     return func(
-        Mock(account="test source address", client_domain=None), request, **kwargs
+        Mock(
+            account="test source address",
+            muxed_account=None,
+            memo=None,
+            client_domain=None,
+        ),
+        request,
+        **kwargs,
+    )
+
+
+def mock_check_auth_success_muxed_account(request, func, **kwargs):
+    """Mocks `sep10.utils.check_auth`, for success."""
+
+    return func(
+        Mock(
+            account="GDOP36XYBRBRAFHGRP7VPH335XVEQLSCF2UA7PT34TTZOXFMIGJJXHS5",
+            muxed_account=TEST_MUXED_ACCOUNT,
+            memo=None,
+            client_domain=None,
+        ),
+        request,
+        **kwargs,
+    )
+
+
+def mock_check_auth_success_with_memo(request, func, **kwargs):
+    """Mocks `sep10.utils.check_auth`, for success."""
+
+    return func(
+        Mock(
+            account="test source address",
+            muxed_account=None,
+            memo=TEST_ACCOUNT_MEMO,
+            client_domain=None,
+        ),
+        request,
+        **kwargs,
     )
 
 
 def mock_check_auth_success_client_domain(request, func, **kwargs):
     """Mocks `sep10.utils.check_auth`, for success."""
     return func(
-        Mock(account="test source address", client_domain="test.com"), request, **kwargs
+        Mock(
+            account="test source address",
+            muxed_account=None,
+            memo=None,
+            client_domain="test.com",
+        ),
+        request,
+        **kwargs,
     )
 
 

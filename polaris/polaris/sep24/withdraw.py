@@ -1,6 +1,7 @@
 from decimal import Decimal, DecimalException
 from urllib.parse import urlencode
 
+from django.conf import settings as django_settings
 from django.urls import reverse
 from django.views.decorators.clickjacking import xframe_options_exempt
 from django.shortcuts import redirect
@@ -15,7 +16,12 @@ from rest_framework.renderers import (
 )
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from stellar_sdk.keypair import Keypair
-from stellar_sdk.exceptions import Ed25519PublicKeyInvalidError
+from stellar_sdk.strkey import StrKey
+from stellar_sdk.exceptions import (
+    Ed25519PublicKeyInvalidError,
+    MuxedEd25519AccountInvalidError,
+    ValueError as StellarSdkValueError,
+)
 
 from polaris import settings
 from polaris.templates import Template
@@ -24,7 +30,6 @@ from polaris.utils import (
     render_error_response,
     extract_sep9_fields,
     create_transaction_id,
-    memo_str,
 )
 from polaris.sep24.utils import (
     interactive_url,
@@ -32,6 +37,7 @@ from polaris.sep24.utils import (
     authenticate_session,
     invalidate_session,
     interactive_args_validation,
+    get_timezone_utc_offset,
 )
 from polaris.sep10.utils import validate_sep10_token
 from polaris.sep10.token import SEP10Token
@@ -119,22 +125,26 @@ def post_interactive_withdraw(request: Request) -> Response:
         if issubclass(form.__class__, TransactionForm):
             transaction.amount_in = form.cleaned_data["amount"]
             transaction.amount_expected = form.cleaned_data["amount"]
-            transaction.amount_fee = registered_fee_func(
-                request=request,
-                fee_params={
-                    "amount": transaction.amount_in,
-                    "type": form.cleaned_data.get("type"),
-                    "operation": settings.OPERATION_WITHDRAWAL,
-                    "asset_code": asset.code,
-                },
-            )
-            if settings.ADDITIVE_FEES_ENABLED:
-                transaction.amount_in += transaction.amount_fee
-                transaction.amount_expected += transaction.amount_fee
-            transaction.amount_out = round(
-                transaction.amount_in - transaction.amount_fee,
-                asset.significant_decimals,
-            )
+            try:
+                transaction.amount_fee = registered_fee_func(
+                    request=request,
+                    fee_params={
+                        "amount": transaction.amount_in,
+                        "type": form.cleaned_data.get("type"),
+                        "operation": settings.OPERATION_WITHDRAWAL,
+                        "asset_code": asset.code,
+                    },
+                )
+            except ValueError:
+                pass
+            else:
+                if settings.ADDITIVE_FEES_ENABLED:
+                    transaction.amount_in += transaction.amount_fee
+                    transaction.amount_expected += transaction.amount_fee
+                transaction.amount_out = round(
+                    transaction.amount_in - transaction.amount_fee,
+                    asset.significant_decimals,
+                )
             transaction.save()
 
         try:
@@ -179,7 +189,7 @@ def post_interactive_withdraw(request: Request) -> Response:
                 )
             else:
                 logger.info(f"Transaction {transaction.id} is pending KYC approval")
-                transaction.save()
+
             args = {"id": transaction.id, "initialLoad": "true"}
             if callback:
                 args["callback"] = callback
@@ -187,14 +197,17 @@ def post_interactive_withdraw(request: Request) -> Response:
 
     else:
         try:
-            content = rwi.content_for_template(
-                request=request,
-                template=Template.WITHDRAW,
-                form=form,
-                transaction=transaction,
+            content_from_anchor = (
+                rwi.content_for_template(
+                    request=request,
+                    template=Template.WITHDRAW,
+                    form=form,
+                    transaction=transaction,
+                )
+                or {}
             )
         except NotImplementedError:
-            content = {}
+            content_from_anchor = {}
 
         url_args = {"transaction_id": transaction.id, "asset_code": asset.code}
         if callback:
@@ -202,20 +215,33 @@ def post_interactive_withdraw(request: Request) -> Response:
         if amount:
             url_args["amount"] = amount
 
-        toml_data = registered_toml_func(request)
-        post_url = f"{reverse('post_interactive_withdraw')}?{urlencode(url_args)}"
-        get_url = f"{reverse('get_interactive_withdraw')}?{urlencode(url_args)}"
-        content.update(
-            form=form,
-            post_url=post_url,
-            get_url=get_url,
-            operation=settings.OPERATION_WITHDRAWAL,
-            asset=asset,
-            use_fee_endpoint=registered_fee_func != calculate_fee,
-            org_logo_url=toml_data.get("DOCUMENTATION", {}).get("ORG_LOGO"),
-            additive_fees_enabled=settings.ADDITIVE_FEES_ENABLED,
+        current_offset = get_timezone_utc_offset(
+            request.session.get("timezone") or django_settings.TIME_ZONE
         )
-        return Response(content, template_name="polaris/withdraw.html", status=400)
+        toml_data = registered_toml_func(request=request)
+        post_url = f"{reverse('post_interactive_withdraw')}?{urlencode(url_args)}"
+        content = {
+            "form": form,
+            "post_url": post_url,
+            "operation": settings.OPERATION_WITHDRAWAL,
+            "asset": asset,
+            "symbol": asset.symbol,
+            "show_fee_table": isinstance(form, TransactionForm),
+            "use_fee_endpoint": registered_fee_func != calculate_fee,
+            "org_logo_url": toml_data.get("DOCUMENTATION", {}).get("ORG_LOGO"),
+            "additive_fees_enabled": settings.ADDITIVE_FEES_ENABLED,
+            "timezone_endpoint": reverse("tzinfo"),
+            "session_id": request.session.session_key,
+            "current_offset": current_offset,
+            **content_from_anchor,
+        }
+        return Response(
+            content,
+            template_name=content_from_anchor.get(
+                "template_name", "polaris/withdraw.html"
+            ),
+            status=400,
+        )
 
 
 @api_view(["GET"])
@@ -293,16 +319,19 @@ def get_interactive_withdraw(request: Request) -> Response:
         request=request, transaction=transaction, amount=amount
     )
     try:
-        content = rwi.content_for_template(
-            request=request,
-            template=Template.WITHDRAW,
-            form=form,
-            transaction=transaction,
+        content_from_anchor = (
+            rwi.content_for_template(
+                request=request,
+                template=Template.WITHDRAW,
+                form=form,
+                transaction=transaction,
+            )
+            or {}
         )
     except NotImplementedError:
-        content = None
+        content_from_anchor = {}
 
-    if not (form or content):
+    if not (form or content_from_anchor):
         logger.error("The anchor did not provide content, unable to serve page.")
         if transaction.status != transaction.STATUS.incomplete:
             return render_error_response(
@@ -317,8 +346,6 @@ def get_interactive_withdraw(request: Request) -> Response:
             status_code=500,
             content_type="text/html",
         )
-    elif content is None:
-        content = {}
 
     url_args = {"transaction_id": transaction.id, "asset_code": asset.code}
     if callback:
@@ -326,19 +353,31 @@ def get_interactive_withdraw(request: Request) -> Response:
     if amount:
         url_args["amount"] = amount
 
-    post_url = f"{reverse('post_interactive_withdraw')}?{urlencode(url_args)}"
-    get_url = f"{reverse('get_interactive_withdraw')}?{urlencode(url_args)}"
-    content.update(
-        form=form,
-        post_url=post_url,
-        get_url=get_url,
-        operation=settings.OPERATION_WITHDRAWAL,
-        asset=asset,
-        use_fee_endpoint=registered_fee_func != calculate_fee,
-        additive_fees_enabled=settings.ADDITIVE_FEES_ENABLED,
+    current_offset = get_timezone_utc_offset(
+        request.session.get("timezone") or django_settings.TIME_ZONE
     )
+    post_url = f"{reverse('post_interactive_withdraw')}?{urlencode(url_args)}"
+    toml_data = registered_toml_func(request=request)
+    content = {
+        "form": form,
+        "post_url": post_url,
+        "operation": settings.OPERATION_WITHDRAWAL,
+        "asset": asset,
+        "symbol": asset.symbol,
+        "show_fee_table": isinstance(form, TransactionForm),
+        "use_fee_endpoint": registered_fee_func != calculate_fee,
+        "org_logo_url": toml_data.get("DOCUMENTATION", {}).get("ORG_LOGO"),
+        "additive_fees_enabled": settings.ADDITIVE_FEES_ENABLED,
+        "timezone_endpoint": reverse("tzinfo"),
+        "session_id": request.session.session_key,
+        "current_offset": current_offset,
+        **content_from_anchor,
+    }
 
-    return Response(content, template_name="polaris/withdraw.html")
+    return Response(
+        content,
+        template_name=content_from_anchor.get("template_name", "polaris/withdraw.html"),
+    )
 
 
 @api_view(["POST"])
@@ -378,7 +417,12 @@ def withdraw(token: SEP10Token, request: Request,) -> Response:
         if not (asset.withdrawal_min_amount <= amount <= asset.withdrawal_max_amount):
             return render_error_response(_("invalid 'amount'"))
 
-    if source_account:
+    if source_account and source_account.startswith("M"):
+        try:
+            StrKey.decode_muxed_account(source_account)
+        except (MuxedEd25519AccountInvalidError, StellarSdkValueError):
+            return render_error_response(_("invalid 'account'"))
+    elif source_account:
         try:
             Keypair.from_public_key(source_account)
         except Ed25519PublicKeyInvalidError:
@@ -390,6 +434,9 @@ def withdraw(token: SEP10Token, request: Request,) -> Response:
                 token=token,
                 request=request,
                 stellar_account=token.account,
+                muxed_account=token.muxed_account,
+                account_memo=str(token.memo) if token.memo else None,
+                account_memo_type=Transaction.MEMO_TYPES.id if token.memo else None,
                 fields=sep9_fields,
                 language_code=lang,
             )
@@ -399,15 +446,16 @@ def withdraw(token: SEP10Token, request: Request,) -> Response:
             # specified in the request.
             return render_error_response(str(e))
         except NotImplementedError:
-            return render_error_response(
-                "passing SEP-9 fields in withdraw requests is not supported",
-                status_code=501,
-            )
+            # the KYC info passed via SEP-9 fields can be ignored if the anchor
+            # wants to re-collect the information
+            pass
 
     transaction_id = create_transaction_id()
     Transaction.objects.create(
         id=transaction_id,
         stellar_account=token.account,
+        muxed_account=token.muxed_account,
+        account_memo=token.memo,
         asset=asset,
         kind=Transaction.KIND.withdrawal,
         status=Transaction.STATUS.incomplete,
@@ -422,12 +470,13 @@ def withdraw(token: SEP10Token, request: Request,) -> Response:
     logger.info(f"Created withdrawal transaction {transaction_id}")
 
     url = interactive_url(
-        request,
-        str(transaction_id),
-        token.account,
-        asset_code,
-        settings.OPERATION_WITHDRAWAL,
-        amount,
+        request=request,
+        transaction_id=str(transaction_id),
+        account=token.muxed_account or token.account,
+        memo=token.memo,
+        asset_code=asset_code,
+        op_type=settings.OPERATION_WITHDRAWAL,
+        amount=amount,
     )
     return Response(
         {"type": "interactive_customer_info_needed", "url": url, "id": transaction_id}

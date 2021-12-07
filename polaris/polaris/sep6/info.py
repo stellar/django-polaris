@@ -7,6 +7,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.renderers import JSONRenderer, BrowsableAPIRenderer
 
+from polaris import settings
 from polaris.models import Asset
 from polaris.utils import render_error_response
 from polaris.integrations import (
@@ -30,28 +31,52 @@ def info(request: Request) -> Response:
         "transaction": {"enabled": True, "authentication_required": True},
         "features": {"account_creation": True, "claimable_balances": True},
     }
+    error_response = None
     for asset in Asset.objects.filter(sep6_enabled=True):
-        try:
-            fields_and_types = registered_info_func(
-                request=request, asset=asset, lang=request.GET.get("lang")
-            )
-        except ValueError:
-            return render_error_response("unsupported 'lang'")
-        try:
-            validate_integration(fields_and_types)
-        except ValueError as e:
-            logger.error(f"info integration error: {str(e)}")
-            return render_error_response(
-                _("unable to process the request"), status_code=500
-            )
-        info_data["deposit"][asset.code] = get_asset_info(
-            asset, "deposit", fields_and_types.get("fields", {})
-        )
-        info_data["withdraw"][asset.code] = get_asset_info(
-            asset, "withdrawal", fields_and_types.get("types", {})
-        )
+        error_response = populate_asset_info(request, asset, info_data, False)
+        if error_response:
+            break
+    if error_response:
+        return error_response
+
+    if "sep-38" not in settings.ACTIVE_SEPS:
+        return Response(info_data)
+
+    info_data["deposit-exchange"] = {}
+    info_data["withdraw-exchange"] = {}
+    for asset in Asset.objects.filter(sep6_enabled=True, sep38_enabled=True):
+        error_response = populate_asset_info(request, asset, info_data, True)
+        if error_response:
+            break
+    if error_response:
+        return error_response
 
     return Response(info_data)
+
+
+def populate_asset_info(request, asset, info_data, exchange=False):
+    try:
+        fields_and_types = registered_info_func(
+            request=request,
+            asset=asset,
+            lang=request.GET.get("lang"),
+            exchange=exchange,
+        )
+    except ValueError:
+        return render_error_response("unsupported 'lang'")
+    try:
+        validate_integration(fields_and_types)
+    except ValueError as e:
+        logger.error(f"info integration error: {str(e)}")
+        return render_error_response(
+            _("unable to process the request"), status_code=500
+        )
+    info_data["deposit-exchange" if exchange else "deposit"][
+        asset.code
+    ] = get_asset_info(asset, "deposit", fields_and_types.get("fields", {}))
+    info_data["withdraw-exchange" if exchange else "withdraw"][
+        asset.code
+    ] = get_asset_info(asset, "withdrawal", fields_and_types.get("types", {}))
 
 
 def validate_integration(fields_and_types: Dict):
@@ -111,17 +136,17 @@ def get_asset_info(asset: Asset, op_type: str, fields_or_types: Dict) -> Dict:
     max_amount_attr = f"{op_type}_max_amount"
     min_amount = getattr(asset, min_amount_attr)
     max_amount = getattr(asset, max_amount_attr)
-    if min_amount > Asset._meta.get_field(min_amount_attr).default:
+    if min_amount > getattr(Asset, "_meta").get_field(min_amount_attr).default:
         asset_info["min_amount"] = min_amount
-    if max_amount < Asset._meta.get_field(max_amount_attr).default:
+    if max_amount < getattr(Asset, "_meta").get_field(max_amount_attr).default:
         asset_info["max_amount"] = max_amount
     if registered_fee_func is calculate_fee:
         # the anchor has not replaced the default fee function
         # so `fee_fixed` and `fee_percent` are still relevant.
-        asset_info.update(
-            fee_fixed=getattr(asset, f"{op_type}_fee_fixed"),
-            fee_percent=getattr(asset, f"{op_type}_fee_percent"),
-        )
+        if getattr(asset, f"{op_type}_fee_fixed") is not None:
+            asset_info["fee_fixed"] = getattr(asset, f"{op_type}_fee_fixed")
+        if getattr(asset, f"{op_type}_fee_percent") is not None:
+            asset_info["fee_percent"] = getattr(asset, f"{op_type}_fee_percent")
 
     if op_type == "deposit":
         asset_info["fields"] = fields_or_types

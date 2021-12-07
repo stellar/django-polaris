@@ -1,5 +1,5 @@
 from django import forms
-from django.contrib.humanize.templatetags.humanize import intcomma
+from django.utils.formats import localize
 from django.utils.translation import gettext_lazy as _
 from django.forms.widgets import TextInput
 
@@ -72,21 +72,28 @@ class CreditCardForm(forms.Form):
 
 class TransactionForm(forms.Form):
     """
-    .. _`HiddenInput`: https://docs.djangoproject.com/en/3.0/ref/forms/widgets/#hiddeninput
+    A base class for collecting transaction information. Developers must define
+    subclasses to collect additional information and apply additional validation.
 
-    Base class for collecting transaction information.
+    This form assumes the amount collected is in units of a Stellar ``Asset``. If
+    the amount of an ``OffChainAsset`` must be collected, create a different form.
 
-    Developers must define subclasses to collect additional information and
-    apply additional validation.
+    Note that Polaris' base UI treats the amount field on this form and its
+    subclasses differently than other forms. Specifically, Polaris automatically
+    adds the asset's symbol to the input field, adds a placeholder value of 0,
+    makes the fee table visible (by default), and uses the amount entered to update
+    the fee table on each change.
 
-    A subclass of this form should be returned by
-    ``form_for_transaction()`` once for each interactive flow.
+    If you do not want the fee table to be displayed when ``TransactionForm`` is
+    rendered, set ``"show_fee_table"`` to ``False`` in the dict returned from
+    ``content_for_template()``.
 
-    If the default UI is used, Polaris makes calls to the anchor's `/fee` endpoint
-    and displays the response value to the user. If your `/fee` endpoint requires
-    a `type` parameter, add a ``TransactionForm.type`` attribute to the form.
-    Polaris will detect the attribute's presence on the form and include it in
-    `/fee` requests.
+    Fee calculation within the UI is done using the asset's fixed and percentage
+    fee values saved to the database. If those values are not present, Polaris makes
+    calls to the anchor's `/fee` endpoint and displays the response value to the
+    user. If your `/fee` endpoint requires a `type` parameter, add a
+    ``TransactionForm.type`` attribute to the form. Polaris will detect the
+    attribute's presence on the form and include it in `/fee` requests.
 
     The `amount` field is validated with the :meth:`clean_amount` function,
     which ensures the amount is within the bounds for the asset type.
@@ -101,8 +108,12 @@ class TransactionForm(forms.Form):
         if transaction.kind == Transaction.KIND.deposit:
             self.min_amount = round(self.asset.deposit_min_amount, self.decimal_places)
             self.max_amount = round(self.asset.deposit_max_amount, self.decimal_places)
-            self.min_default = Asset._meta.get_field("deposit_min_amount").default
-            self.max_default = Asset._meta.get_field("deposit_max_amount").default
+            self.min_default = (
+                getattr(Asset, "_meta").get_field("deposit_min_amount").default
+            )
+            self.max_default = (
+                getattr(Asset, "_meta").get_field("deposit_max_amount").default
+            )
         else:
             self.min_amount = round(
                 self.asset.withdrawal_min_amount, self.decimal_places
@@ -110,14 +121,18 @@ class TransactionForm(forms.Form):
             self.max_amount = round(
                 self.asset.withdrawal_max_amount, self.decimal_places
             )
-            self.min_default = Asset._meta.get_field("withdrawal_min_amount").default
-            self.max_default = Asset._meta.get_field("withdrawal_max_amount").default
+            self.min_default = (
+                getattr(Asset, "_meta").get_field("withdrawal_min_amount").default
+            )
+            self.max_default = (
+                getattr(Asset, "_meta").get_field("withdrawal_max_amount").default
+            )
 
         # Re-initialize the 'amount' field now that we have all the parameters necessary
         self.fields["amount"].__init__(
-            widget=forms.NumberInput(
+            widget=forms.TextInput(
                 attrs={
-                    "class": "input",
+                    "class": "polaris-transaction-form-amount",
                     "inputmode": "decimal",
                     "symbol": self.asset.symbol,
                 }
@@ -131,11 +146,11 @@ class TransactionForm(forms.Form):
 
         limit_str = ""
         if self.min_amount > self.min_default and self.max_amount < self.max_default:
-            limit_str = f"({intcomma(self.min_amount)} - {intcomma(self.max_amount)})"
+            limit_str = f"({localize(self.min_amount)} - {localize(self.max_amount)})"
         elif self.min_amount > self.min_default:
-            limit_str = _("(minimum: %s)") % intcomma(self.min_amount)
+            limit_str = _("(minimum: %s)") % localize(self.min_amount)
         elif self.max_amount < self.max_default:
-            limit_str = _("(maximum: %s)") % intcomma(self.max_amount)
+            limit_str = _("(maximum: %s)") % localize(self.max_amount)
 
         if limit_str:
             self.fields["amount"].label += " " + limit_str
@@ -148,11 +163,11 @@ class TransactionForm(forms.Form):
         if amount < self.min_amount:
             raise forms.ValidationError(
                 _("The minimum amount is: %s")
-                % intcomma(round(self.min_amount, self.decimal_places))
+                % localize(round(self.min_amount, self.decimal_places))
             )
         elif amount > self.max_amount:
             raise forms.ValidationError(
                 _("The maximum amount is: %s")
-                % intcomma(round(self.max_amount, self.decimal_places))
+                % localize(round(self.max_amount, self.decimal_places))
             )
         return amount

@@ -11,6 +11,7 @@ from rest_framework.renderers import JSONRenderer, BrowsableAPIRenderer
 from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 
 from polaris import settings
+from polaris.models import Transaction
 from polaris.utils import (
     extract_sep9_fields,
     render_error_response,
@@ -33,9 +34,25 @@ class CustomerAPIView(APIView):
     @staticmethod
     @validate_sep10_token()
     def get(token: SEP10Token, request: Request) -> Response:
-        if request.GET.get("account") and token.account != request.GET.get("account"):
+        if request.GET.get("account") and request.GET.get("account") != (
+            token.muxed_account or token.account
+        ):
             return render_error_response(
                 _("The account specified does not match authorization token"),
+                status_code=403,
+            )
+        elif (
+            token.memo
+            and request.GET.get("memo")
+            and (
+                str(token.memo) != request.GET.get("memo")
+                or request.GET.get("memo_type") != Transaction.MEMO_TYPES.id
+            )
+        ):
+            return render_error_response(
+                _(
+                    "The memo specified does not match the memo ID authorized via SEP-10"
+                ),
                 status_code=403,
             )
         elif request.GET.get("id") and (
@@ -52,8 +69,15 @@ class CustomerAPIView(APIView):
         try:
             # validate memo and memo_type
             make_memo(request.GET.get("memo"), request.GET.get("memo_type"))
-        except ValueError:
+        except (ValueError, TypeError):
             return render_error_response(_("invalid 'memo' for 'memo_type'"))
+
+        memo = request.GET.get("memo") or token.memo
+        memo_type = None
+        if memo:
+            memo_type = request.GET.get("memo_type") or Transaction.MEMO_TYPES.id
+            if memo_type == Transaction.MEMO_TYPES.id:
+                memo = str(memo)
 
         try:
             response_data = rci.get(
@@ -62,8 +86,8 @@ class CustomerAPIView(APIView):
                 params={
                     "id": request.GET.get("id"),
                     "account": request.GET.get("account"),
-                    "memo": request.GET.get("memo"),
-                    "memo_type": request.GET.get("memo_type"),
+                    "memo": memo,
+                    "memo_type": memo_type,
                     "type": request.GET.get("type"),
                     "lang": request.GET.get("lang"),
                 },
@@ -101,17 +125,38 @@ class CustomerAPIView(APIView):
                         "requests with 'id' cannot also have 'account', 'memo', or 'memo_type'"
                     )
                 )
-        elif token.account != request.data.get("account"):
+        elif request.data.get("account") != (token.muxed_account or token.account):
             return render_error_response(
                 _("The account specified does not match authorization token"),
+                status_code=403,
+            )
+        elif (
+            token.memo
+            and request.data.get("memo")
+            and (
+                str(token.memo) != str(request.data.get("memo"))
+                or request.data.get("memo_type") != Transaction.MEMO_TYPES.id
+            )
+        ):
+            return render_error_response(
+                _(
+                    "The memo specified does not match the memo ID authorized via SEP-10"
+                ),
                 status_code=403,
             )
 
         try:
             # validate memo and memo_type
             make_memo(request.data.get("memo"), request.data.get("memo_type"))
-        except ValueError:
+        except (ValueError, TypeError):
             return render_error_response(_("invalid 'memo' for 'memo_type'"))
+
+        memo = request.data.get("memo") or token.memo
+        memo_type = None
+        if memo:
+            memo_type = request.data.get("memo_type") or Transaction.MEMO_TYPES.id
+            if memo_type == Transaction.MEMO_TYPES.id:
+                memo = int(memo)
 
         try:
             customer_id = rci.put(
@@ -119,9 +164,9 @@ class CustomerAPIView(APIView):
                 request=request,
                 params={
                     "id": request.data.get("id"),
-                    "account": token.account,
-                    "memo": request.data.get("memo"),
-                    "memo_type": request.data.get("memo_type"),
+                    "account": token.muxed_account or token.account,
+                    "memo": memo,
+                    "memo_type": memo_type,
                     "type": request.data.get("type"),
                     **extract_sep9_fields(request.data),
                 },
@@ -158,17 +203,36 @@ def callback(token: SEP10Token, request: Request) -> Response:
                     "requests with 'id' cannot also have 'account', 'memo', or 'memo_type'"
                 )
             )
-    elif token.account != request.data.get("account"):
+    elif request.data.get("account") != (token.muxed_account or token.account):
         return render_error_response(
             _("The account specified does not match authorization token"),
+            status_code=403,
+        )
+    elif (
+        token.memo
+        and request.data.get("memo")
+        and (
+            str(token.memo) != str(request.data.get("memo"))
+            or request.data.get("memo_type") != Transaction.MEMO_TYPES.id
+        )
+    ):
+        return render_error_response(
+            _("The memo specified does not match the memo ID authorized via SEP-10"),
             status_code=403,
         )
 
     try:
         # validate memo and memo_type
         make_memo(request.data.get("memo"), request.data.get("memo_type"))
-    except ValueError:
+    except (ValueError, TypeError):
         return render_error_response(_("invalid 'memo' for 'memo_type'"))
+
+    memo = request.data.get("memo") or token.memo
+    memo_type = None
+    if memo:
+        memo_type = request.data.get("memo_type") or Transaction.MEMO_TYPES.id
+        if memo_type == Transaction.MEMO_TYPES.id:
+            memo = int(memo)
 
     callback_url = request.data.get("url")
     if not callback_url:
@@ -185,9 +249,9 @@ def callback(token: SEP10Token, request: Request) -> Response:
             request=request,
             params={
                 "id": request.data.get("id"),
-                "account": token.account,
-                "memo": request.data.get("memo"),
-                "memo_type": request.data.get("memo_type"),
+                "account": token.muxed_account or token.account,
+                "memo": memo,
+                "memo_type": memo_type,
                 "url": callback_url,
             },
         )
@@ -206,19 +270,34 @@ def callback(token: SEP10Token, request: Request) -> Response:
 @parser_classes([MultiPartParser, FormParser, JSONParser])
 @validate_sep10_token()
 def delete(token: SEP10Token, request: Request, account: str,) -> Response:
-    if token.account != account:
+    if (token.muxed_account or token.account) != account:
+        return render_error_response(_("account not found"), status_code=404)
+    elif (
+        token.memo
+        and request.data.get("memo")
+        and (
+            str(token.memo) != str(request.data.get("memo"))
+            or request.data.get("memo_type") != Transaction.MEMO_TYPES.id
+        )
+    ):
         return render_error_response(_("account not found"), status_code=404)
     try:
         make_memo(request.data.get("memo"), request.data.get("memo_type"))
-    except ValueError:
+    except (ValueError, TypeError):
         return render_error_response(_("invalid 'memo' for 'memo_type'"))
+    memo = request.data.get("memo") or token.memo
+    memo_type = None
+    if memo:
+        memo_type = request.data.get("memo_type") or Transaction.MEMO_TYPES.id
+        if memo_type == Transaction.MEMO_TYPES.id:
+            memo = int(memo)
     try:
         rci.delete(
             token=token,
             request=request,
             account=account,
-            memo=request.data.get("memo"),
-            memo_type=request.data.get("memo_type"),
+            memo=memo,
+            memo_type=memo_type,
         )
     except ObjectDoesNotExist:
         return render_error_response(_("account not found"), status_code=404)
@@ -249,7 +328,7 @@ def put_verification(token: SEP10Token, request) -> Response:
         response_data = rci.put_verification(
             token=token,
             request=request,
-            account=token.account,
+            account=token.muxed_account or token.account,
             params=dict(request.data),
         )
     except ObjectDoesNotExist:
