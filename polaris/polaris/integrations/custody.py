@@ -1,7 +1,18 @@
+from typing import List, Union
+
 from stellar_sdk import Server, Keypair, TransactionBuilder, TransactionEnvelope
-from stellar_sdk.exceptions import NotFoundError, BaseHorizonError, ConnectionError
+from stellar_sdk.exceptions import (
+    NotFoundError,
+    ConnectionError,
+    BadRequestError,
+    BadResponseError,
+)
 from rest_framework.request import Request
 
+from polaris.exceptions import (
+    TransactionSubmissionPending,
+    TransactionSubmissionBlocked,
+)
 from polaris.models import Transaction, Asset
 from polaris.utils import (
     getLogger,
@@ -77,11 +88,13 @@ class CustodyIntegration:
 
     def submit_deposit_transaction(
         self, transaction: Transaction, has_trustline: bool = True
-    ) -> dict:
+    ) -> str:
         """
         Submit the transaction to the Stellar network using the anchor's custody
-        service provider and return the JSON body of the associated
-        ``GET /transaction/:id`` Horizon response.
+        service provider and return the hash of the transaction once it is included
+        in a ledger
+
+        **Claimable Balances**
 
         If ``self.claimable_balances_supported`` is ``True``, Polaris may call
         this method when the destination account does not yet have a trustline
@@ -93,6 +106,24 @@ class CustodyIntegration:
         be called when the destination account exists and has a trustline to
         ``Transaction.asset``.
 
+        **Handling Non-Success Cases**
+
+        Raise a ``TransactionSubmissionPending`` exception if the call(s) made to
+        initiate the transaction submission process did not result in the immediate
+        inclusion of the transaction in a ledger. Polaris will simply call this
+        function again with the same transaction parameters unless a SIGINT or
+        SIGTERM signal has been sent to the process, in which case Polaris will
+        save ``Transaction.submission_status`` as ``SubmissionStatus.PENDING`` and
+        exit. When the process starts up, Polaris will retrieve the currently
+        pending transaction from the database and pass it to this function again.
+
+        Raise a ``TransactionSubmissionBlocked`` exception if the transaction is not
+        yet ready to be submitted. A transaction may be blocked for a number of
+        reasons excluding Polaris' default checks for account and trustline
+        existence. Polaris will update ``Transaction.submission_status`` to
+        ``SubmissionStatus.BLOCKED`` and expected the anchor to update this field
+        to ``SubmissionStatus.UNBLOCKED`` once Polaris should attempt submission again.
+
         :param transaction: the ``Transaction`` object representing the Stellar
             transaction that should be submitted to the network
         :param has_trustline: whether or not the destination account has a trustline
@@ -100,11 +131,11 @@ class CustodyIntegration:
         """
         raise NotImplementedError()
 
-    def create_destination_account(self, transaction: Transaction) -> dict:
+    def create_destination_account(self, transaction: Transaction) -> str:
         """
         Submit a transaction using the anchor's custody service provider to fund
         the Stellar account address saved to ``Transaction.to_address`` and return
-        the JSON body of the associated ``GET /transaction/:id`` Horizon repsonse.
+        the hash of the transaction once it is included in a ledger
 
         If ``self.account_creation_supported`` is ``False`` Polaris will never call
         this method. However, Polaris will instead check if destination accounts
@@ -113,29 +144,26 @@ class CustodyIntegration:
 
         It is highly recommended to support creating destination accounts.
 
+        **Handling Non-Success Cases**
+
+        Raise a ``TransactionSubmissionPending`` exception if the call(s) made to
+        initiate the transaction submission process did not result in the immediate
+        inclusion of the transaction in a ledger. Polaris will simply call this
+        function again with the same transaction parameters unless a SIGINT or
+        SIGTERM signal has been sent to the process, in which case Polaris will
+        save ``Transaction.submission_status`` as ``SubmissionStatus.PENDING`` and
+        exit. When the process starts up, Polaris will retrieve the currently
+        pending transaction from the database and pass it to this function again.
+
+        Raise a ``TransactionSubmissionBlocked`` exception if the transaction is not
+        yet ready to be submitted. A transaction may be blocked for a number of
+        reasons excluding Polaris' default checks for account and trustline
+        existence. Polaris will update ``Transaction.submission_status`` to
+        ``SubmissionStatus.BLOCKED`` and expected the anchor to update this field
+        to ``SubmissionStatus.UNBLOCKED`` once Polaris should attempt submission again.
+
         :param transaction: the transaction for which the destination account must
             be funded
-        """
-        raise NotImplementedError()
-
-    def requires_third_party_signatures(self, transaction: Transaction) -> bool:
-        """
-        Return ``True`` if the transaction requires signatures neither the anchor
-        nor custody service can provide as a direct result of Polaris calling
-        ``submit_deposit_transaction()``, ``False`` otherwise.
-
-        If ``True`` is returned, Polaris will save a transaction envelope to
-        ``Transaction.envelope_xdr`` and set ``Transaction.pending_signatures`` to
-        ``True``. The anchor will then be expected to collect the signatures required,
-        updating ``Transaction.envelope_xdr``, and resetting
-        ``Transaction.pending_signatures`` back to ``False``. Finally, Polaris will
-        detect this change in state and pass the transaction to
-        ``submit_deposit_transaction()``.
-
-        Note that if third party signatures are required, Polaris expects the anchor
-        to provide a channel account to be used as the transaction source account.
-        See the :ref:`anchoring-multisignature-assets` documentation for more
-        information.
         """
         raise NotImplementedError()
 
@@ -185,26 +213,54 @@ class SelfCustodyIntegration(CustodyIntegration):
 
     def submit_deposit_transaction(
         self, transaction: Transaction, has_trustline: bool = True
-    ) -> dict:
+    ) -> str:
         """
         Submits ``Transaction.envelope_xdr`` to the Stellar network
         """
+        try:
+            requires_tp_sigs = self._requires_third_party_signatures(
+                transaction=transaction
+            )
+        except ConnectionError:
+            raise TransactionSubmissionPending
+        if requires_tp_sigs:
+            raise TransactionSubmissionBlocked
         with Server(horizon_url=settings.HORIZON_URI) as server:
-            if not transaction.envelope_xdr:
-                distribution_acc, _ = get_account_obj(
-                    Keypair.from_public_key(transaction.asset.distribution_account)
-                )
-                envelope = create_deposit_envelope(
-                    transaction=transaction,
-                    source_account=distribution_acc,
-                    use_claimable_balance=not has_trustline,
-                    base_fee=settings.MAX_TRANSACTION_FEE_STROOPS
-                    or server.fetch_base_fee(),
-                )
-                envelope.sign(transaction.asset.distribution_seed)
-                transaction.envelope_xdr = envelope.to_xdr()
-                transaction.save()
-            return server.submit_transaction(transaction.envelope_xdr)
+            transaction_hash = None
+            while not transaction_hash:
+                if transaction.envelope_xdr:
+                    envelope = transaction.envelope_xdr
+                else:
+                    envelope_obj = self._generate_deposit_transaction_envelope(
+                        transaction, has_trustline, server
+                    )
+                    envelope = self._sign_and_save_transaction_envelope(
+                        transaction, envelope_obj, [transaction.asset.distribution_seed]
+                    )
+                try:
+                    response = server.submit_transaction(envelope)
+                except (BadResponseError, ConnectionError):
+                    # TODO: ensure we got a 504 timeout
+                    raise TransactionSubmissionPending
+                except BadRequestError:
+                    # TODO: ensure we got a 400 tx_too_late
+                    transaction.envelope_xdr = None
+                    continue
+                return response["hash"]
+
+    @staticmethod
+    def _generate_deposit_transaction_envelope(
+        transaction: Transaction, has_trustline: bool, server: Server
+    ):
+        distribution_acc, _ = get_account_obj(
+            Keypair.from_public_key(transaction.asset.distribution_account)
+        )
+        return create_deposit_envelope(
+            transaction=transaction,
+            source_account=distribution_acc,
+            use_claimable_balance=not has_trustline,
+            base_fee=(settings.MAX_TRANSACTION_FEE_STROOPS or server.fetch_base_fee()),
+        )
 
     def create_destination_account(self, transaction: Transaction) -> dict:
         """
@@ -212,54 +268,67 @@ class SelfCustodyIntegration(CustodyIntegration):
         The source account of the transaction is either the distribution account
         for the asset being transacted or a channel account provided by the anchor.
         """
-        logger.debug(f"checking if transaction {transaction.id} requires multisig")
         try:
-            requires_tp_sigs = self.requires_third_party_signatures(
+            requires_tp_sigs = self._requires_third_party_signatures(
                 transaction=transaction
             )
-        except NotFoundError:
-            raise RuntimeError("the distribution account does not exist")
+        except ConnectionError:
+            raise TransactionSubmissionPending
         if requires_tp_sigs:
-            logger.info(
-                f"transaction {transaction.id} requires multisig, fetching channel account"
-            )
-            self._get_channel_keypair(transaction)
-            source_keypair = Keypair.from_secret(transaction.channel_seed)
-        else:
-            logger.info(f"transaction {transaction.id} doesn't require multisig")
-            source_keypair = Keypair.from_secret(transaction.asset.distribution_seed)
+            raise TransactionSubmissionBlocked
+        source_keypair = Keypair.from_secret(transaction.asset.distribution_seed)
         with Server(horizon_url=settings.HORIZON_URI) as server:
-            try:
-                source_account = load_account(
-                    server.accounts().account_id(source_keypair.public_key).call()
-                )
-            except NotFoundError:
-                raise RuntimeError(
-                    f"account {source_keypair.public_key} does not exist"
-                )
-            builder = TransactionBuilder(
-                source_account=source_account,
-                network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
-                # this transaction contains one operation so base_fee will be multiplied by 1
-                base_fee=settings.MAX_TRANSACTION_FEE_STROOPS
-                or server.fetch_base_fee(),
-            )
-            transaction_envelope = builder.append_create_account_op(
-                destination=transaction.to_address,
-                starting_balance=settings.ACCOUNT_STARTING_BALANCE,
-            ).build()
-            transaction_envelope.sign(source_keypair)
-            try:
-                return server.submit_transaction(transaction_envelope)
-            except BaseHorizonError as e:
-                raise RuntimeError(
-                    "Horizon error when submitting create account "
-                    f"to horizon: {e.message}"
-                )
-            except ConnectionError:
-                raise RuntimeError("Failed to connect to Horizon")
+            transaction_hash = None
+            while not transaction_hash:
+                if transaction.envelope_xdr:
+                    envelope = transaction.envelope_xdr
+                else:
+                    envelope_obj = self._generate_create_account_transaction_envelope(
+                        source_keypair.public_key, transaction.to_address, server
+                    )
+                    envelope = self._sign_and_save_transaction_envelope(
+                        transaction, envelope_obj, [source_keypair]
+                    )
+                try:
+                    response = server.submit_transaction(envelope)
+                except (BadResponseError, ConnectionError):
+                    # TODO: ensure we got a 504
+                    raise TransactionSubmissionPending
+                except BadRequestError:
+                    # TODO: ensure we got a 400 tx_too_late
+                    transaction.envelope_xdr = None
+                    continue
+                return response["hash"]
 
-    def requires_third_party_signatures(self, transaction: Transaction) -> bool:
+    @staticmethod
+    def _sign_and_save_transaction_envelope(
+        transaction: Transaction,
+        envelope: TransactionEnvelope,
+        signers: List[Union[Keypair, str]],
+    ):
+        for signer in signers:
+            envelope.sign(signer)
+        transaction.envelope_xdr = envelope.to_xdr()
+        transaction.save()
+        return transaction.envelope_xdr
+
+    @staticmethod
+    def _generate_create_account_transaction_envelope(
+        from_account: str, to_account: str, server: Server
+    ):
+        source_account = load_account(server.accounts().account_id(from_account).call())
+        builder = TransactionBuilder(
+            source_account=source_account,
+            network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
+            # this transaction contains one operation so base_fee will be multiplied by 1
+            base_fee=(settings.MAX_TRANSACTION_FEE_STROOPS or server.fetch_base_fee()),
+        )
+        return builder.append_create_account_op(
+            destination=to_account, starting_balance=settings.ACCOUNT_STARTING_BALANCE,
+        ).build()
+
+    @staticmethod
+    def _requires_third_party_signatures(transaction: Transaction) -> bool:
         """
         Returns ``True`` if the distribution account for the asset being transacted
         requires signatures from other signers in addition to the distribution account's
@@ -286,21 +355,6 @@ class SelfCustodyIntegration(CustodyIntegration):
         Polaris supports funding destination accounts for deposit transactions.
         """
         return True
-
-    @staticmethod
-    def _get_channel_keypair(transaction) -> Keypair:
-        from polaris.integrations import registered_deposit_integration as rdi
-
-        if not transaction.channel_account:
-            logger.info(
-                f"calling create_channel_account() for transaction {transaction.id}"
-            )
-            rdi.create_channel_account(transaction=transaction)
-        if not transaction.channel_seed:
-            asset = transaction.asset
-            transaction.refresh_from_db()
-            transaction.asset = asset
-        return Keypair.from_secret(transaction.channel_seed)
 
 
 registered_custody_integration = SelfCustodyIntegration()

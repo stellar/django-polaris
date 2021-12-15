@@ -100,14 +100,9 @@ class RailsIntegration:
         collected from the user is different than the Stellar asset to be sent on-chain,
         populate ``transaction.fee_asset`` as well.
 
-        Ensure the amount deposited to the anchor's account matches each
-        transaction's ``amount_expected`` field. Client applications may send an amount
-        that differs from the amount originally specified prior. If this is the case,
-        the transaction should be placed in the ``error`` status or
-        ``Transaction.amount_fee`` and ``Transaction.amount_out`` should be recalculated
-        before returning.
-
-        If ``amount_expected`` differs from the amount deposited, assign the amount
+        Client applications may send an amount that differs from the amount originally
+        specified prior. If ``amount_expected`` differs from the amount deposited, the
+        transaction should be placed in the ``error`` status or assign the amount
         deposited to ``amount_in`` and update ``amount_fee`` to appropriately.
 
         Also make sure to save the transaction's ``from_address`` field with
@@ -117,16 +112,10 @@ class RailsIntegration:
         before it is returned. The transaction object will be refreshed using
         Django's ``.refresh_from_db()`` method and any unsaved data will be lost.
 
-        For every transaction that is returned, Polaris will submit it to the
-        Stellar network. If a transaction is completed on the network, the
-        ``after_deposit()`` integration function will be called, however
-        implementing this function is optional.
-
-        If the Stellar network is unable to execute a transaction returned
-        from this function, it's status will be marked as ``error``
-        and its ``status_message`` attribute will be assigned a description of
-        the problem that occurred. If the Stellar network is successful,
-        the transaction will be marked as ``completed``.
+        For every transaction that is returned, Polaris will evaluate its readiness for
+        submission to the Stellar network. If a transaction is completed on the network,
+        the ``after_deposit()`` integration function will be called, however implementing
+        this function is optional.
 
         `pending_deposits` is a QuerySet of the form
         ::
