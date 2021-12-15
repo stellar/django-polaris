@@ -1,6 +1,7 @@
 """This module defines the models used by Polaris."""
 import datetime
 import decimal
+import enum
 import secrets
 import uuid
 from base64 import urlsafe_b64encode as b64e, urlsafe_b64decode as b64d
@@ -389,6 +390,54 @@ class Transaction(models.Model):
 
     PROTOCOL = PolarisChoices("sep6", "sep24", "sep31")
     """Values for `protocol` column"""
+
+    class SubmissionStatus(enum.Enum):
+        """
+        Submission status values used internally by Polaris for managing the state of
+        deposit transactions.
+        """
+
+        NOT_READY = 1
+        """
+        Used until a transaction is returned from RailsIntegration.poll_pending_deposits().
+        """
+
+        READY = 3
+        """
+        Used when the transaction was returned by RailsIntegration.poll_pending_deposits()
+        and saved to the database.
+        """
+
+        PROCESSING = 2
+        """
+        Used when the transaction is brought into memory and is being considered for submission.
+        All other statuses are only used for transactions at-rest.
+        """
+
+        PENDING = 4
+        """
+        Used when the transaction has been passed to CustodyIntegration.create_destination_account()
+        or CustodyIntegration.submit_deposit_transaction() but a `TransactionSubmissionPending`
+        exception was raised in the most-recent invocation, and a SIGINT or SIGTERM was sent, preventing
+        Polaris from submitting again.
+        """
+
+        PENDING_TRUST = 5
+        """
+        Used when the transaction destination account does not yet have a trustline
+        """
+
+        BLOCKED = 6
+        """
+        Used when the transaction has been passed to CustodyIntegration.create_destination_account()
+        or CustodyIntegration.submit_deposit_transaction() but a `TransactionSubmissionBlocked`
+        exception was raised in the most-recent invocation. Polaris will simply move to the next transaction.
+        """
+
+        UNBLOCKED = 7
+        """
+        Similar to READY, but indicates that the transaction was previously blocked.
+        """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     """Unique, anchor-generated id for the deposit/withdrawal."""

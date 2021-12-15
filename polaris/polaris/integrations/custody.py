@@ -2,7 +2,6 @@ from typing import List, Union
 
 from stellar_sdk import Server, Keypair, TransactionBuilder, TransactionEnvelope
 from stellar_sdk.exceptions import (
-    NotFoundError,
     ConnectionError,
     BadRequestError,
     BadResponseError,
