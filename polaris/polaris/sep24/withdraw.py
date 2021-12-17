@@ -30,6 +30,7 @@ from polaris.utils import (
     render_error_response,
     extract_sep9_fields,
     create_transaction_id,
+    validate_account_and_memo,
 )
 from polaris.sep24.utils import (
     interactive_url,
@@ -184,9 +185,23 @@ def post_interactive_withdraw(request: Request) -> Response:
             if transaction.status != transaction.STATUS.pending_anchor:
                 # Add receiving account and memo now that anchor is ready to receive payment
                 transaction.status = Transaction.STATUS.pending_user_transfer_start
-                rci.save_receiving_account_and_memo(
-                    request=request, transaction=transaction
-                )
+                try:
+                    receiving_account, memo, memo_type = validate_account_and_memo(
+                        *rci.get_receiving_account_and_memo(
+                            request=request, transaction=transaction
+                        )
+                    )
+                except ValueError:
+                    logger.exception(
+                        "CustodyIntegration.get_receiving_account_and_memo() returned invalid values"
+                    )
+                    return render_error_response(
+                        _("unable to process the request"), status_code=500
+                    )
+                transaction.receiving_anchor_account = receiving_account
+                transaction.memo = memo
+                transaction.memo_type = memo_type
+                transaction.save()
             else:
                 logger.info(f"Transaction {transaction.id} is pending KYC approval")
 

@@ -26,6 +26,7 @@ from polaris.utils import (
     extract_sep9_fields,
     make_memo,
     get_quote_and_offchain_destination_asset,
+    validate_account_and_memo,
 )
 from polaris.sep6.utils import validate_403_response
 from polaris.sep10.token import SEP10Token
@@ -109,7 +110,22 @@ def withdraw_logic(token: SEP10Token, request: Request, exchange: bool):
         )
 
     if status_code == 200:
-        rci.save_receiving_account_and_memo(request=request, transaction=transaction)
+        try:
+            receiving_account, memo_str, memo_type = validate_account_and_memo(
+                *rci.get_receiving_account_and_memo(
+                    request=request, transaction=transaction
+                )
+            )
+        except ValueError:
+            logger.exception(
+                "CustodyIntegration.get_receiving_account_and_memo() returned invalid values"
+            )
+            return render_error_response(
+                _("unable to process the request"), status_code=500
+            )
+        transaction.receiving_anchor_account = receiving_account
+        transaction.memo = memo_str
+        transaction.memo_type = memo_type
         response["memo"] = transaction.memo
         response["memo_type"] = transaction.memo_type
         logger.info(f"Created withdraw transaction {transaction.id}")

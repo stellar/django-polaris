@@ -21,8 +21,13 @@ from stellar_sdk import (
     TextMemo,
     IdMemo,
     HashMemo,
+    Keypair,
 )
-from stellar_sdk.exceptions import NotFoundError
+from stellar_sdk.exceptions import (
+    NotFoundError,
+    Ed25519PublicKeyInvalidError,
+    MemoInvalidException,
+)
 from stellar_sdk.account import Account
 from stellar_sdk import Memo
 from requests import Response as RequestsResponse, RequestException, post
@@ -183,6 +188,33 @@ def make_memo(
         return TextMemo(memo)
     else:
         raise ValueError()
+
+
+def validate_account_and_memo(account: str, memo: str):
+    if not (isinstance(account, str) and isinstance(memo, str)):
+        raise ValueError("invalid public key or memo type, expected strings")
+    try:
+        Keypair.from_public_key(account)
+    except Ed25519PublicKeyInvalidError:
+        raise ValueError("invalid public key")
+    try:
+        IdMemo(int(memo))
+    except (ValueError, MemoInvalidException):
+        pass
+    else:
+        return account, memo, Transaction.MEMO_TYPES.id
+    try:
+        HashMemo(memo)
+    except MemoInvalidException:
+        pass
+    else:
+        return account, memo, Transaction.MEMO_TYPES.hash
+    try:
+        TextMemo(memo)
+    except MemoInvalidException:
+        return ValueError("invalid memo")
+    else:
+        return account, memo, Transaction.MEMO_TYPES.text
 
 
 SEP_9_FIELDS = {

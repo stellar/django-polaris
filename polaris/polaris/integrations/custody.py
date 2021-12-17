@@ -1,4 +1,5 @@
-from typing import List, Union
+import enum
+from typing import List, Union, Optional, Tuple
 
 from stellar_sdk import Server, Keypair, TransactionBuilder, TransactionEnvelope
 from stellar_sdk.exceptions import (
@@ -53,25 +54,20 @@ class CustodyIntegration:
         """
         raise NotImplementedError()
 
-    def save_receiving_account_and_memo(
+    def get_receiving_account_and_memo(
         self, request: Request, transaction: Transaction
-    ):
+    ) -> Tuple[str, str]:
         """
-        Save the Stellar account that the client should use as the destination
-        of the payment transaction to ``Transaction.receiving_anchor_account``,
-        the string representation of the memo the client should attach to the
-        transaction to ``Transaction.memo``, and the type of that memo to
-        ``Transaction.memo_type``.
+        Return the Stellar account that the client should use as the destination
+        of the payment transaction and the string representation of the memo the
+        client should attach to the transaction. Polaris will save these to
+        `transaction` and return them in API responses when necessary.
 
-        This method is only called once for a given transaction. The values
-        saved will be returned to the client in the response to this request or
-        in future ``GET /transaction`` responses.
+        This method is only called once for a given transaction.
 
-        **Polaris assumes ``Transaction.save()`` is called within this method.**
-
-        The memo saved to the transaction object _must_ be unique to the
-        transaction, since the anchor is expected to match the database record
-        represented by `transaction` with the on-chain transaction submitted.
+        The memo returned _must_ be unique to the transaction, since the anchor
+        is expected to match the database record represented by `transaction` with
+        the on-chain transaction submitted.
 
         This function differs from ``get_distribution_account()`` by allowing the
         anchor to return any Stellar account that can be used to receive a payment.
@@ -80,8 +76,8 @@ class CustodyIntegration:
         account provided for future transactions.
 
         :param request: the request that initiated the call to this function
-        :param transaction: the transaction a Stellar account and memo must be
-            saved to
+        :param transaction: the transaction that will be processed when a payment
+            using the account and memo returned is received
         """
         raise NotImplementedError()
 
@@ -190,32 +186,58 @@ class SelfCustodyIntegration(CustodyIntegration):
     for every anchored asset.
     """
 
+    class TransactionType(enum.Enum):
+        CREATE_DESTINATION_ACCOUNT = 1
+        SEND_DEPOSIT_AMOUNT = 2
+
+    @property
+    def claimable_balances_supported(self):
+        """
+        Polaris supports sending funds for deposit transactions as claimable balances.
+        """
+        return True
+
+    @property
+    def account_creation_supported(self):
+        """
+        Polaris supports funding destination accounts for deposit transactions.
+        """
+        return True
+
     def get_distribution_account(self, asset: Asset) -> str:
         """
         Returns ``Asset.distribution_account``
         """
         return asset.distribution_account
 
-    def save_receiving_account_and_memo(
+    def get_receiving_account_and_memo(
         self, request: Request, transaction: Transaction
     ):
         """
-        Generates a hash memo derived from ``Transaction.id`` and saves it to
-        ``Transaction.memo``. Also saves 'hash' to ``Transaction.memo_type`` and
-        ``Asset.distribution_account`` to ``Transaction.receiving_anchor_account``.
+        Returns the distribution account used for the transaction's asset and a
+        hash memo derived from the transaction's ID.
         """
         padded_hex_memo = "0" * (64 - len(transaction.id.hex)) + transaction.id.hex
-        transaction.receiving_anchor_account = transaction.asset.distribution_account
-        transaction.memo = memo_hex_to_base64(padded_hex_memo)
-        transaction.memo_type = Transaction.MEMO_TYPES.hash
-        transaction.save()
+        return (
+            transaction.asset.distribution_account,
+            memo_hex_to_base64(padded_hex_memo),
+        )
 
     def submit_deposit_transaction(
         self, transaction: Transaction, has_trustline: bool = True
     ) -> str:
-        """
-        Submits ``Transaction.envelope_xdr`` to the Stellar network
-        """
+        return self._submit_transaction(
+            transaction, self.TransactionType.SEND_DEPOSIT_AMOUNT, has_trustline
+        )
+
+    def create_destination_account(self, transaction: Transaction) -> dict:
+        return self._submit_transaction(
+            transaction, self.TransactionType.CREATE_DESTINATION_ACCOUNT
+        )
+
+    def _submit_transaction(
+        self, transaction, type: TransactionType, has_trustline: Optional[bool] = None
+    ):
         try:
             requires_tp_sigs = self._requires_third_party_signatures(
                 transaction=transaction
@@ -230,9 +252,16 @@ class SelfCustodyIntegration(CustodyIntegration):
                 if transaction.envelope_xdr:
                     envelope = transaction.envelope_xdr
                 else:
-                    envelope_obj = self._generate_deposit_transaction_envelope(
-                        transaction, has_trustline, server
-                    )
+                    if type == self.TransactionType.SEND_DEPOSIT_AMOUNT:
+                        envelope_obj = self._generate_deposit_transaction_envelope(
+                            transaction, has_trustline, server
+                        )
+                    else:
+                        envelope_obj = self._generate_create_account_transaction_envelope(
+                            transaction.asset.distribution_account,
+                            transaction.to_address,
+                            server,
+                        )
                     envelope = self._sign_and_save_transaction_envelope(
                         transaction, envelope_obj, [transaction.asset.distribution_seed]
                     )
@@ -260,44 +289,6 @@ class SelfCustodyIntegration(CustodyIntegration):
             use_claimable_balance=not has_trustline,
             base_fee=(settings.MAX_TRANSACTION_FEE_STROOPS or server.fetch_base_fee()),
         )
-
-    def create_destination_account(self, transaction: Transaction) -> dict:
-        """
-        Builds and submits a transaction to fund ``Transaction.to_address``.
-        The source account of the transaction is either the distribution account
-        for the asset being transacted or a channel account provided by the anchor.
-        """
-        try:
-            requires_tp_sigs = self._requires_third_party_signatures(
-                transaction=transaction
-            )
-        except ConnectionError:
-            raise TransactionSubmissionPending
-        if requires_tp_sigs:
-            raise TransactionSubmissionBlocked
-        source_keypair = Keypair.from_secret(transaction.asset.distribution_seed)
-        with Server(horizon_url=settings.HORIZON_URI) as server:
-            transaction_hash = None
-            while not transaction_hash:
-                if transaction.envelope_xdr:
-                    envelope = transaction.envelope_xdr
-                else:
-                    envelope_obj = self._generate_create_account_transaction_envelope(
-                        source_keypair.public_key, transaction.to_address, server
-                    )
-                    envelope = self._sign_and_save_transaction_envelope(
-                        transaction, envelope_obj, [source_keypair]
-                    )
-                try:
-                    response = server.submit_transaction(envelope)
-                except (BadResponseError, ConnectionError):
-                    # TODO: ensure we got a 504
-                    raise TransactionSubmissionPending
-                except BadRequestError:
-                    # TODO: ensure we got a 400 tx_too_late
-                    transaction.envelope_xdr = None
-                    continue
-                return response["hash"]
 
     @staticmethod
     def _sign_and_save_transaction_envelope(
@@ -340,20 +331,6 @@ class SelfCustodyIntegration(CustodyIntegration):
             or master_signer["weight"] == 0
             or master_signer["weight"] < thresholds["med_threshold"]
         )
-
-    @property
-    def claimable_balances_supported(self):
-        """
-        Polaris supports sending funds for deposit transactions as claimable balances.
-        """
-        return True
-
-    @property
-    def account_creation_supported(self):
-        """
-        Polaris supports funding destination accounts for deposit transactions.
-        """
-        return True
 
 
 registered_custody_integration = SelfCustodyIntegration()

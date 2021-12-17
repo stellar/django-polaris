@@ -15,7 +15,6 @@ from stellar_sdk.account import Account
 from stellar_sdk.exceptions import (
     BaseHorizonError,
     ConnectionError,
-    NotFoundError,
     BaseRequestError,
 )
 from stellar_sdk.xdr import TransactionResult, OperationType
@@ -208,34 +207,7 @@ class PendingDeposits:
         logger.info(f"processing transaction {transaction.id}")
         if await cls.requires_trustline(transaction, server, locks):
             return
-
         logger.info(f"transaction {transaction.id} has the appropriate trustline")
-        try:
-            logger.debug(f"checking if transaction {transaction.id} requires multisig")
-            requires_multisig = await sync_to_async(
-                rci.requires_third_party_signatures
-            )(transaction=transaction)
-        except NotFoundError:
-            await sync_to_async(cls.handle_error)(
-                transaction,
-                "the distribution account for this transaction does not exist",
-            )
-            await maybe_make_callback_async(transaction)
-            return
-        except ConnectionError:
-            await sync_to_async(cls.handle_error)(
-                transaction,
-                f"Unable to connect to horizon to fetch {transaction.asset.code} "
-                "distribution account signers",
-            )
-            await maybe_make_callback_async(transaction)
-            return
-        if requires_multisig:
-            logger.info(f"transaction {transaction.id} requires multiple signatures")
-            await cls.save_as_pending_signatures(transaction, server)
-            return
-        logger.debug(f"transaction {transaction.id} does not require multisig")
-
         await cls.handle_submit(transaction, server, locks)
 
     @classmethod
@@ -265,6 +237,7 @@ class PendingDeposits:
                 pending_execution_attempt=False,
             )
             .select_related("asset")
+            .select_related("quote")
             .select_for_update()
         )
         with django.db.transaction.atomic():
@@ -587,7 +560,7 @@ class PendingDeposits:
             _, destination_account_json = await get_account_obj_async(
                 Keypair.from_public_key(transaction.to_address), server
             )
-            response = await sync_to_async(rci.submit_deposit_transaction)(
+            transaction_hash = await sync_to_async(rci.submit_deposit_transaction)(
                 transaction=transaction,
                 has_trustline=not is_pending_trust(
                     transaction, destination_account_json
@@ -601,20 +574,24 @@ class PendingDeposits:
                 logger.debug(f"unlocking after submitting transaction {transaction.id}")
                 locks["source_accounts"][distribution_account].release()
 
-        if not response.get("successful"):
+        transaction_json = (
+            await server.transactions().transaction(transaction_hash).call()
+        )
+
+        if not transaction_json.get("successful"):
             await sync_to_async(cls.handle_error)(
                 transaction,
                 "Stellar transaction failed when submitted to horizon: "
-                f"{response['result_xdr']}",
+                f"{transaction_json['result_xdr']}",
             )
             await maybe_make_callback_async(transaction)
             return False
 
         if transaction.claimable_balance_supported and rci.claimable_balances_supported:
-            transaction.claimable_balance_id = cls.get_balance_id(response)
+            transaction.claimable_balance_id = cls.get_balance_id(transaction_json)
 
-        transaction.paging_token = response["paging_token"]
-        transaction.stellar_transaction_id = response["id"]
+        transaction.paging_token = transaction_json["paging_token"]
+        transaction.stellar_transaction_id = transaction_json["id"]
         transaction.status = Transaction.STATUS.completed
         transaction.completed_at = datetime.datetime.now(datetime.timezone.utc)
         transaction.pending_execution_attempt = False

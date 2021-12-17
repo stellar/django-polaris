@@ -25,6 +25,7 @@ from polaris.utils import (
     render_error_response,
     create_transaction_id,
     validate_patch_request_fields,
+    validate_account_and_memo,
 )
 
 
@@ -164,7 +165,23 @@ class TransactionsAPIView(APIView):
 
         if transaction.quote and transaction.quote.type == Quote.TYPE.indicative:
             transaction.quote.save()
-        rci.save_receiving_account_and_memo(request=request, transaction=transaction)
+        try:
+            receiving_account, memo, memo_type = validate_account_and_memo(
+                *rci.get_receiving_account_and_memo(
+                    request=request, transaction=transaction
+                )
+            )
+        except ValueError:
+            logger.exception(
+                "CustodyIntegration.get_receiving_account_and_memo() returned invalid values"
+            )
+            return render_error_response(
+                _("unable to process the request"), status_code=500
+            )
+        transaction.receiving_anchor_account = receiving_account
+        transaction.memo = memo
+        transaction.memo_type = memo_type
+        transaction.save()
         return Response(
             {
                 "id": transaction.id,
