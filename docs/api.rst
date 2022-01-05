@@ -14,3 +14,9 @@ SEP-1
 =====
 
 .. autofunction:: polaris.integrations.get_stellar_toml
+
+SEP-10
+======
+
+.. autoclass:: polaris.sep10.token.SEP10Token
+    :members:
