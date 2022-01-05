@@ -1,4 +1,7 @@
-========================
+=============
+API Reference
+=============
+
 Registering Integrations
 ========================
 
@@ -7,3 +10,7 @@ you've defined, you must register them.
 
 .. autofunction:: polaris.integrations.register_integrations
 
+SEP-1
+=====
+
+.. autofunction:: polaris.integrations.get_stellar_toml

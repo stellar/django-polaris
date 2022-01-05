@@ -1,9 +1,57 @@
-============
+===============
+Running Polaris
+===============
+
+Local Development
+=================
+
+Locally, Polaris can be run using Django's HTTP development server
+::
+
+    python manage.py runserver
+
+If you're using Polaris' SEP-24 support, you also need to use the following
+environment variable:
+::
+
+    LOCAL_MODE=1
+
+This is necessary to disable SEP-24's interactive flow authentication mechanism,
+which requires HTTPS. **Do not use local mode in production**.
+
+Production
+==========
+
+.. _gunicorn: https://gunicorn.org
+
+Polaris should only be deployed using HTTPS in production. You should do this
+by using a HTTPS web server or running Polaris behind a HTTPS reverse proxy.
+The steps below outline the settings necessary to ensure your deployment is
+secure.
+
+To redirect HTTP traffic to HTTPS, add the following to settings.py:
+::
+
+    SECURE_SSL_REDIRECT = True
+
+If you're running Polaris behind a HTTPS proxy:
+::
+
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+This tells Django what header to check and what value it should be in
+order to consider the incoming request secure.
+
+And finally, if you activate SEP-24, add the following setting:
+::
+
+    SESSION_COOKIE_SECURE = True
+
+Polaris requires this setting to be ``True`` for SEP-24 deployments if not in
+``LOCAL_MODE``.
+
 CLI Commands
 ============
-
-Deploying Polaris
------------------
 
 Implementing SEP 6, 24, or 31 requires more than a web server. Anchors must also stream incoming transactions to their asset's distribution accounts, check for incoming deposits to their off-chain accounts, confirm off-chain transfers, and more.
 
@@ -12,22 +60,22 @@ To support these requirements, Polaris deployments must also include additional 
 With the exception of ``watch_transactions`` and ``testnet``, every CLI command can be run once or repeatedly on some interval using the ``--loop`` and ``--interval <seconds>`` arguments. These commands should either be run by a job scheduler like Jenkins and CircleCI or run with the ``--loop`` argument. If you choose to deploy Polaris using the ``--loop`` strategy, ensure the processes are managed and kept persistent using a process-control system like ``supervisorctl``.
 
 watch_transactions
-^^^^^^^^^^^^^^^^^^
+------------------
 
 This process streams transactions to and from each anchored asset's distribution account. Outgoing transactions are filtered out, and incoming transactions are matched with pending SEP 6, 24, or 31 transactions in the database using the `memo` field. Matched transactions have their statuses updated to ``pending_receiver`` for SEP-31 and ``pending_anchor`` for SEP-6 and 24.
 
 execute_outgoing_transactions
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+-----------------------------
 
 This process periodically queries for transactions that are ready to be executed off-chain and calls Polaris' ``RailsIntegration.execute_outgoing_transaction`` integration function for each one. "Ready" transactions are those in ``pending_receiver`` or ``pending_anchor`` statuses, among other conditions. Anchors are expected to update the ``Transaction.status`` to ``completed`` or ``pending_external`` if initiating the transfer was successful.
 
 poll_outgoing_transactions
-^^^^^^^^^^^^^^^^^^^^^^^^^^
+--------------------------
 
 Polaris periodically queries for transactions in ``pending_external`` and passes them to the ``RailsIntegration.poll_outgoing_transactions``. The anchor is expected to update the transactions' status depending on if the transfer has been successful or not.
 
 process_pending_deposits
-^^^^^^^^^^^^^^^^^^^^^^^^
+------------------------
 
 This process handles all of the transaction submission logic for deposit transactions. Polaris periodically queries the database for transactions in one of the following scenarios and processes them accordingly.
 
@@ -43,16 +91,8 @@ A transaction's source account requires multiple signatures before submission to
 
     In this case, ``Transaction.pending_signatures`` is set to ``True`` and the anchor is expected to collect signatures, save the transaction envelope to ``Transaction.envelope_xdr``, and set ``Transaction.pending_signatures`` back to ``False``. Polaris will then query for these transactions and submit them to the Stellar network.
 
-
-Testnet Resets
---------------
-
-If you're running your anchor service on testnet, you'll need to reset Polaris' state every time the network resets. Polaris comes with a command that automates this process.
-
-.. _testnet:
-
 testnet
-^^^^^^^
+-------
 
 .. _create-stellar-token: https://github.com/stellar/create-stellar-token
 
