@@ -2,10 +2,11 @@
 
 // Amount symbol padding
 const amountSymbol = document.querySelector('.icon-symbol');
+let style, width, paddingRight, amountInputElem;
 if (amountSymbol) {
-  const style = getComputedStyle(amountSymbol);
-  const width = parseFloat(style.width.replace(/px/, ''));
-  const paddingRight = parseFloat(style.paddingRight.replace(/px/, ''));
-  const amountInputElem = amountSymbol.nextElementSibling;
+  style = getComputedStyle(amountSymbol);
+  width = parseFloat(style.width.replace(/px/, ''));
+  paddingRight = parseFloat(style.paddingRight.replace(/px/, ''));
+  amountInputElem = amountSymbol.nextElementSibling;
   amountInputElem.style.paddingLeft = (width + paddingRight).toString() + 'px';
 }
