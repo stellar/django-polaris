@@ -26,6 +26,7 @@ def get_stellar_toml(request: Request, *args: List, **kwargs: Dict):
     - `TRANSFER_SERVER_0024`
     - `KYC_SERVER`
     - `DIRECT_PAYMENT_SERVER`
+    - `QUOTE_SERVER`
 
     The contents of the dictionary returned will overwrite the default matching key values.
 
