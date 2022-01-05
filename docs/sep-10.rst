@@ -45,11 +45,11 @@ You should see the ``WEB_AUTH_ENDPOINT`` URL at http://localhost:8000/.well-know
 Adding Client Attribution
 =========================
 
-Optionally, you can configure your authentication service to deny requests from clients that do not offer to cryptographically verify their identity. :term:`CLIENT_ATTRIBUTION_REQUIRED` and related environment variables allow you to define an allow or denylist of domains that can authenticate with your service.
+Optionally, you can configure your authentication service to deny requests from clients that do not offer to cryptographically verify their identity. :term:`SEP10_CLIENT_ATTRIBUTION_REQUIRED` and related environment variables allow you to define an allow or denylist of domains that can authenticate with your service.
 
 By default, Polaris does not require clients to perform this verification, but it will allow clients to do so voluntarily. In these cases, Polaris will assign the ``client_domain`` property of the :class:`polaris.sep10.token.SEP10Token` object passed to the request with the verified domain.
 
-Authentication as a Service
-===========================
+Issuing Tokens for Other Domains
+================================
 
 SEP-10 servers can issue authentication tokens for multiple services, including services hosted on different domains. To enable this, add the domains you would like Polaris to issue authenticaton tokens for to the :term:`SEP10_HOME_DOMAINS` environment variable.

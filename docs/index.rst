@@ -73,3 +73,5 @@ Contributing
     :maxdepth: 2
 
     contributing
+
+:ref:`genindex`
