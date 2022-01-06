@@ -1,6 +1,6 @@
-===============
-Running Polaris
-===============
+=================
+Deploying Polaris
+=================
 
 Local Development
 =================

@@ -4,11 +4,15 @@ Require Authentication
 
 .. _`SEP-10 Stellar Web Authentication`: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.md
 
-Polaris requires the anchor to activate SEP-10 in order to use any of the other SEPs other than SEP-1. As defined by the `SEP-10 Stellar Web Authentication`_ specification,
+As defined by the `SEP-10 Stellar Web Authentication`_ specification,
 
 .. epigraph::
 
     `This SEP defines the standard way for clients such as wallets or exchanges to create authenticated web sessions on behalf of a user who holds a Stellar account. A wallet may want to authenticate with any web service which requires a Stellar account ownership verification, for example, to upload KYC information to an anchor in an authenticated way as described in SEP-12.`
+
+Most Polaris endpoints require a SEP-10 authentication token, refered to as the JWT, and Polaris includes an easily enabled implemenation of SEP-10 that clients can use to obtain these tokens.
+
+It is also possile to host a SEP-10 server independent of your Polaris deployment as long as secret used to generate the signature of each token matches the value assigned to Polaris' :term:`SERVER_JWT_KEY` environment variable. In this case, the following steps can be skipped.
 
 Configure Settings
 ==================

@@ -10,6 +10,8 @@ As defined by the `SEP-1 Stellar Info File`_ specification,
 
     `The stellar.toml file is used to provide a common place where the Internet can find information about your organization’s Stellar integration... It allows you to publish information about your organization and token(s) that help to legitimize your offerings. Clients and exchanges can use this information to decide whether a token should be listed. Fully and truthfully disclosing contact and business information is an essential step in responsible token issuance.`
 
+Polaris supports hosting this file on the server Polaris is deployed on. However, anchors may choose to not use Polaris and host their stellar.toml on a different server, such as the one running the business' main website. In this case, the following steps can be skipped, but the URLs defined in the stellar.toml, such as SEP-24's ``TRANSFER_SERVER_0024``, should point to the server running Polaris.
+
 Activate SEP-1
 ==============
 
