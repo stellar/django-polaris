@@ -49,10 +49,16 @@
       {% block "content" %}
       {% endblock %}
     </div>
+
+    {# Rendered via custom extra_body template #}
+    {% block "extra_body" %}
+    {% endblock %}
+
     <div class="bottom section">
       {% block "footer" %}
       {% endblock %}
     </div>
+
     <script type="text/javascript" src="{% static 'polaris/scripts/number.js' %}"></script>
     <script type="text/javascript" src="{% static 'polaris/scripts/styleHelpers.js' %}"></script>
     <script type="text/javascript" src="{% static 'polaris/scripts/disableSubmitOnClick.js' %}"></script>
@@ -85,10 +91,5 @@
         sessionOffset: {{ current_offset|default:0 }}
       });
     </script>
-
-    {# Rendered via custom extra_body template #}
-    {% block "extra_body" %}
-    {% endblock %}
-
   </body>
 </html>

@@ -329,3 +329,120 @@ All of the methods used to process form data are defined on the :class:`~polaris
                 return None
 
 Similar logic should be implemented for :class:`~polaris.integrations.WithdrawIntegration`. For more detailed information on any of the classes or functions used about, see the :doc:`api`.
+
+Templates
+---------
+
+.. _`Django's template system`: https://docs.djangoproject.com/en/3.1/ref/templates/
+.. _`template syntax documentation`: https://docs.djangoproject.com/en/3.1/ref/templates/language/#
+.. _`block documentation`: https://docs.djangoproject.com/en/3.1/ref/templates/language/#template-inheritance
+
+Polaris uses `Django's template system`_ for defining the UI content rendered to users. If you're interested in customizing Polaris' UI, read Django's template documentation before continuing.
+
+Polaris' templates have the following inheritance structure:
+
+- ``templates/polaris/base.html``
+    - ``templates/polaris/deposit.html``
+    - ``templates/polaris/withdraw.html``
+    - ``templates/polaris/more_info.html``
+
+``base.html`` defines the top-level HTML tags like `html`, `body`, and `head`, while each of the four other templates extend ``base.html`` by overriding its `content` block, among others. ``deposit.html`` and ``withdraw.html`` are very similar and are used for pages that display forms. ``more_info.html`` simply displays transaction details.
+
+Polaris will render its own deposit, withdraw, and more info templates by default, but anchors have the option to extend or replace Polaris templates, or use a completely different set of templates.
+
+Extending or Replacing Polaris Templates
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+In order to or extend a Polaris Template, anchors must create a file with the same path and name of the file its replacing. Once created, the anchor can override any ``block`` tag defined in the template (or it's parent templates).
+
+Create a templates directory.
+
+.. code-block:: shell
+
+    mkdir anchor/anchor/templates
+    mkdir anchor/anchor/templates/polaris
+
+Create a file for the template you'd like to extend or replace. In this guide we'll extend ``base.html``.
+
+.. code-block:: shell
+
+    touch anchor/anchor/templates/polaris/base.html
+
+Polaris provides two ``block`` tags that are intentionally left empty for anchors to extend: ``extra_head`` and ``extra_body``. These blocks should be used if you'll looking to add additional CSS or JavaScript files to any of your templates.
+
+You are also allowed to extend any of the blocks actually implemented by Polaris, such as ``header``, ``content``, and ``footer``. Note that ``header`` contains ``extra_header`` and ``body`` contains ``extra_body``.
+
+Lets add Google Analytics to our base template.
+
+.. code-block:: html
+
+    {% extends "polaris/base.html" %}
+
+    {% block extra_head %}
+
+        <!-- Global site tag (gtag.js) - Google Analytics -->
+        <script async src="https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID"></script>
+        <script>
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){window.dataLayer.push(arguments);}
+          gtag('js', new Date());
+
+          gtag('config', 'GA_MEASUREMENT_ID');
+        </script>
+
+    {% endblock %}
+
+We can make our HTML code cleaner by putting this JavaScript code in its own JS file.
+
+.. code-block:: shell
+
+    mkdir anchor/anchor/static/js
+    touch anchor/anchor/static/js/googleAnalytics.js
+
+Paste the JS code into ``googleAnalytics.js``. Then, link the JS file in your base template extension.
+
+.. code-block::
+
+    {% extends "polaris/base.html" %} {% load static %}
+
+    {% block extra_head %}
+
+        <script src="{% static 'sep24_scripts/google_analytics.js' %}"></script>
+
+    {% endblock %}
+
+If you're unfamiliar with the syntax of Django's templates, check out the `template syntax documentation`_ and particularly the `block documentation`_.
+
+If you wish to replace a template completely, create a file with the same relative path from the `templates` directory but do not use the ``extend`` keyword. Instead, simply write a Django template that does not extend one defined by Polaris.
+
+Using Custom Templates
+^^^^^^^^^^^^^^^^^^^^^^
+
+Anchors don't have to use any of Polaris' templates, and can instead explicitly provide templates for Polaris to render per-request.
+
+Simply include a `template_name` key in the dictionary returned by :meth:`~polaris.integrations.DepositIntegration.content_for_template`, which is called every time a template is about to be rendered. The value of `template_name` key must be the file path of template you'd like Polaris to render relative to your applications's ``templates`` directory.
+
+Providing Context to Templates
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. _`context`: https://docs.djangoproject.com/en/3.1/ref/templates/api/#rendering-a-context
+
+Whenever a template is rendered and displayed to the user, its rendered using a `context`_, which is a Python dictionary containing key-value pairs that can be used to alter the content rendered.
+
+Polaris has an integration function that allows anchors to add key-value pairs to the context used whenever a template is about to be rendered, :meth:`~polaris.integrations.DepositIntegration.content_for_template`. See the documentation on this function for more detailed information.
+
+.. warning::
+
+    Any content returned from ``content_for_template()`` that originates from user input should be validiated and sanitized.
+
+Replacing Static Assets
+-----------------------
+
+Similar to Polaris' templates, Polaris' static assets can also be replaced by creating a file with a matching path relative to it's app's `static` directory. This allows anchors to customize the UI's appearance. For example, you can replace Polaris' `base.css` file to give the interactive flow pages a different look using your own `polaris/base.css` file.
+
+Note that if you would like to add CSS styling in addition to what Polaris provides, you should extend the Polaris template and define an ``extra_head`` block containing the associated ``link`` tags.
+
+Connecting Payment Rails
+------------------------
+
+
