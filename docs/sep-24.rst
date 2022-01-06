@@ -330,8 +330,32 @@ All of the methods used to process form data are defined on the :class:`~polaris
 
 Similar logic should be implemented for :class:`~polaris.integrations.WithdrawIntegration`. For more detailed information on any of the classes or functions used about, see the :doc:`api`.
 
-Templates
----------
+Register Integrations
+^^^^^^^^^^^^^^^^^^^^^
+
+Once you've implemented the integration functions, you need to register them via :func:`~polaris.integration.register_integrations`. Open your ``anchor/anchor/apps.py`` file.
+
+.. code-block:: python
+
+    from django.apps import AppConfig
+
+    class AnchorConfig(AppConfig):
+        name = 'anchor'
+
+        def ready(self):
+            from polaris.integrations import register_integrations
+            from .sep1 import return_toml_contents
+            from .deposit import AnchorDeposit
+            from .withdraw import AnchorWithdraw
+
+            register_integrations(
+                toml=return_toml_contents,
+                deposit=AnchorDeposit(),
+                withdraw=AnchorWithdraw()
+            )
+
+Working with Templates
+----------------------
 
 .. _`Django's template system`: https://docs.djangoproject.com/en/3.1/ref/templates/
 .. _`template syntax documentation`: https://docs.djangoproject.com/en/3.1/ref/templates/language/#
@@ -442,7 +466,21 @@ Similar to Polaris' templates, Polaris' static assets can also be replaced by cr
 
 Note that if you would like to add CSS styling in addition to what Polaris provides, you should extend the Polaris template and define an ``extra_head`` block containing the associated ``link`` tags.
 
-Connecting Payment Rails
-------------------------
+Testing with the Demo Wallet
+----------------------------
 
+Start up the web server.
 
+.. code-block:: shell
+
+    python anchor/manage.py runuserver --nostatic
+
+Go to https://demo-wallet.stellar.org. Generate a new Keypair and select the "Add Asset" button. Enter the code and ``localhost:8000`` for the anchor home domain. Entering the issuing address is not necessary.
+
+You should see a 0 balance of the asset you've issued. Select the drop down on the right labeled "Select action", and select "SEP-24 Deposit". Select "Start".
+
+If you've configured your application and implemented the integrations properly, you should see the demo wallet hit your SEP-1, 10, and 24 APIs, and it will eventually open up a popup containing your webview or interactive flow.
+
+Enter the information each form requests. Once you've entered all the information, you should be redirected to a transaction status page. At this point, Polaris is waiting for the user (you) to send funds to the business's off-chain account.
+
+We'll explore how to connect off-chain payment rails to your Polaris application for detecting these payments in :doc:`rails`.

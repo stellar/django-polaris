@@ -44,6 +44,7 @@ User Guide
     sep-1
     sep-10
     sep-24
+    rails
     sep-6
     sep-12
     sep-31
