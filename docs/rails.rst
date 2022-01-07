@@ -45,8 +45,8 @@ Polaris will update the status of these transactions and begin processing their 
 
 The code above assumes the anchor creates a reference ID for each initiated transaction and instructs the user to include the ID when making the off-chain payment. Obviously, this code abstracts away the logic needed to query a particular off-chain payment network, which varies per-anchor.
 
-Confirm its Working
-^^^^^^^^^^^^^^^^^^^
+Testing With the Demo Wallet
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 On testnet, you'll want to automatically complete transactions so you can test the transaction happy path.
 
@@ -55,7 +55,7 @@ Run the :ref:`api:process_pending_deposits` command in addition to the web serve
 .. code-block:: shell
 
     python anchor/manage.py runserver --nostatic
-    python anchor/manage.py process_pending_deposits
+    python anchor/manage.py process_pending_deposits --loop
 
 Go to https://demo-wallet.stellar.org and generate a new account. Add your anchored asset, and from the action menu, select "SEP-24 Deposit" or "SEP-6 Deposit" depending on the the transaction type you'd like to test. Once you complete the flow you should land on the transaction status page or see the transaction enter the ``pending_user_transfer_start`` status.
 
@@ -141,8 +141,8 @@ Depending on the off-chain payment networks supported, the anchor may be able to
                 delivered_transactions.append(transaction)
             return delivered_transactions
 
-Confirm its Working
-^^^^^^^^^^^^^^^^^^^
+Testing With the Demo Wallet
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 On testnet, you'll want to automatically complete transactions so you can test the transaction happy path.
 
@@ -152,8 +152,8 @@ Run three or four processes depending on whether or not you're supporting the :r
 
     python anchor/manage.py runserver --nostatic
     python anchor/manage.py watch_transactions
-    python anchor/manage.py execute_outgoing_transactions
-    python anchor/manage.py poll_outgoing_transactions
+    python anchor/manage.py execute_outgoing_transactions --loop
+    python anchor/manage.py poll_outgoing_transactions --loop
 
 Go to https://demo-wallet.stellar.org and import an account already funded with your anchored Stellar asset. On the asset balance, select "SEP-24 Withdraw" or whichever transaction type you're starting and select "Start".
 

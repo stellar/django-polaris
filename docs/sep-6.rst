@@ -41,12 +41,20 @@ Unlike SEP-24, SEP-6 anchors do not render a webview to the user and therefore d
 Defining Asset Info
 -------------------
 
-TODO
+.. _`GET /info`: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#info
+
+Before client applications initiate transactions, they may want to gather information on the assets your service anchors and other related information. They do this by making a request to the `GET /info`_ endpoint.
+
+Polaris generates most of the JSON returned in the response to these requests, but there are some pieces of information only anchor can provide. To fill these gaps, Polaris calls the :func:`~polaris.integrations.default_info_func` function, which can be replaced by passing a different function via :func:`~polaris.integrations.regisiter_integrations`. See the function definitions for more information.
 
 Communicating Fee Structure
 ---------------------------
 
-TODO
+.. _`GET /fee`: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#fee
+
+Client applications may want to communicate the fee a user would have to pay before initiating a transaction. By default, Polaris uses the fee values assigned to each :class:`~polaris.models.Asset` object for displaying fee information in `GET /info`_ requests and calculating fees in `GET /fee`_ requests.
+
+However, the values assigned to the :class:`~polaris.models.Asset` are fixed. If the fee you want to charge is variable depending on factors external to Polaris, you must implement your custom fee calculation logic in a function and replace :func:`~polaris.integrations.calculate_fee` by passing your function to :func:`~polaris.integrations.regisiter_integrations`. See the function definitions for more information.
 
 Accepting Transaction Requests
 ------------------------------
@@ -167,7 +175,7 @@ Once you've implemented the integration functions, you need to register them via
 
 
 Testing with the Demo Wallet
-----------------------------
+============================
 
 Start up the web server.
 

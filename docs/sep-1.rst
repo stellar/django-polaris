@@ -119,8 +119,8 @@ Lets define our local info file's content.
     ORG_OFFICIAL_EMAIL = "..."
     ORG_SUPPORT_EMAIL = "..."
 
-Confirm its Working
-===================
+Check Your Info File
+====================
 
 Run the web server again.
 

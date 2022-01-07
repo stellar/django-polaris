@@ -187,6 +187,16 @@ Integrations
 
 There are several pieces of functionality required to run a anchor that are custom to each business. Polaris implements everything but these pieces, and calls functions that have been passed to :func:`~polaris.integrations.regisiter_integrations` in order to invoke custom functionality implemented by the business.
 
+Communicating Fee Structure
+---------------------------
+
+.. _`GET /info`: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#info
+.. _`GET /fee`: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md#fee
+
+Client applications may want to communicate the fee a user would have to pay before initiating a transaction. By default, Polaris uses the fee values assigned to each :class:`~polaris.models.Asset` object for displaying fee information in `GET /info`_ requests and calculating fees in `GET /fee`_ requests.
+
+However, the values assigned to the :class:`~polaris.models.Asset` are fixed. If the fee you want to charge is variable depending on factors external to Polaris, you must implement your custom fee calculation logic in a function and replace :func:`~polaris.integrations.calculate_fee` by passing your function to :func:`~polaris.integrations.regisiter_integrations`. See the function definitions for more information.
+
 Defining Django Forms
 ---------------------
 
@@ -468,13 +478,8 @@ Similar to Polaris' templates, Polaris' static assets can also be replaced by cr
 
 Note that if you would like to add CSS styling in addition to what Polaris provides, you should extend the Polaris template and define an ``extra_head`` block containing the associated ``link`` tags.
 
-Communicating Fee Structure
----------------------------
-
-TODO
-
 Testing with the Demo Wallet
-----------------------------
+============================
 
 Start up the web server.
 

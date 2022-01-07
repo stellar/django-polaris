@@ -35,8 +35,8 @@ Update the TOML File
 
 If you provided a static SEP-1 file for Polaris to use, make sure you add the ``WEB_AUTH_ENDPOINT`` attribute so clients can find your authentication service.
 
-Confirm its Working
-===================
+Confirm the API is Live
+=======================
 
 Run the web server.
 
