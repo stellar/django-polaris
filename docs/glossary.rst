@@ -147,7 +147,7 @@ Internationalization
 .. _gettext: https://www.gnu.org/software/gettext
 .. _translations: https://docs.djangoproject.com/en/2.2/topics/i18n/translation/
 
-Polaris currently supports English, Portuguese and Indonesian. Note that this
+Polaris currently supports English and Portuguese. Note that this
 feature depends on the GNU gettext_ library. This page assumes you understand how
 `translations`_ work in Django.
 
@@ -164,7 +164,7 @@ To enable this support, add the following to your settings.py:
     USE_I18N = True
     USE_L10N = True
     USE_THOUSAND_SEPARATOR = True
-    LANGUAGES = [("en", _("English")), ("pt", _("Portuguese")), ("id", _("Bahasa Indonesia"))]
+    LANGUAGES = [("en", _("English")), ("pt", _("Portuguese"))]
 
 Note that adding the ``LANGUAGE`` setting is **required**. Without this,
 Django assumes your application supports every language Django itself
@@ -185,7 +185,7 @@ You must also add ``django.middleware.locale.LocaleMiddleware`` to your
 Once your project is configured to support translations, compile the translation files:
 ::
 
-    python manage.py compilemessages
+    python anchor/manage.py compilemessages
 
 Finally, configure your browser to use the targeted language. You should then see the
 translated text.
@@ -241,14 +241,16 @@ Background and Definitions
 
 In the broader Stellar context, a `multisignature`_ account has more than one Stellar public key listed in it's signers list. In an effort not to rephrase good documentation, a good quote from our Stellar dev documentation is:
 
-  In two cases, a transaction may need more than one signature. If the transaction has operations that affect more than one account, it will need authorization from every account in question. A transaction will also need additional signatures if the account associated with the transaction has multiple public keys.
+.. epigraph::
+
+  *In two cases, a transaction may need more than one signature. If the transaction has operations that affect more than one account, it will need authorization from every account in question. A transaction will also need additional signatures if the account associated with the transaction has multiple public keys.*
 
 This `optional` feature adds security but also complexity to an anchor's application logic.
 
 Multisignature Assets in Polaris
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-In the context of Polaris, `multisignature assets` refer to SEP-24 or SEP-6 anchored assets that use distribution accounts that require `multiple signatures`_ in order to be successfully submitted to the Stellar network. Specifically, Polaris defines multisignatures assets as those whose distribution account's medium threshold is not met by the `master key's`_ weight.
+In the context of Polaris, `multisignature assets` refer to anchored assets that use distribution accounts that require `multiple signatures`_ in order to be successfully submitted to the Stellar network. Specifically, Polaris defines multisignatures assets as those whose distribution account's medium threshold is not met by the `master key's`_ weight.
 
 Anchors can optionally configure each of their assets' distribution accounts to require more than one (or many) signatures from valid signers in order to improve security around the flow of outgoing payments. The signers for each asset's distribution account may or may not include the account's public key as a master signer on the account by reducing it's weight to zero.
 
@@ -258,22 +260,25 @@ Note that anchors that issue their own assets may configure the issuing account 
 
 Channel Accounts
 ^^^^^^^^^^^^^^^^
+
 .. _`channel account`: https://www.stellar.org/developers/guides/channels.html
 
 A `channel account`_ as defined by the documentation,
 
-    [is] simply another Stellar account that is used not to send the funds but as the “source” account of the transaction. Remember transactions in Stellar each have a source account that can be different than the accounts being effected by the operations in the transaction. The source account of the transaction pays the fee and consumes a sequence number [and is not affected in any other way.]
+.. epigraph::
+
+    *[is] simply another Stellar account that is used not to send the funds but as the “source” account of the transaction. Remember transactions in Stellar each have a source account that can be different than the accounts being effected by the operations in the transaction. The source account of the transaction pays the fee and consumes a sequence number [and is not affected in any other way.]*
 
 Using channel accounts for transactions that need multiple signatures allows for a good deal of flexibility in terms of how signatures are collected for a transaction, but the reason why they are necessary is best explained by walking through what the process would look like **without channel accounts**.
 
-1. A client application makes a `POST /deposit` request and creates a transaction record
-2. The client application sends the funds to be deposited to the anchor's off-chain account
-3. The anchor detects the received funds
-4. The anchor uses the current sequence number of the asset's distribution account to create a transaction envelope in their database
-5. The anchor collects the necessary signatures on the transaction envelope
-6. Meanwhile, the distribution account submits another transaction to the Stellar Network
-7. When all signatures have been collected, the envelope XDR is submitted to the network
-8. The transaction **fails** with a 400 HTTP status code
+#. A client application makes a `POST /deposit` request and creates a transaction record
+#. The client application sends the funds to be deposited to the anchor's off-chain account
+#. The anchor detects the received funds
+#. The anchor uses the current sequence number of the asset's distribution account to create a transaction envelope in their database
+#. The anchor collects the necessary signatures on the transaction envelope
+#. Meanwhile, the distribution account submits another transaction to the Stellar Network
+#. When all signatures have been collected, the envelope XDR is submitted to the network
+#. The transaction **fails** with a 400 HTTP status code
 
 This is due to the fact that the sequence number used for the transaction in step 3 is less than the current sequence number on the account as a direct result of step 4. Remember, when a Stellar account submits a transaction, the source account's sequence number must be greater than the last sequence number used for that account.
 
@@ -281,27 +286,23 @@ Therefore, when a sequence number is used in an envelope to be submitted later, 
 
 All this context is necessary to state the following:
 
-Polaris uses channel accounts created by the anchor per-multisig-transaction as the source accounts on those same transactions so that transaction envelopes can be serialized, signed, and submitted on any schedule.
-
-Payment Flow
-^^^^^^^^^^^^
+Polaris uses channel accounts created by the anchor the source accounts on transactions using multisig distribution accounts as the source of funds so that transaction envelopes can be serialized, signed, and submitted on any schedule.
 
 Using channel accounts, Polaris supports the following process for multisignature transactions:
 
-1. A client application makes a `POST /deposit` request and creates a transaction record
-2. The client application sends the funds to be deposited to the anchor's off-chain account
-3. The anchor detects the received funds
-4. Polaris detects that the transaction requires more than one signature
-5. Polaris calls ``DepositIntegration.create_channel_account()`` for the transaction record
-6. The anchor funds a Stellar account using another Stellar account that doesn't require multiple signatures
-7. Polaris uses the channel account as the transaction's source account when building and saving the envelope XDR
-8. The anchor collects signatures on the transaction and updates it as 'ready for submission'
-9. Polaris retrieves multisig transactions ready to be submitted in process_pending_deposits and submits them
-10. Multisig transactions **succeed** assuming it has proper signatures
+#. A client application makes a `POST /deposit` request and creates a transaction record
+#. The client application sends the funds to be deposited to the anchor's off-chain account
+#. The anchor detects the received funds
+#. Polaris detects that the transaction requires more than one signature
+#. Polaris calls :func:`~polaris.integrations.DepositIntegration.create_channel_account` for the transaction record
+#. The anchor funds a Stellar account using another Stellar account that doesn't require multiple signatures
+#. Polaris uses the channel account as the transaction's source account when building and saving the envelope XDR
+#. The anchor collects signatures on the transaction and updates it as 'ready for submission'
+#. Polaris retrieves multisig transactions ready to be submitted in process_pending_deposits and submits them
+#. Multisig transactions **succeed** assuming it has proper signatures
+#. Polaris calls :func:`~polaris.integrations.DepositIntegration.after_deposit`, in which the anchor can optionally merge the channel account back into another distribution account.
 
 Currently, multisignature asset support is only relevant in the context of SEP-6 and 24 deposit transactions. Withdraw transaction flows don't involve the anchor making any Stellar transaction using an asset's distribution account, and SEP-31 outbound payments are not yet supported in Polaris.
-
-However, due to the optional nature and added complexity of configuring and handling multisignaure assets and transactions relative to the normal SEP-6 and SEP-24 flow, the integrations and related application logic is described separately in this section.
 
 Rate Limiting
 =============
@@ -351,7 +352,7 @@ SEP 10 Support
 
 SEP-10 allows wallet or client applications to either specify a memo in addition to the Stellar account being authenticated or a muxed account. As a result, the challenge transaction and authentication token will also include this information, which allows services consuming the token to restrict access provided to information relevant to the particular user of the shared account.
 
-See the :ref:`SEP-10 API Reference` section for more information on how to use this information in Polaris.
+See the :class:`~polaris.sep10.token.SEP10Token` documentation for more information on how anchors can determine which address format was used when authenticating.
 
 SEP 12 Support
 ^^^^^^^^^^^^^^
@@ -364,9 +365,9 @@ SEP-12 allows customers to be registered using either a memo in addition to the 
 SEP 6 & 24 Support
 ^^^^^^^^^^^^^^^^^^
 
-Polaris' ``Transaction`` model has three columns that are used to identify the user that initiated the transaction: ``Transaction.stellar_account``, ``Transaction.muxed_account``, and ``Transaction.account_memo``. These values are assigned directly from information extracted from the SEP-10 JWT used when requesting the transaction.
+Polaris' :class:`~polaris.models.Transaction` model has three columns that are used to identify the user that initiated the transaction: ``stellar_account``, ``muxed_account``, and ``account_memo``. These values are assigned directly from information extracted from the SEP-10 JWT used when requesting the transaction.
 
-Additionally, ``Transaction.to_address`` and ``Transaction.from_address`` may now be muxed account addresses. Polaris will properly submit deposit transactions and detect incoming withdrawal payment transaction using the muxed account if present.
+Additionally, ``Transaction.to_address`` and ``Transaction.from_address`` may be muxed account addresses. Polaris will properly submit deposit transactions and detect incoming withdrawal payment transaction using the muxed account if present.
 
 SEP 31 Support
 ^^^^^^^^^^^^^^
