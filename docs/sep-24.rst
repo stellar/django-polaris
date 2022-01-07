@@ -278,7 +278,9 @@ All of the methods used to process form data are defined on the :class:`~polaris
 
             # if a user doesn't exist for this Stellar account,
             # collect their contact info
-            user = user_for_account(transaction.stellar_account)
+            user = user_for_account(
+                transaction.muxed_account or transaction.stellar_account
+            )
             if not user:
                 if post_data:
                     return ContactForm(post_data)
@@ -465,6 +467,11 @@ Replacing Static Assets
 Similar to Polaris' templates, Polaris' static assets can also be replaced by creating a file with a matching path relative to it's app's `static` directory. This allows anchors to customize the UI's appearance. For example, you can replace Polaris' `base.css` file to give the interactive flow pages a different look using your own `polaris/base.css` file.
 
 Note that if you would like to add CSS styling in addition to what Polaris provides, you should extend the Polaris template and define an ``extra_head`` block containing the associated ``link`` tags.
+
+Communicating Fee Structure
+---------------------------
+
+TODO
 
 Testing with the Demo Wallet
 ----------------------------
