@@ -12,7 +12,7 @@ As defined by the `SEP-10 Stellar Web Authentication`_ specification,
 
 Most Polaris endpoints require a SEP-10 authentication token, refered to as the JWT, and Polaris includes an easily enabled implemenation of SEP-10 that clients can use to obtain these tokens.
 
-It is also possile to host a SEP-10 server independent of your Polaris deployment as long as secret used to generate the signature of each token matches the value assigned to Polaris' :term:`SERVER_JWT_KEY` environment variable. In this case, the following steps can be skipped.
+It is also possile to host a SEP-10 server independent of your Polaris deployment as long as the secret used to generate the signature of each token matches the value assigned to Polaris' :term:`SERVER_JWT_KEY` environment variable. In this case, the following steps can be skipped.
 
 Configure Settings
 ==================

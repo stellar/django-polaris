@@ -125,4 +125,4 @@ We can now run the Django development web server.
 
 If you navigate to http://localhost:8000 you should see Django's default home page for development.
 
-Next, we'll begin creating our anchor by publish a Stellar TOML file.
+Next, we'll begin creating our anchor by publishing a Stellar TOML file.
