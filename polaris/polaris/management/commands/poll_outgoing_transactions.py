@@ -16,6 +16,13 @@ TERMINATE = False
 
 
 class Command(BaseCommand):
+    """
+    Polaris periodically queries for transactions in pending_external and passes them
+    to the :meth:`~polaris.integrations.RailsIntegration.poll_outgoing_transactions`.
+    The anchor is expected to update the transactions’ status depending on if the
+    transfer has been successful or not.
+    """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         signal.signal(signal.SIGINT, self.exit_gracefully)

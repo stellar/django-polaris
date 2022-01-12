@@ -21,6 +21,16 @@ TERMINATE = False
 
 
 class Command(BaseCommand):
+    """
+    This process periodically queries for transactions that are ready to be executed
+    off-chain and calls Polaris’
+    :meth:`~polaris.integrations.RailsIntegration.execute_outgoing_transaction`
+    integration function for each one. “Ready” transactions are those in
+    pending_receiver or pending_anchor statuses, among other conditions. Anchors are
+    expected to update the ``Transaction.status`` to ``completed`` or
+    ``pending_external`` if initiating the transfer was successful.
+    """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         signal.signal(signal.SIGINT, self.exit_gracefully)

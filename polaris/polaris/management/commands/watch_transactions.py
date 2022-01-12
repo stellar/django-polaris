@@ -42,10 +42,10 @@ class Command(BaseCommand):
     Streams transactions for the distribution account of each Asset in the DB.
 
     For every response from the server, attempts to find a matching transaction in
-    the database with `find_matching_payment_op` and updates the transaction's
-    status to `pending_anchor` or `pending_receiver` depending on the protocol.
+    the database and updates the transaction's status to ``pending_anchor`` or
+    ``pending_receiver`` depending on the protocol.
 
-    Then, the ``execute_outgoing_transaction`` process will query for transactions
+    Then, the :ref:`execute_outgoing_transactions` process will query for transactions
     in those statuses and provide the anchor an integration function for executing
     the payment or withdrawal.
     """

@@ -49,7 +49,6 @@ User Guide
     sep-12
     sep-31
     sep-38
-    deployment
 
 API Reference
 =============
