@@ -713,6 +713,13 @@ class Transaction(models.Model):
 
 
 class Quote(models.Model):
+    """
+    Quote objects represent either firm or indicative quotes requested by the client
+    application and provided by the anchor. Quote objects will be assigned to the
+    Transaction.quote column by Polaris when requested via a SEP-6 or SEP-31 request.
+    Anchors must create their own Quote objects when facilitating a SEP-24 transaction.
+    """
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     """
     The unique ID for the quote.
@@ -818,6 +825,12 @@ class Quote(models.Model):
 
 
 class OffChainAsset(models.Model):
+    """
+    Off-chain assets represent the asset being exchanged with the Stellar asset. Each
+    off-chain asset has a set of delivery methods by which the user can provide funds to
+    the anchor and by which the anchor can deliver funds to the user.
+    """
+
     scheme = models.TextField()
     """
     The scheme of the off-chain asset as defined by SEP-38's Asset Identification Format.
@@ -864,6 +877,14 @@ class OffChainAsset(models.Model):
 
 
 class DeliveryMethod(models.Model):
+    """
+    Delivery methods are the supported means of payment from the user to the anchor and from
+    the anchor to the user. For example, an anchor may have retail stores that accept cash
+    drop-off and pick-up, or only accept debit or credit card payments. The method used by
+    the anchor to collect or deliver funds to the user may affect the rate or fees charged
+    for facilitating the transaction.
+    """
+
     TYPE = PolarisChoices("buy", "sell")
     """
     The types of delivery methods.
@@ -897,6 +918,14 @@ class DeliveryMethod(models.Model):
 
 
 class ExchangePair(models.Model):
+    """
+    Exchange pairs consist of an off-chain and on-chain asset that can be exchanged.
+    Specifically, one of these assets can be sold by the client (sell_asset) and the
+    other is bought by the client (buy_asset). ExchangePairs cannot consist of two
+    off-chain assets or two on-chain assets. Note that two exchange pair objects must
+    be created if each asset can be bought or sold for the other.
+    """
+
     buy_asset = models.TextField()
     """
     The asset the client can purchase with sell_asset using SEP-38's Asset 

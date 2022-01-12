@@ -55,7 +55,7 @@ API Reference
 =============
 
 .. toctree::
-    :maxdepth: 2
+    :maxdepth: 3
 
     api
 
@@ -63,7 +63,7 @@ Glossary
 ========
 
 .. toctree::
-    :maxdepth: 2
+    :maxdepth: 3
 
     glossary
 
@@ -71,7 +71,7 @@ Contributing
 ============
 
 .. toctree::
-    :maxdepth: 2
+    :maxdepth: 3
 
     contributing
 

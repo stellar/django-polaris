@@ -248,7 +248,7 @@ In the broader Stellar context, a `multisignature`_ account has more than one St
 This `optional` feature adds security but also complexity to an anchor's application logic.
 
 Multisignature Assets in Polaris
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+--------------------------------
 
 In the context of Polaris, `multisignature assets` refer to anchored assets that use distribution accounts that require `multiple signatures`_ in order to be successfully submitted to the Stellar network. Specifically, Polaris defines multisignatures assets as those whose distribution account's medium threshold is not met by the `master key's`_ weight.
 
@@ -259,7 +259,7 @@ Thresholds, signers, and more are configured on a Stellar account using the `Set
 Note that anchors that issue their own assets may configure the issuing account to require multiple signatures as well. However, this is outside the scope of Polaris' multisignature asset support.
 
 Channel Accounts
-^^^^^^^^^^^^^^^^
+----------------
 
 .. _`channel account`: https://www.stellar.org/developers/guides/channels.html
 

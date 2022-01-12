@@ -162,6 +162,28 @@ In this case, you may accept invalid banking information passed to :meth:`~polar
 
 Once the sending anchor detects that updated transaction information is required, the sender will recollect that information from the sending customer and send it back to the receiving anchor using a `PATCH /transactions`_ request. Polaris passes this updated transaction information to the :meth:`~polaris.integrations.SEP31Receiver.process_patch_request` integration method and expects anchors to validate and save it to their data model. If the data is valid, the anchor must also update their transaction's status.
 
+Register Integrations
+---------------------
+
+ you've implemented the integration functions, you need to register them via :func:`~polaris.integration.register_integrations`. Open your ``anchor/anchor/apps.py`` file.
+
+.. code-block:: python
+
+    from django.apps import AppConfig
+
+    class AnchorConfig(AppConfig):
+        name = 'anchor'
+
+        def ready(self):
+            from polaris.integrations import register_integrations
+            ...
+            from .sep31 import AnchorCrossBorderPayment
+
+            register_integrations(
+                ...,
+                sep31_receiver=AnchorCrossBorderPayment()
+            )
+
 Testing with the Demo Wallet
 ============================
 
