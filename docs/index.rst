@@ -66,12 +66,4 @@ Glossary
 
     glossary
 
-Contributing
-============
-
-.. toctree::
-    :maxdepth: 3
-
-    contributing
-
 :ref:`genindex`
