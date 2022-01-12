@@ -45,7 +45,7 @@ class Command(BaseCommand):
     the database and updates the transaction's status to ``pending_anchor`` or
     ``pending_receiver`` depending on the protocol.
 
-    Then, the :ref:`execute_outgoing_transactions` process will query for transactions
+    Then, the *execute_outgoing_transactions* process will query for transactions
     in those statuses and provide the anchor an integration function for executing
     the payment or withdrawal.
     """

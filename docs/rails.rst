@@ -45,8 +45,8 @@ Polaris will update the status of these transactions and begin processing their 
 
 The code above assumes the anchor creates a reference ID for each initiated transaction and instructs the user to include the ID when making the off-chain payment. Obviously, this code abstracts away the logic needed to query a particular off-chain payment network, which varies per-anchor.
 
-Testing With the Demo Wallet
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Testing Incoming Payments
+^^^^^^^^^^^^^^^^^^^^^^^^^
 
 On testnet, you'll want to automatically complete transactions so you can test the transaction happy path.
 
@@ -141,8 +141,8 @@ Depending on the off-chain payment networks supported, the anchor may be able to
                 delivered_transactions.append(transaction)
             return delivered_transactions
 
-Testing With the Demo Wallet
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Testing Outgoing Payments
+^^^^^^^^^^^^^^^^^^^^^^^^^
 
 On testnet, you'll want to automatically complete transactions so you can test the transaction happy path.
 

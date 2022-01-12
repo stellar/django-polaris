@@ -51,7 +51,7 @@ Add the following variable to your ``settings.py`` file.
 
     FORM_RENDERER = "django.forms.renderers.TemplatesSetting"
 
-This allows Polaris to override django's default HTML form widgets to provide a great UI out of the box. They can also be replaced with your own custom HTML widgets. See the :doc:`templates` documentation for more information.
+This allows Polaris to override django's default HTML form widgets to provide a great UI out of the box. They can also be replaced with your own custom HTML widgets. :ref:`sep-24:Working with Templates` section for more information.
 
 Secure Session Cookies
 ----------------------
@@ -180,7 +180,7 @@ Polaris will ask you to specify a home domain for the asset. This must be the do
 
 Your asset should not exist on Stellar's testnet. You can use a `block explorer`_ to take a look at your issuing and distribution accounts.
 
-You can optionally specify the amount to be issued. See the :ref:`deployment:CLI Commands` documentation for more information.
+You can optionally specify the amount to be issued. See the :ref:`api:CLI Commands` documentation for more information.
 
 Integrations
 ============

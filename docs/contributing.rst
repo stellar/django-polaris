@@ -26,7 +26,7 @@ a signing account on Stellar's testnet and add it to your environment variables.
 
 Next, you'll need to create an asset on the Stellar test network and setup a distribution account.
 Polaris offers a CLI command that allows developers to issue assets on testnet.
-See the :ref:`CLI Commands <testnet>` documentation for more information.
+See the :ref:`api:CLI Commands` documentation for more information.
 
 Now you're ready to add your asset to Polaris. Run the following commands:
 ::
@@ -78,6 +78,7 @@ Submit a PR
 ^^^^^^^^^^^
 
 .. _black: https://pypi.org/project/black/
+.. _repository: https://github.com/stellar/django-polaris
 
 After you've made your changes, push them to you a remote branch and make a Pull Request on the
 stellar/django-polaris repository_'s master branch. Note that Polaris uses the `black`_ code

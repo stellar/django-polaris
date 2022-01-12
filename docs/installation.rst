@@ -66,7 +66,7 @@ this functionality using the settings listed in the `corsheaders documentation`_
 Set Environment Variables
 =========================
 
-Polaris has many different environment varibles that can be used to customize your service's configuration and behavior. A comprehensive list can be found in the :doc:`misc`, but we'll only define whats required for now.
+Polaris has many different environment varibles that can be used to customize your service's configuration and behavior. A comprehensive list can be found in the :doc:`glossary`, but we'll only define whats required for now.
 
 Create a ``.env`` file in the upper ``anchor/`` directory.
 

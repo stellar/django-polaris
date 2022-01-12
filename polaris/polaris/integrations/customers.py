@@ -98,7 +98,7 @@ class CustomerIntegration:
 
         :param token: the ``SEP10Token`` object representing the authenticated session
         :param request: a ``rest_framework.request.Request`` instance
-        :param params: request parameters as described in SEP-12_
+        :param params: request parameters as described in SEP-12
         :raises: ValueError or ObjectDoesNotExist
         """
         raise NotImplementedError()
@@ -152,7 +152,7 @@ class CustomerIntegration:
 
         :param token: the ``SEP10Token`` object representing the authenticated session
         :param request: a ``rest_framework.request.Request`` instance
-        :param params: request parameters as described in SEP-12_
+        :param params: request parameters as described in SEP-12
         :raises: ValueError or django.core.exceptions.ObjectDoesNotExist
         """
         raise NotImplementedError()
