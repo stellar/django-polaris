@@ -64,11 +64,11 @@ Only used if the --loop option is specified.
 class Command(BaseCommand):
     """
     This process handles all of the transaction submission logic for deposit transactions.
-    Polaris periodically queries the database for transactions in one of the following
-    scenarios and processes them accordingly.
 
-    A transaction is in pending_user_transfer_start or pending_external.
+    When this command is invoked, Polaris queries the database for transactions in the
+    following scenarios and processes them accordingly.
 
+    A transaction is in the ``pending_user_transfer_start`` or ``pending_external`` status.
         Polaris passes these transaction the
         :meth:`~polaris.integrations.RailsIntegration.poll_pending_deposits` integration
         function, and the anchor is expected to return :class:`~polaris.models.Transaction`
@@ -79,17 +79,25 @@ class Command(BaseCommand):
         function for more details.
 
     A transaction’s destination account does not have a trustline to the requested asset.
-
         Polaris checks if the trustline has been established. If it has, and the transaction’s
         source account doesn’t require multiple signatures, Polaris will submit the transaction
         to the Stellar Network.
 
     A transaction’s source account requires multiple signatures before submission to the network.
+        In this case, :attr:`~polaris.models.Transaction.pending_signatures` is set to ``True``
+        and the anchor is expected to collect signatures, save the transaction envelope to
+        :attr:`~polaris.models.Transaction.envelope_xdr`, and set
+        :attr:`~polaris.models.Transaction.pending_signatures` back to ``False``. Polaris will
+        then query for these transactions and submit them to the Stellar network.
 
-        In this case, ``Transaction.pending_signatures`` is set to True and the anchor is expected
-        to collect signatures, save the transaction envelope to ``Transaction.envelope_xdr``, and
-        set ``Transaction.pending_signatures`` back to ``False``. Polaris will then query for these
-        transactions and submit them to the Stellar network.
+    **Optional arguments:**
+
+        -h, --help            show this help message and exit
+        --loop                Continually restart command after a specified number
+                              of seconds.
+        --interval INTERVAL, -i INTERVAL
+                              The number of seconds to wait before restarting
+                              command. Defaults to 10.
     """
 
     def __init__(self, *args, **kwargs):
