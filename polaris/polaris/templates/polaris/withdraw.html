@@ -33,6 +33,9 @@
       </div>
 
       <div class="control">{{ field }}</div>
+      {% if field.help_text %}
+        <div class="help-text">{{ field.help_text }}</div>
+      {% endif %}
 
       {% if field.errors %}
       <p class="help is-danger">
