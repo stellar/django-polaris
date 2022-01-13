@@ -39,15 +39,20 @@ PaymentOp = Union[Payment, PathPaymentStrictReceive, PathPaymentStrictSend]
 
 class Command(BaseCommand):
     """
-    Streams transactions for the distribution account of each Asset in the DB.
+    Streams transactions to the :attr:`~polaris.models.Asset.distribution_account`
+    of each :class:`~polaris.models.Asset` in the DB.
 
     For every response from the server, attempts to find a matching transaction in
-    the database with `find_matching_payment_op` and updates the transaction's
-    status to `pending_anchor` or `pending_receiver` depending on the protocol.
+    the database and updates the transaction's status to ``pending_anchor`` or
+    ``pending_receiver`` depending on the protocol.
 
-    Then, the ``execute_outgoing_transaction`` process will query for transactions
-    in those statuses and provide the anchor an integration function for executing
-    the payment or withdrawal.
+    Then, the :mod:`~polaris.management.commands.execute_outgoing_transactions` process
+    will query for transactions in those statuses and provide the anchor an integration
+    function for executing the payment or withdrawal.
+
+    **Optional arguments:**
+
+        -h, --help            show this help message and exit
     """
 
     def handle(self, *_args, **_options):  # pragma: no cover

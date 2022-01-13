@@ -16,6 +16,24 @@ TERMINATE = False
 
 
 class Command(BaseCommand):
+    """
+    Polaris periodically queries for transactions in ``pending_external`` and passes
+    them to the :meth:`~polaris.integrations.RailsIntegration.poll_outgoing_transactions`.
+
+    The anchor is expected to update the transactions’
+    :attr:`~polaris.models.Transaction.status` to ``completed`` if the funds have been
+    confirmed to be delivered.
+
+    **Optional arguments:**
+
+        -h, --help            show this help message and exit
+        --loop                Continually restart command after a specified number
+                              of seconds.
+        --interval INTERVAL, -i INTERVAL
+                              The number of seconds to wait before restarting
+                              command. Defaults to 30.
+    """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         signal.signal(signal.SIGINT, self.exit_gracefully)

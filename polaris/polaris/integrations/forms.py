@@ -75,8 +75,10 @@ class TransactionForm(forms.Form):
     A base class for collecting transaction information. Developers must define
     subclasses to collect additional information and apply additional validation.
 
-    This form assumes the amount collected is in units of a Stellar ``Asset``. If
-    the amount of an ``OffChainAsset`` must be collected, create a different form.
+    This form assumes the amount collected is in units of a Stellar
+    :class:`~polaris.models.Asset`. If the amount of an
+    :class:`~polaris.models.OffChainAsset` must be collected, create a different
+    form.
 
     Note that Polaris' base UI treats the amount field on this form and its
     subclasses differently than other forms. Specifically, Polaris automatically
@@ -84,9 +86,9 @@ class TransactionForm(forms.Form):
     makes the fee table visible (by default), and uses the amount entered to update
     the fee table on each change.
 
-    If you do not want the fee table to be displayed when ``TransactionForm`` is
+    If you do not want the fee table to be displayed when this form class is
     rendered, set ``"show_fee_table"`` to ``False`` in the dict returned from
-    ``content_for_template()``.
+    :meth:`~polaris.integrations.DepositIntegration.content_for_template`.
 
     Fee calculation within the UI is done using the asset's fixed and percentage
     fee values saved to the database. If those values are not present, Polaris makes
@@ -95,7 +97,7 @@ class TransactionForm(forms.Form):
     ``TransactionForm.type`` attribute to the form. Polaris will detect the
     attribute's presence on the form and include it in `/fee` requests.
 
-    The `amount` field is validated with the :meth:`clean_amount` function,
+    The :attr:`amount` field is validated with the :meth:`clean_amount` function,
     which ensures the amount is within the bounds for the asset type.
     """
 
