@@ -1,4 +1,3 @@
-import sys
 import signal
 import time
 import datetime
@@ -17,7 +16,6 @@ from stellar_sdk.exceptions import (
     ConnectionError,
     BaseRequestError,
 )
-from stellar_sdk.server import Server
 from stellar_sdk.xdr import TransactionResult, OperationType
 from asgiref.sync import sync_to_async
 
@@ -43,76 +41,117 @@ from polaris.exceptions import (
     TransactionSubmissionFailed,
 )
 
-from polaris.models import Transaction
+from polaris.models import Transaction, Asset, PolarisHeartbeat
 from polaris.utils import getLogger
 
-logger = getLogger(__name__)
 
-TERMINATE = False
+logger = getLogger(__name__)
 
 SUBMIT_TRX_QUEUE = "SUBMIT_TRX_QUEUE"
 CHECK_ACC_QUEUE = "CHECK_ACC_QUEUE"
 
+DEFAULT_HEARTBEAT = 5
+DEFAULT_INTERVAL = 10
+
+PROCESS_PENDING_DEPOSITS_LOCK_KEY = "PROCESS_PENDING_DEPOSITS_LOCK"
+
 #TODO: undo change made to docker-compose.yaml
 
+
+# TODO: move this 
 class QueueAdapter:
-    # TODO: make this an interface
+    def populate_queues(self):
+        """
+        Initialize in-memory queues from database, this is optional if you're using an actual 
+        message queue or storing your "queues" in a database
+        """
+        raise NotImplementedError
+
+    def queue_transaction(self, source_task_name: str, queue_name: str, transaction: Transaction):
+        """
+        Put the given transaction into a queue
+        @param: source_task_name - the task that queued this transaction
+        @param: queue_name - name of the queue to put the Transaction in
+        @param: transaction - the Transaction to put in the queue
+        """
+        raise NotImplementedError
+
+    async def get_transaction(self, source_task_name: str, queue_name)  -> Transaction:
+        """
+        Consume a transaction from a queue
+        @param: source_task_name - the task that is requesting a Transaction
+        @param: queue_name - name of the queue to consume the Transaction from
+        """
+        raise NotImplementedError
+
+
+class PolarisQueueAdapter(QueueAdapter):
     def __init__(self, queues):
         self.queues: dict[str, asyncio.Queue] = {}
         for queue in queues:
             self.queues[queue] = asyncio.Queue()
-        #self.populate_queues()
+        self.populate_queues()
 
     def populate_queues(self):
-        # TODO: test this
         """
         populate_queues gets called to read from the database and populate the in-memory queues
         """
         logger.info("initializing queues from database...")
-        ready_trandactions = (
+        ready_transactions = (
                 Transaction.objects.filter(
+                    queue=SUBMIT_TRX_QUEUE,
                     submission_status__in=[
-                        Transaction.SUBMISSION_STATUS.READY,
-                        Transaction.SUBMISSION_STATUS.PROCESSING,
+                        Transaction.SUBMISSION_STATUS.ready,
+                        Transaction.SUBMISSION_STATUS.processing,
                     ],
                     kind__in=[
                         Transaction.KIND.deposit,
                         getattr(Transaction.KIND, "deposit-exchange"),
                     ],
                 )
-                .order_by("queued")
+                .order_by("queued_for_submit")
             )
         
-        logger.info(f"found {len(ready_trandactions)} transactions to queue for submission")
-        for trx in ready_trandactions:
-            self.queue_transaction("populate_queues", SUBMIT_TRX_QUEUE, trx)
+        logger.info(f"found {len(ready_transactions)} transactions to queue for submit_transaction_task")
+        for transaction in ready_transactions:
+            self.queue_transaction("populate_queues", SUBMIT_TRX_QUEUE, transaction)
+
+        check_account_transactions = (
+                Transaction.objects.filter(
+                    queue=CHECK_ACC_QUEUE,
+                    kind__in=[
+                        Transaction.KIND.deposit,
+                        getattr(Transaction.KIND, "deposit-exchange"),
+                    ],
+                )
+            )
+        logger.info(f"found {len(check_account_transactions)} transactions to queue for check_accounts_task")
+        for transaction in check_account_transactions:
+            self.queue_transaction("populate_queues", CHECK_ACC_QUEUE, transaction)
 
     
     def queue_transaction(self, source_task_name, queue_name, transaction):
         """
+        Put the given transaction into a queue
         @param: source_task_name - the task that queued this transaction
-        TODO: update submission_status in db to READY and when it was queued
+        @param: queue_name - name of the queue to put the Transaction in
+        @param: transaction - the Transaction to put in the queue
         """
-        logger.info(f"{source_task_name} - putting transaction into {queue_name}")
+        logger.info(f"{source_task_name} - putting transaction {transaction.id} into {queue_name}")
         self.queues[queue_name].put_nowait(transaction)
         return
     
 
-    def get_transaction(self, queue_name) -> Transaction:
+    async def get_transaction(self, source_task_name, queue_name) -> Transaction:
         """
-        Get the next task from the given queue
+        Consume a transaction from a queue
+        @param: source_task_name - the task that is requesting a Transaction
+        @param: queue_name - name of the queue to consume the Transaction from
         """
-        transaction = self.queues[queue_name].get()
-        logger.info(f"")
+        logger.info(f"{source_task_name} requesting task from queue: {queue_name}")
+        transaction = await self.queues[queue_name].get()
+        logger.info(f"{source_task_name} got transaction: {transaction}")
         return transaction
-    
-
-    def task_done(self, transaction, queue_name):
-        """
-        Mark the task as completed
-        """
-        self.queues[queue_name].task_done()
-        return
 
 
 
@@ -122,14 +161,18 @@ class ProcessPendingDeposits:
         Periodically poll for deposit transactions that are ready to be processed 
         and submit them to the CHECK_ACC_QUEUE for verification by the check_accounts_task.
         """
+        logger.info("check_rails_task started...")
         while True:
             ready_transactions = await sync_to_async(ProcessPendingDeposits.get_ready_deposits)()
-            for trx in ready_transactions:
-                qa.queue_transaction("check_rails_task", CHECK_ACC_QUEUE, trx)
+            for transaction in ready_transactions:
+                transaction.queue = CHECK_ACC_QUEUE
+                transaction.status = Transaction.STATUS.pending_anchor
+                await sync_to_async(transaction.save)()
+                qa.queue_transaction("check_rails_task", CHECK_ACC_QUEUE, transaction)
 
             await asyncio.sleep(interval)
     
-    
+    @classmethod
     async def check_accounts_task(cls, qa: QueueAdapter, locks: Dict):
         """
         TODO: rewrite this
@@ -160,46 +203,55 @@ class ProcessPendingDeposits:
             updated as complete after success.
         """
         async with ServerAsync(settings.HORIZON_URI, client=AiohttpClient()) as server:
+            logger.info("check_accounts_task started...")
             while True:
-                transaction = qa.get_transaction(CHECK_ACC_QUEUE)
-                logger.info(f"checkAccountsTask - processing transaction {transaction.id}")
-
-                if await cls.requires_trustline(transaction, server, locks):
-                    logger.info(f"transaction {transaction.id} requires a trustline, continuing with \
-                    next transaction...")
-                    continue 
-
-                logger.info(f"transaction {transaction.id} has the appropriate trustline")
+                transaction = await qa.get_transaction("check_accounts_task", CHECK_ACC_QUEUE)
+                logger.info(f"check_accounts_task - processing transaction {transaction.id}")
                 
+                if await cls.requires_trustline(transaction, server, locks):
+                    logger.info(
+                        f"transaction {transaction.id} requires a trustline, continuing with \
+                        next transaction..."
+                    )
+                    continue
+
+                logger.info(
+                    f"transaction {transaction.id} has the appropriate trustline"
+                )
+
+                logger.info(
+                    f"check_accounts_task - saving transaction {transaction.id} as 'ready'"
+                )
+
+                transaction.submission_status = Transaction.SUBMISSION_STATUS.ready
+                transaction.queued_for_submit = datetime.datetime.now(datetime.timezone.utc)
+                transaction.queue = SUBMIT_TRX_QUEUE
+                await sync_to_async(transaction.save)()
+
                 qa.queue_transaction("check_accounts_task", SUBMIT_TRX_QUEUE, transaction)
-                qa.task_done(CHECK_ACC_QUEUE)
 
 
 
     async def check_unblocked_transactions_task(qa: QueueAdapter, interval: int):
         """
-        TODO: update this
         Get the transactions that are no longer in a Transaction.pending_signatures
-        state and also get the transactions that are no longer in a BLOCKED state and
+        state and also get the transactions that are no longer in a BLOCKED submission_status and
         submit them to the SUBMIT_TRX_QUEUE for the submit_transactions_task to process.
         """
         while True:
-            logger.info("checking for ready multisig transactions...")
-            ready_multisig_transactions = await sync_to_async(
-                ProcessPendingDeposits.get_ready_multisig_deposits
-            )()
-            for trx in ready_multisig_transactions:
-                # TODO: update status in db to READY
-                qa.queue_transaction("check_unblocked_transactions_task", SUBMIT_TRX_QUEUE, trx)
-            logger.info("checking for unblocked transactions...")
-
             unblocked_transactions = await sync_to_async(
                 ProcessPendingDeposits.get_unblocked_transactions
             )()
-            logger.info("unblocked transactions:" + str(unblocked_transactions)) #TODO remove
-            for trx in unblocked_transactions:
-                # TODO: update status in db to READY
-                qa.queue_transaction("check_unblocked_transactions_task", SUBMIT_TRX_QUEUE, trx)
+            
+            for transaction in unblocked_transactions:
+                logger.info(
+                    f"check_unblocked_transactions_task - saving transaction {transaction.id} as 'ready'"
+                )
+                transaction.submission_status = Transaction.SUBMISSION_STATUS.ready
+                transaction.queued_for_submit = datetime.datetime.now(datetime.timezone.utc)
+                transaction.queue = SUBMIT_TRX_QUEUE
+                await sync_to_async(transaction.save)()
+                qa.queue_transaction("check_unblocked_transactions_task", SUBMIT_TRX_QUEUE, transaction)
 
             await asyncio.sleep(interval)
 
@@ -210,15 +262,14 @@ class ProcessPendingDeposits:
         For all transactions that are pending_trust, load the destination 
         account json to determine if a trustline has been
         established. If a trustline for the requested asset is found, a the
-        transaction is queued for processing. If not, the transaction is
-        updated to no longer be pending an execution attempt.
+        transaction is queued for submission.
         """
         async with ServerAsync(settings.HORIZON_URI, client=AiohttpClient()) as server:
             while True:
-                pending_trust_trxs: list[Transaction] = await sync_to_async(
+                pending_trust_transactions: list[Transaction] = await sync_to_async(
                     ProcessPendingDeposits.get_pending_trust_transactions
                 )()
-                for transaction in pending_trust_trxs:
+                for transaction in pending_trust_transactions:
                     if transaction.to_address.startswith("M"):
                         destination_account = MuxedAccount.from_account(
                             transaction.to_address
@@ -232,12 +283,13 @@ class ProcessPendingDeposits:
                         )
                     except BaseRequestError:
                         logger.exception(f"Failed to load account {destination_account}")
-                        transaction.pending_execution_attempt = False
-                        await sync_to_async(transaction.save)()
                         continue
                     
                     trustline_found = False
                     for balance in account["balances"]:
+                        logger.info("balance: " + str(balance))
+                        logger.info(f"{transaction.asset.code}")
+                        logger.info(f"{transaction.asset.issuer}")
                         if balance.get("asset_type") in ["native", "liquidity_pool_shares"]:
                             continue
                         if (
@@ -251,32 +303,38 @@ class ProcessPendingDeposits:
                         logger.debug(
                             f"detected transaction {transaction.id} is no longer pending trust"
                         )
+                        logger.info(
+                            f"check_trustlines_task - saving transaction {transaction.id} as 'ready'"
+                        )
+                        transaction.status = Transaction.STATUS.pending_anchor
+                        transaction.submission_status = Transaction.SUBMISSION_STATUS.ready
+                        transaction.queued_for_submit = datetime.datetime.now(datetime.timezone.utc)
+                        transaction.queue = SUBMIT_TRX_QUEUE
+                        await sync_to_async(transaction.save)()
                         qa.queue_transaction("check_trustlines_task", SUBMIT_TRX_QUEUE, transaction)
                     else:
-                        transaction.pending_execution_attempt = False
                         await sync_to_async(transaction.save)()
 
                 await asyncio.sleep(interval)
 
 
-
     async def submit_transaction_task(qa: QueueAdapter, locks: Dict):
-        async with Server(settings.HORIZON_URI, client=AiohttpClient()) as server:
+        logger.info("submit_transaction_task - running...")
+        async with ServerAsync(settings.HORIZON_URI, client=AiohttpClient()) as server:
             while True:
-                transaction = await qa.get_task(SUBMIT_TRX_QUEUE)                
+                transaction = await qa.get_transaction("submit_transaction_task", SUBMIT_TRX_QUEUE)
                 while True:
-                    logger.debug(f"calling submit() for transaction {transaction.id}")
+                    logger.debug(f"submit_transaction_task calling submit() for transaction {transaction.id}")
                     try:
                         success = await ProcessPendingDeposits.submit(transaction, server, locks)
-                    
-                    except (TransactionSubmissionBlocked, TransactionSubmissionFailed) as e:
+                    except (TransactionSubmissionBlocked, TransactionSubmissionFailed, TransactionSubmissionPending ) as e:
                         await sync_to_async(
                             ProcessPendingDeposits.handle_transaction_submission_exception()
-                            )(transaction, e, "")
+                            )(transaction, e, str(e))
+                        if type(e) == TransactionSubmissionPending:
+                            logger.info(f"TransactionSubmissionPending raised, re-submitting transaction {transaction.id}")
+                            continue
                         break
-                    except TransactionSubmissionPending as e:
-                        logger.info(f"TransactionSubmissionPending raised, retrying transaction {transaction.id}")
-                        continue
                     except Exception as e:
                         logger.exception("submit() threw an unexpected exception")
                         message = getattr(e, "message", str(e))
@@ -294,8 +352,6 @@ class ProcessPendingDeposits:
                             pass
                         except Exception:
                             logger.exception("after_deposit() threw an unexpected exception")
-                    
-                    qa.task_done(SUBMIT_TRX_QUEUE)
                     break
 
 
@@ -323,17 +379,14 @@ class ProcessPendingDeposits:
                     Transaction.KIND.deposit,
                     getattr(Transaction.KIND, "deposit-exchange"),
                 ],
-                pending_execution_attempt=False,
             )
             .select_related("asset")
             .select_related("quote")
             .select_for_update()
         )
-        with django.db.transaction.atomic():
-            ready_transactions = rri.poll_pending_deposits(pending_deposits)
-            Transaction.objects.filter(
-                id__in=[t.id for t in ready_transactions]
-            ).update(pending_execution_attempt=True)
+
+        ready_transactions = rri.poll_pending_deposits(pending_deposits)
+
         verified_ready_transactions = []
         for transaction in ready_transactions:
             if not transaction.amount_fee or not transaction.amount_out:
@@ -401,68 +454,21 @@ class ProcessPendingDeposits:
         support claimable balances, Polaris places the transaction in the
         `pending_trust` status.
 
-        This function retrieves those transactions and ensure other processes
-        do not retreive the same transactions for processing by updating
-        Transaction.pending_execution_attempt to True.
-
         The returned transactions will be submitted if their destination
         accounts now have a trustline to the asset.
         """
-        with django.db.transaction.atomic():
-            transactions = list(
-                Transaction.objects.filter(
-                    kind=Transaction.KIND.deposit,
-                    status=Transaction.STATUS.pending_trust,
-                    pending_execution_attempt=False,
-                )
-                .select_related("asset")
-                .select_for_update()
-            )
-            Transaction.objects.filter(id__in=[t.id for t in transactions]).update(
-                pending_execution_attempt=True
-            )
-            return transactions
 
-    @staticmethod
-    def get_ready_multisig_deposits():
-        """
-        If the anchor's distribution account requires multiple signatures before
-        submitting to Stellar, Polaris generates the envelope and updates
-        Transaction.pending_signatures to True.
-
-        Polaris then expects the anchor to collect the necessary signatures and
-        set Transaction.pending_signatures back to False. This function checks if
-        any transaction is in this state and returns it for submission to the
-        Stellar Network.
-
-        Multisig transactions are therefore identified by a non-null envelope_xdr
-        column and a 'pending_anchor' status. The status check is important
-        because all successfully submitted transactions have their envelope_xdr
-        column set after submission and status set to 'completed'.
-        """
-        with django.db.transaction.atomic():
-            multisig_transactions = list(
-                Transaction.objects.filter(
-                    kind=Transaction.KIND.deposit,
-                    status=Transaction.STATUS.pending_anchor,
-                    pending_signatures=False,
-                    envelope_xdr__isnull=False,
-                    pending_execution_attempt=False,
-                )
-                .select_related("asset")
-                .select_for_update()
-            )
-            logger.info("multisig after filter:")
+        transactions = list(
             Transaction.objects.filter(
-                id__in=[t.id for t in multisig_transactions]
-            ).update(pending_execution_attempt=True)
-            for t in multisig_transactions:
-                logger.debug(
-                    f"Detected multisig transaction {t.id} is ready to be submitted"
-                )
-            logger.info("multisig transactions: " + str(multisig_transactions))
-            return multisig_transactions
+                kind=Transaction.KIND.deposit,
+                status=Transaction.STATUS.pending_trust,
+            )
+            .select_related("asset")
+            .select_for_update()
+        )
+        return transactions
 
+    
     @staticmethod
     def get_unblocked_transactions():
         """
@@ -472,23 +478,15 @@ class ProcessPendingDeposits:
             unblocked_transactions = list(
                 Transaction.objects.filter(
                     kind=Transaction.KIND.deposit,
-                    submission_status=Transaction.SUBMISSION_STATUS.UNBLOCKED,
+                    submission_status=Transaction.SUBMISSION_STATUS.unblocked,
                     pending_signatures=False,
-                    envelope_xdr__isnull=False,
-                    pending_execution_attempt=False,
+                    envelope_xdr__isnull=True,
                 )
                 .select_related("asset")
                 .select_for_update()
             )
-            logger.info("multisig after filter:")
-            Transaction.objects.filter(
-                id__in=[t.id for t in unblocked_transactions]
-            ).update(pending_execution_attempt=True)
-            for t in unblocked_transactions:
-                logger.debug(
-                    f"Detected unblocked transaction {t.id} is ready to be submitted"
-                )
-            logger.info("unblocked transactions: " + str(unblocked_transactions))
+            for transaction in unblocked_transactions:
+                logger.info(f"found unblocked transaction: {transaction.id}")
             return unblocked_transactions
 
     @classmethod
@@ -517,18 +515,21 @@ class ProcessPendingDeposits:
             logger.debug(
                 f"got lock to get or create destination account for transaction {transaction.id}"
             )
-            if transaction.to_address.startswith("M"):
-                destination_account = MuxedAccount.from_account(
-                    transaction.to_address
-                ).account_id
-            else:
-                destination_account = transaction.to_address
+            try:
+                if transaction.to_address.startswith("M"):
+                    destination_account = MuxedAccount.from_account(
+                        transaction.to_address
+                    ).account_id
+                else:
+                    destination_account = transaction.to_address
+            except Exception as e:
+                logger.info(e)
             try:
                 account, json_resp = await get_account_obj_async(
                     Keypair.from_public_key(destination_account), server
                 )
                 logger.debug(f"account for transaction {transaction.id} exists")
-                return account, is_pending_trust(transaction, json_resp)
+                return account, await sync_to_async(is_pending_trust)(transaction, json_resp)
             except RuntimeError:  # account does not exist
                 logger.debug(f"account for transaction {transaction.id} does not exist")
                 if not rci.account_creation_supported:
@@ -560,23 +561,34 @@ class ProcessPendingDeposits:
                     logger.debug(
                         f"locked to create destination account for transaction {transaction.id}"
                     )
-
-                try:
-                    rci.create_destination_account(transaction=transaction)
-                except Exception:
-                    raise RuntimeError(
-                        "an exception was raised while attempting to create the destination "
-                        f"account for transaction {transaction.id}"
-                    )
-                finally:
-                    if (
-                        distribution_account in locks["source_accounts"]
-                        and locks["source_accounts"][distribution_account].locked()
-                    ):
-                        logger.debug(
-                            f"unlocking after creating destination accoutn for transaction {transaction.id}"
+                while True:
+                    try:
+                        rci.create_destination_account(transaction=transaction)
+                    except TransactionSubmissionPending as e:
+                        await sync_to_async(
+                            ProcessPendingDeposits.handle_transaction_submission_exception()
+                            )(transaction, e, "")
+                        # re-submit the transaction
+                        continue
+                    except (TransactionSubmissionBlocked, TransactionSubmissionFailed) as e:
+                        await sync_to_async(
+                            ProcessPendingDeposits.handle_transaction_submission_exception()
+                            )(transaction, e, "")
+                    except Exception:
+                        raise RuntimeError(
+                            "an exception was raised while attempting to create the destination "
+                            f"account for transaction {transaction.id}"
                         )
-                        locks["source_accounts"][distribution_account].release()
+                    finally:
+                        if (
+                            distribution_account in locks["source_accounts"]
+                            and locks["source_accounts"][distribution_account].locked()
+                        ):
+                            logger.debug(
+                                f"unlocking after creating destination accoutn for transaction {transaction.id}"
+                            )
+                            locks["source_accounts"][distribution_account].release()
+                        break
 
                 account, _ = await get_account_obj_async(
                     Keypair.from_public_key(transaction.to_address), server
@@ -589,49 +601,6 @@ class ProcessPendingDeposits:
             except ConnectionError:
                 raise RuntimeError("Failed to connect to Horizon")
 
-    @classmethod
-    async def check_trustline(
-        cls, transaction: Transaction, server: ServerAsync, locks: Dict
-    ):
-        """
-        Load the destination account json to determine if a trustline has been
-        established. If a trustline for the requested asset is found, a the
-        transaction is scheduled for processing. If not, the transaction is
-        updated to no longer be pending an execution attempt.
-        """
-        if transaction.to_address.startswith("M"):
-            destination_account = MuxedAccount.from_account(
-                transaction.to_address
-            ).account_id
-        else:
-            destination_account = transaction.to_address
-        try:
-            _, account = await get_account_obj_async(
-                Keypair.from_public_key(destination_account), server
-            )
-        except BaseRequestError:
-            logger.exception(f"Failed to load account {destination_account}")
-            transaction.pending_execution_attempt = False
-            await sync_to_async(transaction.save)()
-            return
-        trustline_found = False
-        for balance in account["balances"]:
-            if balance.get("asset_type") in ["native", "liquidity_pool_shares"]:
-                continue
-            if (
-                balance["asset_code"] == transaction.asset.code
-                and balance["asset_issuer"] == transaction.asset.issuer
-            ):
-                trustline_found = True
-                break
-        if trustline_found:
-            logger.debug(
-                f"detected transaction {transaction.id} is no longer pending trust"
-            )
-            await cls.process_deposit(transaction, server, locks)
-        else:
-            transaction.pending_execution_attempt = False
-            await sync_to_async(transaction.save)()
 
     @classmethod
     async def submit(cls, transaction: Transaction, server: ServerAsync, locks) -> bool:
@@ -649,6 +618,7 @@ class ProcessPendingDeposits:
 
         logger.info(f"initiating Stellar deposit for {transaction.id}")
         transaction.status = Transaction.STATUS.pending_anchor
+        transaction.submission_status = Transaction.SUBMISSION_STATUS.processing
         await sync_to_async(transaction.save)()
         await maybe_make_callback_async(transaction)
 
@@ -681,7 +651,7 @@ class ProcessPendingDeposits:
             )
             transaction_hash = await sync_to_async(rci.submit_deposit_transaction)(
                 transaction=transaction,
-                has_trustline=not is_pending_trust(
+                has_trustline=not await sync_to_async(is_pending_trust)(
                     transaction, destination_account_json
                 ),
             )
@@ -712,8 +682,8 @@ class ProcessPendingDeposits:
         transaction.paging_token = transaction_json["paging_token"]
         transaction.stellar_transaction_id = transaction_json["id"]
         transaction.status = Transaction.STATUS.completed
+        transaction.status = Transaction.SUBMISSION_STATUS.completed
         transaction.completed_at = datetime.datetime.now(datetime.timezone.utc)
-        transaction.pending_execution_attempt = False
         if not transaction.quote:
             transaction.amount_out = round(
                 Decimal(transaction.amount_in) - Decimal(transaction.amount_fee),
@@ -763,6 +733,7 @@ class ProcessPendingDeposits:
                 transaction, server, locks
             )
         except RuntimeError as e:
+            logger.error(str(e))
             await sync_to_async(cls.handle_error)(transaction, str(e))
             await maybe_make_callback_async(transaction)
             return True
@@ -774,7 +745,6 @@ class ProcessPendingDeposits:
                 f"destination account is pending_trust for transaction {transaction.id}"
             )
             transaction.status = Transaction.STATUS.pending_trust
-            transaction.pending_execution_attempt = False
             await sync_to_async(transaction.save)()
             await maybe_make_callback_async(transaction)
             return True
@@ -813,7 +783,7 @@ class ProcessPendingDeposits:
                 _, json_resp = await get_account_obj_async(
                     Keypair.from_public_key(transaction.to_address), server
                 )
-                use_claimable_balance = is_pending_trust(transaction, json_resp)
+                use_claimable_balance = await sync_to_async(is_pending_trust)(transaction, json_resp)
             envelope = create_deposit_envelope(
                 transaction=transaction,
                 source_account=channel_account,
@@ -825,7 +795,6 @@ class ProcessPendingDeposits:
             transaction.envelope_xdr = envelope.to_xdr()
             transaction.pending_signatures = True
             transaction.status = Transaction.STATUS.pending_anchor
-        transaction.pending_execution_attempt = False
         await sync_to_async(transaction.save)()
         await maybe_make_callback_async(transaction)
 
@@ -833,18 +802,69 @@ class ProcessPendingDeposits:
     def handle_error(cls, transaction, message):
         transaction.status_message = message
         transaction.status = Transaction.STATUS.error
-        transaction.pending_execution_attempt = False
         transaction.save()
         logger.error(message)
 
     @classmethod
     def handle_transaction_submission_exception(cls, transaction, exception, message):
         if type(exception) is TransactionSubmissionBlocked:
-            transaction.submission_status = Transaction.SUBMISSION_STATUS.BLOCKED
+            transaction.submission_status = Transaction.SUBMISSION_STATUS.blocked
         elif type(exception) is TransactionSubmissionFailed:
             transaction.status = Transaction.STATUS.error
+        elif type(exception) is TransactionSubmissionPending:
+            transaction.submission_status = Transaction.SUBMISSION_STATUS.pending
         transaction.status_message = message
         transaction.save()
+
+    @classmethod
+    def update_heartbeat(cls, key):
+        with django.db.transaction.atomic():
+            heartbeat = PolarisHeartbeat.objects.filter(key=key)[0]
+            heartbeat.last_heartbeat = datetime.datetime.now(datetime.timezone.utc)
+            heartbeat.save()
+        return
+
+    @classmethod
+    async def heartbeat_task(cls, key, heartbeat_interval):
+        """
+        Task that updates the given key at a specified interval (heatbeat_interval)
+        """
+        logger.info("heartbeat_task started...")
+        while True:
+            await sync_to_async(ProcessPendingDeposits.update_heartbeat)(key)
+            await asyncio.sleep(heartbeat_interval)
+
+    @classmethod
+    def acquire_lock(cls, key: str, heartbeat_interval: int):
+        """
+        This function creates a key in the database table 'polaris_polarisheartbeat'
+        to ensure only one instance of the calling process runs at a given time. The key 
+        is deleted when the process exists gracefully. A 'heartbeat' is utilized in the event
+        that the process does not exit gracefully. If the heartbeat's 'last_updated' value is
+        5x longer than the typical heartbeat interval, it can be assumed that the previous
+        process that created the key has crashed and a new lock can be acquired
+        """
+        attempt = 1
+        while True:
+            logger.info(f"attempting to acquire lock on key: {key}, attempt #{attempt}...")
+            with django.db.transaction.atomic():
+                heartbeat, created = PolarisHeartbeat.objects.get_or_create(key=key)
+                if created:
+                    heartbeat.last_heartbeat = datetime.datetime.now(datetime.timezone.utc)
+                    heartbeat.save()
+                    logger.info(f"lock on key: {PROCESS_PENDING_DEPOSITS_LOCK_KEY} created")
+                    return True
+                delta = datetime.datetime.now(datetime.timezone.utc) - heartbeat.last_heartbeat
+                logger.info(f"lock delta: {delta.seconds} seconds")
+                if delta.seconds > heartbeat_interval * 5:
+                    
+                    heartbeat.last_heartbeat = datetime.datetime.now(datetime.timezone.utc)
+                    heartbeat.save()
+                    logger.info(f"lock on key: {PROCESS_PENDING_DEPOSITS_LOCK_KEY} acquired")
+                    return True
+            logger.info(f"unable to acquire lock on key: {key}, retrying in {heartbeat_interval} seconds...")
+            attempt += 1
+            time.sleep(heartbeat_interval)
 
 
 class Command(BaseCommand):
@@ -858,59 +878,51 @@ class Command(BaseCommand):
         signal.signal(signal.SIGTERM, self.exit_gracefully)
 
     @staticmethod
-    def exit_gracefully(*_):  # pragma: no cover
-        # TODO
+    async def exit_gracefully(*_):  # pragma: no cover
         logger.info("Exiting process_pending_deposits...")
-        module = sys.modules[__name__]
-        module.TERMINATE = True
-
-    @staticmethod
-    def sleep(seconds):  # pragma: no cover
-        for _ in range(seconds):
-            if TERMINATE:
-                break
-            time.sleep(1)
-
+        logger.info(f"deleting heartbeat key: {PROCESS_PENDING_DEPOSITS_LOCK_KEY}...")
+        await sync_to_async(
+            PolarisHeartbeat.objects.filter(key=PROCESS_PENDING_DEPOSITS_LOCK_KEY).delete
+        )()
+        logger.info("process_pending_deposits exist_gracefully.")
+    
     def add_arguments(self, parser):  # pragma: no cover
-        # TODO: remove unused arguments
-        parser.add_argument(
-            "--loop",
-            action="store_true",
-            help="Continually restart command after a specified number of seconds.",
-        )
         parser.add_argument(
             "--interval",
             "-i",
             type=int,
-            help="The number of seconds to wait before restarting command. "
+            help="The number of seconds to wait before restarting command."
             "Defaults to {}.".format(1),
         )
 
     def handle(self, *_args, **options):  # pragma: no cover
         """
         The entrypoint for the functionality implemented in this file.
-        TODO: comment
+        TODO: more comment
         """
-
-        INTERVAL = 5
+        
+        HEARTBEAT_INTERVAL = options.get("loop") or DEFAULT_HEARTBEAT
+        TASK_INTERVAL = options.get("loop") or DEFAULT_INTERVAL
+        ProcessPendingDeposits.acquire_lock(PROCESS_PENDING_DEPOSITS_LOCK_KEY, HEARTBEAT_INTERVAL)
 
         queues = [SUBMIT_TRX_QUEUE, CHECK_ACC_QUEUE]
         locks = {
             "source_accounts": defaultdict(asyncio.Lock),
             "destination_accounts": defaultdict(asyncio.Lock),
         }
-        qa = QueueAdapter(queues)
+        
+        qa = PolarisQueueAdapter(queues)
 
         loop = asyncio.get_event_loop()
         for signame in ('SIGINT', 'SIGTERM'):
             loop.add_signal_handler(getattr(signal, signame),
                                     lambda: asyncio.create_task(self.exit_gracefully()))
-        # TODO: comment
-        #tasks = []
-        #loop.create_task(ProcessPendingDeposits.check_rails_task(qa, locks, INTERVAL))
-        #loop.create_task(ProcessPendingDeposits.check_accounts_task(qa, locks))
-        loop.create_task(ProcessPendingDeposits.check_unblocked_transactions_task(qa, INTERVAL))
-        #loop.create_task(ProcessPendingDeposits.check_trustlines_task(qa, locks, INTERVAL))
+
+        loop.create_task(ProcessPendingDeposits.heartbeat_task(PROCESS_PENDING_DEPOSITS_LOCK_KEY, HEARTBEAT_INTERVAL))
+        loop.create_task(ProcessPendingDeposits.check_rails_task(qa, TASK_INTERVAL))
+        loop.create_task(ProcessPendingDeposits.check_accounts_task(qa, locks))
+        loop.create_task(ProcessPendingDeposits.check_trustlines_task(qa, TASK_INTERVAL))
+        loop.create_task(ProcessPendingDeposits.check_unblocked_transactions_task(qa, TASK_INTERVAL))
         loop.create_task(ProcessPendingDeposits.submit_transaction_task(qa, locks))
 
         loop.run_forever()

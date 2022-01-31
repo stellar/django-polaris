@@ -37,6 +37,11 @@ def utc_now():
     return datetime.datetime.now(datetime.timezone.utc)
 
 
+class PolarisHeartbeat(models.Model):
+    key = models.CharField(max_length=80, unique=True)
+    last_heartbeat = models.DateTimeField(null=True, blank=True)
+
+
 class PolarisChoices(Choices):
     """A subclass to change the verbose default string representation"""
 
@@ -383,6 +388,11 @@ class Transaction(models.Model):
         "pending_stellar": _("stellar is executing the transaction"),
     }
 
+    SUBMISSION_STATUS = PolarisChoices(
+        "not_ready", "ready", "processing", "pending", "pending_trust", 
+        "blocked", "unblocked", "completed"
+    )
+
     STATUS = PolarisChoices(*list(status_to_message.keys()))
 
     MEMO_TYPES = PolarisChoices("text", "id", "hash")
@@ -426,6 +436,10 @@ class Transaction(models.Model):
     # These fields can be shown through an API:
     kind = models.CharField(choices=KIND, default=KIND.deposit, max_length=20)
     """The character field for the available ``KIND`` choices."""
+
+    submission_status = models.CharField(
+        choices=SUBMISSION_STATUS, default=SUBMISSION_STATUS.not_ready, max_length=31
+    )
 
     status = models.CharField(
         choices=STATUS, default=STATUS.pending_external, max_length=31
@@ -567,6 +581,12 @@ class Transaction(models.Model):
     must be formatted using SEP-38's Asset Identification Format, and is only
     necessary for transactions using different on and off-chain assets.
     """
+
+    queue = models.TextField(null=True, blank=True)
+    """The queue that this transaction is currently in"""
+
+    queued_for_submit = models.DateTimeField(default=utc_now)
+    """The time when this transaction was queued for submission"""
 
     started_at = models.DateTimeField(default=utc_now)
     """Start date and time of transaction."""
