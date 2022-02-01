@@ -38,6 +38,20 @@ def utc_now():
 
 
 class PolarisHeartbeat(models.Model):
+    """
+    Used as a locking mechanism to ensure that certain processes such as
+    process_pending_deposits.py don't have more than 1 instance running
+    at any given time. The last_heatbeat is a timestamp that is periodically
+    updated by the process. If a process unexpectedly dies, another instance
+    can check this value at startup and if its been too long since the last
+    update, the lock is considered 'expired' and the new process can acquire 
+    it. This mechanism is an advisory lock and the locking logic is implemented
+    at the application level. 
+    This value can also be used to create a 'health check' endpoint for the 
+    application
+    Note: The application is expected to delete this key during a gracefully
+    shutdown - see process_pending_deposits.py for an example 
+    """
     key = models.CharField(max_length=80, unique=True)
     last_heartbeat = models.DateTimeField(null=True, blank=True)
 
@@ -390,8 +404,50 @@ class Transaction(models.Model):
 
     SUBMISSION_STATUS = PolarisChoices(
         "not_ready", "ready", "processing", "pending", "pending_trust", 
-        "blocked", "unblocked", "completed"
+        "blocked", "unblocked", "completed", "failed"
     )
+    """ 
+        Submission Statuses
+
+    * **not_ready**
+        used until a transaction is returned from RailsIntegration.poll_pending_deposits()
+    
+    * **ready**
+        used when the transaction was returned by RailsIntegration.poll_pending_deposits()
+        and saved to the database
+    
+    * **processing**
+        used when the transaction is brought into memory and is being considered for 
+        submission. All other statuses are only used for transactions that are at-rest.
+
+    * **pending**
+        used when the transaction has been passed to 
+        CustodyIntegration.create_destination_account() or 
+        CustodyIntegration.submit_deposit_transaction() but a `TransactionSubmissionPending` 
+        exception was raised in the most-recent invocation, and a SIGINT or SIGTERM was 
+        sent, preventing Polaris from submitting again.
+    
+    * **pending_trust**
+        used when the transaction destination account does not yet have a trustline
+    
+    * **blocked**
+        used when the transaction has been passed to 
+        CustodyIntegration.create_destination_account()
+        or CustodyIntegration.submit_deposit_transaction() but a `TransactionSubmissionBlocked` 
+        exception was raised in the most-recent invocation. Polaris will simply move to the 
+        next transaction.
+    
+    * **unblocked**
+        Similar to READY, but indicates that the transaction was previously blocked.
+    
+    * **completed**
+        used when a transaction has been successfully submitted to the Stellar network
+
+    * **failed**
+        used when a transaction has been passed to 
+        CustodyIntegration.submit_deposit_transaction() but a `TransactionSubmissionFailed`
+        exception was raised
+    """
 
     STATUS = PolarisChoices(*list(status_to_message.keys()))
 

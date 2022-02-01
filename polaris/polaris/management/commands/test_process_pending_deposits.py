@@ -41,7 +41,7 @@ from polaris.exceptions import (
     TransactionSubmissionFailed,
 )
 
-from polaris.models import Transaction, Asset, PolarisHeartbeat
+from polaris.models import Transaction, PolarisHeartbeat
 from polaris.utils import getLogger
 
 
@@ -329,7 +329,7 @@ class ProcessPendingDeposits:
                         success = await ProcessPendingDeposits.submit(transaction, server, locks)
                     except (TransactionSubmissionBlocked, TransactionSubmissionFailed, TransactionSubmissionPending ) as e:
                         await sync_to_async(
-                            ProcessPendingDeposits.handle_transaction_submission_exception()
+                            ProcessPendingDeposits.handle_transaction_submission_exception
                             )(transaction, e, str(e))
                         if type(e) == TransactionSubmissionPending:
                             logger.info(f"TransactionSubmissionPending raised, re-submitting transaction {transaction.id}")
@@ -563,16 +563,16 @@ class ProcessPendingDeposits:
                     )
                 while True:
                     try:
-                        rci.create_destination_account(transaction=transaction)
+                        await sync_to_async(rci.create_destination_account)(transaction=transaction)
                     except TransactionSubmissionPending as e:
                         await sync_to_async(
-                            ProcessPendingDeposits.handle_transaction_submission_exception()
+                            ProcessPendingDeposits.handle_transaction_submission_exception
                             )(transaction, e, "")
                         # re-submit the transaction
                         continue
                     except (TransactionSubmissionBlocked, TransactionSubmissionFailed) as e:
                         await sync_to_async(
-                            ProcessPendingDeposits.handle_transaction_submission_exception()
+                            ProcessPendingDeposits.handle_transaction_submission_exception
                             )(transaction, e, "")
                     except Exception:
                         raise RuntimeError(
