@@ -41,7 +41,7 @@ services:
       - ./example/data:/code/data
     depends_on:
       - server
-    command: watchmedo auto-restart --recursive --pattern="*.py;*.env" --directory="." python manage.py process_pending_deposits -- --loop
+    command: watchmedo auto-restart --recursive --pattern="*.py;*.env" --directory="." python manage.py process_pending_deposits
   poll_outgoing_transactions:
     container_name: poll_outgoing_transactions
     network_mode: host
