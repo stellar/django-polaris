@@ -636,7 +636,7 @@ async def test_get_or_create_destination_account_exception_submission_pending():
         mock_rci.create_destination_account.side_effect = [
             TransactionSubmissionPending("pending exception error message"),
             TransactionSubmissionPending("pending exception error message"),
-            None,
+            "transaction_hash_value",
         ]
         to_account = Account(transaction.to_address, 1)
 
