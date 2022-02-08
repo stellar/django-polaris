@@ -634,6 +634,7 @@ def test_withdraw_good_lang(mock_process_sep6_request, client):
     asset = Asset.objects.create(
         code="USD",
         issuer=Keypair.random().public_key,
+        distribution_seed=Keypair.random().secret,
         withdrawal_min_amount=10,
         withdrawal_max_amount=1000,
         sep6_enabled=True,
@@ -728,6 +729,7 @@ def test_withdraw_denied_on_change_callback(mock_process_sep6_request, client):
     asset = Asset.objects.create(
         code="USD",
         issuer=Keypair.random().public_key,
+        distribution_seed=Keypair.random().secret,
         withdrawal_min_amount=10,
         withdrawal_max_amount=1000,
         sep6_enabled=True,
@@ -762,6 +764,7 @@ def test_withdraw_good_on_change_callback(mock_process_sep6_request, client):
     asset = Asset.objects.create(
         code="USD",
         issuer=Keypair.random().public_key,
+        distribution_seed=Keypair.random().secret,
         withdrawal_min_amount=10,
         withdrawal_max_amount=1000,
         sep6_enabled=True,
@@ -795,6 +798,7 @@ def test_withdraw_success_indicative_quote(mock_process_sep6_request, client):
     asset = Asset.objects.create(
         code="USD",
         issuer=Keypair.random().public_key,
+        distribution_seed=Keypair.random().secret,
         withdrawal_min_amount=10,
         withdrawal_max_amount=1000,
         sep6_enabled=True,

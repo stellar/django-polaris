@@ -192,6 +192,7 @@ def make_memo(
 
 def validate_account_and_memo(account: str, memo: str):
     if not (isinstance(account, str) and isinstance(memo, str)):
+        print(account, memo)
         raise ValueError("invalid public key or memo type, expected strings")
     try:
         Keypair.from_public_key(account)
