@@ -34,9 +34,16 @@ from polaris import settings
 from polaris.models import Asset, Transaction
 from polaris.utils import create_deposit_envelope
 from polaris.integrations import SelfCustodyIntegration
-from polaris.management.commands.process_pending_deposits import ProcessPendingDeposits, PolarisQueueAdapter
+from polaris.management.commands.process_pending_deposits import (
+    ProcessPendingDeposits,
+    PolarisQueueAdapter,
+)
 
-from polaris.exceptions import TransactionSubmissionPending, TransactionSubmissionBlocked, TransactionSubmissionFailed
+from polaris.exceptions import (
+    TransactionSubmissionPending,
+    TransactionSubmissionBlocked,
+    TransactionSubmissionFailed,
+)
 from polaris.models import PolarisHeartbeat
 
 test_module = "polaris.management.commands.process_pending_deposits"
@@ -586,7 +593,7 @@ async def test_get_or_create_destination_account_doesnt_exist_creation_raises_ex
                 return to_account, {"balances": []}
             else:
                 raise RuntimeError()
-        
+
         with patch(f"{test_module}.get_account_obj_async", mock_get_account_obj_async):
             async with ServerAsync(client=AiohttpClient()) as s:
                 locks = {
@@ -633,7 +640,7 @@ async def test_get_or_create_destination_account_exception_submission_pending():
         mock_rci.create_destination_account.side_effect = [
             TransactionSubmissionPending("pending exception error message"),
             TransactionSubmissionPending("pending exception error message"),
-            None
+            None,
         ]
         to_account = Account(transaction.to_address, 1)
 
@@ -642,7 +649,7 @@ async def test_get_or_create_destination_account_exception_submission_pending():
                 return to_account, {"balances": []}
             else:
                 raise RuntimeError()
-        
+
         with patch(f"{test_module}.get_account_obj_async", mock_get_account_obj_async):
             async with ServerAsync(client=AiohttpClient()) as s:
                 locks = {
@@ -662,7 +669,9 @@ async def test_get_or_create_destination_account_exception_submission_pending():
 
                 assert mock_rci.create_destination_account.call_count == 3
                 await sync_to_async(transaction.refresh_from_db)()
-                assert transaction.submission_status == Transaction.SUBMISSION_STATUS.ready
+                assert (
+                    transaction.submission_status == Transaction.SUBMISSION_STATUS.ready
+                )
                 assert transaction.status_message == ""
 
 
@@ -694,7 +703,7 @@ async def test_get_or_create_destination_account_exception_submission_failed():
                 return to_account, {"balances": []}
             else:
                 raise RuntimeError()
-        
+
         with patch(f"{test_module}.get_account_obj_async", mock_get_account_obj_async):
             async with ServerAsync(client=AiohttpClient()) as s:
                 locks = {
@@ -714,7 +723,10 @@ async def test_get_or_create_destination_account_exception_submission_failed():
 
                 assert mock_rci.create_destination_account.call_count == 1
                 await sync_to_async(transaction.refresh_from_db)()
-                assert transaction.submission_status == Transaction.SUBMISSION_STATUS.failed
+                assert (
+                    transaction.submission_status
+                    == Transaction.SUBMISSION_STATUS.failed
+                )
                 assert transaction.status_message == "failed exception error message"
 
 
@@ -746,7 +758,7 @@ async def test_get_or_create_destination_account_exception_submission_blocked():
                 return to_account, {"balances": []}
             else:
                 raise RuntimeError()
-        
+
         with patch(f"{test_module}.get_account_obj_async", mock_get_account_obj_async):
             async with ServerAsync(client=AiohttpClient()) as s:
                 locks = {
@@ -766,7 +778,10 @@ async def test_get_or_create_destination_account_exception_submission_blocked():
 
                 assert mock_rci.create_destination_account.call_count == 1
                 await sync_to_async(transaction.refresh_from_db)()
-                assert transaction.submission_status == Transaction.SUBMISSION_STATUS.blocked
+                assert (
+                    transaction.submission_status
+                    == Transaction.SUBMISSION_STATUS.blocked
+                )
                 assert transaction.status_message == "blocked exception error message"
 
 
@@ -806,7 +821,9 @@ async def test_submit_success():
                 )
                 async with ServerAsync(client=AiohttpClient()) as server:
                     with patch.object(
-                        stellar_sdk.call_builder.call_builder_async.base_call_builder.BaseCallBuilder, "call", new_callable=AsyncMock
+                        stellar_sdk.call_builder.call_builder_async.base_call_builder.BaseCallBuilder,
+                        "call",
+                        new_callable=AsyncMock,
                     ) as transaction_call:
                         mock_submit_transaction.return_value = "test_hash_value"
                         transaction_call.return_value = {
@@ -821,7 +838,10 @@ async def test_submit_success():
                         }
 
                         assert (
-                            await ProcessPendingDeposits.submit(transaction, server, locks) is True
+                            await ProcessPendingDeposits.submit(
+                                transaction, server, locks
+                            )
+                            is True
                         )
 
                         await sync_to_async(transaction.refresh_from_db)()
@@ -953,7 +973,9 @@ async def test_submit_request_unsuccessful():
                 )
                 async with ServerAsync(client=AiohttpClient()) as server:
                     with patch.object(
-                        stellar_sdk.call_builder.call_builder_async.base_call_builder.BaseCallBuilder, "call", new_callable=AsyncMock
+                        stellar_sdk.call_builder.call_builder_async.base_call_builder.BaseCallBuilder,
+                        "call",
+                        new_callable=AsyncMock,
                     ) as transaction_call:
                         mock_submit_transaction.return_value = "test_hash_value"
                         transaction_call.return_value = {
@@ -966,7 +988,9 @@ async def test_submit_request_unsuccessful():
                         }
 
                         assert (
-                            await ProcessPendingDeposits.submit(transaction, server, locks)
+                            await ProcessPendingDeposits.submit(
+                                transaction, server, locks
+                            )
                             is False
                         )
 
@@ -988,7 +1012,6 @@ async def test_submit_request_unsuccessful():
                             Keypair.from_public_key(transaction.to_address), server
                         )
                         assert mock_maybe_make_callback.call_count == 3
-
 
 
 @pytest.mark.django_db(transaction=True)
@@ -1132,7 +1155,9 @@ async def test_requires_trustline_has_trustline():
                 }
 
                 assert (
-                    await ProcessPendingDeposits.requires_trustline(transaction, server, locks)
+                    await ProcessPendingDeposits.requires_trustline(
+                        transaction, server, locks
+                    )
                     is False
                 )
 
@@ -1171,7 +1196,9 @@ async def test_requires_trustline_no_trustline():
                 }
 
                 assert (
-                    await ProcessPendingDeposits.requires_trustline(transaction, server, locks)
+                    await ProcessPendingDeposits.requires_trustline(
+                        transaction, server, locks
+                    )
                     is True
                 )
 
@@ -1207,7 +1234,9 @@ async def test_requires_trustline_create_fails():
                 }
 
                 assert (
-                    await ProcessPendingDeposits.requires_trustline(transaction, server, locks)
+                    await ProcessPendingDeposits.requires_trustline(
+                        transaction, server, locks
+                    )
                     is True
                 )
 
@@ -1400,7 +1429,7 @@ async def test_populate_queues():
         status=Transaction.STATUS.pending_anchor,
         kind=Transaction.KIND.deposit,
         queue=SUBMIT_TRX_QUEUE,
-        submission_status=Transaction.SUBMISSION_STATUS.ready
+        submission_status=Transaction.SUBMISSION_STATUS.ready,
     )
     check_acc_transaction = await sync_to_async(Transaction.objects.create)(
         asset=usd,
@@ -1409,7 +1438,7 @@ async def test_populate_queues():
         status=Transaction.STATUS.pending_anchor,
         kind=Transaction.KIND.deposit,
         queue=CHECK_ACC_QUEUE,
-        submission_status=Transaction.SUBMISSION_STATUS.ready
+        submission_status=Transaction.SUBMISSION_STATUS.ready,
     )
 
     qa = PolarisQueueAdapter([SUBMIT_TRX_QUEUE, CHECK_ACC_QUEUE])
@@ -1436,7 +1465,7 @@ async def test_populate_queues_order():
         kind=Transaction.KIND.deposit,
         queue=SUBMIT_TRX_QUEUE,
         queued_for_submit=datetime.datetime.now(datetime.timezone.utc),
-        submission_status=Transaction.SUBMISSION_STATUS.ready
+        submission_status=Transaction.SUBMISSION_STATUS.ready,
     )
     submission_transaction2 = await sync_to_async(Transaction.objects.create)(
         asset=usd,
@@ -1446,7 +1475,7 @@ async def test_populate_queues_order():
         kind=Transaction.KIND.deposit,
         queue=SUBMIT_TRX_QUEUE,
         queued_for_submit=datetime.datetime.now(datetime.timezone.utc),
-        submission_status=Transaction.SUBMISSION_STATUS.ready
+        submission_status=Transaction.SUBMISSION_STATUS.ready,
     )
     submission_transaction3 = await sync_to_async(Transaction.objects.create)(
         asset=usd,
@@ -1456,8 +1485,7 @@ async def test_populate_queues_order():
         kind=Transaction.KIND.deposit,
         queued_for_submit=datetime.datetime.now(datetime.timezone.utc),
         queue=SUBMIT_TRX_QUEUE,
-        
-        submission_status=Transaction.SUBMISSION_STATUS.ready
+        submission_status=Transaction.SUBMISSION_STATUS.ready,
     )
 
     qa = PolarisQueueAdapter([SUBMIT_TRX_QUEUE])
@@ -1480,7 +1508,7 @@ async def test_queue_and_get_transaction():
         to_address=destination,
         status=Transaction.STATUS.pending_anchor,
         kind=Transaction.KIND.deposit,
-        submission_status=Transaction.SUBMISSION_STATUS.ready
+        submission_status=Transaction.SUBMISSION_STATUS.ready,
     )
 
     qa = PolarisQueueAdapter([SUBMIT_TRX_QUEUE])
@@ -1511,9 +1539,9 @@ async def test_check_rails_for_ready_transactions():
 
         qa = PolarisQueueAdapter([CHECK_ACC_QUEUE])
 
-        assert (
-            await ProcessPendingDeposits.check_rails_for_ready_transactions(qa) == [transaction]
-        )
+        assert await ProcessPendingDeposits.check_rails_for_ready_transactions(qa) == [
+            transaction
+        ]
         await sync_to_async(transaction.refresh_from_db)()
         assert transaction.queue == CHECK_ACC_QUEUE
         transaction.status == Transaction.STATUS.pending_anchor
@@ -1528,9 +1556,7 @@ async def test_check_rails_no_ready_transactions():
 
         qa = PolarisQueueAdapter([CHECK_ACC_QUEUE])
 
-        assert (
-            await ProcessPendingDeposits.check_rails_for_ready_transactions(qa) == []
-        )
+        assert await ProcessPendingDeposits.check_rails_for_ready_transactions(qa) == []
 
 
 @pytest.mark.django_db(transaction=True)
@@ -1559,7 +1585,9 @@ async def test_account_ready():
                 }
 
                 assert (
-                    await ProcessPendingDeposits.is_account_ready(transaction, server, locks)
+                    await ProcessPendingDeposits.is_account_ready(
+                        transaction, server, locks
+                    )
                     is True
                 )
 
@@ -1571,9 +1599,8 @@ async def test_account_ready():
                 assert (
                     transaction.submission_status == Transaction.SUBMISSION_STATUS.ready
                 )
-                assert (
-                    transaction.queue == SUBMIT_TRX_QUEUE
-                )
+                assert transaction.queue == SUBMIT_TRX_QUEUE
+
 
 @pytest.mark.django_db(transaction=True)
 async def test_account_not_ready():
@@ -1601,16 +1628,16 @@ async def test_account_not_ready():
                 }
 
                 assert (
-                    await ProcessPendingDeposits.is_account_ready(transaction, server, locks)
+                    await ProcessPendingDeposits.is_account_ready(
+                        transaction, server, locks
+                    )
                     is False
                 )
 
 
 @pytest.mark.django_db(transaction=True)
 def test_get_unblocked_transactions():
-    usd = Asset.objects.create(
-        code="USD", issuer=Keypair.random().public_key
-    )
+    usd = Asset.objects.create(code="USD", issuer=Keypair.random().public_key)
     destination = Keypair.random().public_key
     transaction = Transaction.objects.create(
         asset=usd,
@@ -1621,16 +1648,12 @@ def test_get_unblocked_transactions():
         kind=Transaction.KIND.deposit,
         amount_in=100,
     )
-    assert (
-        ProcessPendingDeposits.get_unblocked_transactions() == [transaction]
-    )
+    assert ProcessPendingDeposits.get_unblocked_transactions() == [transaction]
 
 
 @pytest.mark.django_db(transaction=True)
 def test_get_unblocked_transactions_empty():
-    usd = Asset.objects.create(
-        code="USD", issuer=Keypair.random().public_key
-    )
+    usd = Asset.objects.create(code="USD", issuer=Keypair.random().public_key)
     destination = Keypair.random().public_key
     transaction = Transaction.objects.create(
         asset=usd,
@@ -1641,9 +1664,7 @@ def test_get_unblocked_transactions_empty():
         kind=Transaction.KIND.deposit,
         amount_in=100,
     )
-    assert (
-        ProcessPendingDeposits.get_unblocked_transactions() == []
-    )
+    assert ProcessPendingDeposits.get_unblocked_transactions() == []
 
 
 @pytest.mark.django_db(transaction=True)
@@ -1661,7 +1682,7 @@ async def test_process_unblocked_transactions():
         kind=Transaction.KIND.deposit,
         amount_in=100,
     )
-    
+
     qa = PolarisQueueAdapter([SUBMIT_TRX_QUEUE])
     await ProcessPendingDeposits.process_unblocked_transactions(qa)
 
@@ -1689,58 +1710,66 @@ async def test_submit_transaction_success():
         amount_fee=1,
     )
     with patch(
-            f"{test_module}.get_account_obj_async", new_callable=AsyncMock
-        ) as mock_get_account_obj:
+        f"{test_module}.get_account_obj_async", new_callable=AsyncMock
+    ) as mock_get_account_obj:
+        with patch(
+            f"{test_module}.maybe_make_callback_async", new_callable=AsyncMock
+        ) as mock_maybe_make_callback:
             with patch(
-                f"{test_module}.maybe_make_callback_async", new_callable=AsyncMock
-            ) as mock_maybe_make_callback:
-                with patch(
-                    f"{test_module}.rci.submit_deposit_transaction",
-                ) as mock_submit_transaction:
-                    with patch.object(
-                            stellar_sdk.call_builder.call_builder_async.base_call_builder.BaseCallBuilder, "call", new_callable=AsyncMock
-                        ) as transaction_call:       # this mocks server.transactions().transaction(transaction_hash).call()
-                            mock_get_account_obj.return_value = (
-                                None,
-                                {
-                                    "balances": [
-                                        {"asset_code": usd.code, "asset_issuer": usd.issuer}
-                                    ]
-                                },
+                f"{test_module}.rci.submit_deposit_transaction",
+            ) as mock_submit_transaction:
+                with patch.object(
+                    stellar_sdk.call_builder.call_builder_async.base_call_builder.BaseCallBuilder,
+                    "call",
+                    new_callable=AsyncMock,
+                ) as transaction_call:  # this mocks server.transactions().transaction(transaction_hash).call()
+                    mock_get_account_obj.return_value = (
+                        None,
+                        {
+                            "balances": [
+                                {"asset_code": usd.code, "asset_issuer": usd.issuer}
+                            ]
+                        },
+                    )
+                    async with ServerAsync(client=AiohttpClient()) as server:
+                        mock_submit_transaction.return_value = "test_hash_value"
+                        transaction_call.return_value = {
+                            "envelope_xdr": "envelope_xdr",
+                            "paging_token": "paging_token",
+                            "id": "id",
+                            "successful": True,
+                        }
+                        locks = {
+                            "destination_accounts": defaultdict(asyncio.Lock),
+                            "source_accounts": defaultdict(asyncio.Lock),
+                        }
+
+                        assert (
+                            await ProcessPendingDeposits.submit_transaction(
+                                transaction, server, locks
                             )
-                            async with ServerAsync(client=AiohttpClient()) as server:
-                                mock_submit_transaction.return_value = "test_hash_value"
-                                transaction_call.return_value = {
-                                    "envelope_xdr": "envelope_xdr",
-                                    "paging_token": "paging_token",
-                                    "id": "id",
-                                    "successful": True,
-                                }
-                                locks = {
-                                    "destination_accounts": defaultdict(asyncio.Lock),
-                                    "source_accounts": defaultdict(asyncio.Lock),
-                                }
+                            is None
+                        )
 
-                                assert (
-                                    await ProcessPendingDeposits.submit_transaction(transaction, server, locks) is None
-                                )
+                        await sync_to_async(transaction.refresh_from_db)()
+                        assert transaction.status == Transaction.STATUS.completed
+                        assert (
+                            transaction.submission_status
+                            == Transaction.SUBMISSION_STATUS.completed
+                        )
+                        assert transaction.paging_token == "paging_token"
+                        assert transaction.stellar_transaction_id == "id"
+                        assert transaction.completed_at
+                        assert transaction.amount_out == 99
 
-                                await sync_to_async(transaction.refresh_from_db)()
-                                assert transaction.status == Transaction.STATUS.completed
-                                assert transaction.submission_status == Transaction.SUBMISSION_STATUS.completed
-                                assert transaction.paging_token == "paging_token"
-                                assert transaction.stellar_transaction_id == "id"
-                                assert transaction.completed_at
-                                assert transaction.amount_out == 99
+                        mock_submit_transaction.assert_called_once_with(
+                            transaction=transaction, has_trustline=True
+                        )
+                        mock_get_account_obj.assert_called_once_with(
+                            Keypair.from_public_key(transaction.to_address), server
+                        )
+                        assert mock_maybe_make_callback.call_count == 3
 
-                                mock_submit_transaction.assert_called_once_with(
-                                    transaction=transaction, has_trustline=True
-                                )
-                                mock_get_account_obj.assert_called_once_with(
-                                    Keypair.from_public_key(transaction.to_address), server
-                                )
-                                assert mock_maybe_make_callback.call_count == 3
-                
 
 @pytest.mark.django_db(transaction=True)
 async def test_submit_transaction_exception_submission_pending():
@@ -1760,26 +1789,31 @@ async def test_submit_transaction_exception_submission_pending():
         amount_fee=1,
     )
     with patch(
-            f"{test_module}.ProcessPendingDeposits.submit", new_callable=AsyncMock
-        ) as mock_submit:
-            async with ServerAsync(client=AiohttpClient()) as server:
-                mock_submit.side_effect = [
-                    TransactionSubmissionPending("pending exception error message"),
-                    TransactionSubmissionPending("pending exception error message"),
-                    True
-                ]
-                locks = {
-                    "destination_accounts": defaultdict(asyncio.Lock),
-                    "source_accounts": defaultdict(asyncio.Lock),
-                }
+        f"{test_module}.ProcessPendingDeposits.submit", new_callable=AsyncMock
+    ) as mock_submit:
+        async with ServerAsync(client=AiohttpClient()) as server:
+            mock_submit.side_effect = [
+                TransactionSubmissionPending("pending exception error message"),
+                TransactionSubmissionPending("pending exception error message"),
+                True,
+            ]
+            locks = {
+                "destination_accounts": defaultdict(asyncio.Lock),
+                "source_accounts": defaultdict(asyncio.Lock),
+            }
 
-                assert (
-                    await ProcessPendingDeposits.submit_transaction(transaction, server, locks) is None
+            assert (
+                await ProcessPendingDeposits.submit_transaction(
+                    transaction, server, locks
                 )
-                assert mock_submit.call_count == 3
-                await sync_to_async(transaction.refresh_from_db)()
-                assert transaction.submission_status == Transaction.SUBMISSION_STATUS.pending
-                assert transaction.status_message == "pending exception error message"
+                is None
+            )
+            assert mock_submit.call_count == 3
+            await sync_to_async(transaction.refresh_from_db)()
+            assert (
+                transaction.submission_status == Transaction.SUBMISSION_STATUS.pending
+            )
+            assert transaction.status_message == "pending exception error message"
 
 
 @pytest.mark.django_db(transaction=True)
@@ -1800,22 +1834,29 @@ async def test_submit_transaction_exception_submission_blocked():
         amount_fee=1,
     )
     with patch(
-            f"{test_module}.ProcessPendingDeposits.submit", new_callable=AsyncMock
-        ) as mock_submit:
-            async with ServerAsync(client=AiohttpClient()) as server:
-                mock_submit.side_effect = TransactionSubmissionBlocked("blocked exception error message")
-                locks = {
-                    "destination_accounts": defaultdict(asyncio.Lock),
-                    "source_accounts": defaultdict(asyncio.Lock),
-                }
+        f"{test_module}.ProcessPendingDeposits.submit", new_callable=AsyncMock
+    ) as mock_submit:
+        async with ServerAsync(client=AiohttpClient()) as server:
+            mock_submit.side_effect = TransactionSubmissionBlocked(
+                "blocked exception error message"
+            )
+            locks = {
+                "destination_accounts": defaultdict(asyncio.Lock),
+                "source_accounts": defaultdict(asyncio.Lock),
+            }
 
-                assert (
-                    await ProcessPendingDeposits.submit_transaction(transaction, server, locks) is None
+            assert (
+                await ProcessPendingDeposits.submit_transaction(
+                    transaction, server, locks
                 )
-                assert mock_submit.call_count == 1
-                await sync_to_async(transaction.refresh_from_db)()
-                assert transaction.submission_status == Transaction.SUBMISSION_STATUS.blocked
-                assert transaction.status_message == "blocked exception error message"
+                is None
+            )
+            assert mock_submit.call_count == 1
+            await sync_to_async(transaction.refresh_from_db)()
+            assert (
+                transaction.submission_status == Transaction.SUBMISSION_STATUS.blocked
+            )
+            assert transaction.status_message == "blocked exception error message"
 
 
 @pytest.mark.django_db(transaction=True)
@@ -1836,23 +1877,28 @@ async def test_submit_transaction_exception_submission_failed():
         amount_fee=1,
     )
     with patch(
-            f"{test_module}.ProcessPendingDeposits.submit", new_callable=AsyncMock
-        ) as mock_submit:
-            async with ServerAsync(client=AiohttpClient()) as server:
-                mock_submit.side_effect = TransactionSubmissionFailed("failed exception error message")
-                locks = {
-                    "destination_accounts": defaultdict(asyncio.Lock),
-                    "source_accounts": defaultdict(asyncio.Lock),
-                }
+        f"{test_module}.ProcessPendingDeposits.submit", new_callable=AsyncMock
+    ) as mock_submit:
+        async with ServerAsync(client=AiohttpClient()) as server:
+            mock_submit.side_effect = TransactionSubmissionFailed(
+                "failed exception error message"
+            )
+            locks = {
+                "destination_accounts": defaultdict(asyncio.Lock),
+                "source_accounts": defaultdict(asyncio.Lock),
+            }
 
-                assert (
-                    await ProcessPendingDeposits.submit_transaction(transaction, server, locks) is None
+            assert (
+                await ProcessPendingDeposits.submit_transaction(
+                    transaction, server, locks
                 )
-                assert mock_submit.call_count == 1
-                await sync_to_async(transaction.refresh_from_db)()
-                assert transaction.status == Transaction.STATUS.error
-                assert transaction.submission_status == Transaction.SUBMISSION_STATUS.failed
-                assert transaction.status_message == "failed exception error message"
+                is None
+            )
+            assert mock_submit.call_count == 1
+            await sync_to_async(transaction.refresh_from_db)()
+            assert transaction.status == Transaction.STATUS.error
+            assert transaction.submission_status == Transaction.SUBMISSION_STATUS.failed
+            assert transaction.status_message == "failed exception error message"
 
 
 @pytest.mark.django_db(transaction=True)
@@ -1862,7 +1908,9 @@ def test_acquire_lock():
     ProcessPendingDeposits.acquire_lock(key, interval)
     heartbeat_keys = PolarisHeartbeat.objects.all()
     assert heartbeat_keys[0].key == key
-    assert heartbeat_keys[0].last_heartbeat < datetime.datetime.now(datetime.timezone.utc)
+    assert heartbeat_keys[0].last_heartbeat < datetime.datetime.now(
+        datetime.timezone.utc
+    )
 
 
 @pytest.mark.django_db(transaction=True)
@@ -1871,13 +1919,12 @@ def test_acquire_lock_wait_for_expiration():
     interval = 0.2
     start = datetime.datetime.now(datetime.timezone.utc)
     heartbeat, created = PolarisHeartbeat.objects.get_or_create(
-        key=key,
-        last_heartbeat=start
+        key=key, last_heartbeat=start
     )
     assert created == True
     ProcessPendingDeposits.acquire_lock(key, interval)
-    acquire_lock_wait_time_sec = (datetime.datetime.now(datetime.timezone.utc) - start).seconds
+    acquire_lock_wait_time_sec = (
+        datetime.datetime.now(datetime.timezone.utc) - start
+    ).seconds
     # the lock expires after 5x the interval time has elapsed without updating it
     assert acquire_lock_wait_time_sec >= 1
-
-    

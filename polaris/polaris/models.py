@@ -52,6 +52,7 @@ class PolarisHeartbeat(models.Model):
     Note: The application is expected to delete this key during a gracefully
     shutdown - see process_pending_deposits.py for an example 
     """
+
     key = models.CharField(max_length=80, unique=True)
     last_heartbeat = models.DateTimeField(null=True, blank=True)
 
@@ -403,8 +404,15 @@ class Transaction(models.Model):
     }
 
     SUBMISSION_STATUS = PolarisChoices(
-        "not_ready", "ready", "processing", "pending", "pending_trust", 
-        "blocked", "unblocked", "completed", "failed"
+        "not_ready",
+        "ready",
+        "processing",
+        "pending",
+        "pending_trust",
+        "blocked",
+        "unblocked",
+        "completed",
+        "failed",
     )
     """ 
         Submission Statuses

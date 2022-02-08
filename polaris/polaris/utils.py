@@ -204,15 +204,15 @@ def validate_account_and_memo(account: str, memo: str):
     else:
         return account, memo, Transaction.MEMO_TYPES.id
     try:
-        HashMemo(memo)
-    except MemoInvalidException:
+        HashMemo(memo_base64_to_hex(memo))
+    except (ValueError, MemoInvalidException):
         pass
     else:
         return account, memo, Transaction.MEMO_TYPES.hash
     try:
         TextMemo(memo)
     except MemoInvalidException:
-        return ValueError("invalid memo")
+        raise ValueError("invalid memo")
     else:
         return account, memo, Transaction.MEMO_TYPES.text
 

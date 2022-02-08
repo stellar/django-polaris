@@ -7,31 +7,53 @@ import polaris.models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('polaris', '0013_auto_20211011_1956'),
+        ("polaris", "0013_auto_20211011_1956"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='PolarisHeartbeat',
+            name="PolarisHeartbeat",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('key', models.CharField(max_length=80, unique=True)),
-                ('last_heartbeat', models.DateTimeField(blank=True, null=True)),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("key", models.CharField(max_length=80, unique=True)),
+                ("last_heartbeat", models.DateTimeField(blank=True, null=True)),
             ],
         ),
         migrations.AddField(
-            model_name='transaction',
-            name='queue',
+            model_name="transaction",
+            name="queue",
             field=models.TextField(blank=True, null=True),
         ),
         migrations.AddField(
-            model_name='transaction',
-            name='queued_for_submit',
+            model_name="transaction",
+            name="queued_for_submit",
             field=models.DateTimeField(default=polaris.models.utc_now),
         ),
         migrations.AddField(
-            model_name='transaction',
-            name='submission_status',
-            field=models.CharField(choices=[('not_ready', 'not_ready'), ('ready', 'ready'), ('processing', 'processing'), ('pending', 'pending'), ('pending_trust', 'pending_trust'), ('blocked', 'blocked'), ('unblocked', 'unblocked'), ('completed', 'completed'), ('failed', 'failed')], default='not_ready', max_length=31),
+            model_name="transaction",
+            name="submission_status",
+            field=models.CharField(
+                choices=[
+                    ("not_ready", "not_ready"),
+                    ("ready", "ready"),
+                    ("processing", "processing"),
+                    ("pending", "pending"),
+                    ("pending_trust", "pending_trust"),
+                    ("blocked", "blocked"),
+                    ("unblocked", "unblocked"),
+                    ("completed", "completed"),
+                    ("failed", "failed"),
+                ],
+                default="not_ready",
+                max_length=31,
+            ),
         ),
     ]
