@@ -1,4 +1,3 @@
-from os import read
 import signal
 import time
 import datetime
@@ -35,7 +34,6 @@ from polaris.integrations import (
     registered_fee_func,
     calculate_fee,
 )
-from typeguard import check_protocol
 
 from polaris.exceptions import (
     TransactionSubmissionPending,
@@ -57,39 +55,8 @@ DEFAULT_INTERVAL = 10
 
 PROCESS_PENDING_DEPOSITS_LOCK_KEY = "PROCESS_PENDING_DEPOSITS_LOCK"
 
-# TODO: undo change made to docker-compose.yaml
 
-
-# TODO: move this
-class QueueAdapter:
-    def populate_queues(self):
-        """
-        Initialize in-memory queues from database, this is optional if you're using an actual 
-        message queue or storing your "queues" in a database
-        """
-        raise NotImplementedError
-
-    def queue_transaction(
-        self, source_task_name: str, queue_name: str, transaction: Transaction
-    ):
-        """
-        Put the given transaction into a queue
-        @param: source_task_name - the task that queued this transaction
-        @param: queue_name - name of the queue to put the Transaction in
-        @param: transaction - the Transaction to put in the queue
-        """
-        raise NotImplementedError
-
-    async def get_transaction(self, source_task_name: str, queue_name) -> Transaction:
-        """
-        Consume a transaction from a queue
-        @param: source_task_name - the task that is requesting a Transaction
-        @param: queue_name - name of the queue to consume the Transaction from
-        """
-        raise NotImplementedError
-
-
-class PolarisQueueAdapter(QueueAdapter):
+class PolarisQueueAdapter:
     def __init__(self, queues):
         self.queues: dict[str, asyncio.Queue] = {}
         for queue in queues:
@@ -110,7 +77,8 @@ class PolarisQueueAdapter(QueueAdapter):
                 Transaction.KIND.deposit,
                 getattr(Transaction.KIND, "deposit-exchange"),
             ],
-        ).order_by("queued_for_submit")
+            queued_at__isnull=False,
+        ).order_by("queued_at")
 
         logger.info(
             f"found {len(ready_transactions)} transactions to queue for submit_transaction_task"
@@ -124,7 +92,9 @@ class PolarisQueueAdapter(QueueAdapter):
                 Transaction.KIND.deposit,
                 getattr(Transaction.KIND, "deposit-exchange"),
             ],
-        )
+            queued_at__isnull=False,
+        ).order_by("queued_at")
+
         logger.info(
             f"found {len(check_account_transactions)} transactions to queue for check_accounts_task"
         )
@@ -160,9 +130,9 @@ class PolarisQueueAdapter(QueueAdapter):
 
 class ProcessPendingDeposits:
     @classmethod
-    async def check_rails_task(cls, qa: QueueAdapter, interval):
+    async def check_rails_task(cls, qa: PolarisQueueAdapter, interval):
         """
-        Periodically poll for deposit transactions that are ready to be processed 
+        Periodically poll for deposit transactions that are ready to be processed
         and submit them to the CHECK_ACC_QUEUE for verification by the check_accounts_task.
         """
         logger.info("check_rails_task started...")
@@ -171,21 +141,22 @@ class ProcessPendingDeposits:
             await asyncio.sleep(interval)
 
     @classmethod
-    async def check_rails_for_ready_transactions(cls, qa: QueueAdapter):
+    async def check_rails_for_ready_transactions(cls, qa: PolarisQueueAdapter):
         ready_transactions = await sync_to_async(cls.get_ready_deposits)()
         for transaction in ready_transactions:
             transaction.queue = CHECK_ACC_QUEUE
+            transaction.queued_at = datetime.datetime.now(datetime.timezone.utc)
             transaction.status = Transaction.STATUS.pending_anchor
             await sync_to_async(transaction.save)()
             qa.queue_transaction("check_rails_task", CHECK_ACC_QUEUE, transaction)
         return ready_transactions
 
     @classmethod
-    async def check_accounts_task(cls, qa: QueueAdapter, locks: Dict):
+    async def check_accounts_task(cls, qa: PolarisQueueAdapter, locks: Dict):
         """
         Long running task that evaluates 'transactions' passed into the CHECK_ACC_QUEUE
-        and determines if they are ready for submission to the Stellar Network. 
-        
+        and determines if they are ready for submission to the Stellar Network.
+
         The transaction could be in one of the following states:
 
         - The destination account does not exist or does not have a trustline to
@@ -201,7 +172,7 @@ class ProcessPendingDeposits:
 
         - The transaction is ready to be submitted
 
-            In this case, the transaction is put in the SUBMIT_TRX_QUEUE for the 
+            In this case, the transaction is put in the SUBMIT_TRX_QUEUE for the
             submit_transaction_task to pick up and submit to the Stellar Network
         """
         async with ServerAsync(settings.HORIZON_URI, client=AiohttpClient()) as server:
@@ -234,20 +205,22 @@ class ProcessPendingDeposits:
         )
 
         transaction.submission_status = Transaction.SUBMISSION_STATUS.ready
-        transaction.queued_for_submit = datetime.datetime.now(datetime.timezone.utc)
+        transaction.queued_at = datetime.datetime.now(datetime.timezone.utc)
         transaction.queue = SUBMIT_TRX_QUEUE
         await sync_to_async(transaction.save)()
         return True
 
     @classmethod
-    async def check_unblocked_transactions_task(cls, qa: QueueAdapter, interval: int):
+    async def check_unblocked_transactions_task(
+        cls, qa: PolarisQueueAdapter, interval: int
+    ):
         """
         Get the transactions that are in a 'unblocked' submission_status and
         submit them to the SUBMIT_TRX_QUEUE for the submit_transactions_task to process.
-        The 'unblocked' submission_status implies that Polaris preivously saved the 
-        transaction as 'blocked' due to a TransactionSubmissionBlocked exception being 
-        raised by a function that submits transactions to the Stellar Network. 
-        Anchors could manually resolve an issue causing the transaction to enter 
+        The 'unblocked' submission_status implies that Polaris preivously saved the
+        transaction as 'blocked' due to a TransactionSubmissionBlocked exception being
+        raised by a function that submits transactions to the Stellar Network.
+        Anchors could manually resolve an issue causing the transaction to enter
         the 'blocked' status and update the transaction to be "unblocked", which would allow
         Polaris to detect and resubmit it.
         """
@@ -256,7 +229,7 @@ class ProcessPendingDeposits:
             await asyncio.sleep(interval)
 
     @classmethod
-    async def process_unblocked_transactions(cls, qa: QueueAdapter):
+    async def process_unblocked_transactions(cls, qa: PolarisQueueAdapter):
         unblocked_transactions = await sync_to_async(cls.get_unblocked_transactions)()
 
         for transaction in unblocked_transactions:
@@ -264,17 +237,17 @@ class ProcessPendingDeposits:
                 f"check_unblocked_transactions_task - saving transaction {transaction.id} as 'ready'"
             )
             transaction.submission_status = Transaction.SUBMISSION_STATUS.ready
-            transaction.queued_for_submit = datetime.datetime.now(datetime.timezone.utc)
+            transaction.queued_at = datetime.datetime.now(datetime.timezone.utc)
             transaction.queue = SUBMIT_TRX_QUEUE
+            await sync_to_async(transaction.save)()
             qa.queue_transaction(
                 "check_unblocked_transactions_task", SUBMIT_TRX_QUEUE, transaction
             )
-            await sync_to_async(transaction.save)()
 
     @classmethod
-    async def check_trustlines_task(cls, qa: QueueAdapter, interval: int):
+    async def check_trustlines_task(cls, qa: PolarisQueueAdapter, interval: int):
         """
-        For all transactions that are pending_trust, load the destination 
+        For all transactions that are pending_trust, load the destination
         account json to determine if a trustline has been
         established. If a trustline for the requested asset is found, a the
         transaction is queued for submission.
@@ -285,7 +258,7 @@ class ProcessPendingDeposits:
                 await asyncio.sleep(interval)
 
     @classmethod
-    async def check_trustlines(cls, qa: QueueAdapter, server: ServerAsync):
+    async def check_trustlines(cls, qa: PolarisQueueAdapter, server: ServerAsync):
         pending_trust_transactions: list[Transaction] = await sync_to_async(
             ProcessPendingDeposits.get_pending_trust_transactions
         )()
@@ -331,9 +304,7 @@ class ProcessPendingDeposits:
                 transaction.envelope_xdr = None
                 transaction.stellar_transaction_id = None
                 transaction.submission_status = Transaction.SUBMISSION_STATUS.ready
-                transaction.queued_for_submit = datetime.datetime.now(
-                    datetime.timezone.utc
-                )
+                transaction.queued_at = datetime.datetime.now(datetime.timezone.utc)
                 transaction.queue = SUBMIT_TRX_QUEUE
                 await sync_to_async(transaction.save)()
                 qa.queue_transaction(
@@ -343,7 +314,7 @@ class ProcessPendingDeposits:
                 await sync_to_async(transaction.save)()
 
     @classmethod
-    async def submit_transaction_task(cls, qa: QueueAdapter, locks: Dict):
+    async def submit_transaction_task(cls, qa: PolarisQueueAdapter, locks: Dict):
         logger.info("submit_transaction_task - running...")
         async with ServerAsync(settings.HORIZON_URI, client=AiohttpClient()) as server:
             while True:
@@ -373,7 +344,6 @@ class ProcessPendingDeposits:
                 TransactionSubmissionFailed,
                 TransactionSubmissionPending,
             ) as e:
-                logger.exception(f"submit() threw a {str(e)} exception")
                 await sync_to_async(cls.handle_transaction_submission_exception)(
                     transaction, e, str(e)
                 )
@@ -524,7 +494,6 @@ class ProcessPendingDeposits:
                     kind=Transaction.KIND.deposit,
                     submission_status=Transaction.SUBMISSION_STATUS.unblocked,
                     pending_signatures=False,
-                    envelope_xdr__isnull=True,
                 )
                 .select_related("asset")
                 .select_for_update()
@@ -621,9 +590,6 @@ class ProcessPendingDeposits:
                         TransactionSubmissionFailed,
                         TransactionSubmissionPending,
                     ) as e:
-                        logger.exception(
-                            f"create_destination_account() threw a {str(e)} exception"
-                        )
                         await sync_to_async(
                             cls.handle_transaction_submission_exception
                         )(transaction, e, str(e))
@@ -878,22 +844,21 @@ class ProcessPendingDeposits:
 
     @classmethod
     def handle_transaction_submission_exception(cls, transaction, exception, message):
-        if type(exception) is TransactionSubmissionBlocked:
+        if isinstance(exception, TransactionSubmissionBlocked):
             transaction.submission_status = Transaction.SUBMISSION_STATUS.blocked
-        elif type(exception) is TransactionSubmissionFailed:
+        elif isinstance(exception, TransactionSubmissionFailed):
             transaction.status = Transaction.STATUS.error
             transaction.submission_status = Transaction.SUBMISSION_STATUS.failed
-        elif type(exception) is TransactionSubmissionPending:
+        elif isinstance(exception, TransactionSubmissionPending):
             transaction.submission_status = Transaction.SUBMISSION_STATUS.pending
         transaction.status_message = message
         transaction.save()
 
     @classmethod
     def update_heartbeat(cls, key):
-        with django.db.transaction.atomic():
-            heartbeat = PolarisHeartbeat.objects.filter(key=key)[0]
-            heartbeat.last_heartbeat = datetime.datetime.now(datetime.timezone.utc)
-            heartbeat.save()
+        PolarisHeartbeat.objects.filter(key=key).update(
+            last_heartbeat=datetime.datetime.now(datetime.timezone.utc)
+        )
         return
 
     @classmethod
@@ -910,7 +875,7 @@ class ProcessPendingDeposits:
     def acquire_lock(cls, key: str, heartbeat_interval: int):
         """
         This function creates a key in the database table 'polaris_polarisheartbeat'
-        to ensure only one instance of the calling process runs at a given time. The key 
+        to ensure only one instance of the calling process runs at a given time. The key
         is deleted when the process exists gracefully. A 'heartbeat' is utilized in the event
         that the process does not exit gracefully. If the heartbeat's 'last_updated' value is
         5x longer than the typical heartbeat interval, it can be assumed that the previous
@@ -924,6 +889,7 @@ class ProcessPendingDeposits:
             with django.db.transaction.atomic():
                 heartbeat, created = PolarisHeartbeat.objects.get_or_create(key=key)
                 if created:
+                    # if the heartbeat key was created, update the last_heartbeat field to the current time
                     heartbeat.last_heartbeat = datetime.datetime.now(
                         datetime.timezone.utc
                     )
@@ -931,13 +897,16 @@ class ProcessPendingDeposits:
                     logger.info(
                         f"lock on key: {PROCESS_PENDING_DEPOSITS_LOCK_KEY} created"
                     )
-                    return True
+                    return
+                # the heartbeat key already exists (previous process did not shutdown gracefully), attempt
+                # to acquire the lock based on time elapsed since the last heartbeat
                 delta = (
                     datetime.datetime.now(datetime.timezone.utc)
                     - heartbeat.last_heartbeat
                 )
                 logger.info(f"lock delta: {delta.seconds} seconds")
-                if delta.seconds > heartbeat_interval * 5:
+                # the delta should be 5x the typical interval with a lower bound of 30 seconds
+                if delta.seconds > heartbeat_interval * 5 and delta.seconds > 30:
                     heartbeat.last_heartbeat = datetime.datetime.now(
                         datetime.timezone.utc
                     )
@@ -945,16 +914,74 @@ class ProcessPendingDeposits:
                     logger.info(
                         f"lock on key: {PROCESS_PENDING_DEPOSITS_LOCK_KEY} acquired"
                     )
-                    return True
+                    return
             logger.info(
                 f"unable to acquire lock on key: {key}, retrying in {heartbeat_interval} seconds..."
             )
             attempt += 1
             time.sleep(heartbeat_interval)
 
+    @classmethod
+    async def process_pending_deposits(
+        cls, task_interval: int, heartbeat_interval: int
+    ):
+        loop = asyncio.get_running_loop()
+        for signame in ("SIGINT", "SIGTERM"):
+            loop.add_signal_handler(
+                getattr(signal, signame),
+                lambda: asyncio.create_task(cls.exit_gracefully(signame, loop)),
+            )
+
+        queues = [SUBMIT_TRX_QUEUE, CHECK_ACC_QUEUE]
+
+        qa = PolarisQueueAdapter(queues)
+        await sync_to_async(qa.populate_queues)()
+
+        locks = {
+            "source_accounts": defaultdict(asyncio.Lock),
+            "destination_accounts": defaultdict(asyncio.Lock),
+        }
+        try:
+            await asyncio.gather(
+                ProcessPendingDeposits.heartbeat_task(
+                    PROCESS_PENDING_DEPOSITS_LOCK_KEY, heartbeat_interval
+                ),
+                ProcessPendingDeposits.check_rails_task(qa, task_interval),
+                ProcessPendingDeposits.check_accounts_task(qa, locks),
+                ProcessPendingDeposits.check_trustlines_task(qa, task_interval),
+                ProcessPendingDeposits.check_unblocked_transactions_task(
+                    qa, task_interval
+                ),
+                ProcessPendingDeposits.submit_transaction_task(qa, locks),
+            )
+        except asyncio.CancelledError:
+            pass
+
+    @classmethod
+    async def exit_gracefully(cls, signal, loop):  # pragma: no cover
+        logger.info(f"caught {signal}, exiting process_pending_deposits...")
+        logger.info(f"deleting heartbeat key: {PROCESS_PENDING_DEPOSITS_LOCK_KEY}...")
+        await sync_to_async(
+            PolarisHeartbeat.objects.filter(
+                key=PROCESS_PENDING_DEPOSITS_LOCK_KEY
+            ).delete
+        )()
+        tasks = [
+            task
+            for task in asyncio.Task.all_tasks()
+            if task is not asyncio.tasks.Task.current_task()
+        ]
+        list(map(lambda task: task.cancel(), tasks))
+        try:
+            await asyncio.gather(*tasks)
+        except asyncio.CancelledError:
+            pass
+        loop.stop()
+        logger.info("process_pending_deposits - exited gracefully")
+
 
 class Command(BaseCommand):
-    """    
+    """
     This process handles all of the transaction submission logic for deposit transactions.
     When this command is invoked, Polaris queries the database for transactions in the
     following scenarios and processes them accordingly.
@@ -978,73 +1005,29 @@ class Command(BaseCommand):
                               command. Defaults to 10.
     """
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        signal.signal(signal.SIGINT, self.exit_gracefully)
-        signal.signal(signal.SIGTERM, self.exit_gracefully)
-
-    @staticmethod
-    async def exit_gracefully():  # pragma: no cover
-        logger.info("Exiting process_pending_deposits...")
-        logger.info(f"deleting heartbeat key: {PROCESS_PENDING_DEPOSITS_LOCK_KEY}...")
-        await sync_to_async(
-            PolarisHeartbeat.objects.filter(
-                key=PROCESS_PENDING_DEPOSITS_LOCK_KEY
-            ).delete
-        )()
-        logger.info("process_pending_deposits exist_gracefully.")
-
     def add_arguments(self, parser):  # pragma: no cover
         parser.add_argument(
             "--interval",
             "-i",
             type=int,
-            help="The number of seconds to wait before restarting command."
+            help="The number of seconds to wait before each internal periodic task executes."
             "Defaults to {}.".format(1),
         )
 
     def handle(self, *_args, **options):  # pragma: no cover
         """
         The entrypoint for the functionality implemented in this file.
-        See diagram for details: TODO add link to diagram
+        See diagram at polaris/docs/deployment
         """
 
-        HEARTBEAT_INTERVAL = options.get("loop") or DEFAULT_HEARTBEAT
-        TASK_INTERVAL = options.get("loop") or DEFAULT_INTERVAL
+        TASK_INTERVAL = options.get("interval") or DEFAULT_INTERVAL
 
         ProcessPendingDeposits.acquire_lock(
-            PROCESS_PENDING_DEPOSITS_LOCK_KEY, HEARTBEAT_INTERVAL
+            PROCESS_PENDING_DEPOSITS_LOCK_KEY, DEFAULT_HEARTBEAT
         )
 
-        queues = [SUBMIT_TRX_QUEUE, CHECK_ACC_QUEUE]
-        locks = {
-            "source_accounts": defaultdict(asyncio.Lock),
-            "destination_accounts": defaultdict(asyncio.Lock),
-        }
-
-        qa = PolarisQueueAdapter(queues)
-        qa.populate_queues()
-
-        loop = asyncio.get_event_loop()
-        for signame in ("SIGINT", "SIGTERM"):
-            loop.add_signal_handler(
-                getattr(signal, signame),
-                lambda: asyncio.create_task(self.exit_gracefully()),
-            )
-
-        loop.create_task(
-            ProcessPendingDeposits.heartbeat_task(
-                PROCESS_PENDING_DEPOSITS_LOCK_KEY, HEARTBEAT_INTERVAL
+        asyncio.run(
+            ProcessPendingDeposits.process_pending_deposits(
+                TASK_INTERVAL, DEFAULT_HEARTBEAT
             )
         )
-        loop.create_task(ProcessPendingDeposits.check_rails_task(qa, TASK_INTERVAL))
-        loop.create_task(ProcessPendingDeposits.check_accounts_task(qa, locks))
-        loop.create_task(
-            ProcessPendingDeposits.check_trustlines_task(qa, TASK_INTERVAL)
-        )
-        loop.create_task(
-            ProcessPendingDeposits.check_unblocked_transactions_task(qa, TASK_INTERVAL)
-        )
-        loop.create_task(ProcessPendingDeposits.submit_transaction_task(qa, locks))
-
-        loop.run_forever()

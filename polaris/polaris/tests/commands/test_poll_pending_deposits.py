@@ -1452,7 +1452,7 @@ async def test_populate_queues_order():
         status=Transaction.STATUS.pending_anchor,
         kind=Transaction.KIND.deposit,
         queue=SUBMIT_TRX_QUEUE,
-        queued_for_submit=datetime.datetime.now(datetime.timezone.utc),
+        queued_at=datetime.datetime.now(datetime.timezone.utc),
         submission_status=Transaction.SUBMISSION_STATUS.ready,
     )
     submission_transaction2 = await sync_to_async(Transaction.objects.create)(
@@ -1462,7 +1462,7 @@ async def test_populate_queues_order():
         status=Transaction.STATUS.pending_anchor,
         kind=Transaction.KIND.deposit,
         queue=SUBMIT_TRX_QUEUE,
-        queued_for_submit=datetime.datetime.now(datetime.timezone.utc),
+        queued_at=datetime.datetime.now(datetime.timezone.utc),
         submission_status=Transaction.SUBMISSION_STATUS.ready,
     )
     submission_transaction3 = await sync_to_async(Transaction.objects.create)(
@@ -1471,7 +1471,7 @@ async def test_populate_queues_order():
         to_address=destination,
         status=Transaction.STATUS.pending_anchor,
         kind=Transaction.KIND.deposit,
-        queued_for_submit=datetime.datetime.now(datetime.timezone.utc),
+        queued_at=datetime.datetime.now(datetime.timezone.utc),
         queue=SUBMIT_TRX_QUEUE,
         submission_status=Transaction.SUBMISSION_STATUS.ready,
     )
@@ -1542,7 +1542,7 @@ async def test_check_rails_no_ready_transactions():
     ) as mock_poll_pending_deposits:
         mock_poll_pending_deposits.return_value = []
 
-        qa = PolarisQueueAdapter([CHECK_ACC_QUEUE])
+        qa = PolarisQueueAdapter([SUBMIT_TRX_QUEUE])
 
         assert await ProcessPendingDeposits.check_rails_for_ready_transactions(qa) == []
 
@@ -1676,7 +1676,7 @@ async def test_process_unblocked_transactions():
 
     await sync_to_async(transaction.refresh_from_db)()
     assert transaction.submission_status == Transaction.SUBMISSION_STATUS.ready
-    assert transaction.queued_for_submit is not None
+    assert transaction.queued_at is not None
     assert transaction.queue == SUBMIT_TRX_QUEUE
 
 

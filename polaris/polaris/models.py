@@ -44,13 +44,13 @@ class PolarisHeartbeat(models.Model):
     at any given time. The last_heatbeat is a timestamp that is periodically
     updated by the process. If a process unexpectedly dies, another instance
     can check this value at startup and if its been too long since the last
-    update, the lock is considered 'expired' and the new process can acquire 
+    update, the lock is considered 'expired' and the new process can acquire
     it. This mechanism is an advisory lock and the locking logic is implemented
-    at the application level. 
-    This value can also be used to create a 'health check' endpoint for the 
+    at the application level.
+    This value can also be used to create a 'health check' endpoint for the
     application
     Note: The application is expected to delete this key during a gracefully
-    shutdown - see process_pending_deposits.py for an example 
+    shutdown - see process_pending_deposits.py for an example
     """
 
     key = models.CharField(max_length=80, unique=True)
@@ -419,14 +419,16 @@ class Transaction(models.Model):
 
     * **not_ready**
         used until a transaction is returned from RailsIntegration.poll_pending_deposits()
+        and determined by check_account to be ready for submission to the Stellar Network
     
     * **ready**
-        used when the transaction was returned by RailsIntegration.poll_pending_deposits()
-        and saved to the database
-    
+        used when the transaction has been processed by the check_account task and verified
+        that the transaction is ready to be submitted to the Stellar Network
+
     * **processing**
-        used when the transaction is brought into memory and is being considered for 
-        submission. All other statuses are only used for transactions that are at-rest.
+        used when Polaris is submitting the transaction to Stellar. Note that up to two 
+        transactions could be submitted for this Transaction object, one for creating the 
+        account if it doesn't exist, and the other for sending the deposit payment.
 
     * **pending**
         used when the transaction has been passed to 
@@ -649,8 +651,8 @@ class Transaction(models.Model):
     queue = models.TextField(null=True, blank=True)
     """The queue that this transaction is currently in"""
 
-    queued_for_submit = models.DateTimeField(default=utc_now)
-    """The time when this transaction was queued for submission"""
+    queued_at = models.DateTimeField(default=utc_now)
+    """The time when this transaction was queued"""
 
     started_at = models.DateTimeField(default=utc_now)
     """Start date and time of transaction."""
