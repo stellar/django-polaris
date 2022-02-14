@@ -1,4 +1,5 @@
-from django.urls import path
+import polaris.urls
+from django.urls import path, include
 
 from polaris import settings
 from polaris.sep6 import info, deposit, withdraw, fee, transaction

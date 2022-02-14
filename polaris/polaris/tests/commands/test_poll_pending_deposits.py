@@ -668,7 +668,7 @@ async def test_get_or_create_destination_account_exception_submission_pending():
                 assert (
                     transaction.submission_status == Transaction.SUBMISSION_STATUS.ready
                 )
-                assert transaction.status_message == ""
+                assert transaction.status_message == None
 
 
 @pytest.mark.django_db(transaction=True)
@@ -1527,9 +1527,9 @@ async def test_check_rails_for_ready_transactions():
 
         qa = PolarisQueueAdapter([CHECK_ACC_QUEUE])
 
-        assert await ProcessPendingDeposits.check_rails_for_ready_transactions(qa) == [
-            transaction
-        ]
+        await ProcessPendingDeposits.check_rails_for_ready_transactions(qa)
+        queued_task = await qa.get_transaction("", CHECK_ACC_QUEUE)
+        assert queued_task == transaction
         await sync_to_async(transaction.refresh_from_db)()
         assert transaction.queue == CHECK_ACC_QUEUE
         transaction.status == Transaction.STATUS.pending_anchor
@@ -1544,7 +1544,9 @@ async def test_check_rails_no_ready_transactions():
 
         qa = PolarisQueueAdapter([SUBMIT_TRX_QUEUE])
 
-        assert await ProcessPendingDeposits.check_rails_for_ready_transactions(qa) == []
+        await ProcessPendingDeposits.check_rails_for_ready_transactions(qa)
+
+        assert qa.queues[SUBMIT_TRX_QUEUE].empty() == True
 
 
 @pytest.mark.django_db(transaction=True)
