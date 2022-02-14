@@ -39,9 +39,6 @@ A transaction's destination account does not have a trustline to the requested a
 
     Polaris checks if the trustline has been established. If it has, and the transaction's source account doesn't require multiple signatures, Polaris will submit the transaction to the Stellar Network.
 
-A transaction's source account requires multiple signatures before submission to the network.
-
-    In this case, ``Transaction.pending_signatures`` is set to ``True`` and the anchor is expected to collect signatures, save the transaction envelope to ``Transaction.envelope_xdr``, and set ``Transaction.pending_signatures`` back to ``False``. Polaris will then query for these transactions and submit them to the Stellar network.
 
 
 Testnet Resets
