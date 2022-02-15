@@ -25,7 +25,6 @@ from polaris.utils import (
     maybe_make_callback,
     maybe_make_callback_async,
     get_account_obj_async,
-    create_deposit_envelope,
 )
 from polaris.integrations import (
     registered_deposit_integration as rdi,
@@ -795,42 +794,6 @@ class ProcessPendingDeposits:
             transaction.refresh_from_db()
             transaction.asset = asset
         return Keypair.from_secret(transaction.channel_seed)
-
-    @classmethod
-    async def save_as_pending_signatures(cls, transaction, server):
-        try:
-            channel_kp = await sync_to_async(cls.get_channel_keypair)(transaction)
-            channel_account, _ = await get_account_obj_async(channel_kp, server)
-        except (RuntimeError, ConnectionError) as e:
-            transaction.status = Transaction.STATUS.error
-            transaction.status_message = str(e)
-            logger.error(transaction.status_message)
-        else:
-            # Create the initial envelope XDR with the channel signature
-            use_claimable_balance = False
-            if (
-                transaction.claimable_balance_supported
-                and rci.claimable_balances_supported
-            ):
-                _, json_resp = await get_account_obj_async(
-                    Keypair.from_public_key(transaction.to_address), server
-                )
-                use_claimable_balance = await sync_to_async(is_pending_trust)(
-                    transaction, json_resp
-                )
-            envelope = create_deposit_envelope(
-                transaction=transaction,
-                source_account=channel_account,
-                use_claimable_balance=use_claimable_balance,
-                base_fee=settings.MAX_TRANSACTION_FEE_STROOPS
-                or await server.fetch_base_fee(),
-            )
-            envelope.sign(channel_kp)
-            transaction.envelope_xdr = envelope.to_xdr()
-            transaction.pending_signatures = True
-            transaction.status = Transaction.STATUS.pending_anchor
-        await sync_to_async(transaction.save)()
-        await maybe_make_callback_async(transaction)
 
     @classmethod
     def handle_error(cls, transaction, message):
