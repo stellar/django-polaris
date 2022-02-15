@@ -11,20 +11,17 @@ from stellar_sdk.client.aiohttp_client import AiohttpClient
 from stellar_sdk import (
     Keypair,
     Account,
-    Transaction as SdkTransaction,
     TransactionEnvelope,
     Asset as SdkAsset,
     Claimant,
 )
 from stellar_sdk.operation import (
-    BumpSequence,
     Payment,
     CreateClaimableBalance,
 )
 from stellar_sdk.exceptions import (
     BadRequestError,
     ConnectionError,
-    NotFoundError,
     BaseHorizonError,
 )
 from stellar_sdk.memo import TextMemo
@@ -33,7 +30,6 @@ from asgiref.sync import sync_to_async
 from polaris import settings
 from polaris.models import Asset, Transaction
 from polaris.utils import create_deposit_envelope
-from polaris.integrations import SelfCustodyIntegration
 from polaris.management.commands.process_pending_deposits import (
     ProcessPendingDeposits,
     PolarisQueueAdapter,
@@ -1532,7 +1528,7 @@ async def test_check_rails_for_ready_transactions():
         assert queued_task == transaction
         await sync_to_async(transaction.refresh_from_db)()
         assert transaction.queue == CHECK_ACC_QUEUE
-        transaction.status == Transaction.STATUS.pending_anchor
+        assert transaction.status == Transaction.STATUS.pending_anchor
 
 
 @pytest.mark.django_db(transaction=True)
@@ -1900,17 +1896,20 @@ def test_acquire_lock():
 
 
 @pytest.mark.django_db(transaction=True)
+@patch(f"{test_module}.RECOVER_LOCK_LOWER_BOUND", 0)
 def test_acquire_lock_wait_for_expiration():
     key = "testkey"
-    interval = 0.2
+    interval = 0.1
     start = datetime.datetime.now(datetime.timezone.utc)
     heartbeat, created = PolarisHeartbeat.objects.get_or_create(
         key=key, last_heartbeat=start
     )
-    assert created == True
+    assert created is True
     ProcessPendingDeposits.acquire_lock(key, interval)
-    acquire_lock_wait_time_sec = (
-        datetime.datetime.now(datetime.timezone.utc) - start
-    ).seconds
+    acquire_lock_wait_time_sec = datetime.datetime.now(datetime.timezone.utc) - start
     # the lock expires after 5x the interval time has elapsed without updating it
-    assert acquire_lock_wait_time_sec >= 1
+    assert (
+        datetime.timedelta(seconds=interval * 10)
+        >= acquire_lock_wait_time_sec
+        >= datetime.timedelta(seconds=interval * 5)
+    )

@@ -3,7 +3,7 @@ import time
 import datetime
 import asyncio
 from decimal import Decimal
-from typing import Tuple, List, Optional, Dict
+from typing import Tuple, List, Optional, Dict, Union
 from collections import defaultdict
 
 import django.db.transaction
@@ -53,12 +53,13 @@ CHECK_ACC_QUEUE = "CHECK_ACC_QUEUE"
 DEFAULT_HEARTBEAT = 5
 DEFAULT_INTERVAL = 10
 
+RECOVER_LOCK_LOWER_BOUND = 30
 PROCESS_PENDING_DEPOSITS_LOCK_KEY = "PROCESS_PENDING_DEPOSITS_LOCK"
 
 
 class PolarisQueueAdapter:
     def __init__(self, queues):
-        self.queues: dict[str, asyncio.Queue] = {}
+        self.queues: Dict[str, asyncio.Queue] = {}
         for queue in queues:
             self.queues[queue] = asyncio.Queue()
 
@@ -256,7 +257,7 @@ class ProcessPendingDeposits:
 
     @classmethod
     async def check_trustlines(cls, qa: PolarisQueueAdapter, server: ServerAsync):
-        pending_trust_transactions: list[Transaction] = await sync_to_async(
+        pending_trust_transactions: List[Transaction] = await sync_to_async(
             ProcessPendingDeposits.get_pending_trust_transactions
         )()
         for transaction in pending_trust_transactions:
@@ -868,7 +869,7 @@ class ProcessPendingDeposits:
             await asyncio.sleep(heartbeat_interval)
 
     @classmethod
-    def acquire_lock(cls, key: str, heartbeat_interval: int):
+    def acquire_lock(cls, key: str, heartbeat_interval: Union[int, float]):
         """
         This function creates a key in the database table 'polaris_polarisheartbeat'
         to ensure only one instance of the calling process runs at a given time. The key
@@ -900,9 +901,12 @@ class ProcessPendingDeposits:
                     datetime.datetime.now(datetime.timezone.utc)
                     - heartbeat.last_heartbeat
                 )
-                logger.debug(f"lock delta: {delta.seconds} seconds")
+                logger.debug(f"lock delta: {delta.microseconds} microseconds")
                 # the delta should be 5x the typical interval with a lower bound of 30 seconds
-                if delta.seconds > heartbeat_interval * 5 and delta.seconds > 30:
+                if delta > max(
+                    datetime.timedelta(seconds=heartbeat_interval * 5),
+                    datetime.timedelta(seconds=RECOVER_LOCK_LOWER_BOUND),
+                ):
                     heartbeat.last_heartbeat = datetime.datetime.now(
                         datetime.timezone.utc
                     )
@@ -954,8 +958,8 @@ class ProcessPendingDeposits:
             pass
 
     @classmethod
-    async def exit_gracefully(cls, signal, loop):  # pragma: no cover
-        logger.debug(f"caught {signal}, exiting process_pending_deposits...")
+    async def exit_gracefully(cls, sig, loop):  # pragma: no cover
+        logger.info(f"caught {sig}, exiting process_pending_deposits...")
         logger.debug(f"deleting heartbeat key: {PROCESS_PENDING_DEPOSITS_LOCK_KEY}...")
         await sync_to_async(
             PolarisHeartbeat.objects.filter(
@@ -1030,14 +1034,12 @@ class Command(BaseCommand):
         See diagram at polaris/docs/deployment
         """
 
-        TASK_INTERVAL = options.get("interval") or DEFAULT_INTERVAL
+        interval = options.get("interval") or DEFAULT_INTERVAL
 
         ProcessPendingDeposits.acquire_lock(
             PROCESS_PENDING_DEPOSITS_LOCK_KEY, DEFAULT_HEARTBEAT
         )
 
         asyncio.run(
-            ProcessPendingDeposits.process_pending_deposits(
-                TASK_INTERVAL, DEFAULT_HEARTBEAT
-            )
+            ProcessPendingDeposits.process_pending_deposits(interval, DEFAULT_HEARTBEAT)
         )

@@ -1,7 +1,6 @@
 """This module defines the models used by Polaris."""
 import datetime
 import decimal
-import enum
 import secrets
 import uuid
 from base64 import urlsafe_b64encode as b64e, urlsafe_b64decode as b64d
@@ -55,6 +54,8 @@ class PolarisHeartbeat(models.Model):
 
     key = models.CharField(max_length=80, unique=True)
     last_heartbeat = models.DateTimeField(null=True, blank=True)
+
+    objects = models.Manager()
 
 
 class PolarisChoices(Choices):
