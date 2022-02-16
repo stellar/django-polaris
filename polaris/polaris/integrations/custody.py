@@ -12,16 +12,17 @@ from rest_framework.request import Request
 from polaris.exceptions import (
     TransactionSubmissionPending,
     TransactionSubmissionBlocked,
+    TransactionSubmissionFailed,
 )
 from polaris.models import Transaction, Asset
 from polaris.utils import (
     getLogger,
-    load_account,
     memo_hex_to_base64,
     create_deposit_envelope,
     get_account_obj,
 )
 from polaris import settings
+from polaris.integrations import registered_deposit_integration as rdi
 
 
 logger = getLogger(__name__)
@@ -239,14 +240,15 @@ class SelfCustodyIntegration(CustodyIntegration):
         self, transaction, type: TransactionType, has_trustline: Optional[bool] = None
     ):
         try:
-            requires_tp_sigs = self._requires_third_party_signatures(
-                transaction=transaction
-            )
+            requires_tp_sigs = self._requires_third_party_signatures(transaction)
         except ConnectionError:
             raise TransactionSubmissionPending
-        if requires_tp_sigs:
-            raise TransactionSubmissionBlocked
         with Server(horizon_url=settings.HORIZON_URI) as server:
+            if requires_tp_sigs:
+                self._save_as_pending_signatures(
+                    transaction, type, server, has_trustline
+                )
+                raise TransactionSubmissionBlocked
             transaction_hash = None
             while not transaction_hash:
                 if transaction.envelope_xdr:
@@ -258,9 +260,7 @@ class SelfCustodyIntegration(CustodyIntegration):
                         )
                     else:
                         envelope_obj = self._generate_create_account_transaction_envelope(
-                            transaction.asset.distribution_account,
-                            transaction.to_address,
-                            server,
+                            transaction, server,
                         )
                     envelope = self._sign_and_save_transaction_envelope(
                         transaction, envelope_obj, [transaction.asset.distribution_seed]
@@ -279,13 +279,18 @@ class SelfCustodyIntegration(CustodyIntegration):
     @staticmethod
     def _generate_deposit_transaction_envelope(
         transaction: Transaction, has_trustline: bool, server: Server
-    ):
-        distribution_acc, _ = get_account_obj(
-            Keypair.from_public_key(transaction.asset.distribution_account)
-        )
+    ) -> TransactionEnvelope:
+        if transaction.channel_account:
+            source_account, _ = get_account_obj(
+                Keypair.from_public_key(transaction.channel_account)
+            )
+        else:
+            source_account, _ = get_account_obj(
+                Keypair.from_public_key(transaction.asset.distribution_account)
+            )
         return create_deposit_envelope(
             transaction=transaction,
-            source_account=distribution_acc,
+            source_account=source_account,
             use_claimable_balance=not has_trustline,
             base_fee=(settings.MAX_TRANSACTION_FEE_STROOPS or server.fetch_base_fee()),
         )
@@ -295,7 +300,7 @@ class SelfCustodyIntegration(CustodyIntegration):
         transaction: Transaction,
         envelope: TransactionEnvelope,
         signers: List[Union[Keypair, str]],
-    ):
+    ) -> str:
         for signer in signers:
             envelope.sign(signer)
         transaction.envelope_xdr = envelope.to_xdr()
@@ -304,9 +309,16 @@ class SelfCustodyIntegration(CustodyIntegration):
 
     @staticmethod
     def _generate_create_account_transaction_envelope(
-        from_account: str, to_account: str, server: Server
-    ):
-        source_account = load_account(server.accounts().account_id(from_account).call())
+        transaction: Transaction, server: Server
+    ) -> TransactionEnvelope:
+        if transaction.channel_account:
+            source_account, _ = get_account_obj(
+                Keypair.from_public_key(transaction.channel_account)
+            )
+        else:
+            source_account, _ = get_account_obj(
+                Keypair.from_public_key(transaction.asset.distribution_account)
+            )
         builder = TransactionBuilder(
             source_account=source_account,
             network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
@@ -314,7 +326,9 @@ class SelfCustodyIntegration(CustodyIntegration):
             base_fee=(settings.MAX_TRANSACTION_FEE_STROOPS or server.fetch_base_fee()),
         )
         return builder.append_create_account_op(
-            destination=to_account, starting_balance=settings.ACCOUNT_STARTING_BALANCE,
+            source=transaction.asset.distribution_account,
+            destination=transaction.to_address,
+            starting_balance=settings.ACCOUNT_STARTING_BALANCE,
         ).build()
 
     @staticmethod
@@ -330,6 +344,57 @@ class SelfCustodyIntegration(CustodyIntegration):
             not master_signer
             or master_signer["weight"] == 0
             or master_signer["weight"] < thresholds["med_threshold"]
+        )
+
+    def _save_as_pending_signatures(
+        self,
+        transaction: Transaction,
+        type: TransactionType,
+        server: Server,
+        has_trustline: Optional[bool] = None,
+    ):
+        """
+        Saves the transaction in a state such that the anchor can query the transaction
+        from the database and sign the transaction envelope with an abitrary number of
+        additional signers required to submit the transaction.
+
+        Currently, Polaris assumes the anchor has a pool of channel accounts that can be
+        used as the source account on this transaction so that it can be submitted at a
+        later point in time without failing with a bad sequence number error.
+
+        NOTE: Polaris will drop support for multisig transactions in v3.0.
+        """
+        if not transaction.channel_account:
+            # we haven't called this yet
+            rdi.create_channel_account(transaction)
+        if not transaction.channel_account:
+            # maybe the anchor used a Transaction.objects.update() query and
+            # channel_account isn't saved to the object.
+            # refresh but don't remove foriegn key objects previously queried
+            asset = transaction.asset
+            quote = transaction.quote
+            transaction.refresh_from_db()
+            transaction.asset = asset
+            transaction.quote = quote
+        if not transaction.channel_account:
+            # the anchor didn't properly implement create_channel_account
+            raise TransactionSubmissionFailed(
+                "DepositIntegration.create_channel_account() did not save a "
+                "secret key to Transaction.channel_seed"
+            )
+        if type == self.TransactionType.SEND_DEPOSIT_AMOUNT:
+            envelope = self._generate_deposit_transaction_envelope(
+                transaction=transaction, has_trustline=has_trustline, server=server
+            )
+        else:
+            envelope = self._generate_create_account_transaction_envelope(
+                transaction=transaction, server=server
+            )
+        transaction.pending_signatures = True
+        self._sign_and_save_transaction_envelope(
+            transaction=transaction,
+            envelope=envelope,
+            signers=[transaction.asset.distribution_seed],
         )
 
 
