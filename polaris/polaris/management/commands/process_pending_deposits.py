@@ -876,10 +876,13 @@ class ProcessPendingDeposits:
         cls, task_interval: int, heartbeat_interval: int
     ):
         loop = asyncio.get_running_loop()
+        current_task = asyncio.current_task()
         for signal_name in ("SIGTERM", "SIGINT"):
             loop.add_signal_handler(
                 getattr(signal, signal_name),
-                lambda s=signal_name: asyncio.create_task(cls.exit_gracefully(s)),
+                lambda s=signal_name: asyncio.create_task(
+                    cls.exit_gracefully(s, current_task)
+                ),
             )
 
         queues = [SUBMIT_TRX_QUEUE, CHECK_ACC_QUEUE]
@@ -908,20 +911,24 @@ class ProcessPendingDeposits:
             logger.debug("caught root task CancelledError...")
 
     @classmethod
-    async def exit_gracefully(cls, signal_name):  # pragma: no cover
+    async def exit_gracefully(cls, signal_name, root_task):  # pragma: no cover
         logger.info(f"caught signal {signal_name}, cleaning up before exiting...")
-        current_task = asyncio.current_task()
-        tasks = [task for task in asyncio.all_tasks() if task is not current_task]
-        for t in tasks:
-            t.cancel()
-        await asyncio.gather(*tasks, return_exceptions=True)
-        logger.debug("all tasks have been canceled...")
         await sync_to_async(
             PolarisHeartbeat.objects.filter(
                 key=PROCESS_PENDING_DEPOSITS_LOCK_KEY
             ).delete
         )()
         logger.debug(f"deleted heartbeat key: {PROCESS_PENDING_DEPOSITS_LOCK_KEY}...")
+        current_task = asyncio.current_task()
+        tasks = [
+            task
+            for task in asyncio.all_tasks()
+            if task not in [current_task, root_task]
+        ]
+        for t in tasks:
+            t.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+        logger.debug("all tasks have been canceled...")
 
 
 class Command(BaseCommand):
