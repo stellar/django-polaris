@@ -95,7 +95,7 @@ WSGI_APPLICATION = "server.wsgi.application"
 DATABASES = {
     "default": env.db(
         "DATABASE_URL",
-        default="sqlite:///" + os.path.join(BASE_DIR, "data/db.sqlite3"),
+        default="sqlite:////" + os.path.join(BASE_DIR, "data/db.sqlite3"),
     )
 }
 DEFAULT_AUTO_FIELD = "django.db.models.AutoField"

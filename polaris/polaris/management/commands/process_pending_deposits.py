@@ -782,19 +782,6 @@ class ProcessPendingDeposits:
 
         return False
 
-    @staticmethod
-    def get_channel_keypair(transaction) -> Keypair:
-        if not transaction.channel_account:
-            logger.info(
-                f"calling create_channel_account() for transaction {transaction.id}"
-            )
-            rdi.create_channel_account(transaction=transaction)
-        if not transaction.channel_seed:
-            asset = transaction.asset
-            transaction.refresh_from_db()
-            transaction.asset = asset
-        return Keypair.from_secret(transaction.channel_seed)
-
     @classmethod
     def handle_error(cls, transaction, message):
         transaction.status_message = message
@@ -864,7 +851,7 @@ class ProcessPendingDeposits:
                     datetime.datetime.now(datetime.timezone.utc)
                     - heartbeat.last_heartbeat
                 )
-                logger.debug(f"lock delta: {delta.microseconds} microseconds")
+                logger.debug(f"last heartbeat was {delta.total_seconds()} seconds ago")
                 # the delta should be 5x the typical interval with a lower bound of 30 seconds
                 if delta > max(
                     datetime.timedelta(seconds=heartbeat_interval * 5),
@@ -889,10 +876,10 @@ class ProcessPendingDeposits:
         cls, task_interval: int, heartbeat_interval: int
     ):
         loop = asyncio.get_running_loop()
-        for signame in ("SIGINT", "SIGTERM"):
+        for signal_name in ("SIGTERM", "SIGINT"):
             loop.add_signal_handler(
-                getattr(signal, signame),
-                lambda: asyncio.create_task(cls.exit_gracefully(signame, loop)),
+                getattr(signal, signal_name),
+                lambda s=signal_name: asyncio.create_task(cls.exit_gracefully(s)),
             )
 
         queues = [SUBMIT_TRX_QUEUE, CHECK_ACC_QUEUE]
@@ -918,29 +905,23 @@ class ProcessPendingDeposits:
                 ProcessPendingDeposits.submit_transaction_task(qa, locks),
             )
         except asyncio.CancelledError:
-            pass
+            logger.debug("caught root task CancelledError...")
 
     @classmethod
-    async def exit_gracefully(cls, sig, loop):  # pragma: no cover
-        logger.info(f"caught {sig}, exiting process_pending_deposits...")
-        logger.debug(f"deleting heartbeat key: {PROCESS_PENDING_DEPOSITS_LOCK_KEY}...")
+    async def exit_gracefully(cls, signal_name):  # pragma: no cover
+        logger.info(f"caught signal {signal_name}, cleaning up before exiting...")
+        current_task = asyncio.current_task()
+        tasks = [task for task in asyncio.all_tasks() if task is not current_task]
+        for t in tasks:
+            t.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+        logger.debug("all tasks have been canceled...")
         await sync_to_async(
             PolarisHeartbeat.objects.filter(
                 key=PROCESS_PENDING_DEPOSITS_LOCK_KEY
             ).delete
         )()
-        tasks = [
-            task
-            for task in asyncio.Task.all_tasks()
-            if task is not asyncio.tasks.Task.current_task()
-        ]
-        list(map(lambda task: task.cancel(), tasks))
-        try:
-            await asyncio.gather(*tasks)
-        except asyncio.CancelledError:
-            pass
-        loop.stop()
-        logger.debug("process_pending_deposits - exited gracefully")
+        logger.debug(f"deleted heartbeat key: {PROCESS_PENDING_DEPOSITS_LOCK_KEY}...")
 
 
 class Command(BaseCommand):
@@ -996,13 +977,11 @@ class Command(BaseCommand):
         The entrypoint for the functionality implemented in this file.
         See diagram at polaris/docs/deployment
         """
-
         interval = options.get("interval") or DEFAULT_INTERVAL
-
         ProcessPendingDeposits.acquire_lock(
             PROCESS_PENDING_DEPOSITS_LOCK_KEY, DEFAULT_HEARTBEAT
         )
-
         asyncio.run(
             ProcessPendingDeposits.process_pending_deposits(interval, DEFAULT_HEARTBEAT)
         )
+        logger.info("exiting after cleanup")
