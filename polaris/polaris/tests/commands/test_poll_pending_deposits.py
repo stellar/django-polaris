@@ -22,7 +22,6 @@ from stellar_sdk.operation import (
 from stellar_sdk.exceptions import (
     BadRequestError,
     ConnectionError,
-    BaseHorizonError,
 )
 from stellar_sdk.memo import TextMemo
 from asgiref.sync import sync_to_async
@@ -48,7 +47,7 @@ test_module = "polaris.management.commands.process_pending_deposits"
 pytestmark = [pytest.mark.django_db, pytest.mark.asyncio]
 
 
-SUBMIT_TRX_QUEUE = "SUBMIT_TRX_QUEUE"
+SUBMIT_TRANSACTION_QUEUE = "SUBMIT_TRANSACTION_QUEUE"
 CHECK_ACC_QUEUE = "CHECK_ACC_QUEUE"
 
 
@@ -156,628 +155,6 @@ def test_get_ready_deposits_custom_fee_func_used(mock_rri):
 
 
 @pytest.mark.django_db(transaction=True)
-async def test_get_or_create_destination_account_exists():
-    usd = await sync_to_async(Asset.objects.create)(
-        code="USD", issuer=Keypair.random().public_key
-    )
-    destination = Keypair.random().public_key
-    transaction = await sync_to_async(Transaction.objects.create)(
-        asset=usd,
-        status=Transaction.STATUS.pending_user_transfer_start,
-        kind=Transaction.KIND.deposit,
-        stellar_account=destination,
-        to_address=destination,
-    )
-    with patch(
-        f"{test_module}.rci.create_destination_account"
-    ) as mock_create_destination_account:
-        with patch(
-            f"{test_module}.get_account_obj_async", new_callable=AsyncMock
-        ) as mock_get_account_obj:
-            account_obj = Account(transaction.stellar_account, 1)
-            mock_get_account_obj.return_value = (
-                account_obj,
-                {"balances": [{"asset_code": "USD", "asset_issuer": usd.issuer}]},
-            )
-            async with ServerAsync(client=AiohttpClient()) as s:
-                locks = {
-                    "destination_accounts": defaultdict(asyncio.Lock),
-                    "source_accounts": defaultdict(asyncio.Lock),
-                }
-                assert await ProcessPendingDeposits.get_or_create_destination_account(
-                    transaction, s, locks
-                ) == (account_obj, False,)
-                assert list(locks["destination_accounts"].keys()) == [
-                    transaction.to_address
-                ]
-                assert list(locks["source_accounts"].keys()) == []
-                mock_create_destination_account.assert_not_called()
-
-
-@pytest.mark.django_db(transaction=True)
-async def test_get_or_create_destination_account_exists_different_destination():
-    usd = await sync_to_async(Asset.objects.create)(
-        code="USD", issuer=Keypair.random().public_key
-    )
-    transaction = await sync_to_async(Transaction.objects.create)(
-        asset=usd,
-        status=Transaction.STATUS.pending_user_transfer_start,
-        kind=Transaction.KIND.deposit,
-        stellar_account=Keypair.random().public_key,
-        to_address=Keypair.random().public_key,
-    )
-    with patch(
-        f"{test_module}.rci.create_destination_account"
-    ) as mock_create_destination_account:
-        with patch(
-            f"{test_module}.get_account_obj_async", new_callable=AsyncMock
-        ) as mock_get_account_obj:
-            account_obj = Account(transaction.stellar_account, 1)
-            mock_get_account_obj.return_value = (
-                account_obj,
-                {"balances": [{"asset_code": "USD", "asset_issuer": usd.issuer}]},
-            )
-            async with ServerAsync(client=AiohttpClient()) as s:
-                locks = {
-                    "destination_accounts": defaultdict(asyncio.Lock),
-                    "source_accounts": defaultdict(asyncio.Lock),
-                }
-                assert await ProcessPendingDeposits.get_or_create_destination_account(
-                    transaction, s, locks
-                ) == (account_obj, False,)
-                assert list(locks["destination_accounts"].keys()) == [
-                    transaction.to_address
-                ]
-                assert list(locks["source_accounts"].keys()) == []
-                mock_create_destination_account.assert_not_called()
-
-
-@pytest.mark.django_db(transaction=True)
-async def test_get_or_create_destination_account_exists_pending_trust():
-    usd = await sync_to_async(Asset.objects.create)(
-        code="USD", issuer=Keypair.random().public_key
-    )
-    destination = Keypair.random().public_key
-    transaction = await sync_to_async(Transaction.objects.create)(
-        asset=usd,
-        status=Transaction.STATUS.pending_user_transfer_start,
-        kind=Transaction.KIND.deposit,
-        stellar_account=destination,
-        to_address=destination,
-    )
-    with patch(
-        f"{test_module}.rci.create_destination_account"
-    ) as mock_create_destination_account:
-        with patch(
-            f"{test_module}.get_account_obj_async", new_callable=AsyncMock
-        ) as mock_get_account_obj:
-            account_obj = Account(transaction.stellar_account, 1)
-            mock_get_account_obj.return_value = (account_obj, {"balances": []})
-            async with ServerAsync(client=AiohttpClient()) as s:
-                locks = {
-                    "destination_accounts": defaultdict(asyncio.Lock),
-                    "source_accounts": defaultdict(asyncio.Lock),
-                }
-                assert await ProcessPendingDeposits.get_or_create_destination_account(
-                    transaction, s, locks
-                ) == (account_obj, True,)
-                assert list(locks["destination_accounts"].keys()) == [
-                    transaction.to_address
-                ]
-                assert list(locks["source_accounts"].keys()) == []
-                mock_create_destination_account.assert_not_called()
-
-
-@pytest.mark.django_db(transaction=True)
-async def test_get_or_create_destination_account_exists_pending_trust_different_account():
-    usd = await sync_to_async(Asset.objects.create)(
-        code="USD", issuer=Keypair.random().public_key
-    )
-    transaction = await sync_to_async(Transaction.objects.create)(
-        asset=usd,
-        status=Transaction.STATUS.pending_user_transfer_start,
-        kind=Transaction.KIND.deposit,
-        stellar_account=Keypair.random().public_key,
-        to_address=Keypair.random().public_key,
-    )
-    with patch(
-        f"{test_module}.rci.create_destination_account"
-    ) as mock_create_destination_account:
-        with patch(
-            f"{test_module}.get_account_obj_async", new_callable=AsyncMock
-        ) as mock_get_account_obj:
-            account_obj = Account(transaction.to_address, 1)
-            mock_get_account_obj.return_value = (account_obj, {"balances": []})
-            async with ServerAsync(client=AiohttpClient()) as s:
-                locks = {
-                    "destination_accounts": defaultdict(asyncio.Lock),
-                    "source_accounts": defaultdict(asyncio.Lock),
-                }
-                assert await ProcessPendingDeposits.get_or_create_destination_account(
-                    transaction, s, locks
-                ) == (account_obj, True,)
-                assert list(locks["destination_accounts"].keys()) == [
-                    transaction.to_address
-                ]
-                assert list(locks["source_accounts"].keys()) == []
-                mock_create_destination_account.assert_not_called()
-
-
-@pytest.mark.django_db(transaction=True)
-async def test_get_or_create_destination_account_fetch_raises_horizon_error():
-    usd = await sync_to_async(Asset.objects.create)(
-        code="USD", issuer=Keypair.random().public_key
-    )
-    transaction = await sync_to_async(Transaction.objects.create)(
-        asset=usd,
-        status=Transaction.STATUS.pending_user_transfer_start,
-        kind=Transaction.KIND.deposit,
-        stellar_account=Keypair.random().public_key,
-        to_address=Keypair.random().public_key,
-    )
-    with patch(
-        f"{test_module}.rci.create_destination_account"
-    ) as mock_create_destination_account:
-        with patch(
-            f"{test_module}.get_account_obj_async", new_callable=AsyncMock
-        ) as mock_get_account_obj:
-            mock_get_account_obj.side_effect = BaseHorizonError(Mock())
-            async with ServerAsync(client=AiohttpClient()) as s:
-                locks = {
-                    "destination_accounts": defaultdict(asyncio.Lock),
-                    "source_accounts": defaultdict(asyncio.Lock),
-                }
-                with pytest.raises(
-                    RuntimeError, match="error when loading stellar account"
-                ):
-                    assert await ProcessPendingDeposits.get_or_create_destination_account(
-                        transaction, s, locks
-                    )
-                assert list(locks["destination_accounts"].keys()) == [
-                    transaction.to_address
-                ]
-                assert list(locks["source_accounts"].keys()) == []
-                mock_create_destination_account.assert_not_called()
-
-
-@pytest.mark.django_db(transaction=True)
-async def test_get_or_create_destination_account_fetch_raises_connection_error():
-    usd = await sync_to_async(Asset.objects.create)(
-        code="USD", issuer=Keypair.random().public_key
-    )
-    transaction = await sync_to_async(Transaction.objects.create)(
-        asset=usd,
-        status=Transaction.STATUS.pending_user_transfer_start,
-        kind=Transaction.KIND.deposit,
-        stellar_account=Keypair.random().public_key,
-        to_address=Keypair.random().public_key,
-    )
-    with patch(
-        f"{test_module}.rci.create_destination_account"
-    ) as mock_create_destination_account:
-        with patch(
-            f"{test_module}.get_account_obj_async", new_callable=AsyncMock
-        ) as mock_get_account_obj:
-            mock_get_account_obj.side_effect = ConnectionError()
-            async with ServerAsync(client=AiohttpClient()) as s:
-                locks = {
-                    "destination_accounts": defaultdict(asyncio.Lock),
-                    "source_accounts": defaultdict(asyncio.Lock),
-                }
-                with pytest.raises(RuntimeError, match="Failed to connect to Horizon"):
-                    assert await ProcessPendingDeposits.get_or_create_destination_account(
-                        transaction, s, locks
-                    )
-                assert list(locks["destination_accounts"].keys()) == [
-                    transaction.to_address
-                ]
-                assert list(locks["source_accounts"].keys()) == []
-                mock_create_destination_account.assert_not_called()
-
-
-@pytest.mark.django_db(transaction=True)
-async def test_get_or_create_destination_account_doesnt_exist_creation_not_supported():
-    usd = await sync_to_async(Asset.objects.create)(
-        code="USD",
-        issuer=Keypair.random().public_key,
-        distribution_seed=Keypair.random().secret,
-    )
-    transaction = await sync_to_async(Transaction.objects.create)(
-        asset=usd,
-        status=Transaction.STATUS.pending_user_transfer_start,
-        kind=Transaction.KIND.deposit,
-        stellar_account=Keypair.random().public_key,
-        to_address=Keypair.random().public_key,
-    )
-
-    with patch(f"{test_module}.rci") as mock_rci:
-        mock_rci.account_creation_supported = False
-        to_account = Account(transaction.to_address, 1)
-
-        async def mock_get_account_obj_async(kp, server):
-            if mock_rci.create_destination_account.called:
-                return to_account, {"balances": []}
-            else:
-                raise RuntimeError()
-
-        with patch(f"{test_module}.get_account_obj_async", mock_get_account_obj_async):
-            async with ServerAsync(client=AiohttpClient()) as s:
-                locks = {
-                    "destination_accounts": defaultdict(asyncio.Lock),
-                    "source_accounts": defaultdict(asyncio.Lock),
-                }
-                with pytest.raises(
-                    RuntimeError, match="account creation is not supported"
-                ):
-                    assert await ProcessPendingDeposits.get_or_create_destination_account(
-                        transaction, s, locks
-                    )
-                assert list(locks["destination_accounts"].keys()) == [
-                    transaction.to_address
-                ]
-                assert list(locks["source_accounts"].keys()) == []
-                mock_rci.get_distribution_account.assert_not_called()
-                mock_rci.create_destination_account.assert_not_called()
-
-
-@pytest.mark.django_db(transaction=True)
-async def test_get_or_create_destination_account_doesnt_exist_has_distribution_account():
-    usd = await sync_to_async(Asset.objects.create)(
-        code="USD",
-        issuer=Keypair.random().public_key,
-        distribution_seed=Keypair.random().secret,
-    )
-    transaction = await sync_to_async(Transaction.objects.create)(
-        asset=usd,
-        status=Transaction.STATUS.pending_user_transfer_start,
-        kind=Transaction.KIND.deposit,
-        stellar_account=Keypair.random().public_key,
-        to_address=Keypair.random().public_key,
-    )
-
-    with patch(f"{test_module}.rci") as mock_rci:
-        mock_rci.account_creation_supported = True
-        mock_rci.get_distribution_account.return_value = usd.distribution_account
-        to_account = Account(transaction.to_address, 1)
-
-        async def mock_get_account_obj_async(kp, server):
-            if mock_rci.create_destination_account.called:
-                return to_account, {"balances": []}
-            else:
-                raise RuntimeError()
-
-        with patch(f"{test_module}.get_account_obj_async", mock_get_account_obj_async):
-            async with ServerAsync(client=AiohttpClient()) as s:
-                locks = {
-                    "destination_accounts": defaultdict(asyncio.Lock),
-                    "source_accounts": defaultdict(asyncio.Lock),
-                }
-                assert await ProcessPendingDeposits.get_or_create_destination_account(
-                    transaction, s, locks
-                ) == (to_account, True)
-                assert list(locks["destination_accounts"].keys()) == [
-                    transaction.to_address
-                ]
-                assert list(locks["source_accounts"].keys()) == [
-                    usd.distribution_account
-                ]
-                mock_rci.get_distribution_account.assert_called_once_with(asset=usd)
-                mock_rci.create_destination_account.assert_called_once_with(
-                    transaction=transaction
-                )
-
-
-@pytest.mark.django_db(transaction=True)
-async def test_get_or_create_destination_account_doesnt_exist_no_distribution_account():
-    usd = await sync_to_async(Asset.objects.create)(
-        code="USD",
-        issuer=Keypair.random().public_key,
-        distribution_seed=Keypair.random().secret,
-    )
-    transaction = await sync_to_async(Transaction.objects.create)(
-        asset=usd,
-        status=Transaction.STATUS.pending_user_transfer_start,
-        kind=Transaction.KIND.deposit,
-        stellar_account=Keypair.random().public_key,
-        to_address=Keypair.random().public_key,
-    )
-
-    with patch(f"{test_module}.rci") as mock_rci:
-        mock_rci.account_creation_supported = True
-        mock_rci.get_distribution_account.side_effect = NotImplementedError()
-        to_account = Account(transaction.to_address, 1)
-
-        async def mock_get_account_obj_async(kp, server):
-            if mock_rci.create_destination_account.called:
-                return to_account, {"balances": []}
-            else:
-                raise RuntimeError()
-
-        with patch(f"{test_module}.get_account_obj_async", mock_get_account_obj_async):
-            async with ServerAsync(client=AiohttpClient()) as s:
-                locks = {
-                    "destination_accounts": defaultdict(asyncio.Lock),
-                    "source_accounts": defaultdict(asyncio.Lock),
-                }
-                assert await ProcessPendingDeposits.get_or_create_destination_account(
-                    transaction, s, locks
-                ) == (to_account, True)
-                assert list(locks["destination_accounts"].keys()) == [
-                    transaction.to_address
-                ]
-                assert list(locks["source_accounts"].keys()) == []
-                mock_rci.get_distribution_account.assert_called_once_with(asset=usd)
-                mock_rci.create_destination_account.assert_called_once_with(
-                    transaction=transaction
-                )
-
-
-@pytest.mark.django_db(transaction=True)
-async def test_get_or_create_destination_account_doesnt_exist_distribution_account_fetch_raises_exception():
-    usd = await sync_to_async(Asset.objects.create)(
-        code="USD",
-        issuer=Keypair.random().public_key,
-        distribution_seed=Keypair.random().secret,
-    )
-    transaction = await sync_to_async(Transaction.objects.create)(
-        asset=usd,
-        status=Transaction.STATUS.pending_user_transfer_start,
-        kind=Transaction.KIND.deposit,
-        stellar_account=Keypair.random().public_key,
-        to_address=Keypair.random().public_key,
-    )
-
-    with patch(f"{test_module}.rci") as mock_rci:
-        mock_rci.account_creation_supported = True
-        mock_rci.get_distribution_account.side_effect = Exception()
-        to_account = Account(transaction.to_address, 1)
-
-        async def mock_get_account_obj_async(kp, server):
-            if mock_rci.create_destination_account.called:
-                return to_account, {"balances": []}
-            else:
-                raise RuntimeError()
-
-        with patch(f"{test_module}.get_account_obj_async", mock_get_account_obj_async):
-            async with ServerAsync(client=AiohttpClient()) as s:
-                locks = {
-                    "destination_accounts": defaultdict(asyncio.Lock),
-                    "source_accounts": defaultdict(asyncio.Lock),
-                }
-                with pytest.raises(
-                    RuntimeError,
-                    match="an exception was raised while attempting to fetch the distribution account",
-                ):
-                    assert await ProcessPendingDeposits.get_or_create_destination_account(
-                        transaction, s, locks
-                    )
-                assert list(locks["destination_accounts"].keys()) == [
-                    transaction.to_address
-                ]
-                assert list(locks["source_accounts"].keys()) == []
-                mock_rci.get_distribution_account.assert_called_once_with(asset=usd)
-                mock_rci.create_destination_account.assert_not_called()
-
-
-@pytest.mark.django_db(transaction=True)
-async def test_get_or_create_destination_account_doesnt_exist_creation_raises_exception():
-    usd = await sync_to_async(Asset.objects.create)(
-        code="USD",
-        issuer=Keypair.random().public_key,
-        distribution_seed=Keypair.random().secret,
-    )
-    transaction = await sync_to_async(Transaction.objects.create)(
-        asset=usd,
-        status=Transaction.STATUS.pending_user_transfer_start,
-        kind=Transaction.KIND.deposit,
-        stellar_account=Keypair.random().public_key,
-        to_address=Keypair.random().public_key,
-    )
-
-    with patch(f"{test_module}.rci") as mock_rci:
-        mock_rci.account_creation_supported = True
-        mock_rci.get_distribution_account.return_value = usd.distribution_account
-        mock_rci.create_destination_account.side_effect = Exception()
-        to_account = Account(transaction.to_address, 1)
-
-        async def mock_get_account_obj_async(kp, server):
-            if mock_rci.create_destination_account.called:
-                return to_account, {"balances": []}
-            else:
-                raise RuntimeError()
-
-        with patch(f"{test_module}.get_account_obj_async", mock_get_account_obj_async):
-            async with ServerAsync(client=AiohttpClient()) as s:
-                locks = {
-                    "destination_accounts": defaultdict(asyncio.Lock),
-                    "source_accounts": defaultdict(asyncio.Lock),
-                }
-                with pytest.raises(
-                    RuntimeError,
-                    match="an exception was raised while attempting to create the destination account",
-                ):
-                    assert await ProcessPendingDeposits.get_or_create_destination_account(
-                        transaction, s, locks
-                    )
-                assert list(locks["destination_accounts"].keys()) == [
-                    transaction.to_address
-                ]
-                assert list(locks["source_accounts"].keys()) == [
-                    usd.distribution_account
-                ]
-                mock_rci.get_distribution_account.assert_called_once_with(asset=usd)
-                mock_rci.create_destination_account.assert_called_once_with(
-                    transaction=transaction
-                )
-
-
-@pytest.mark.django_db(transaction=True)
-async def test_get_or_create_destination_account_exception_submission_pending():
-    usd = await sync_to_async(Asset.objects.create)(
-        code="USD",
-        issuer=Keypair.random().public_key,
-        distribution_seed=Keypair.random().secret,
-    )
-    transaction = await sync_to_async(Transaction.objects.create)(
-        asset=usd,
-        status=Transaction.STATUS.pending_user_transfer_start,
-        kind=Transaction.KIND.deposit,
-        stellar_account=Keypair.random().public_key,
-        to_address=Keypair.random().public_key,
-    )
-
-    with patch(f"{test_module}.rci") as mock_rci:
-        mock_rci.account_creation_supported = True
-        mock_rci.get_distribution_account.return_value = usd.distribution_account
-        mock_rci.create_destination_account.side_effect = [
-            TransactionSubmissionPending("pending exception error message"),
-            TransactionSubmissionPending("pending exception error message"),
-            "transaction_hash_value",
-        ]
-        to_account = Account(transaction.to_address, 1)
-
-        async def mock_get_account_obj_async(kp, server):
-            if mock_rci.create_destination_account.called:
-                return to_account, {"balances": []}
-            else:
-                raise RuntimeError()
-
-        with patch(f"{test_module}.get_account_obj_async", mock_get_account_obj_async):
-            async with ServerAsync(client=AiohttpClient()) as s:
-                locks = {
-                    "destination_accounts": defaultdict(asyncio.Lock),
-                    "source_accounts": defaultdict(asyncio.Lock),
-                }
-                await ProcessPendingDeposits.get_or_create_destination_account(
-                    transaction, s, locks
-                )
-                assert list(locks["destination_accounts"].keys()) == [
-                    transaction.to_address
-                ]
-                assert list(locks["source_accounts"].keys()) == [
-                    usd.distribution_account
-                ]
-                mock_rci.get_distribution_account.assert_called_once_with(asset=usd)
-
-                assert mock_rci.create_destination_account.call_count == 3
-                await sync_to_async(transaction.refresh_from_db)()
-                assert (
-                    transaction.submission_status == Transaction.SUBMISSION_STATUS.ready
-                )
-                assert transaction.status_message == None
-
-
-@pytest.mark.django_db(transaction=True)
-async def test_get_or_create_destination_account_exception_submission_failed():
-    usd = await sync_to_async(Asset.objects.create)(
-        code="USD",
-        issuer=Keypair.random().public_key,
-        distribution_seed=Keypair.random().secret,
-    )
-    transaction = await sync_to_async(Transaction.objects.create)(
-        asset=usd,
-        status=Transaction.STATUS.pending_user_transfer_start,
-        kind=Transaction.KIND.deposit,
-        stellar_account=Keypair.random().public_key,
-        to_address=Keypair.random().public_key,
-    )
-
-    with patch(f"{test_module}.rci") as mock_rci:
-        mock_rci.account_creation_supported = True
-        mock_rci.get_distribution_account.return_value = usd.distribution_account
-        mock_rci.create_destination_account.side_effect = [
-            TransactionSubmissionFailed("failed exception error message"),
-        ]
-        to_account = Account(transaction.to_address, 1)
-
-        async def mock_get_account_obj_async(kp, server):
-            if mock_rci.create_destination_account.called:
-                return to_account, {"balances": []}
-            else:
-                raise RuntimeError()
-
-        with patch(f"{test_module}.get_account_obj_async", mock_get_account_obj_async):
-            async with ServerAsync(client=AiohttpClient()) as s:
-                locks = {
-                    "destination_accounts": defaultdict(asyncio.Lock),
-                    "source_accounts": defaultdict(asyncio.Lock),
-                }
-                await ProcessPendingDeposits.get_or_create_destination_account(
-                    transaction, s, locks
-                )
-                assert list(locks["destination_accounts"].keys()) == [
-                    transaction.to_address
-                ]
-                assert list(locks["source_accounts"].keys()) == [
-                    usd.distribution_account
-                ]
-                mock_rci.get_distribution_account.assert_called_once_with(asset=usd)
-
-                assert mock_rci.create_destination_account.call_count == 1
-                await sync_to_async(transaction.refresh_from_db)()
-                assert (
-                    transaction.submission_status
-                    == Transaction.SUBMISSION_STATUS.failed
-                )
-                assert transaction.status_message == "failed exception error message"
-
-
-@pytest.mark.django_db(transaction=True)
-async def test_get_or_create_destination_account_exception_submission_blocked():
-    usd = await sync_to_async(Asset.objects.create)(
-        code="USD",
-        issuer=Keypair.random().public_key,
-        distribution_seed=Keypair.random().secret,
-    )
-    transaction = await sync_to_async(Transaction.objects.create)(
-        asset=usd,
-        status=Transaction.STATUS.pending_user_transfer_start,
-        kind=Transaction.KIND.deposit,
-        stellar_account=Keypair.random().public_key,
-        to_address=Keypair.random().public_key,
-    )
-
-    with patch(f"{test_module}.rci") as mock_rci:
-        mock_rci.account_creation_supported = True
-        mock_rci.get_distribution_account.return_value = usd.distribution_account
-        mock_rci.create_destination_account.side_effect = [
-            TransactionSubmissionBlocked("blocked exception error message"),
-        ]
-        to_account = Account(transaction.to_address, 1)
-
-        async def mock_get_account_obj_async(kp, server):
-            if mock_rci.create_destination_account.called:
-                return to_account, {"balances": []}
-            else:
-                raise RuntimeError()
-
-        with patch(f"{test_module}.get_account_obj_async", mock_get_account_obj_async):
-            async with ServerAsync(client=AiohttpClient()) as s:
-                locks = {
-                    "destination_accounts": defaultdict(asyncio.Lock),
-                    "source_accounts": defaultdict(asyncio.Lock),
-                }
-                await ProcessPendingDeposits.get_or_create_destination_account(
-                    transaction, s, locks
-                )
-                assert list(locks["destination_accounts"].keys()) == [
-                    transaction.to_address
-                ]
-                assert list(locks["source_accounts"].keys()) == [
-                    usd.distribution_account
-                ]
-                mock_rci.get_distribution_account.assert_called_once_with(asset=usd)
-
-                assert mock_rci.create_destination_account.call_count == 1
-                await sync_to_async(transaction.refresh_from_db)()
-                assert (
-                    transaction.submission_status
-                    == Transaction.SUBMISSION_STATUS.blocked
-                )
-                assert transaction.status_message == "blocked exception error message"
-
-
-@pytest.mark.django_db(transaction=True)
 async def test_submit_success():
     usd = await sync_to_async(Asset.objects.create)(
         code="USD",
@@ -827,12 +204,10 @@ async def test_submit_success():
                             "destination_accounts": defaultdict(asyncio.Lock),
                             "source_accounts": defaultdict(asyncio.Lock),
                         }
+                        queues = PolarisQueueAdapter([SUBMIT_TRANSACTION_QUEUE])
 
-                        assert (
-                            await ProcessPendingDeposits.submit(
-                                transaction, server, locks
-                            )
-                            is True
+                        await ProcessPendingDeposits.submit(
+                            transaction, server, locks, queues
                         )
 
                         await sync_to_async(transaction.refresh_from_db)()
@@ -885,8 +260,11 @@ async def test_submit_request_failed_bad_request():
                     "destination_accounts": defaultdict(asyncio.Lock),
                     "source_accounts": defaultdict(asyncio.Lock),
                 }
+                queues = PolarisQueueAdapter([SUBMIT_TRANSACTION_QUEUE])
                 with pytest.raises(BadRequestError):
-                    await ProcessPendingDeposits.submit(transaction, server, locks)
+                    await ProcessPendingDeposits.submit(
+                        transaction, server, locks, queues
+                    )
 
 
 @pytest.mark.django_db(transaction=True)
@@ -922,8 +300,11 @@ async def test_submit_request_failed_connection_failed():
                     "destination_accounts": defaultdict(asyncio.Lock),
                     "source_accounts": defaultdict(asyncio.Lock),
                 }
+                queues = PolarisQueueAdapter([SUBMIT_TRANSACTION_QUEUE])
                 with pytest.raises(ConnectionError):
-                    await ProcessPendingDeposits.submit(transaction, server, locks)
+                    await ProcessPendingDeposits.submit(
+                        transaction, server, locks, queues
+                    )
 
 
 @pytest.mark.django_db(transaction=True)
@@ -974,12 +355,10 @@ async def test_submit_request_unsuccessful():
                             "destination_accounts": defaultdict(asyncio.Lock),
                             "source_accounts": defaultdict(asyncio.Lock),
                         }
+                        queues = PolarisQueueAdapter([SUBMIT_TRANSACTION_QUEUE])
 
-                        assert (
-                            await ProcessPendingDeposits.submit(
-                                transaction, server, locks
-                            )
-                            is False
+                        await ProcessPendingDeposits.submit(
+                            transaction, server, locks, queues
                         )
 
                         await sync_to_async(transaction.refresh_from_db)()
@@ -1117,119 +496,6 @@ async def test_create_transaction_envelope_claimable_balance_supported_no_trustl
 
 
 @pytest.mark.django_db(transaction=True)
-async def test_requires_trustline_has_trustline():
-    usd = await sync_to_async(Asset.objects.create)(
-        code="USD", issuer=Keypair.random().public_key,
-    )
-    transaction = await sync_to_async(Transaction.objects.create)(
-        asset=usd,
-        status=Transaction.STATUS.pending_user_transfer_start,
-        kind=Transaction.KIND.deposit,
-        stellar_account=Keypair.random().public_key,
-    )
-    with patch(
-        f"{test_module}.ProcessPendingDeposits.get_or_create_destination_account",
-        new_callable=AsyncMock,
-    ) as mock_get_or_create_destination_account:
-        with patch(
-            f"{test_module}.maybe_make_callback_async", new_callable=AsyncMock
-        ) as mock_maybe_make_callback:
-            async with ServerAsync(client=AiohttpClient()) as server:
-                mock_get_or_create_destination_account.return_value = None, False
-                locks = {
-                    "destination_accounts": defaultdict(asyncio.Lock),
-                    "source_accounts": defaultdict(asyncio.Lock),
-                }
-
-                assert (
-                    await ProcessPendingDeposits.requires_trustline(
-                        transaction, server, locks
-                    )
-                    is False
-                )
-
-                mock_maybe_make_callback.assert_not_called()
-                await sync_to_async(transaction.refresh_from_db)()
-                assert (
-                    transaction.status == transaction.STATUS.pending_user_transfer_start
-                )
-
-
-@pytest.mark.django_db(transaction=True)
-async def test_requires_trustline_no_trustline():
-    usd = await sync_to_async(Asset.objects.create)(
-        code="USD", issuer=Keypair.random().public_key
-    )
-    transaction = await sync_to_async(Transaction.objects.create)(
-        asset=usd,
-        status=Transaction.STATUS.pending_user_transfer_start,
-        kind=Transaction.KIND.deposit,
-        stellar_account=Keypair.random().public_key,
-    )
-    with patch(
-        f"{test_module}.ProcessPendingDeposits.get_or_create_destination_account",
-        new_callable=AsyncMock,
-    ) as mock_get_or_create_destination_account:
-        with patch(
-            f"{test_module}.maybe_make_callback_async", new_callable=AsyncMock
-        ) as mock_maybe_make_callback:
-            async with ServerAsync(client=AiohttpClient()) as server:
-                mock_get_or_create_destination_account.return_value = None, True
-                locks = {
-                    "destination_accounts": defaultdict(asyncio.Lock),
-                    "source_accounts": defaultdict(asyncio.Lock),
-                }
-
-                assert (
-                    await ProcessPendingDeposits.requires_trustline(
-                        transaction, server, locks
-                    )
-                    is True
-                )
-
-                mock_maybe_make_callback.assert_called_once_with(transaction)
-                await sync_to_async(transaction.refresh_from_db)()
-                assert transaction.status == transaction.STATUS.pending_trust
-
-
-@pytest.mark.django_db(transaction=True)
-async def test_requires_trustline_create_fails():
-    usd = await sync_to_async(Asset.objects.create)(
-        code="USD", issuer=Keypair.random().public_key,
-    )
-    transaction = await sync_to_async(Transaction.objects.create)(
-        asset=usd,
-        status=Transaction.STATUS.pending_user_transfer_start,
-        kind=Transaction.KIND.deposit,
-        stellar_account=Keypair.random().public_key,
-    )
-    with patch(
-        f"{test_module}.ProcessPendingDeposits.get_or_create_destination_account",
-        new_callable=AsyncMock,
-    ) as mock_get_or_create_destination_account:
-        with patch(
-            f"{test_module}.maybe_make_callback_async", new_callable=AsyncMock
-        ) as mock_maybe_make_callback:
-            async with ServerAsync(client=AiohttpClient()) as server:
-                mock_get_or_create_destination_account.side_effect = RuntimeError()
-                locks = {
-                    "destination_accounts": defaultdict(asyncio.Lock),
-                    "source_accounts": defaultdict(asyncio.Lock),
-                }
-
-                assert (
-                    await ProcessPendingDeposits.requires_trustline(
-                        transaction, server, locks
-                    )
-                    is True
-                )
-
-                mock_maybe_make_callback.assert_called_once_with(transaction)
-                await sync_to_async(transaction.refresh_from_db)()
-                assert transaction.status == transaction.STATUS.error
-
-
-@pytest.mark.django_db(transaction=True)
 async def test_check_trustlines_single_transaction_success():
     usd = await sync_to_async(Asset.objects.create)(
         code="USD", issuer=Keypair.random().public_key
@@ -1257,7 +523,7 @@ async def test_check_trustlines_single_transaction_success():
         async with ServerAsync(client=AiohttpClient()) as server:
             get_account_obj.return_value = None, account_json
 
-            qa = PolarisQueueAdapter([SUBMIT_TRX_QUEUE])
+            qa = PolarisQueueAdapter([SUBMIT_TRANSACTION_QUEUE])
             await ProcessPendingDeposits.check_trustlines(qa, server)
 
             get_account_obj.assert_called_once_with(
@@ -1266,7 +532,7 @@ async def test_check_trustlines_single_transaction_success():
             await sync_to_async(transaction.refresh_from_db)()
             # transaction.status gets set to pending_anchor after the trustline is found
             assert transaction.status == Transaction.STATUS.pending_anchor
-            assert await qa.get_transaction("", SUBMIT_TRX_QUEUE) == transaction
+            assert await qa.get_transaction("", SUBMIT_TRANSACTION_QUEUE) == transaction
 
 
 @pytest.mark.django_db(transaction=True)
@@ -1296,14 +562,14 @@ async def test_check_trustlines_single_transaction_success_different_destination
         async with ServerAsync(client=AiohttpClient()) as server:
             get_account_obj.return_value = None, account_json
 
-            qa = PolarisQueueAdapter([SUBMIT_TRX_QUEUE])
+            qa = PolarisQueueAdapter([SUBMIT_TRANSACTION_QUEUE])
             await ProcessPendingDeposits.check_trustlines(qa, server)
 
             get_account_obj.assert_called_once_with(
                 Keypair.from_public_key(transaction.to_address), server
             )
             await sync_to_async(transaction.refresh_from_db)()
-            assert await qa.get_transaction("", SUBMIT_TRX_QUEUE) == transaction
+            assert await qa.get_transaction("", SUBMIT_TRANSACTION_QUEUE) == transaction
 
 
 @pytest.mark.django_db(transaction=True)
@@ -1325,7 +591,7 @@ async def test_check_trustlines_horizon_connection_error():
         async with ServerAsync(client=AiohttpClient()) as server:
             get_account_obj.side_effect = ConnectionError()
 
-            qa = PolarisQueueAdapter([SUBMIT_TRX_QUEUE])
+            qa = PolarisQueueAdapter([SUBMIT_TRANSACTION_QUEUE])
             await ProcessPendingDeposits.check_trustlines(qa, server)
 
             await sync_to_async(transaction.refresh_from_db)()
@@ -1363,10 +629,10 @@ async def test_check_trustlines_skip_xlm():
         async with ServerAsync(client=AiohttpClient()) as server:
             get_account_obj.return_value = None, account_json
 
-            qa = PolarisQueueAdapter([SUBMIT_TRX_QUEUE])
+            qa = PolarisQueueAdapter([SUBMIT_TRANSACTION_QUEUE])
             await ProcessPendingDeposits.check_trustlines(qa, server)
             await sync_to_async(transaction.refresh_from_db)()
-            assert await qa.get_transaction("", SUBMIT_TRX_QUEUE) == transaction
+            assert await qa.get_transaction("", SUBMIT_TRANSACTION_QUEUE) == transaction
 
 
 @pytest.mark.django_db(transaction=True)
@@ -1396,7 +662,7 @@ async def test_still_pending_trust_transaction():
         async with ServerAsync(client=AiohttpClient()) as server:
             get_account_obj.return_value = None, account_json
 
-            qa = PolarisQueueAdapter([SUBMIT_TRX_QUEUE])
+            qa = PolarisQueueAdapter([SUBMIT_TRANSACTION_QUEUE])
             await ProcessPendingDeposits.check_trustlines(qa, server)
             await sync_to_async(transaction.refresh_from_db)()
             assert transaction.status == Transaction.STATUS.pending_trust
@@ -1414,29 +680,18 @@ async def test_populate_queues():
         to_address=destination,
         status=Transaction.STATUS.pending_anchor,
         kind=Transaction.KIND.deposit,
-        queue=SUBMIT_TRX_QUEUE,
-        queued_at=datetime.datetime.now(datetime.timezone.utc),
-        submission_status=Transaction.SUBMISSION_STATUS.ready,
-    )
-    check_acc_transaction = await sync_to_async(Transaction.objects.create)(
-        asset=usd,
-        stellar_account=destination,
-        to_address=destination,
-        status=Transaction.STATUS.pending_anchor,
-        kind=Transaction.KIND.deposit,
-        queue=CHECK_ACC_QUEUE,
+        queue=SUBMIT_TRANSACTION_QUEUE,
         queued_at=datetime.datetime.now(datetime.timezone.utc),
         submission_status=Transaction.SUBMISSION_STATUS.ready,
     )
 
-    qa = PolarisQueueAdapter([SUBMIT_TRX_QUEUE, CHECK_ACC_QUEUE])
+    qa = PolarisQueueAdapter([SUBMIT_TRANSACTION_QUEUE])
     await sync_to_async(qa.populate_queues)()
 
-    transaction_from_submission_queue = await qa.get_transaction("", SUBMIT_TRX_QUEUE)
+    transaction_from_submission_queue = await qa.get_transaction(
+        "", SUBMIT_TRANSACTION_QUEUE
+    )
     assert transaction_from_submission_queue == submission_transaction
-
-    transaction_from_check_acc_queue = await qa.get_transaction("", CHECK_ACC_QUEUE)
-    assert transaction_from_check_acc_queue == check_acc_transaction
 
 
 @pytest.mark.django_db(transaction=True)
@@ -1451,7 +706,7 @@ async def test_populate_queues_order():
         to_address=destination,
         status=Transaction.STATUS.pending_anchor,
         kind=Transaction.KIND.deposit,
-        queue=SUBMIT_TRX_QUEUE,
+        queue=SUBMIT_TRANSACTION_QUEUE,
         queued_at=datetime.datetime.now(datetime.timezone.utc),
         submission_status=Transaction.SUBMISSION_STATUS.ready,
     )
@@ -1461,7 +716,7 @@ async def test_populate_queues_order():
         to_address=destination,
         status=Transaction.STATUS.pending_anchor,
         kind=Transaction.KIND.deposit,
-        queue=SUBMIT_TRX_QUEUE,
+        queue=SUBMIT_TRANSACTION_QUEUE,
         queued_at=datetime.datetime.now(datetime.timezone.utc),
         submission_status=Transaction.SUBMISSION_STATUS.ready,
     )
@@ -1472,16 +727,25 @@ async def test_populate_queues_order():
         status=Transaction.STATUS.pending_anchor,
         kind=Transaction.KIND.deposit,
         queued_at=datetime.datetime.now(datetime.timezone.utc),
-        queue=SUBMIT_TRX_QUEUE,
+        queue=SUBMIT_TRANSACTION_QUEUE,
         submission_status=Transaction.SUBMISSION_STATUS.ready,
     )
 
-    qa = PolarisQueueAdapter([SUBMIT_TRX_QUEUE])
+    qa = PolarisQueueAdapter([SUBMIT_TRANSACTION_QUEUE])
     await sync_to_async(qa.populate_queues)()
 
-    assert await qa.get_transaction("", SUBMIT_TRX_QUEUE) == submission_transaction1
-    assert await qa.get_transaction("", SUBMIT_TRX_QUEUE) == submission_transaction2
-    assert await qa.get_transaction("", SUBMIT_TRX_QUEUE) == submission_transaction3
+    assert (
+        await qa.get_transaction("", SUBMIT_TRANSACTION_QUEUE)
+        == submission_transaction1
+    )
+    assert (
+        await qa.get_transaction("", SUBMIT_TRANSACTION_QUEUE)
+        == submission_transaction2
+    )
+    assert (
+        await qa.get_transaction("", SUBMIT_TRANSACTION_QUEUE)
+        == submission_transaction3
+    )
 
 
 @pytest.mark.django_db(transaction=True)
@@ -1499,10 +763,10 @@ async def test_queue_and_get_transaction():
         submission_status=Transaction.SUBMISSION_STATUS.ready,
     )
 
-    qa = PolarisQueueAdapter([SUBMIT_TRX_QUEUE])
-    qa.queue_transaction("", SUBMIT_TRX_QUEUE, transaction)
+    qa = PolarisQueueAdapter([SUBMIT_TRANSACTION_QUEUE])
+    qa.queue_transaction("", SUBMIT_TRANSACTION_QUEUE, transaction)
 
-    queued_transaction = await qa.get_transaction("", SUBMIT_TRX_QUEUE)
+    queued_transaction = await qa.get_transaction("", SUBMIT_TRANSACTION_QUEUE)
     assert queued_transaction == transaction
 
 
@@ -1525,13 +789,13 @@ async def test_check_rails_for_ready_transactions():
     ) as mock_poll_pending_deposits:
         mock_poll_pending_deposits.return_value = [transaction]
 
-        qa = PolarisQueueAdapter([CHECK_ACC_QUEUE])
+        qa = PolarisQueueAdapter([SUBMIT_TRANSACTION_QUEUE])
 
         await ProcessPendingDeposits.check_rails_for_ready_transactions(qa)
-        queued_task = await qa.get_transaction("", CHECK_ACC_QUEUE)
+        queued_task = await qa.get_transaction("", SUBMIT_TRANSACTION_QUEUE)
         assert queued_task == transaction
         await sync_to_async(transaction.refresh_from_db)()
-        assert transaction.queue == CHECK_ACC_QUEUE
+        assert transaction.queue == SUBMIT_TRANSACTION_QUEUE
         assert transaction.status == Transaction.STATUS.pending_anchor
 
 
@@ -1542,87 +806,11 @@ async def test_check_rails_no_ready_transactions():
     ) as mock_poll_pending_deposits:
         mock_poll_pending_deposits.return_value = []
 
-        qa = PolarisQueueAdapter([SUBMIT_TRX_QUEUE])
+        qa = PolarisQueueAdapter([SUBMIT_TRANSACTION_QUEUE])
 
         await ProcessPendingDeposits.check_rails_for_ready_transactions(qa)
 
-        assert qa.queues[SUBMIT_TRX_QUEUE].empty() == True
-
-
-@pytest.mark.django_db(transaction=True)
-async def test_account_ready():
-    usd = await sync_to_async(Asset.objects.create)(
-        code="USD", issuer=Keypair.random().public_key,
-    )
-    transaction = await sync_to_async(Transaction.objects.create)(
-        asset=usd,
-        status=Transaction.STATUS.pending_user_transfer_start,
-        kind=Transaction.KIND.deposit,
-        stellar_account=Keypair.random().public_key,
-    )
-    with patch(
-        f"{test_module}.ProcessPendingDeposits.get_or_create_destination_account",
-        new_callable=AsyncMock,
-    ) as mock_get_or_create_destination_account:
-        with patch(
-            f"{test_module}.maybe_make_callback_async", new_callable=AsyncMock
-        ) as mock_maybe_make_callback:
-            async with ServerAsync(client=AiohttpClient()) as server:
-                mock_get_or_create_destination_account.return_value = None, False
-                locks = {
-                    "destination_accounts": defaultdict(asyncio.Lock),
-                    "source_accounts": defaultdict(asyncio.Lock),
-                }
-
-                assert (
-                    await ProcessPendingDeposits.is_account_ready(
-                        transaction, server, locks
-                    )
-                    is True
-                )
-
-                mock_maybe_make_callback.assert_not_called()
-                await sync_to_async(transaction.refresh_from_db)()
-                assert (
-                    transaction.status == transaction.STATUS.pending_user_transfer_start
-                )
-                assert (
-                    transaction.submission_status == Transaction.SUBMISSION_STATUS.ready
-                )
-                assert transaction.queue == SUBMIT_TRX_QUEUE
-
-
-@pytest.mark.django_db(transaction=True)
-async def test_account_not_ready():
-    usd = await sync_to_async(Asset.objects.create)(
-        code="USD", issuer=Keypair.random().public_key,
-    )
-    transaction = await sync_to_async(Transaction.objects.create)(
-        asset=usd,
-        status=Transaction.STATUS.pending_user_transfer_start,
-        kind=Transaction.KIND.deposit,
-        stellar_account=Keypair.random().public_key,
-    )
-    with patch(
-        f"{test_module}.ProcessPendingDeposits.get_or_create_destination_account",
-        new_callable=AsyncMock,
-    ) as mock_get_or_create_destination_account:
-        with patch(
-            f"{test_module}.maybe_make_callback_async", new_callable=AsyncMock
-        ) as mock_maybe_make_callback:
-            async with ServerAsync(client=AiohttpClient()) as server:
-                mock_get_or_create_destination_account.return_value = None, True
-                locks = {
-                    "destination_accounts": defaultdict(asyncio.Lock),
-                    "source_accounts": defaultdict(asyncio.Lock),
-                }
-
-                assert (
-                    await ProcessPendingDeposits.is_account_ready(
-                        transaction, server, locks
-                    )
-                    is False
-                )
+        assert qa.queues[SUBMIT_TRANSACTION_QUEUE].empty() == True
 
 
 @pytest.mark.django_db(transaction=True)
@@ -1673,13 +861,13 @@ async def test_process_unblocked_transactions():
         amount_in=100,
     )
 
-    qa = PolarisQueueAdapter([SUBMIT_TRX_QUEUE])
+    qa = PolarisQueueAdapter([SUBMIT_TRANSACTION_QUEUE])
     await ProcessPendingDeposits.process_unblocked_transactions(qa)
 
     await sync_to_async(transaction.refresh_from_db)()
     assert transaction.submission_status == Transaction.SUBMISSION_STATUS.ready
     assert transaction.queued_at is not None
-    assert transaction.queue == SUBMIT_TRX_QUEUE
+    assert transaction.queue == SUBMIT_TRANSACTION_QUEUE
 
 
 @pytest.mark.django_db(transaction=True)
@@ -1732,12 +920,10 @@ async def test_submit_transaction_success():
                             "destination_accounts": defaultdict(asyncio.Lock),
                             "source_accounts": defaultdict(asyncio.Lock),
                         }
+                        queues = PolarisQueueAdapter([SUBMIT_TRANSACTION_QUEUE])
 
-                        assert (
-                            await ProcessPendingDeposits.submit_transaction(
-                                transaction, server, locks
-                            )
-                            is None
+                        await ProcessPendingDeposits.submit_transaction(
+                            transaction, server, locks, queues
                         )
 
                         await sync_to_async(transaction.refresh_from_db)()
@@ -1789,13 +975,12 @@ async def test_submit_transaction_exception_submission_pending():
                 "destination_accounts": defaultdict(asyncio.Lock),
                 "source_accounts": defaultdict(asyncio.Lock),
             }
+            queues = PolarisQueueAdapter([SUBMIT_TRANSACTION_QUEUE])
 
-            assert (
-                await ProcessPendingDeposits.submit_transaction(
-                    transaction, server, locks
-                )
-                is None
+            await ProcessPendingDeposits.submit_transaction(
+                transaction, server, locks, queues
             )
+
             assert mock_submit.call_count == 3
             await sync_to_async(transaction.refresh_from_db)()
             assert (
@@ -1831,13 +1016,12 @@ async def test_submit_transaction_exception_submission_blocked():
                 "destination_accounts": defaultdict(asyncio.Lock),
                 "source_accounts": defaultdict(asyncio.Lock),
             }
+            queues = PolarisQueueAdapter([SUBMIT_TRANSACTION_QUEUE])
 
-            assert (
-                await ProcessPendingDeposits.submit_transaction(
-                    transaction, server, locks
-                )
-                is None
+            await ProcessPendingDeposits.submit_transaction(
+                transaction, server, locks, queues
             )
+
             assert mock_submit.call_count == 1
             await sync_to_async(transaction.refresh_from_db)()
             assert (
@@ -1873,13 +1057,12 @@ async def test_submit_transaction_exception_submission_failed():
                 "destination_accounts": defaultdict(asyncio.Lock),
                 "source_accounts": defaultdict(asyncio.Lock),
             }
+            queues = PolarisQueueAdapter([SUBMIT_TRANSACTION_QUEUE])
 
-            assert (
-                await ProcessPendingDeposits.submit_transaction(
-                    transaction, server, locks
-                )
-                is None
+            await ProcessPendingDeposits.submit_transaction(
+                transaction, server, locks, queues
             )
+
             assert mock_submit.call_count == 1
             await sync_to_async(transaction.refresh_from_db)()
             assert transaction.status == Transaction.STATUS.error

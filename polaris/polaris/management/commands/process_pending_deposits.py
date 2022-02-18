@@ -61,10 +61,10 @@ PROCESS_PENDING_DEPOSITS_LOCK_KEY = "PROCESS_PENDING_DEPOSITS_LOCK"
 
 
 class PolarisQueueAdapter:
-    def __init__(self, queuess):
-        self.queuess: Dict[str, asyncio.Queue] = {}
-        for queues in queuess:
-            self.queuess[queues] = asyncio.Queue()
+    def __init__(self, queues):
+        self.queues: Dict[str, asyncio.Queue] = {}
+        for queue in queues:
+            self.queues[queue] = asyncio.Queue()
 
     def populate_queues(self):
         """
@@ -72,7 +72,7 @@ class PolarisQueueAdapter:
         """
         logger.debug("initializing queuess from database...")
         ready_transactions = Transaction.objects.filter(
-            queues=SUBMIT_TRANSACTION_QUEUE,
+            queue=SUBMIT_TRANSACTION_QUEUE,
             submission_status__in=[
                 Transaction.SUBMISSION_STATUS.ready,
                 Transaction.SUBMISSION_STATUS.processing,
@@ -81,8 +81,8 @@ class PolarisQueueAdapter:
                 Transaction.KIND.deposit,
                 getattr(Transaction.KIND, "deposit-exchange"),
             ],
-            queuesd_at__isnull=False,
-        ).order_by("queuesd_at")
+            queued_at__isnull=False,
+        ).order_by("queued_at")
 
         logger.debug(
             f"found {len(ready_transactions)} transactions to queues for submit_transaction_task"
@@ -92,7 +92,7 @@ class PolarisQueueAdapter:
                 "populate_queues", SUBMIT_TRANSACTION_QUEUE, transaction
             )
 
-    def queue_transaction(self, source_task_name, queues_name, transaction):
+    def queue_transaction(self, source_task_name, queue_name, transaction):
         """
         Put the given transaction into a queues
         @param: source_task_name - the task that queuesd this transaction
@@ -100,18 +100,18 @@ class PolarisQueueAdapter:
         @param: transaction - the Transaction to put in the queues
         """
         logger.debug(
-            f"{source_task_name} - putting transaction {transaction.id} into {queues_name}"
+            f"{source_task_name} - putting transaction {transaction.id} into {queue_name}"
         )
-        self.queuess[queues_name].put_nowait(transaction)
+        self.queues[queue_name].put_nowait(transaction)
 
-    async def get_transaction(self, source_task_name, queues_name) -> Transaction:
+    async def get_transaction(self, source_task_name, queue_name) -> Transaction:
         """
         Consume a transaction from a queues
         @param: source_task_name - the task that is requesting a Transaction
         @param: queues_name - name of the queues to consume the Transaction from
         """
-        logger.debug(f"{source_task_name} requesting task from queues: {queues_name}")
-        transaction = await self.queuess[queues_name].get()
+        logger.debug(f"{source_task_name} requesting task from queues: {queue_name}")
+        transaction = await self.queues[queue_name].get()
         logger.debug(f"{source_task_name} got transaction: {transaction}")
         return transaction
 
@@ -226,8 +226,8 @@ class ProcessPendingDeposits:
 
     @staticmethod
     def save_as_ready_for_submission(transaction):
-        transaction.queues = SUBMIT_TRANSACTION_QUEUE
-        transaction.queuesd_at = datetime.datetime.now(datetime.timezone.utc)
+        transaction.queue = SUBMIT_TRANSACTION_QUEUE
+        transaction.queued_at = datetime.datetime.now(datetime.timezone.utc)
         transaction.status = Transaction.STATUS.pending_anchor
         transaction.submission_status = Transaction.SUBMISSION_STATUS.ready
         transaction.save()
@@ -539,13 +539,13 @@ class ProcessPendingDeposits:
                 f"{transaction_json['result_xdr']}",
             )
             await maybe_make_callback_async(transaction)
-
-        await cls.handle_successful_transaction(
-            transaction_json=transaction_json,
-            transaction=transaction,
-            transaction_type=transaction_type,
-            queues=queues,
-        )
+        else:
+            await cls.handle_successful_transaction(
+                transaction_json=transaction_json,
+                transaction=transaction,
+                transaction_type=transaction_type,
+                queues=queues,
+            )
 
     @classmethod
     async def handle_successful_transaction(
