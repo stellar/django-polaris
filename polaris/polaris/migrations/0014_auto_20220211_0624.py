@@ -46,6 +46,7 @@ class Migration(migrations.Migration):
                     ("ready", "ready"),
                     ("processing", "processing"),
                     ("pending", "pending"),
+                    ("pending_funding", "pending_funding"),
                     ("pending_trust", "pending_trust"),
                     ("blocked", "blocked"),
                     ("unblocked", "unblocked"),

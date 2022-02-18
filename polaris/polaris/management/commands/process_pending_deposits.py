@@ -142,14 +142,10 @@ class ProcessPendingDeposits:
                 submission_status=Transaction.SUBMISSION_STATUS.pending_funding,
             )
             return
-        for transaction in ready_transactions:
-            await sync_to_async(cls.save_as_ready_for_submission)(transaction)
-            queues.queue_transaction(
-                "check_accounts_task", SUBMIT_TRANSACTION_QUEUE, transaction
-            )
+        await cls.check_accounts(queues, ready_transactions)
 
     @classmethod
-    async def check_accounts_task(cls, queues: PolarisQueueAdapter, interval):
+    async def check_accounts_task(cls, queues: PolarisQueueAdapter, interval: int):
         """
         Periodically polls accounts to determine if they exist on the Stellar
         Network. If they do, the transaction is queuesd for deposit submission,
@@ -172,13 +168,23 @@ class ProcessPendingDeposits:
         async with ServerAsync(settings.HORIZON_URI, client=AiohttpClient()) as server:
             for transaction in transactions:
                 try:
-                    await server.accounts().account_id(transaction.to_address).call()
+                    account_json = (
+                        await server.accounts()
+                        .account_id(transaction.to_address)
+                        .call()
+                    )
                 except (NotFoundError, ConnectionError):
                     continue
-                await sync_to_async(cls.save_as_ready_for_submission)(transaction)
-                queues.queue_transaction(
-                    "check_accounts_task", SUBMIT_TRANSACTION_QUEUE, transaction
-                )
+                if (
+                    not is_pending_trust(transaction, account_json)
+                    or transaction.claimable_balance_supported
+                ):
+                    await sync_to_async(cls.save_as_ready_for_submission)(transaction)
+                    queues.queue_transaction(
+                        "check_accounts_task", SUBMIT_TRANSACTION_QUEUE, transaction
+                    )
+                else:
+                    await sync_to_async(cls.save_as_pending_trust)(transaction)
 
     @staticmethod
     def get_unfunded_account_transactions():
@@ -358,7 +364,7 @@ class ProcessPendingDeposits:
 
         verified_ready_transactions = []
         for transaction in ready_transactions:
-            if not transaction.amount_fee or not transaction.amount_out:
+            if transaction.amount_fee is None or transaction.amount_out is None:
                 if transaction.quote:
                     logger.error(
                         f"transaction {transaction.id} uses a quote but was returned "
@@ -510,12 +516,17 @@ class ProcessPendingDeposits:
                     transaction=transaction
                 )
             else:
+                has_trustline = not is_pending_trust(
+                    transaction, destination_account_json
+                )
+                if not has_trustline and not transaction.claimable_balance_supported:
+                    raise RuntimeError(
+                        "submit() was called for a transaction that is missing a "
+                        "trustline, but claimable balances are not supported"
+                    )
                 transaction_type = TransactionType.DEPOSIT
                 transaction_hash = await sync_to_async(rci.submit_deposit_transaction)(
                     transaction=transaction,
-                    has_trustline=not is_pending_trust(
-                        transaction, destination_account_json
-                    ),
                 )
         finally:
             if (
@@ -778,7 +789,7 @@ class ProcessPendingDeposits:
                     PROCESS_PENDING_DEPOSITS_LOCK_KEY, heartbeat_interval
                 ),
                 ProcessPendingDeposits.check_rails_task(queues, task_interval),
-                ProcessPendingDeposits.check_accounts_task(queues, locks),
+                ProcessPendingDeposits.check_accounts_task(queues, task_interval),
                 ProcessPendingDeposits.check_trustlines_task(queues, task_interval),
                 ProcessPendingDeposits.check_unblocked_transactions_task(
                     queues, task_interval

@@ -409,6 +409,7 @@ class Transaction(models.Model):
         "ready",
         "processing",
         "pending",
+        "pending_funding",
         "pending_trust",
         "blocked",
         "unblocked",
