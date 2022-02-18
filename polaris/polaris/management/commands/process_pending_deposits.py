@@ -3,7 +3,8 @@ import time
 import datetime
 import asyncio
 from decimal import Decimal
-from typing import Tuple, List, Optional, Dict, Union
+from enum import Enum
+from typing import List, Optional, Dict, Union
 from collections import defaultdict
 
 import django.db.transaction
@@ -11,11 +12,9 @@ from django.core.management import BaseCommand
 from django.db.models import Q
 from stellar_sdk import Keypair, ServerAsync, MuxedAccount
 from stellar_sdk.client.aiohttp_client import AiohttpClient
-from stellar_sdk.account import Account
 from stellar_sdk.exceptions import (
-    BaseHorizonError,
     ConnectionError,
-    BaseRequestError,
+    NotFoundError,
 )
 from stellar_sdk.xdr import TransactionResult, OperationType
 from asgiref.sync import sync_to_async
@@ -44,11 +43,15 @@ from polaris.exceptions import (
 from polaris.models import Transaction, PolarisHeartbeat
 from polaris.utils import getLogger
 
-
 logger = getLogger(__name__)
 
-SUBMIT_TRX_QUEUE = "SUBMIT_TRX_QUEUE"
-CHECK_ACC_QUEUE = "CHECK_ACC_QUEUE"
+
+class TransactionType(Enum):
+    DEPOSIT = 1
+    CREATE_ACCOUNT = 2
+
+
+SUBMIT_TRANSACTION_QUEUE = "SUBMIT_TRANSACTION_QUEUE"
 
 DEFAULT_HEARTBEAT = 5
 DEFAULT_INTERVAL = 10
@@ -69,7 +72,7 @@ class PolarisQueueAdapter:
         """
         logger.debug("initializing queues from database...")
         ready_transactions = Transaction.objects.filter(
-            queue=SUBMIT_TRX_QUEUE,
+            queue=SUBMIT_TRANSACTION_QUEUE,
             submission_status__in=[
                 Transaction.SUBMISSION_STATUS.ready,
                 Transaction.SUBMISSION_STATUS.processing,
@@ -85,22 +88,9 @@ class PolarisQueueAdapter:
             f"found {len(ready_transactions)} transactions to queue for submit_transaction_task"
         )
         for transaction in ready_transactions:
-            self.queue_transaction("populate_queues", SUBMIT_TRX_QUEUE, transaction)
-
-        check_account_transactions = Transaction.objects.filter(
-            queue=CHECK_ACC_QUEUE,
-            kind__in=[
-                Transaction.KIND.deposit,
-                getattr(Transaction.KIND, "deposit-exchange"),
-            ],
-            queued_at__isnull=False,
-        ).order_by("queued_at")
-
-        logger.debug(
-            f"found {len(check_account_transactions)} transactions to queue for check_accounts_task"
-        )
-        for transaction in check_account_transactions:
-            self.queue_transaction("populate_queues", CHECK_ACC_QUEUE, transaction)
+            self.queue_transaction(
+                "populate_queues", SUBMIT_TRANSACTION_QUEUE, transaction
+            )
 
     def queue_transaction(self, source_task_name, queue_name, transaction):
         """
@@ -113,7 +103,6 @@ class PolarisQueueAdapter:
             f"{source_task_name} - putting transaction {transaction.id} into {queue_name}"
         )
         self.queues[queue_name].put_nowait(transaction)
-        return
 
     async def get_transaction(self, source_task_name, queue_name) -> Transaction:
         """
@@ -142,71 +131,65 @@ class ProcessPendingDeposits:
     @classmethod
     async def check_rails_for_ready_transactions(cls, qa: PolarisQueueAdapter):
         ready_transactions = await sync_to_async(cls.get_ready_deposits)()
-        for transaction in ready_transactions:
-            transaction.queue = CHECK_ACC_QUEUE
-            transaction.queued_at = datetime.datetime.now(datetime.timezone.utc)
-            transaction.status = Transaction.STATUS.pending_anchor
-            await sync_to_async(transaction.save)()
-            qa.queue_transaction("check_rails_task", CHECK_ACC_QUEUE, transaction)
-
-    @classmethod
-    async def check_accounts_task(cls, qa: PolarisQueueAdapter, locks: Dict):
-        """
-        Long running task that evaluates 'transactions' passed into the CHECK_ACC_QUEUE
-        and determines if they are ready for submission to the Stellar Network.
-
-        The transaction could be in one of the following states:
-
-        - The destination account does not exist or does not have a trustline to
-        the asset and the initiating client application does not support claimable
-        balances.
-
-            If the account exists, or after it has been created, the transaction is
-            placed in the `pending_trust` status. If the account doesn't exist and
-            the distribution account requires multiple signatures, Polaris requests
-            a channel account from the Anchor and submits a create account operation
-            using the channel account as the source instead of the distribution
-            account.
-
-        - The transaction is ready to be submitted
-
-            In this case, the transaction is put in the SUBMIT_TRX_QUEUE for the
-            submit_transaction_task to pick up and submit to the Stellar Network
-        """
-        async with ServerAsync(settings.HORIZON_URI, client=AiohttpClient()) as server:
-            logger.debug("check_accounts_task started...")
-            while True:
-                transaction = await qa.get_transaction(
-                    "check_accounts_task", CHECK_ACC_QUEUE
-                )
-                if await cls.is_account_ready(transaction, server, locks):
-                    qa.queue_transaction(
-                        "check_accounts_task", SUBMIT_TRX_QUEUE, transaction
-                    )
-
-    @classmethod
-    async def is_account_ready(
-        cls, transaction: Transaction, server: ServerAsync, locks: Dict
-    ):
-        logger.info(f"check_accounts_task - processing transaction {transaction.id}")
-        if await cls.requires_trustline(transaction, server, locks):
-            logger.info(
-                f"transaction {transaction.id} requires a trustline, continuing with "
-                "next transaction..."
+        if not rci.account_creation_supported:
+            Transaction.objects.filter(
+                id__in=[t.id for t in ready_transactions]
+            ).update(
+                # TODO
+                # we don't have an external status that indicates the user or wallet
+                # needs to fund the account. Placing in pending_user for now.
+                status=Transaction.STATUS.pending_user,
+                submission_status=Transaction.SUBMISSION_STATUS.pending_funding,
             )
-            return False
+            return
+        for transaction in ready_transactions:
+            await sync_to_async(cls.save_as_ready_for_submission)(transaction)
+            qa.queue_transaction(
+                "check_accounts_task", SUBMIT_TRANSACTION_QUEUE, transaction
+            )
 
-        logger.info(f"transaction {transaction.id} has the appropriate trustline")
+    @classmethod
+    async def check_accounts_task(cls, qa: PolarisQueueAdapter, interval):
+        """
+        Periodically polls accounts to determine if they exist on the Stellar
+        Network. If they do, the transaction is queued for deposit submission,
+        otherwise the transaction remains in the same state and is polled again
+        at the provided interval.
 
-        logger.info(
-            f"check_accounts_task - saving transaction {transaction.id} as 'ready'"
+        This task is only necessary if the registered CustodyIntegration class
+        does not support account creation.
+        """
+        logger.debug("check_accounts_task started...")
+        while True:
+            transactions = await sync_to_async(cls.get_unfunded_account_transactions)()
+            await cls.check_accounts(qa, transactions)
+            await asyncio.sleep(interval)
+
+    @classmethod
+    async def check_accounts(
+        cls, qa: PolarisQueueAdapter, transactions: List[Transaction]
+    ):
+        async with ServerAsync(settings.HORIZON_URI, client=AiohttpClient()) as server:
+            for transaction in transactions:
+                try:
+                    await server.accounts().account_id(transaction.to_address).call()
+                except (NotFoundError, ConnectionError):
+                    continue
+                await sync_to_async(cls.save_as_ready_for_submission)(transaction)
+                qa.queue_transaction(
+                    "check_accounts_task", SUBMIT_TRANSACTION_QUEUE, transaction
+                )
+
+    @staticmethod
+    def get_unfunded_account_transactions():
+        return list(
+            Transaction.objects.filter(
+                kind__in=[Transaction.KIND.deposit, "deposit-exchange"],
+                submission_status=Transaction.SUBMISSION_STATUS.pending_funding,
+            )
+            .select_related("asset", "quote")
+            .all()
         )
-
-        transaction.submission_status = Transaction.SUBMISSION_STATUS.ready
-        transaction.queued_at = datetime.datetime.now(datetime.timezone.utc)
-        transaction.queue = SUBMIT_TRX_QUEUE
-        await sync_to_async(transaction.save)()
-        return True
 
     @classmethod
     async def check_unblocked_transactions_task(
@@ -214,7 +197,7 @@ class ProcessPendingDeposits:
     ):
         """
         Get the transactions that are in a 'unblocked' submission_status and
-        submit them to the SUBMIT_TRX_QUEUE for the submit_transactions_task to process.
+        submit them to the SUBMIT_TRANSACTION_QUEUE for the submit_transactions_task to process.
         The 'unblocked' submission_status implies that Polaris preivously saved the
         transaction as 'blocked' due to a TransactionSubmissionBlocked exception being
         raised by a function that submits transactions to the Stellar Network.
@@ -222,6 +205,7 @@ class ProcessPendingDeposits:
         the 'blocked' status and update the transaction to be "unblocked", which would allow
         Polaris to detect and resubmit it.
         """
+        logger.debug("check_unblocked_transactions_task started...")
         while True:
             await cls.process_unblocked_transactions(qa)
             await asyncio.sleep(interval)
@@ -233,13 +217,20 @@ class ProcessPendingDeposits:
             logger.info(
                 f"check_unblocked_transactions_task - saving transaction {transaction.id} as 'ready'"
             )
-            transaction.submission_status = Transaction.SUBMISSION_STATUS.ready
-            transaction.queued_at = datetime.datetime.now(datetime.timezone.utc)
-            transaction.queue = SUBMIT_TRX_QUEUE
-            await sync_to_async(transaction.save)()
+            await sync_to_async(cls.save_as_ready_for_submission)(transaction)
             qa.queue_transaction(
-                "check_unblocked_transactions_task", SUBMIT_TRX_QUEUE, transaction
+                "check_unblocked_transactions_task",
+                SUBMIT_TRANSACTION_QUEUE,
+                transaction,
             )
+
+    @staticmethod
+    def save_as_ready_for_submission(transaction):
+        transaction.queue = SUBMIT_TRANSACTION_QUEUE
+        transaction.queued_at = datetime.datetime.now(datetime.timezone.utc)
+        transaction.status = Transaction.STATUS.pending_anchor
+        transaction.submission_status = Transaction.SUBMISSION_STATUS.ready
+        transaction.save()
 
     @classmethod
     async def check_trustlines_task(cls, qa: PolarisQueueAdapter, interval: int):
@@ -249,6 +240,7 @@ class ProcessPendingDeposits:
         established. If a trustline for the requested asset is found, a the
         transaction is queued for submission.
         """
+        logger.debug("check_trustlines_task started...")
         async with ServerAsync(settings.HORIZON_URI, client=AiohttpClient()) as server:
             while True:
                 await cls.check_trustlines(qa, server)
@@ -268,47 +260,33 @@ class ProcessPendingDeposits:
                 destination_account = transaction.to_address
 
             try:
-                _, account = await get_account_obj_async(
+                _, account_json = await get_account_obj_async(
                     Keypair.from_public_key(destination_account), server
                 )
-            except BaseRequestError:
-                logger.exception(f"Failed to load account {destination_account}")
+            except ConnectionError:
+                logger.exception(f"failed to load account {destination_account}")
                 continue
 
-            trustline_found = False
-            for balance in account["balances"]:
-                if balance.get("asset_type") in ["native", "liquidity_pool_shares"]:
-                    continue
-                if (
-                    balance["asset_code"] == transaction.asset.code
-                    and balance["asset_issuer"] == transaction.asset.issuer
-                ):
-                    trustline_found = True
-                    break
+            if is_pending_trust(transaction=transaction, json_resp=account_json):
+                continue
 
-            if trustline_found:
-                logger.debug(
-                    f"detected transaction {transaction.id} is no longer pending trust"
-                )
-                logger.info(
-                    f"check_trustlines_task - saving transaction {transaction.id} as 'ready'"
-                )
+            logger.info(
+                f"detected transaction {transaction.id} is no longer pending trust"
+            )
+            logger.debug(
+                f"check_trustlines_task - saving transaction {transaction.id} as 'ready'"
+            )
+            if transaction.envelope_xdr:
                 logger.info(
                     f"clearing submitted envelope_xdr for transaction {transaction.id}, "
                     f"envelope_xdr: {transaction.envelope_xdr}"
                 )
-                transaction.status = Transaction.STATUS.pending_anchor
                 transaction.envelope_xdr = None
                 transaction.stellar_transaction_id = None
-                transaction.submission_status = Transaction.SUBMISSION_STATUS.ready
-                transaction.queued_at = datetime.datetime.now(datetime.timezone.utc)
-                transaction.queue = SUBMIT_TRX_QUEUE
-                await sync_to_async(transaction.save)()
-                qa.queue_transaction(
-                    "check_trustlines_task", SUBMIT_TRX_QUEUE, transaction
-                )
-            else:
-                await sync_to_async(transaction.save)()
+            await sync_to_async(cls.save_as_ready_for_submission)(transaction)
+            qa.queue_transaction(
+                "check_trustlines_task", SUBMIT_TRANSACTION_QUEUE, transaction
+            )
 
     @classmethod
     async def submit_transaction_task(cls, qa: PolarisQueueAdapter, locks: Dict):
@@ -316,13 +294,17 @@ class ProcessPendingDeposits:
         async with ServerAsync(settings.HORIZON_URI, client=AiohttpClient()) as server:
             while True:
                 transaction = await qa.get_transaction(
-                    "submit_transaction_task", SUBMIT_TRX_QUEUE
+                    "submit_transaction_task", SUBMIT_TRANSACTION_QUEUE
                 )
-                await cls.submit_transaction(transaction, server, locks)
+                await cls.submit_transaction(transaction, server, locks, qa)
 
     @classmethod
     async def submit_transaction(
-        cls, transaction: Transaction, server: ServerAsync, locks: Dict
+        cls,
+        transaction: Transaction,
+        server: ServerAsync,
+        locks: Dict,
+        qa: PolarisQueueAdapter,
     ):
         attempt = 1
         while True:
@@ -330,18 +312,14 @@ class ProcessPendingDeposits:
                 f"submit_transaction_task calling submit() for transaction {transaction.id}, "
                 f"attempt #{attempt}"
             )
-            success = False
             try:
-                success = await ProcessPendingDeposits.submit(
-                    transaction, server, locks
-                )
+                await ProcessPendingDeposits.submit(transaction, server, locks, qa)
             except TransactionSubmissionPending as e:
                 await sync_to_async(cls.handle_submission_exception)(transaction, e)
                 attempt += 1
                 continue
             except (TransactionSubmissionBlocked, TransactionSubmissionFailed) as e:
                 await sync_to_async(cls.handle_submission_exception)(transaction, e)
-                break
             except Exception as e:
                 logger.exception("submit() threw an unexpected exception")
                 message = getattr(e, "message", str(e))
@@ -349,17 +327,7 @@ class ProcessPendingDeposits:
                     transaction, f"{e.__class__.__name__}: {message}"
                 )
                 await maybe_make_callback_async(transaction)
-                break
-            else:
-                break
-        if success:
-            await sync_to_async(transaction.refresh_from_db)()
-            try:
-                await sync_to_async(rdi.after_deposit)(transaction=transaction)
-            except NotImplementedError:
-                pass
-            except Exception:
-                logger.exception("after_deposit() threw an unexpected exception")
+            break
 
     @classmethod
     def get_ready_deposits(cls) -> List[Transaction]:
@@ -375,20 +343,16 @@ class ProcessPendingDeposits:
         for submission to the Stellar Network. Finally, this function performs various
         validations to ensure the transaction is truly ready and returns them.
         """
-        pending_deposits = (
-            Transaction.objects.filter(
-                status__in=[
-                    Transaction.STATUS.pending_user_transfer_start,
-                    Transaction.STATUS.pending_external,
-                ],
-                kind__in=[
-                    Transaction.KIND.deposit,
-                    getattr(Transaction.KIND, "deposit-exchange"),
-                ],
-            )
-            .select_related("asset")
-            .select_related("quote")
-        )
+        pending_deposits = Transaction.objects.filter(
+            status__in=[
+                Transaction.STATUS.pending_user_transfer_start,
+                Transaction.STATUS.pending_external,
+            ],
+            kind__in=[
+                Transaction.KIND.deposit,
+                getattr(Transaction.KIND, "deposit-exchange"),
+            ],
+        ).select_related("asset", "quote")
 
         ready_transactions = rri.poll_pending_deposits(pending_deposits)
 
@@ -461,16 +425,13 @@ class ProcessPendingDeposits:
         The returned transactions will be submitted if their destination
         accounts now have a trustline to the asset.
         """
-        transactions = list(
+        return list(
             Transaction.objects.filter(
-                kind=Transaction.KIND.deposit,
+                kind__in=[Transaction.KIND.deposit, "deposit-exchange"],
                 status=Transaction.STATUS.pending_trust,
                 submission_status=Transaction.SUBMISSION_STATUS.pending_trust,
-            )
-            .select_related("asset")
-            .select_related("quote")
+            ).select_related("asset", "quote")
         )
-        return transactions
 
     @staticmethod
     def get_unblocked_transactions():
@@ -478,160 +439,30 @@ class ProcessPendingDeposits:
         Return transactions that have been put in a SUBMISSION_STATUS.unblocked
         state.
         """
-        with django.db.transaction.atomic():
-            unblocked = Q(submission_status=Transaction.SUBMISSION_STATUS.unblocked)
-            got_signatures = Q(
-                pending_signatures=False,
-                envelope_xdr__isnull=False,
-                status=Transaction.STATUS.pending_anchor,
-            )
-            unblocked_transactions = list(
-                Transaction.objects.filter(
-                    unblocked | got_signatures, kind=Transaction.KIND.deposit
-                )
-                .select_related("asset")
-                .select_related("quote")
-            )
-            for transaction in unblocked_transactions:
-                logger.info(f"found unblocked transaction: {transaction.id}")
-            return unblocked_transactions
-
-    @classmethod
-    async def get_or_create_destination_account(
-        cls, transaction: Transaction, server: ServerAsync, locks: Dict
-    ) -> Tuple[Account, bool]:
-        """
-        Returns:
-            Account: The account found or created for the Transaction
-            bool: True if trustline doesn't exist, False otherwise.
-
-        If the account doesn't exist, Polaris must create the account using an account provided by the
-        anchor. Polaris can use the distribution account of the anchored asset or a channel account if
-        the asset's distribution account requires non-master signatures.
-
-        If the transacted asset's distribution account does require non-master signatures,
-        DepositIntegration.create_channel_account() will be called. See the function docstring for more
-        info.
-
-        On failure to create the destination account, a RuntimeError exception is raised.
-        """
-        logger.debug(
-            f"requesting lock to get or create destination account for transaction {transaction.id}"
+        unblocked = Q(submission_status=Transaction.SUBMISSION_STATUS.unblocked)
+        got_signatures = Q(
+            pending_signatures=False,
+            envelope_xdr__isnull=False,
+            status=Transaction.STATUS.pending_anchor,
         )
-        async with locks["destination_accounts"][transaction.to_address]:
-            logger.debug(
-                f"got lock to get or create destination account for transaction {transaction.id}"
-            )
-            if transaction.to_address.startswith("M"):
-                destination_account = MuxedAccount.from_account(
-                    transaction.to_address
-                ).account_id
-            else:
-                destination_account = transaction.to_address
-
-            try:
-                account, json_resp = await get_account_obj_async(
-                    Keypair.from_public_key(destination_account), server
-                )
-                logger.debug(f"account for transaction {transaction.id} exists")
-                return (
-                    account,
-                    await sync_to_async(is_pending_trust)(transaction, json_resp),
-                )
-            except RuntimeError:  # account does not exist
-                logger.debug(f"account for transaction {transaction.id} does not exist")
-                if not rci.account_creation_supported:
-                    raise RuntimeError(
-                        "The destination account does not exist but account creation is not supported."
-                        f"The deposit request for transaction {transaction.id} should not have succeeded."
-                    )
-                try:
-                    distribution_account = rci.get_distribution_account(
-                        asset=transaction.asset
-                    )
-                except NotImplementedError:
-                    # Polaris has to assume that the custody service provider can handle concurrent
-                    # requests to create destination accounts since it does not have a dedicated
-                    # distribution account.
-                    distribution_account = None
-                except Exception:
-                    raise RuntimeError(
-                        "an exception was raised while attempting to fetch the distribution "
-                        f"account for transaction {transaction.id}"
-                    )
-                else:
-                    # Aquire a lock for the source account of the transaction that will create the
-                    # deposit's destination account.
-                    logger.debug(
-                        f"requesting lock to fund destination for transaction {transaction.id}"
-                    )
-                    await locks["source_accounts"][distribution_account].acquire()
-                    logger.debug(
-                        f"locked to create destination account for transaction {transaction.id}"
-                    )
-                attempt = 1
-                transaction_hash = None
-                while True:
-                    try:
-                        logger.info(
-                            f"calling create_destination_account, attempt #{attempt}"
-                        )
-                        transaction_hash = await sync_to_async(
-                            rci.create_destination_account
-                        )(transaction=transaction)
-                    except TransactionSubmissionPending as e:
-                        await sync_to_async(cls.handle_submission_exception)(
-                            transaction, e
-                        )
-                        logger.info(
-                            f"TransactionSubmissionPending raised by create_destination_account(), "
-                            f"re-submitting transaction {transaction.id}"
-                        )
-                        attempt += 1
-                        continue
-                    except (
-                        TransactionSubmissionBlocked,
-                        TransactionSubmissionFailed,
-                    ) as e:
-                        await sync_to_async(cls.handle_submission_exception)(
-                            transaction, e
-                        )
-                        break
-                    except Exception:
-                        raise RuntimeError(
-                            "an exception was raised while attempting to create the destination "
-                            f"account for transaction {transaction.id}"
-                        )
-                    finally:
-                        if (
-                            distribution_account in locks["source_accounts"]
-                            and locks["source_accounts"][distribution_account].locked()
-                        ):
-                            logger.debug(
-                                f"unlocking after creating destination account for transaction {transaction.id}"
-                            )
-                            locks["source_accounts"][distribution_account].release()
-                    break
-
-                if transaction_hash:  # account was created
-                    transaction.submission_status = Transaction.SUBMISSION_STATUS.ready
-                    transaction.status_message = None
-                    await sync_to_async(transaction.save)()
-
-                account, _ = await get_account_obj_async(
-                    Keypair.from_public_key(transaction.to_address), server
-                )
-
-                return account, True
-            except BaseHorizonError as e:
-                raise RuntimeError(
-                    f"Horizon error when loading stellar account: {e.message}"
-                )
-            except ConnectionError:
-                raise RuntimeError("Failed to connect to Horizon")
+        unblocked_transactions = list(
+            Transaction.objects.filter(
+                unblocked | got_signatures,
+                kind__in=[Transaction.KIND.deposit, "deposit-exchange"],
+            ).select_related("asset", "quote")
+        )
+        for transaction in unblocked_transactions:
+            logger.info(f"detected unblocked transaction: {transaction.id}")
+        return unblocked_transactions
 
     @classmethod
-    async def submit(cls, transaction: Transaction, server: ServerAsync, locks) -> bool:
+    async def submit(
+        cls,
+        transaction: Transaction,
+        server: ServerAsync,
+        locks,
+        qa: PolarisQueueAdapter,
+    ):
         valid_statuses = [
             Transaction.STATUS.pending_user_transfer_start,
             Transaction.STATUS.pending_external,
@@ -644,7 +475,7 @@ class ProcessPendingDeposits:
                 f"{' or '.join(valid_statuses)}."
             )
 
-        logger.info(f"initiating Stellar deposit for {transaction.id}")
+        logger.info(f"initiating submission for {transaction.id}")
         transaction.status = Transaction.STATUS.pending_anchor
         transaction.submission_status = Transaction.SUBMISSION_STATUS.processing
         await sync_to_async(transaction.save)()
@@ -669,15 +500,23 @@ class ProcessPendingDeposits:
             )
 
         try:
-            _, destination_account_json = await get_account_obj_async(
-                Keypair.from_public_key(transaction.to_address), server
-            )
-            transaction_hash = await sync_to_async(rci.submit_deposit_transaction)(
-                transaction=transaction,
-                has_trustline=not await sync_to_async(is_pending_trust)(
-                    transaction, destination_account_json
-                ),
-            )
+            try:
+                _, destination_account_json = await get_account_obj_async(
+                    Keypair.from_public_key(transaction.to_address), server
+                )
+            except RuntimeError:
+                transaction_type = TransactionType.CREATE_ACCOUNT
+                transaction_hash = await sync_to_async(rci.create_destination_account)(
+                    transaction=transaction
+                )
+            else:
+                transaction_type = TransactionType.DEPOSIT
+                transaction_hash = await sync_to_async(rci.submit_deposit_transaction)(
+                    transaction=transaction,
+                    has_trustline=not is_pending_trust(
+                        transaction, destination_account_json
+                    ),
+                )
         finally:
             if (
                 distribution_account in locks["source_accounts"]
@@ -700,8 +539,33 @@ class ProcessPendingDeposits:
                 f"{transaction_json['result_xdr']}",
             )
             await maybe_make_callback_async(transaction)
-            return False
 
+        await cls.handle_successful_transaction(
+            transaction_json=transaction_json,
+            transaction=transaction,
+            transaction_type=transaction_type,
+            qa=qa,
+        )
+
+    @classmethod
+    async def handle_successful_transaction(
+        cls,
+        transaction_type: TransactionType,
+        transaction_json: dict,
+        transaction: Transaction,
+        qa: PolarisQueueAdapter,
+    ):
+        if transaction_type == TransactionType.DEPOSIT:
+            await cls.handle_successful_deposit(
+                transaction_json=transaction_json, transaction=transaction,
+            )
+        else:
+            await cls.handle_successful_account_creation(transaction=transaction, qa=qa)
+
+    @classmethod
+    async def handle_successful_deposit(
+        cls, transaction_json: dict, transaction: Transaction
+    ):
         if transaction.claimable_balance_supported and rci.claimable_balances_supported:
             transaction.claimable_balance_id = cls.get_balance_id(transaction_json)
 
@@ -721,7 +585,35 @@ class ProcessPendingDeposits:
         await sync_to_async(transaction.save)()
         logger.info(f"transaction {transaction.id} completed.")
         await maybe_make_callback_async(transaction)
-        return True
+
+        await sync_to_async(transaction.refresh_from_db)()
+        try:
+            await sync_to_async(rdi.after_deposit)(transaction=transaction)
+        except NotImplementedError:
+            pass
+        except Exception:
+            logger.exception("after_deposit() threw an unexpected exception")
+
+    @classmethod
+    async def handle_successful_account_creation(
+        cls, transaction: Transaction, qa: PolarisQueueAdapter
+    ):
+        if transaction.claimable_balance_supported:
+            await sync_to_async(cls.save_as_ready_for_submission)(transaction)
+            qa.queue_transaction(
+                "submit_transaction_task", SUBMIT_TRANSACTION_QUEUE, transaction
+            )
+        else:
+            transaction.queue = None
+            transaction.queued_at = None
+            transaction.status_message = None
+            await sync_to_async(cls.save_as_pending_trust)(transaction)
+
+    @staticmethod
+    def save_as_pending_trust(transaction: Transaction):
+        transaction.status = Transaction.STATUS.pending_trust
+        transaction.submission_status = Transaction.SUBMISSION_STATUS.pending_trust
+        transaction.save()
 
     @staticmethod
     def get_balance_id(response: dict) -> Optional[str]:
@@ -752,37 +644,6 @@ class ProcessPendingDeposits:
                     op_result.tr.create_claimable_balance_result.balance_id.to_xdr_bytes().hex()
                 )
         return balance_id_hex
-
-    @classmethod
-    async def requires_trustline(
-        cls, transaction: Transaction, server: ServerAsync, locks: Dict
-    ) -> bool:
-        try:
-            (
-                _,
-                pending_trust,
-            ) = await ProcessPendingDeposits.get_or_create_destination_account(
-                transaction, server, locks
-            )
-        except RuntimeError as e:
-            logger.error(str(e))
-            await sync_to_async(cls.handle_error)(transaction, str(e))
-            await maybe_make_callback_async(transaction)
-            return True
-
-        if pending_trust and not (
-            transaction.claimable_balance_supported and rci.claimable_balances_supported
-        ):
-            logger.info(
-                f"destination account is pending_trust for transaction {transaction.id}"
-            )
-            transaction.status = Transaction.STATUS.pending_trust
-            transaction.submission_status = Transaction.SUBMISSION_STATUS.pending_trust
-            await sync_to_async(transaction.save)()
-            await maybe_make_callback_async(transaction)
-            return True
-
-        return False
 
     @classmethod
     def handle_error(cls, transaction, message):
@@ -900,7 +761,7 @@ class ProcessPendingDeposits:
                 ),
             )
 
-        queues = [SUBMIT_TRX_QUEUE, CHECK_ACC_QUEUE]
+        queues = [SUBMIT_TRANSACTION_QUEUE]
 
         qa = PolarisQueueAdapter(queues)
         await sync_to_async(qa.populate_queues)()
