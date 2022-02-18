@@ -8,6 +8,7 @@ from collections import defaultdict
 
 import django.db.transaction
 from django.core.management import BaseCommand
+from django.db.models import Q
 from stellar_sdk import Keypair, ServerAsync, MuxedAccount
 from stellar_sdk.client.aiohttp_client import AiohttpClient
 from stellar_sdk.account import Account
@@ -228,7 +229,6 @@ class ProcessPendingDeposits:
     @classmethod
     async def process_unblocked_transactions(cls, qa: PolarisQueueAdapter):
         unblocked_transactions = await sync_to_async(cls.get_unblocked_transactions)()
-
         for transaction in unblocked_transactions:
             logger.info(
                 f"check_unblocked_transactions_task - saving transaction {transaction.id} as 'ready'"
@@ -335,20 +335,17 @@ class ProcessPendingDeposits:
                 success = await ProcessPendingDeposits.submit(
                     transaction, server, locks
                 )
-            except (
-                TransactionSubmissionBlocked,
-                TransactionSubmissionFailed,
-                TransactionSubmissionPending,
-            ) as e:
-                await sync_to_async(cls.update_submission_status)(
-                    transaction, e, str(e)
+            except TransactionSubmissionPending as e:
+                await sync_to_async(cls.handle_submission_exception)(transaction, e)
+                logger.info(
+                    f"TransactionSubmissionPending raised by create_destination_account(), "
+                    f"re-submitting transaction {transaction.id}"
                 )
-                if type(e) == TransactionSubmissionPending:
-                    logger.info(
-                        f"TransactionSubmissionPending raised, re-submitting transaction {transaction.id}"
-                    )
-                    attempt += 1
-                    continue
+                attempt += 1
+                continue
+            except (TransactionSubmissionBlocked, TransactionSubmissionFailed) as e:
+                await sync_to_async(cls.handle_submission_exception)(transaction, e)
+                break
             except Exception as e:
                 logger.exception("submit() threw an unexpected exception")
                 message = getattr(e, "message", str(e))
@@ -394,7 +391,6 @@ class ProcessPendingDeposits:
             )
             .select_related("asset")
             .select_related("quote")
-            .select_for_update()
         )
 
         ready_transactions = rri.poll_pending_deposits(pending_deposits)
@@ -468,13 +464,14 @@ class ProcessPendingDeposits:
         The returned transactions will be submitted if their destination
         accounts now have a trustline to the asset.
         """
-
         transactions = list(
             Transaction.objects.filter(
-                kind=Transaction.KIND.deposit, status=Transaction.STATUS.pending_trust,
+                kind=Transaction.KIND.deposit,
+                status=Transaction.STATUS.pending_trust,
+                submission_status=Transaction.SUBMISSION_STATUS.pending_trust,
             )
             .select_related("asset")
-            .select_for_update()
+            .select_related("quote")
         )
         return transactions
 
@@ -485,14 +482,18 @@ class ProcessPendingDeposits:
         state.
         """
         with django.db.transaction.atomic():
+            unblocked = Q(submission_status=Transaction.SUBMISSION_STATUS.unblocked)
+            got_signatures = Q(
+                pending_signatures=False,
+                envelope_xdr__isnull=False,
+                status=Transaction.STATUS.pending_anchor,
+            )
             unblocked_transactions = list(
                 Transaction.objects.filter(
-                    kind=Transaction.KIND.deposit,
-                    submission_status=Transaction.SUBMISSION_STATUS.unblocked,
-                    pending_signatures=False,
+                    unblocked | got_signatures, kind=Transaction.KIND.deposit
                 )
                 .select_related("asset")
-                .select_for_update()
+                .select_related("quote")
             )
             for transaction in unblocked_transactions:
                 logger.info(f"found unblocked transaction: {transaction.id}")
@@ -581,21 +582,24 @@ class ProcessPendingDeposits:
                         transaction_hash = await sync_to_async(
                             rci.create_destination_account
                         )(transaction=transaction)
+                    except TransactionSubmissionPending as e:
+                        await sync_to_async(cls.handle_submission_exception)(
+                            transaction, e
+                        )
+                        logger.info(
+                            f"TransactionSubmissionPending raised by create_destination_account(), "
+                            f"re-submitting transaction {transaction.id}"
+                        )
+                        attempt += 1
+                        continue
                     except (
                         TransactionSubmissionBlocked,
                         TransactionSubmissionFailed,
-                        TransactionSubmissionPending,
                     ) as e:
-                        await sync_to_async(cls.update_submission_status)(
-                            transaction, e, str(e)
+                        await sync_to_async(cls.handle_submission_exception)(
+                            transaction, e
                         )
-                        if type(e) == TransactionSubmissionPending:
-                            logger.info(
-                                f"TransactionSubmissionPending raised by create_destination_account(), "
-                                f"re-submitting transaction {transaction.id}"
-                            )
-                            attempt += 1
-                            continue
+                        break
                     except Exception:
                         raise RuntimeError(
                             "an exception was raised while attempting to create the destination "
@@ -612,7 +616,7 @@ class ProcessPendingDeposits:
                             locks["source_accounts"][distribution_account].release()
                     break
 
-                if transaction_hash:  # accont was created
+                if transaction_hash:  # account was created
                     transaction.submission_status = Transaction.SUBMISSION_STATUS.ready
                     transaction.status_message = None
                     await sync_to_async(transaction.save)()
@@ -667,11 +671,6 @@ class ProcessPendingDeposits:
                 f"locked to submit deposit transaction for transaction {transaction.id}"
             )
 
-        transaction.status = Transaction.STATUS.pending_stellar
-        await sync_to_async(transaction.save)()
-        logger.info(f"updating transaction {transaction.id} to pending_stellar status")
-        await maybe_make_callback_async(transaction)
-
         try:
             _, destination_account_json = await get_account_obj_async(
                 Keypair.from_public_key(transaction.to_address), server
@@ -687,7 +686,10 @@ class ProcessPendingDeposits:
                 distribution_account in locks["source_accounts"]
                 and locks["source_accounts"][distribution_account].locked()
             ):
-                logger.debug(f"unlocking after submitting transaction {transaction.id}")
+                logger.debug(
+                    "unlocking after attempting submission for "
+                    f"transaction {transaction.id}"
+                )
                 locks["source_accounts"][distribution_account].release()
 
         transaction_json = (
@@ -697,7 +699,7 @@ class ProcessPendingDeposits:
         if not transaction_json.get("successful"):
             await sync_to_async(cls.handle_error)(
                 transaction,
-                "Stellar transaction failed when submitted to horizon: "
+                "transaction submission failed unexpectedly"
                 f"{transaction_json['result_xdr']}",
             )
             await maybe_make_callback_async(transaction)
@@ -776,6 +778,7 @@ class ProcessPendingDeposits:
                 f"destination account is pending_trust for transaction {transaction.id}"
             )
             transaction.status = Transaction.STATUS.pending_trust
+            transaction.submission_status = Transaction.SUBMISSION_STATUS.pending_trust
             await sync_to_async(transaction.save)()
             await maybe_make_callback_async(transaction)
             return True
@@ -784,21 +787,33 @@ class ProcessPendingDeposits:
 
     @classmethod
     def handle_error(cls, transaction, message):
+        transaction.queue = None
+        transaction.queued_at = None
+        transaction.submission_status = Transaction.SUBMISSION_STATUS.failed
         transaction.status_message = message
         transaction.status = Transaction.STATUS.error
         transaction.save()
         logger.error(message)
 
     @classmethod
-    def update_submission_status(cls, transaction, exception, message):
+    def handle_submission_exception(cls, transaction, exception):
         if isinstance(exception, TransactionSubmissionBlocked):
+            transaction.queue = None
+            transaction.queued_at = None
             transaction.submission_status = Transaction.SUBMISSION_STATUS.blocked
+            logger.info(f"transaction {transaction.id} is blocked, removing from queue")
         elif isinstance(exception, TransactionSubmissionFailed):
+            transaction.queue = None
+            transaction.queued_at = None
             transaction.status = Transaction.STATUS.error
             transaction.submission_status = Transaction.SUBMISSION_STATUS.failed
+            logger.info(
+                f"transaction {transaction.id} submission failed, "
+                f"placing in error status"
+            )
         elif isinstance(exception, TransactionSubmissionPending):
             transaction.submission_status = Transaction.SUBMISSION_STATUS.pending
-        transaction.status_message = message
+        transaction.status_message = str(exception)
         transaction.save()
 
     @classmethod

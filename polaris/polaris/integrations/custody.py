@@ -8,6 +8,8 @@ from stellar_sdk.exceptions import (
     BadResponseError,
 )
 from rest_framework.request import Request
+from stellar_sdk.sep.ed25519_public_key_signer import Ed25519PublicKeySigner
+from stellar_sdk.sep.stellar_web_authentication import _verify_transaction_signatures
 
 from polaris.exceptions import (
     TransactionSubmissionPending,
@@ -22,7 +24,6 @@ from polaris.utils import (
     get_account_obj,
 )
 from polaris import settings
-from polaris.integrations import registered_deposit_integration as rdi
 
 
 logger = getLogger(__name__)
@@ -240,7 +241,7 @@ class SelfCustodyIntegration(CustodyIntegration):
         self, transaction, type: TransactionType, has_trustline: Optional[bool] = None
     ):
         try:
-            requires_tp_sigs = self._requires_third_party_signatures(transaction)
+            requires_tp_sigs = self._requires_additional_signatures(transaction)
         except ConnectionError:
             raise TransactionSubmissionPending
         with Server(horizon_url=settings.HORIZON_URI) as server:
@@ -249,6 +250,13 @@ class SelfCustodyIntegration(CustodyIntegration):
                     transaction, type, server, has_trustline
                 )
                 raise TransactionSubmissionBlocked
+
+            transaction.status = Transaction.STATUS.pending_stellar
+            transaction.save()
+            logger.info(
+                f"transaction {transaction.id} updated to pending_stellar status"
+            )
+
             transaction_hash = None
             while not transaction_hash:
                 if transaction.envelope_xdr:
@@ -266,12 +274,17 @@ class SelfCustodyIntegration(CustodyIntegration):
                         transaction, envelope_obj, [transaction.asset.distribution_seed]
                     )
                 try:
+                    logger.info("submitting...")
                     response = server.submit_transaction(envelope)
                 except (BadResponseError, ConnectionError):
                     # TODO: ensure we got a 504 timeout
+                    logger.info("raising pending!")
                     raise TransactionSubmissionPending
-                except BadRequestError:
+                except BadRequestError as e:
                     # TODO: ensure we got a 400 tx_too_late
+                    logger.info("bad request!")
+                    logger.info(envelope)
+                    logger.info(e.result_xdr)
                     transaction.envelope_xdr = None
                     continue
                 return response["hash"]
@@ -332,19 +345,34 @@ class SelfCustodyIntegration(CustodyIntegration):
         ).build()
 
     @staticmethod
-    def _requires_third_party_signatures(transaction: Transaction) -> bool:
+    def _requires_additional_signatures(transaction: Transaction) -> bool:
         """
-        Returns ``True`` if the distribution account for the asset being transacted
-        requires signatures from other signers in addition to the distribution account's
-        signature.
+        Returns ``True`` if the transaction envelope requires signatures in addition to
+        the asset's distribution account, ``False`` otherwise.
         """
         master_signer = transaction.asset.get_distribution_account_master_signer()
         thresholds = transaction.asset.get_distribution_account_thresholds()
-        return (
+        is_multisig_account = (
             not master_signer
             or master_signer["weight"] == 0
             or master_signer["weight"] < thresholds["med_threshold"]
         )
+        if not is_multisig_account:
+            return False
+        if not transaction.envelope_xdr:
+            return True
+        possible_signers = []
+        for signer_json in transaction.asset.get_distribution_account_signers():
+            possible_signers.append(
+                Ed25519PublicKeySigner(
+                    account_id=signer_json["key"], weight=signer_json["weight"]
+                )
+            )
+        envelope = TransactionEnvelope.from_xdr(
+            transaction.envelope_xdr, settings.STELLAR_NETWORK_PASSPHRASE
+        )
+        signers = _verify_transaction_signatures(envelope, possible_signers)
+        return sum(s.weight for s in signers) < thresholds["med_threshold"]
 
     def _save_as_pending_signatures(
         self,
@@ -364,6 +392,8 @@ class SelfCustodyIntegration(CustodyIntegration):
 
         NOTE: Polaris will drop support for multisig transactions in v3.0.
         """
+        from polaris.integrations import registered_deposit_integration as rdi
+
         if not transaction.channel_account:
             # we haven't called this yet
             rdi.create_channel_account(transaction)
@@ -394,7 +424,7 @@ class SelfCustodyIntegration(CustodyIntegration):
         self._sign_and_save_transaction_envelope(
             transaction=transaction,
             envelope=envelope,
-            signers=[transaction.asset.distribution_seed],
+            signers=[transaction.asset.distribution_seed, transaction.channel_seed],
         )
 
 

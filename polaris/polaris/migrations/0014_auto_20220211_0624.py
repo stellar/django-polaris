@@ -35,7 +35,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="transaction",
             name="queued_at",
-            field=models.DateTimeField(default=polaris.models.utc_now),
+            field=models.DateTimeField(blank=True, null=True),
         ),
         migrations.AddField(
             model_name="transaction",

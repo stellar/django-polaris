@@ -282,7 +282,7 @@ class Asset(TimeStampedModel):
         else:
             return ASSET_DISTRIBUTION_ACCOUNT_MAP[self.distribution_account]
 
-    def get_distributiion_account_signers(self, refresh=False):
+    def get_distribution_account_signers(self, refresh=False):
         if refresh or self.distribution_account not in ASSET_DISTRIBUTION_ACCOUNT_MAP:
             account_json = self.get_distribution_account_data(refresh=refresh)
         else:
@@ -652,7 +652,7 @@ class Transaction(models.Model):
     queue = models.TextField(null=True, blank=True)
     """The queue that this transaction is currently in"""
 
-    queued_at = models.DateTimeField(default=utc_now)
+    queued_at = models.DateTimeField(null=True, blank=True)
     """The time when this transaction was queued"""
 
     started_at = models.DateTimeField(default=utc_now)

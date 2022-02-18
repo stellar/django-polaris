@@ -69,7 +69,6 @@ class Command(BaseCommand):
             envelope = TransactionEnvelope.from_xdr(
                 t.envelope_xdr, settings.STELLAR_NETWORK_PASSPHRASE
             )
-            envelope.sign(t.asset.distribution_seed)
             if not django_settings.MULT_ASSET_ADDITIONAL_SIGNING_SEED:
                 raise CommandError(
                     "MULT's 2nd signer is not specified in the environment"
@@ -78,4 +77,5 @@ class Command(BaseCommand):
             t.envelope_xdr = envelope.to_xdr()
             t.pending_signatures = False
             t.save()
+            logger.info(t.envelope_xdr)
             logger.info(f"Transaction {t.id} signatures have been collected")
