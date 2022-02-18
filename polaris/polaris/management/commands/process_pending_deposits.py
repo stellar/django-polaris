@@ -328,7 +328,7 @@ class ProcessPendingDeposits:
         while True:
             logger.debug(
                 f"submit_transaction_task calling submit() for transaction {transaction.id}, "
-                f"attempt #{str()}"
+                f"attempt #{attempt}"
             )
             success = False
             try:
@@ -337,10 +337,6 @@ class ProcessPendingDeposits:
                 )
             except TransactionSubmissionPending as e:
                 await sync_to_async(cls.handle_submission_exception)(transaction, e)
-                logger.info(
-                    f"TransactionSubmissionPending raised by create_destination_account(), "
-                    f"re-submitting transaction {transaction.id}"
-                )
                 attempt += 1
                 continue
             except (TransactionSubmissionBlocked, TransactionSubmissionFailed) as e:
@@ -353,16 +349,17 @@ class ProcessPendingDeposits:
                     transaction, f"{e.__class__.__name__}: {message}"
                 )
                 await maybe_make_callback_async(transaction)
-
-            if success:
-                await sync_to_async(transaction.refresh_from_db)()
-                try:
-                    await sync_to_async(rdi.after_deposit)(transaction=transaction)
-                except NotImplementedError:
-                    pass
-                except Exception:
-                    logger.exception("after_deposit() threw an unexpected exception")
-            break
+                break
+            else:
+                break
+        if success:
+            await sync_to_async(transaction.refresh_from_db)()
+            try:
+                await sync_to_async(rdi.after_deposit)(transaction=transaction)
+            except NotImplementedError:
+                pass
+            except Exception:
+                logger.exception("after_deposit() threw an unexpected exception")
 
     @classmethod
     def get_ready_deposits(cls) -> List[Transaction]:
@@ -699,7 +696,7 @@ class ProcessPendingDeposits:
         if not transaction_json.get("successful"):
             await sync_to_async(cls.handle_error)(
                 transaction,
-                "transaction submission failed unexpectedly"
+                "transaction submission failed unexpectedly: "
                 f"{transaction_json['result_xdr']}",
             )
             await maybe_make_callback_async(transaction)
@@ -714,6 +711,8 @@ class ProcessPendingDeposits:
         transaction.submission_status = Transaction.SUBMISSION_STATUS.completed
         transaction.completed_at = datetime.datetime.now(datetime.timezone.utc)
         transaction.status_message = None
+        transaction.queue = None
+        transaction.queued_at = None
         if not transaction.quote:
             transaction.amount_out = round(
                 Decimal(transaction.amount_in) - Decimal(transaction.amount_fee),
@@ -813,6 +812,7 @@ class ProcessPendingDeposits:
             )
         elif isinstance(exception, TransactionSubmissionPending):
             transaction.submission_status = Transaction.SUBMISSION_STATUS.pending
+            logger.info(f"transaction {transaction.id} is pending, resubmitting")
         transaction.status_message = str(exception)
         transaction.save()
 

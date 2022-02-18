@@ -848,7 +848,7 @@ async def test_submit_success():
                         mock_get_account_obj.assert_called_once_with(
                             Keypair.from_public_key(transaction.to_address), server
                         )
-                        assert mock_maybe_make_callback.call_count == 3
+                        assert mock_maybe_make_callback.call_count == 2
 
 
 @pytest.mark.django_db(transaction=True)
@@ -986,7 +986,7 @@ async def test_submit_request_unsuccessful():
                         assert transaction.status == Transaction.STATUS.error
                         assert (
                             transaction.status_message
-                            == "Stellar transaction failed when submitted to horizon: testing"
+                            == "transaction submission failed unexpectedly: testing"
                         )
                         assert transaction.paging_token is None
                         assert transaction.stellar_transaction_id is None
@@ -999,7 +999,7 @@ async def test_submit_request_unsuccessful():
                         mock_get_account_obj.assert_called_once_with(
                             Keypair.from_public_key(transaction.to_address), server
                         )
-                        assert mock_maybe_make_callback.call_count == 3
+                        assert mock_maybe_make_callback.call_count == 2
 
 
 @pytest.mark.django_db(transaction=True)
@@ -1240,6 +1240,7 @@ async def test_check_trustlines_single_transaction_success():
         stellar_account=destination,
         to_address=destination,
         status=Transaction.STATUS.pending_trust,
+        submission_status=Transaction.SUBMISSION_STATUS.pending_trust,
         kind=Transaction.KIND.deposit,
     )
     account_json = {
@@ -1278,6 +1279,7 @@ async def test_check_trustlines_single_transaction_success_different_destination
         stellar_account=Keypair.random().public_key,
         to_address=Keypair.random().public_key,
         status=Transaction.STATUS.pending_trust,
+        submission_status=Transaction.SUBMISSION_STATUS.pending_trust,
         kind=Transaction.KIND.deposit,
     )
     account_json = {
@@ -1342,6 +1344,7 @@ async def test_check_trustlines_skip_xlm():
         stellar_account=destination,
         to_address=destination,
         status=Transaction.STATUS.pending_trust,
+        submission_status=Transaction.SUBMISSION_STATUS.pending_trust,
         kind=Transaction.KIND.deposit,
     )
     account_json = {
@@ -1395,7 +1398,6 @@ async def test_still_pending_trust_transaction():
 
             qa = PolarisQueueAdapter([SUBMIT_TRX_QUEUE])
             await ProcessPendingDeposits.check_trustlines(qa, server)
-
             await sync_to_async(transaction.refresh_from_db)()
             assert transaction.status == Transaction.STATUS.pending_trust
 
@@ -1413,6 +1415,7 @@ async def test_populate_queues():
         status=Transaction.STATUS.pending_anchor,
         kind=Transaction.KIND.deposit,
         queue=SUBMIT_TRX_QUEUE,
+        queued_at=datetime.datetime.now(datetime.timezone.utc),
         submission_status=Transaction.SUBMISSION_STATUS.ready,
     )
     check_acc_transaction = await sync_to_async(Transaction.objects.create)(
@@ -1422,6 +1425,7 @@ async def test_populate_queues():
         status=Transaction.STATUS.pending_anchor,
         kind=Transaction.KIND.deposit,
         queue=CHECK_ACC_QUEUE,
+        queued_at=datetime.datetime.now(datetime.timezone.utc),
         submission_status=Transaction.SUBMISSION_STATUS.ready,
     )
 
@@ -1753,7 +1757,7 @@ async def test_submit_transaction_success():
                         mock_get_account_obj.assert_called_once_with(
                             Keypair.from_public_key(transaction.to_address), server
                         )
-                        assert mock_maybe_make_callback.call_count == 3
+                        assert mock_maybe_make_callback.call_count == 2
 
 
 @pytest.mark.django_db(transaction=True)
