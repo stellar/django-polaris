@@ -85,7 +85,7 @@ class PolarisQueueAdapter:
         ).order_by("queued_at")
 
         logger.debug(
-            f"found {len(ready_transactions)} transactions to queues for submit_transaction_task"
+            f"found {len(ready_transactions)} transactions to queue for submit_transaction_task"
         )
         for transaction in ready_transactions:
             self.queue_transaction(
@@ -94,10 +94,10 @@ class PolarisQueueAdapter:
 
     def queue_transaction(self, source_task_name, queue_name, transaction):
         """
-        Put the given transaction into a queues
+        Put the given transaction into a queue
         @param: source_task_name - the task that queued this transaction
-        @param: queue_name - name of the queues to put the Transaction in
-        @param: transaction - the Transaction to put in the queues
+        @param: queue_name - name of the queu to put the Transaction in
+        @param: transaction - the Transaction to put in the queue
         """
         logger.debug(
             f"{source_task_name} - putting transaction {transaction.id} into {queue_name}"
@@ -106,11 +106,11 @@ class PolarisQueueAdapter:
 
     async def get_transaction(self, source_task_name, queue_name) -> Transaction:
         """
-        Consume a transaction from a queues
+        Consume a transaction from a queue
         @param: source_task_name - the task that is requesting a Transaction
-        @param: queue_name - name of the queues to consume the Transaction from
+        @param: queue_name - name of the queue to consume the Transaction from
         """
-        logger.debug(f"{source_task_name} requesting task from queues: {queue_name}")
+        logger.debug(f"{source_task_name} requesting task from queue: {queue_name}")
         transaction = await self.queues[queue_name].get()
         logger.debug(f"{source_task_name} got transaction: {transaction}")
         return transaction
@@ -588,7 +588,7 @@ class ProcessPendingDeposits:
         transaction.submission_status = Transaction.SUBMISSION_STATUS.completed
         transaction.completed_at = datetime.datetime.now(datetime.timezone.utc)
         transaction.status_message = None
-        transaction.queues = None
+        transaction.queue = None
         transaction.queued_at = None
         if not transaction.quote:
             transaction.amount_out = round(
@@ -617,7 +617,7 @@ class ProcessPendingDeposits:
                 "submit_transaction_task", SUBMIT_TRANSACTION_QUEUE, transaction
             )
         else:
-            transaction.queues = None
+            transaction.queue = None
             transaction.queued_at = None
             transaction.status_message = None
             await sync_to_async(cls.save_as_pending_trust)(transaction)
@@ -660,7 +660,7 @@ class ProcessPendingDeposits:
 
     @classmethod
     def handle_error(cls, transaction, message):
-        transaction.queues = None
+        transaction.queue = None
         transaction.queued_at = None
         transaction.submission_status = Transaction.SUBMISSION_STATUS.failed
         transaction.status_message = message
@@ -671,14 +671,12 @@ class ProcessPendingDeposits:
     @classmethod
     def handle_submission_exception(cls, transaction, exception):
         if isinstance(exception, TransactionSubmissionBlocked):
-            transaction.queues = None
+            transaction.queue = None
             transaction.queued_at = None
             transaction.submission_status = Transaction.SUBMISSION_STATUS.blocked
-            logger.info(
-                f"transaction {transaction.id} is blocked, removing from queues"
-            )
+            logger.info(f"transaction {transaction.id} is blocked, removing from queue")
         elif isinstance(exception, TransactionSubmissionFailed):
-            transaction.queues = None
+            transaction.queue = None
             transaction.queued_at = None
             transaction.status = Transaction.STATUS.error
             transaction.submission_status = Transaction.SUBMISSION_STATUS.failed
