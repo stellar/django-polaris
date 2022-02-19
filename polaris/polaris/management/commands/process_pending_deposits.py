@@ -96,7 +96,7 @@ class PolarisQueueAdapter:
         """
         Put the given transaction into a queue
         @param: source_task_name - the task that queued this transaction
-        @param: queue_name - name of the queu to put the Transaction in
+        @param: queue_name - name of the queue to put the Transaction in
         @param: transaction - the Transaction to put in the queue
         """
         logger.debug(
