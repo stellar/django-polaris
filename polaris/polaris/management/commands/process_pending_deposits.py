@@ -68,9 +68,9 @@ class PolarisQueueAdapter:
 
     def populate_queues(self):
         """
-        populate_queuess gets called to read from the database and populate the in-memory queuess
+        populate_queues gets called to read from the database and populate the in-memory queues
         """
-        logger.debug("initializing queuess from database...")
+        logger.debug("initializing queues from database...")
         ready_transactions = Transaction.objects.filter(
             queue=SUBMIT_TRANSACTION_QUEUE,
             submission_status__in=[
@@ -95,8 +95,8 @@ class PolarisQueueAdapter:
     def queue_transaction(self, source_task_name, queue_name, transaction):
         """
         Put the given transaction into a queues
-        @param: source_task_name - the task that queuesd this transaction
-        @param: queues_name - name of the queues to put the Transaction in
+        @param: source_task_name - the task that queued this transaction
+        @param: queue_name - name of the queues to put the Transaction in
         @param: transaction - the Transaction to put in the queues
         """
         logger.debug(
@@ -108,7 +108,7 @@ class PolarisQueueAdapter:
         """
         Consume a transaction from a queues
         @param: source_task_name - the task that is requesting a Transaction
-        @param: queues_name - name of the queues to consume the Transaction from
+        @param: queue_name - name of the queues to consume the Transaction from
         """
         logger.debug(f"{source_task_name} requesting task from queues: {queue_name}")
         transaction = await self.queues[queue_name].get()
@@ -148,7 +148,7 @@ class ProcessPendingDeposits:
     async def check_accounts_task(cls, queues: PolarisQueueAdapter, interval: int):
         """
         Periodically polls accounts to determine if they exist on the Stellar
-        Network. If they do, the transaction is queuesd for deposit submission,
+        Network. If they do, the transaction is queued for deposit submission,
         otherwise the transaction remains in the same state and is polled again
         at the provided interval.
 
@@ -244,7 +244,7 @@ class ProcessPendingDeposits:
         For all transactions that are pending_trust, load the destination
         account json to determine if a trustline has been
         established. If a trustline for the requested asset is found, a the
-        transaction is queuesd for submission.
+        transaction is queued for submission.
         """
         logger.debug("check_trustlines_task started...")
         async with ServerAsync(settings.HORIZON_URI, client=AiohttpClient()) as server:
@@ -589,7 +589,7 @@ class ProcessPendingDeposits:
         transaction.completed_at = datetime.datetime.now(datetime.timezone.utc)
         transaction.status_message = None
         transaction.queues = None
-        transaction.queuesd_at = None
+        transaction.queued_at = None
         if not transaction.quote:
             transaction.amount_out = round(
                 Decimal(transaction.amount_in) - Decimal(transaction.amount_fee),
@@ -618,7 +618,7 @@ class ProcessPendingDeposits:
             )
         else:
             transaction.queues = None
-            transaction.queuesd_at = None
+            transaction.queued_at = None
             transaction.status_message = None
             await sync_to_async(cls.save_as_pending_trust)(transaction)
 
@@ -661,7 +661,7 @@ class ProcessPendingDeposits:
     @classmethod
     def handle_error(cls, transaction, message):
         transaction.queues = None
-        transaction.queuesd_at = None
+        transaction.queued_at = None
         transaction.submission_status = Transaction.SUBMISSION_STATUS.failed
         transaction.status_message = message
         transaction.status = Transaction.STATUS.error
@@ -672,14 +672,14 @@ class ProcessPendingDeposits:
     def handle_submission_exception(cls, transaction, exception):
         if isinstance(exception, TransactionSubmissionBlocked):
             transaction.queues = None
-            transaction.queuesd_at = None
+            transaction.queued_at = None
             transaction.submission_status = Transaction.SUBMISSION_STATUS.blocked
             logger.info(
                 f"transaction {transaction.id} is blocked, removing from queues"
             )
         elif isinstance(exception, TransactionSubmissionFailed):
             transaction.queues = None
-            transaction.queuesd_at = None
+            transaction.queued_at = None
             transaction.status = Transaction.STATUS.error
             transaction.submission_status = Transaction.SUBMISSION_STATUS.failed
             logger.info(
