@@ -168,12 +168,10 @@ class ProcessPendingDeposits:
         async with ServerAsync(settings.HORIZON_URI, client=AiohttpClient()) as server:
             for transaction in transactions:
                 try:
-                    account_json = (
-                        await server.accounts()
-                        .account_id(transaction.to_address)
-                        .call()
+                    _, account_json = await get_account_obj_async(
+                        Keypair.from_public_key(transaction.to_address), server
                     )
-                except (NotFoundError, ConnectionError):
+                except (RuntimeError, ConnectionError):
                     continue
                 if (
                     not is_pending_trust(transaction, account_json)
@@ -526,7 +524,7 @@ class ProcessPendingDeposits:
                     )
                 transaction_type = TransactionType.DEPOSIT
                 transaction_hash = await sync_to_async(rci.submit_deposit_transaction)(
-                    transaction=transaction,
+                    transaction=transaction, has_trustline=has_trustline
                 )
         finally:
             if (

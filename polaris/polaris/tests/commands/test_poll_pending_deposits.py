@@ -788,10 +788,15 @@ async def test_check_rails_for_ready_transactions():
         f"{test_module}.rri.poll_pending_deposits",
     ) as mock_poll_pending_deposits:
         mock_poll_pending_deposits.return_value = [transaction]
-
         qa = PolarisQueueAdapter([SUBMIT_TRANSACTION_QUEUE])
-
-        await ProcessPendingDeposits.check_rails_for_ready_transactions(qa)
+        with patch(
+            f"{test_module}.get_account_obj_async", new_callable=AsyncMock
+        ) as get_account_obj:
+            get_account_obj.return_value = (
+                None,
+                {"balances": [{"asset_code": usd.code, "asset_issuer": usd.issuer}]},
+            )
+            await ProcessPendingDeposits.check_rails_for_ready_transactions(qa)
         queued_task = await qa.get_transaction("", SUBMIT_TRANSACTION_QUEUE)
         assert queued_task == transaction
         await sync_to_async(transaction.refresh_from_db)()
