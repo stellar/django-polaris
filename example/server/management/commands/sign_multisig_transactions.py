@@ -77,5 +77,4 @@ class Command(BaseCommand):
             t.envelope_xdr = envelope.to_xdr()
             t.pending_signatures = False
             t.save()
-            logger.info(t.envelope_xdr)
             logger.info(f"Transaction {t.id} signatures have been collected")
