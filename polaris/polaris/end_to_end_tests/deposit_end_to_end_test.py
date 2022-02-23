@@ -1,10 +1,11 @@
 from threading import Thread
 from queue import Queue
+import argparse
 import requests
 import json
 import time
 from datetime import datetime, timezone
-from pprint import pprint
+
 
 from stellar_sdk import (
     Account,
@@ -31,6 +32,7 @@ POLARIS_CUSTOMER_ENDPOINT = POLARIS_URI + "/kyc/customer"
 STELLAR_TESTNET_NETWORK_PASSPHRASE = "Test SDF Network ; September 2015"
 HORIZON_URI = "https://horizon-testnet.stellar.org"
 FRIENDBOT_URI = "https://friendbot.stellar.org"
+
 
 
 def get_polaris_token(public_key, secret_key):
@@ -271,7 +273,7 @@ def test_polaris_deposit_with_account_creation(asset, time_results):
         print(f"test_polaris_deposit_with_account_creation: {time_elapsed} seconds")
 
 
-def create_stellar_account_with_trustline(asset, account_results=None):
+def create_stellar_account_with_trustline(server, asset, account_results=None):
     kp = Keypair.random()
     user_public_key = kp.public_key
     user_secret_key = kp.secret
@@ -289,15 +291,13 @@ def create_stellar_account_with_trustline(asset, account_results=None):
 
     return (user_public_key, user_secret_key)
 
-def create_stellar_accounts_with_trustline(count, asset, use_cached=False, multithread=False):
-    if use_cached:
-        return get_existing_stellar_accounts(count)
-
+def create_stellar_accounts_with_trustline(server, count, asset, multithread=False):
     account_results = Queue()
+    threads = []
     if multithread:
-        for _ in range(ts):
+        for _ in range(count):
             t = Thread(target=create_stellar_account_with_trustline,
-                       args=(asset_fung1, account_results))
+                       args=(server, asset, account_results))
             threads.append(t)
             t.start()
 
@@ -312,7 +312,16 @@ def create_stellar_accounts_with_trustline(count, asset, use_cached=False, multi
             accounts.append(account)
     return accounts
 
+
+
 def get_existing_stellar_accounts(count):
+    accounts = []
+    with open("./cached_accounts.txt") as f:
+        lines = f.readlines()
+    for line in lines:
+        l = line.strip().split(",")
+        accounts.append((l[0], l[1]))
+    return accounts
     # 30 accounts
     accounts = [
         ('GATD7CMWUTKWX3NKCN4BXE4L6TNXG2NYRCCAHXYAQ4U2QVTWYMRGYWBP',
@@ -413,44 +422,81 @@ def get_existing_stellar_accounts(count):
 
 
 if __name__ == "__main__":
-    # TODO
-    # - create asset on testnet
-    # - add asset to polaris?
-    # - add cli functionality
     # - implement verbose mode
     # - clean up structure of script
-
     # NOTES:
     #   - Asset needs to be created on the testnet and added to Polaris
 
-    ############################## Test variables #######################
-    verify = True
-    verbose = False
-    test_size = [20]  # run multiple tests of different sizes
-    test = "deposit_with_account_creation"
-    #test = "deposit_with_existing_account"
-    asset_fung1 = Asset("FUNG1", "GAQQTSLTFJZXDP7ZHWVJ3DRB6X46T35QMUJMZVWFSIZPRQ6KWSNPKV3U")
-    ###########################################################################
+    TESTS = [
+        "deposit_with_account_creation",
+        "deposit_with_existing_account"
+    ]
 
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--asset-name', "-an",help="name of the asset to add a trustline for", type=str, required=True)
+    parser.add_argument('--asset-issuer', "-ai", help="issuer of the asset to add a trustline for", type=str, required=True)
+    parser.add_argument('--verbose', '-v', help="verbose mode", type=bool, default=False)
+    parser.add_argument('--generate-accounts', help="verbose mode", type=int, default=0)
+    parser.add_argument('--verify', help="verification step that checks deposited assets on testnet", type=bool, default=False)
+    parser.add_argument('--load-size', "-ls", help="number of tests to execute (multithreaded)", type=int, default=1)
+    parser.add_argument('--tests', "-t", nargs="*", help=f"names of tests to execute: {TESTS}", default=TESTS)
+    parser.add_argument('--use-cached-accounts', "-ca", help=f"use pre-created accounts in cached-accounts.txt", default=False)
+
+    
+    args=parser.parse_args()
+
+    global verbose, verify
+    verbose = args.verbose
+    verify = args.verify
+    load_size = args.load_size
+    tests_to_run = args.tests
+    use_cached_accounts = args.use_cached_accounts
+    accounts_to_generate = args.generate_accounts
+    asset = Asset(args.asset_name, args.asset_issuer)
+    
     server = Server(horizon_url=HORIZON_URI)
 
-    for ts in test_size:
-        start = time.time()
+    if accounts_to_generate:
+        print(f"generating accounts {accounts_to_generate} accounts with trustline to asset {asset.code}")
+        accounts = create_stellar_accounts_with_trustline(server, accounts_to_generate, asset, multithread=True)
+        print(accounts)
+        with open("./cached_accounts.txt", "w") as f:
+            for acc in accounts:
+                f.write(f"{acc[0]},{acc[1]}\n")
+        print(f"accounts written to file: cached_accounts.txt")
+        exit(0)
+
+    for test in tests_to_run:
+        if test not in TESTS:
+            print(f"error: '{test}' is not in the list of available tests: {TESTS} ")
+            exit(1)
+
+    
+
+    start = time.time()
+    for test in tests_to_run:
         results = Queue()
         threads = []
         if test == "deposit_with_account_creation":
-            for _ in range(ts):
+            for _ in range(load_size):
                 t = Thread(target=test_polaris_deposit_with_account_creation,
-                           args=(asset_fung1, results))
+                            args=(asset, results))
                 threads.append(t)
                 t.start()
 
         elif test == "deposit_with_existing_account":
-            accounts = create_stellar_accounts_with_trustline(ts, asset_fung1, use_cached=True, multithread=True)
+            if use_cached_accounts:
+                accounts = get_existing_stellar_accounts(load_size)
+                if len(accounts) < load_size:
+                    print(f"not enough pre-created stellar accounts in cached_accounts.txt"
+                    f" - need: {load_size}, have: {len(accounts)}")
+                    exit(1)
+            else:
+                accounts = create_stellar_accounts_with_trustline(server, load_size, asset, multithread=True)
             start = time.time()  # start the timer after stellar accounts have been created
-            for i in range(ts):
+            for i in range(args.load_size):
                 t = Thread(target=test_polaris_deposit_with_existing_account_and_trustline,
-                           args=(asset_fung1, results, accounts[i]))
+                            args=(asset, results, accounts[i]))
                 threads.append(t)
                 t.start()
 
@@ -460,7 +506,7 @@ if __name__ == "__main__":
         time_elapsed = round(time.time() - start, 3)
 
         results = list(results.queue)
-        print("=================================================")
+        print("#################################################")
         print(f"number of deposits: {len(results)}")
         print("deposit transaction times: ")
         print(results)
@@ -471,5 +517,4 @@ if __name__ == "__main__":
         print(f"total time: {time_elapsed} seconds")
         print("=================================================")
 
-        time.sleep(5)
 
