@@ -171,7 +171,14 @@ class ProcessPendingDeposits:
                     _, account_json = await get_account_obj_async(
                         Keypair.from_public_key(transaction.to_address), server
                     )
-                except (RuntimeError, ConnectionError):
+                except RuntimeError:
+                    # account not found, submitting the transaction will take care of account creation
+                    await sync_to_async(cls.save_as_ready_for_submission)(transaction)
+                    queues.queue_transaction(
+                        "check_accounts_task", SUBMIT_TRANSACTION_QUEUE, transaction
+                    )
+                    continue
+                except ConnectionError:
                     continue
                 if (
                     not is_pending_trust(transaction, account_json)
@@ -230,6 +237,7 @@ class ProcessPendingDeposits:
 
     @staticmethod
     def save_as_ready_for_submission(transaction):
+        logger.debug(f"saving transaction: {transaction.id} as 'ready'")
         transaction.queue = SUBMIT_TRANSACTION_QUEUE
         transaction.queued_at = datetime.datetime.now(datetime.timezone.utc)
         transaction.status = Transaction.STATUS.pending_anchor
@@ -453,7 +461,14 @@ class ProcessPendingDeposits:
             Transaction.objects.filter(
                 unblocked | got_signatures,
                 kind__in=[Transaction.KIND.deposit, "deposit-exchange"],
-            ).select_related("asset", "quote")
+            )
+            .select_related("asset", "quote")
+            .exclude(
+                submission_status__in=[
+                    Transaction.SUBMISSION_STATUS.ready,
+                    Transaction.SUBMISSION_STATUS.processing,
+                ]
+            )
         )
         for transaction in unblocked_transactions:
             logger.info(f"detected unblocked transaction: {transaction.id}")
@@ -509,6 +524,9 @@ class ProcessPendingDeposits:
                     Keypair.from_public_key(transaction.to_address), server
                 )
             except RuntimeError:
+                logger.info(
+                    f"destination account: {transaction.to_address} not found, creating account"
+                )
                 transaction_type = TransactionType.CREATE_ACCOUNT
                 transaction_hash = await sync_to_async(rci.create_destination_account)(
                     transaction=transaction
@@ -605,10 +623,15 @@ class ProcessPendingDeposits:
         except Exception:
             logger.exception("after_deposit() threw an unexpected exception")
 
+        logger.info(f"deposit transaction: {transaction.id} successful")
+
     @classmethod
     async def handle_successful_account_creation(
         cls, transaction: Transaction, queues: PolarisQueueAdapter
     ):
+        logger.info(
+            f"account: {transaction.to_address} successfully created for transaction: {transaction.id}"
+        )
         if transaction.claimable_balance_supported:
             await sync_to_async(cls.save_as_ready_for_submission)(transaction)
             queues.queue_transaction(
@@ -622,6 +645,7 @@ class ProcessPendingDeposits:
 
     @staticmethod
     def save_as_pending_trust(transaction: Transaction):
+        logger.debug(f"saving transaction: {transaction.id} as 'pending_trust'")
         transaction.status = Transaction.STATUS.pending_trust
         transaction.submission_status = Transaction.SUBMISSION_STATUS.pending_trust
         transaction.save()
