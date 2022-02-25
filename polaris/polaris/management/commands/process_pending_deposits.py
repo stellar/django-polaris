@@ -688,7 +688,7 @@ class ProcessPendingDeposits:
         transaction.status_message = message
         transaction.status = Transaction.STATUS.error
         transaction.save()
-        logger.error(message)
+        logger.error(f"transaction: {transaction.id} encountered as error: {message}")
 
     @classmethod
     def handle_submission_exception(cls, transaction, exception):

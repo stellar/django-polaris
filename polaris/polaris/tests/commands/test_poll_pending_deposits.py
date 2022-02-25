@@ -1,6 +1,7 @@
 import asyncio
 import datetime
 from collections import defaultdict
+from multiprocessing.dummy import Process
 from unittest.mock import patch, Mock, MagicMock
 from decimal import Decimal
 
@@ -32,6 +33,7 @@ from polaris.utils import create_deposit_envelope
 from polaris.management.commands.process_pending_deposits import (
     ProcessPendingDeposits,
     PolarisQueueAdapter,
+    TransactionType,
 )
 
 from polaris.exceptions import (
@@ -669,6 +671,48 @@ async def test_still_pending_trust_transaction():
 
 
 @pytest.mark.django_db(transaction=True)
+def test_get_pending_trust_transactions():
+    usd = Asset.objects.create(code="USD", issuer=Keypair.random().public_key)
+    destination1 = Keypair.random().public_key
+    destination2 = Keypair.random().public_key
+    transaction1 = Transaction.objects.create(
+        asset=usd,
+        stellar_account=destination1,
+        to_address=destination1,
+        status=Transaction.STATUS.pending_trust,
+        kind=Transaction.KIND.deposit,
+        submission_status=Transaction.SUBMISSION_STATUS.pending_trust,
+    )
+    transaction2 = Transaction.objects.create(
+        asset=usd,
+        stellar_account=destination2,
+        to_address=destination2,
+        status=Transaction.STATUS.pending_trust,
+        kind=Transaction.KIND.deposit,
+        submission_status=Transaction.SUBMISSION_STATUS.pending_trust,
+    )
+    transactions = ProcessPendingDeposits.get_pending_trust_transactions()
+    assert len(transactions) == 2
+    assert transaction1 in transactions
+    assert transaction2 in transactions
+
+
+@pytest.mark.django_db(transaction=True)
+def test_get_pending_trust_transactions_empty():
+    usd = Asset.objects.create(code="USD", issuer=Keypair.random().public_key)
+    destination = Keypair.random().public_key
+    transaction1 = Transaction.objects.create(
+        asset=usd,
+        stellar_account=destination,
+        to_address=destination,
+        status=Transaction.STATUS.pending_anchor,
+        kind=Transaction.KIND.deposit,
+    )
+    transactions = ProcessPendingDeposits.get_pending_trust_transactions()
+    assert len(transactions) == 0
+
+
+@pytest.mark.django_db(transaction=True)
 async def test_populate_queues():
     usd = await sync_to_async(Asset.objects.create)(
         code="USD", issuer=Keypair.random().public_key
@@ -835,6 +879,23 @@ def test_get_unblocked_transactions():
 
 
 @pytest.mark.django_db(transaction=True)
+def test_get_unblocked_transactions_got_signatures():
+    usd = Asset.objects.create(code="USD", issuer=Keypair.random().public_key)
+    destination = Keypair.random().public_key
+    transaction = Transaction.objects.create(
+        asset=usd,
+        stellar_account=destination,
+        to_address=destination,
+        status=Transaction.STATUS.pending_anchor,
+        pending_signatures=False,
+        kind=Transaction.KIND.deposit,
+        envelope_xdr="dummyxdr",
+        amount_in=100,
+    )
+    assert ProcessPendingDeposits.get_unblocked_transactions() == [transaction]
+
+
+@pytest.mark.django_db(transaction=True)
 def test_get_unblocked_transactions_empty():
     usd = Asset.objects.create(code="USD", issuer=Keypair.random().public_key)
     destination = Keypair.random().public_key
@@ -873,6 +934,287 @@ async def test_process_unblocked_transactions():
     assert transaction.submission_status == Transaction.SUBMISSION_STATUS.ready
     assert transaction.queued_at is not None
     assert transaction.queue == SUBMIT_TRANSACTION_QUEUE
+
+
+@patch(f"{test_module}.rdi")
+@pytest.mark.django_db(transaction=True)
+async def test_handle_successful_deposit(mock_rdi):
+    usd = await sync_to_async(Asset.objects.create)(
+        code="USD", issuer=Keypair.random().public_key, significant_decimals=2
+    )
+    destination = Keypair.random().public_key
+    transaction = await sync_to_async(Transaction.objects.create)(
+        asset=usd,
+        stellar_account=destination,
+        to_address=destination,
+        status=Transaction.STATUS.pending_anchor,
+        submission_status=Transaction.SUBMISSION_STATUS.unblocked,
+        kind=Transaction.KIND.deposit,
+        amount_in=100,
+        amount_fee=1,
+    )
+
+    transaction_json = {"paging_token": "123", "id": "456"}
+
+    mock_rdi.after_deposit = None
+
+    await ProcessPendingDeposits.handle_successful_deposit(
+        transaction_json=transaction_json, transaction=transaction
+    )
+
+    await sync_to_async(transaction.refresh_from_db)()
+    assert transaction.paging_token == "123"
+    assert transaction.stellar_transaction_id == "456"
+    assert transaction.status == Transaction.STATUS.completed
+    assert transaction.submission_status == Transaction.SUBMISSION_STATUS.completed
+    assert transaction.completed_at is not None
+    assert transaction.queue == None
+    assert transaction.queued_at == None
+    assert transaction.amount_out == 99
+
+
+@pytest.mark.django_db(transaction=True)
+async def test_handle_successful_account_creation():
+    usd = await sync_to_async(Asset.objects.create)(
+        code="USD", issuer=Keypair.random().public_key
+    )
+    destination = Keypair.random().public_key
+    transaction = await sync_to_async(Transaction.objects.create)(
+        asset=usd,
+        stellar_account=destination,
+        to_address=destination,
+        status=Transaction.STATUS.pending_anchor,
+        submission_status=Transaction.SUBMISSION_STATUS.processing,
+        kind=Transaction.KIND.deposit,
+        amount_in=100,
+    )
+
+    qa = PolarisQueueAdapter([SUBMIT_TRANSACTION_QUEUE])
+    await ProcessPendingDeposits.handle_successful_account_creation(
+        transaction=transaction, queues=qa
+    )
+
+    await sync_to_async(transaction.refresh_from_db)()
+    assert transaction.status == Transaction.STATUS.pending_trust
+    assert transaction.submission_status == Transaction.SUBMISSION_STATUS.pending_trust
+    assert transaction.queue == None
+    assert transaction.queued_at == None
+
+
+@pytest.mark.django_db(transaction=True)
+async def test_handle_successful_account_creation_claimable_balance_supported():
+    usd = await sync_to_async(Asset.objects.create)(
+        code="USD", issuer=Keypair.random().public_key
+    )
+    destination = Keypair.random().public_key
+    transaction = await sync_to_async(Transaction.objects.create)(
+        asset=usd,
+        stellar_account=destination,
+        to_address=destination,
+        status=Transaction.STATUS.pending_anchor,
+        submission_status=Transaction.SUBMISSION_STATUS.processing,
+        kind=Transaction.KIND.deposit,
+        amount_in=100,
+        claimable_balance_supported=True,
+    )
+
+    qa = PolarisQueueAdapter([SUBMIT_TRANSACTION_QUEUE])
+    await ProcessPendingDeposits.handle_successful_account_creation(
+        transaction=transaction, queues=qa
+    )
+
+    await sync_to_async(transaction.refresh_from_db)()
+
+    assert await qa.get_transaction("", SUBMIT_TRANSACTION_QUEUE) == transaction
+    assert transaction.queue == SUBMIT_TRANSACTION_QUEUE
+    assert transaction.status == Transaction.STATUS.pending_anchor
+    assert transaction.submission_status == Transaction.SUBMISSION_STATUS.ready
+    assert transaction.queued_at is not None
+
+
+@pytest.mark.django_db(transaction=True)
+async def test_handle_successful_transaction_deposit():
+    usd = await sync_to_async(Asset.objects.create)(
+        code="USD", issuer=Keypair.random().public_key
+    )
+    destination = Keypair.random().public_key
+    transaction = await sync_to_async(Transaction.objects.create)(
+        asset=usd,
+        stellar_account=destination,
+        to_address=destination,
+        status=Transaction.STATUS.pending_anchor,
+        submission_status=Transaction.SUBMISSION_STATUS.unblocked,
+        kind=Transaction.KIND.deposit,
+        amount_in=100,
+    )
+
+    with patch(
+        f"{test_module}.ProcessPendingDeposits.handle_successful_deposit",
+        new_callable=AsyncMock,
+    ) as handle_successful_deposit:
+        qa = PolarisQueueAdapter([SUBMIT_TRANSACTION_QUEUE])
+        await ProcessPendingDeposits.handle_successful_transaction(
+            TransactionType.DEPOSIT,
+            transaction_json={},
+            transaction=transaction,
+            queues=qa,
+        )
+
+        handle_successful_deposit.assert_called_once_with(
+            transaction_json={}, transaction=transaction
+        )
+
+
+@pytest.mark.django_db(transaction=True)
+async def test_handle_successful_transaction_account_creation():
+    usd = await sync_to_async(Asset.objects.create)(
+        code="USD", issuer=Keypair.random().public_key
+    )
+    destination = Keypair.random().public_key
+    transaction = await sync_to_async(Transaction.objects.create)(
+        asset=usd,
+        stellar_account=destination,
+        to_address=destination,
+        status=Transaction.STATUS.pending_anchor,
+        submission_status=Transaction.SUBMISSION_STATUS.unblocked,
+        kind=Transaction.KIND.deposit,
+        amount_in=100,
+    )
+
+    with patch(
+        f"{test_module}.ProcessPendingDeposits.handle_successful_account_creation",
+        new_callable=AsyncMock,
+    ) as handle_successful_account_creation:
+        qa = PolarisQueueAdapter([SUBMIT_TRANSACTION_QUEUE])
+        await ProcessPendingDeposits.handle_successful_transaction(
+            TransactionType.CREATE_ACCOUNT,
+            transaction_json={},
+            transaction=transaction,
+            queues=qa,
+        )
+
+        handle_successful_account_creation.assert_called_once_with(
+            transaction=transaction, queues=qa
+        )
+
+
+@pytest.mark.django_db(transaction=True)
+def test_save_as_pending_trust():
+    usd = Asset.objects.create(code="USD", issuer=Keypair.random().public_key)
+    destination = Keypair.random().public_key
+    transaction = Transaction.objects.create(
+        asset=usd,
+        stellar_account=destination,
+        to_address=destination,
+        status=Transaction.STATUS.pending_anchor,
+        submission_status=Transaction.SUBMISSION_STATUS.unblocked,
+        kind=Transaction.KIND.deposit,
+        amount_in=100,
+    )
+    ProcessPendingDeposits.save_as_pending_trust(transaction)
+
+    assert transaction.status == Transaction.STATUS.pending_trust
+    assert transaction.submission_status == Transaction.SUBMISSION_STATUS.pending_trust
+
+
+@pytest.mark.django_db(transaction=True)
+def test_handle_error():
+    usd = Asset.objects.create(code="USD", issuer=Keypair.random().public_key)
+    destination = Keypair.random().public_key
+    transaction = Transaction.objects.create(
+        asset=usd,
+        stellar_account=destination,
+        to_address=destination,
+        status=Transaction.STATUS.pending_anchor,
+        submission_status=Transaction.SUBMISSION_STATUS.unblocked,
+        queue=SUBMIT_TRANSACTION_QUEUE,
+        queued_at=datetime.datetime.now(datetime.timezone.utc),
+        kind=Transaction.KIND.deposit,
+        amount_in=100,
+    )
+    ProcessPendingDeposits.handle_error(transaction, "error")
+    transaction.refresh_from_db()
+    assert transaction.status == Transaction.STATUS.error
+    assert transaction.submission_status == Transaction.SUBMISSION_STATUS.failed
+    assert transaction.queue == None
+    assert transaction.queued_at == None
+    assert transaction.status_message == "error"
+
+
+@pytest.mark.django_db(transaction=True)
+def test_handle_submission_exception_transaction_submission_blocked():
+    usd = Asset.objects.create(code="USD", issuer=Keypair.random().public_key)
+    destination = Keypair.random().public_key
+    transaction = Transaction.objects.create(
+        asset=usd,
+        stellar_account=destination,
+        to_address=destination,
+        status=Transaction.STATUS.pending_anchor,
+        submission_status=Transaction.SUBMISSION_STATUS.ready,
+        queue=SUBMIT_TRANSACTION_QUEUE,
+        queued_at=datetime.datetime.now(datetime.timezone.utc),
+        kind=Transaction.KIND.deposit,
+        amount_in=100,
+    )
+    ProcessPendingDeposits.handle_submission_exception(
+        transaction,
+        TransactionSubmissionBlocked("TransactionSubmissionBlocked error message"),
+    )
+    transaction.refresh_from_db()
+    assert transaction.submission_status == Transaction.SUBMISSION_STATUS.blocked
+    assert transaction.queue == None
+    assert transaction.queued_at == None
+    assert transaction.status_message == "TransactionSubmissionBlocked error message"
+
+
+@pytest.mark.django_db(transaction=True)
+def test_handle_submission_exception_transaction_submission_failed():
+    usd = Asset.objects.create(code="USD", issuer=Keypair.random().public_key)
+    destination = Keypair.random().public_key
+    transaction = Transaction.objects.create(
+        asset=usd,
+        stellar_account=destination,
+        to_address=destination,
+        status=Transaction.STATUS.pending_anchor,
+        submission_status=Transaction.SUBMISSION_STATUS.ready,
+        queue=SUBMIT_TRANSACTION_QUEUE,
+        queued_at=datetime.datetime.now(datetime.timezone.utc),
+        kind=Transaction.KIND.deposit,
+        amount_in=100,
+    )
+    ProcessPendingDeposits.handle_submission_exception(
+        transaction,
+        TransactionSubmissionFailed("TransactionSubmissionFailed error message"),
+    )
+    transaction.refresh_from_db()
+    assert transaction.submission_status == Transaction.SUBMISSION_STATUS.failed
+    assert transaction.queue == None
+    assert transaction.queued_at == None
+    transaction.status == Transaction.STATUS.error
+    assert transaction.status_message == "TransactionSubmissionFailed error message"
+
+
+@pytest.mark.django_db(transaction=True)
+def test_handle_submission_exception_transaction_submission_pending():
+    usd = Asset.objects.create(code="USD", issuer=Keypair.random().public_key)
+    destination = Keypair.random().public_key
+    transaction = Transaction.objects.create(
+        asset=usd,
+        stellar_account=destination,
+        to_address=destination,
+        status=Transaction.STATUS.pending_anchor,
+        submission_status=Transaction.SUBMISSION_STATUS.ready,
+        queue=SUBMIT_TRANSACTION_QUEUE,
+        queued_at=datetime.datetime.now(datetime.timezone.utc),
+        kind=Transaction.KIND.deposit,
+        amount_in=100,
+    )
+    ProcessPendingDeposits.handle_submission_exception(
+        transaction, TransactionSubmissionPending("error message")
+    )
+    transaction.refresh_from_db()
+    assert transaction.submission_status == Transaction.SUBMISSION_STATUS.pending
+    assert transaction.status_message == "error message"
 
 
 @pytest.mark.django_db(transaction=True)
