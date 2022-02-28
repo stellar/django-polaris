@@ -10,7 +10,7 @@ from collections import defaultdict
 import django.db.transaction
 from django.core.management import BaseCommand
 from django.db.models import Q
-from stellar_sdk import Keypair, ServerAsync, MuxedAccount
+from stellar_sdk import Keypair, ServerAsync, MuxedAccount, TransactionEnvelope
 from stellar_sdk.client.aiohttp_client import AiohttpClient
 from stellar_sdk.exceptions import (
     ConnectionError,
@@ -118,7 +118,9 @@ class PolarisQueueAdapter:
 
 class ProcessPendingDeposits:
     @classmethod
-    async def check_rails_task(cls, queues: PolarisQueueAdapter, interval):
+    async def check_rails_task(
+        cls, queues: PolarisQueueAdapter, interval
+    ):  # pragma: no cover
         """
         Periodically poll for deposit transactions that are ready to be processed
         and submit them to the CHECK_ACC_QUEUE for verification by the check_accounts_task.
@@ -145,7 +147,9 @@ class ProcessPendingDeposits:
         await cls.check_accounts(queues, ready_transactions)
 
     @classmethod
-    async def check_accounts_task(cls, queues: PolarisQueueAdapter, interval: int):
+    async def check_accounts_task(
+        cls, queues: PolarisQueueAdapter, interval: int
+    ):  # pragma: no cover
         """
         Periodically polls accounts to determine if they exist on the Stellar
         Network. If they do, the transaction is queued for deposit submission,
@@ -245,7 +249,9 @@ class ProcessPendingDeposits:
         transaction.save()
 
     @classmethod
-    async def check_trustlines_task(cls, queues: PolarisQueueAdapter, interval: int):
+    async def check_trustlines_task(
+        cls, queues: PolarisQueueAdapter, interval: int
+    ):  # pragma: no cover
         """
         For all transactions that are pending_trust, load the destination
         account json to determine if a trustline has been
@@ -301,7 +307,9 @@ class ProcessPendingDeposits:
             )
 
     @classmethod
-    async def submit_transaction_task(cls, queues: PolarisQueueAdapter, locks: Dict):
+    async def submit_transaction_task(
+        cls, queues: PolarisQueueAdapter, locks: Dict
+    ):  # pragma: no cover
         logger.debug("submit_transaction_task - running...")
         async with ServerAsync(settings.HORIZON_URI, client=AiohttpClient()) as server:
             while True:
@@ -441,7 +449,6 @@ class ProcessPendingDeposits:
             Transaction.objects.filter(
                 kind__in=[Transaction.KIND.deposit, "deposit-exchange"],
                 status=Transaction.STATUS.pending_trust,
-                submission_status=Transaction.SUBMISSION_STATUS.pending_trust,
             ).select_related("asset", "quote")
         )
 
@@ -536,10 +543,26 @@ class ProcessPendingDeposits:
                     transaction, destination_account_json
                 )
                 if not has_trustline and not transaction.claimable_balance_supported:
-                    raise RuntimeError(
-                        "submit() was called for a transaction that is missing a "
-                        "trustline, but claimable balances are not supported"
-                    )
+                    await sync_to_async(cls.save_as_pending_trust)(transaction)
+
+                if transaction.envelope_xdr:
+                    # If this is a multisig distribution account and there are two or more deposit
+                    # transaction for the same destination account two "create_destination_account"
+                    # transactions will be made for the same destination account. We already checked
+                    # if the account exists so if we get to this part of the code and we see another
+                    # create account operation, we clear the envelope_xdr and allow
+                    # submit_deposit_transaction to generate a new transaction envelope.
+                    import stellar_sdk
+
+                    signed_transaction = stellar_sdk.helpers.parse_transaction_envelope_from_xdr(
+                        transaction.envelope_xdr,
+                        network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
+                    ).transaction
+                    for op in signed_transaction.operations:
+                        if op._XDR_OPERATION_TYPE == OperationType.CREATE_ACCOUNT:
+                            transaction.envelope_xdr = None
+                            await sync_to_async(transaction.save)()
+
                 transaction_type = TransactionType.DEPOSIT
                 transaction_hash = await sync_to_async(rci.submit_deposit_transaction)(
                     transaction=transaction, has_trustline=has_trustline
@@ -783,7 +806,7 @@ class ProcessPendingDeposits:
             time.sleep(heartbeat_interval)
 
     @classmethod
-    async def process_pending_deposits(
+    async def process_pending_deposits(  # pragma: no cover
         cls, task_interval: int, heartbeat_interval: int
     ):
         loop = asyncio.get_running_loop()
