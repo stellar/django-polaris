@@ -93,9 +93,9 @@ def is_pending_trust(asset: Asset, json_resp):
 def create_polaris_user(user_public_key, headers):
     user_data = {
         "account": user_public_key,
-        "first_name": "stephen",
-        "last_name": "fung",
-        "email_address": "stephen@stellar.org",
+        "first_name": f"first{user_public_key[-5:]}",
+        "last_name": f"last{user_public_key[-5:]}",
+        "email_address": f"user{user_public_key[-5:]}@stellar.org",
         "bank_number": "123",
         "bank_account_number": "123456789"
     }
@@ -111,8 +111,9 @@ def create_polaris_deposit_transaction(user_public_key, asset_code, headers):
         "type": "bank_account",
         "amount": 5,
     }
-    #print(f"creating polaris deposit transaction with params: {str(params)}")
+    print(f"creating polaris deposit transaction with params: {str(params)}")
     deposit_transaction = requests.get(POLARIS_DEPOSIT_ENDPOINT, params=params, headers=headers)
+    print(deposit_transaction.content)
     json_transaction = json.loads(deposit_transaction.content)
     #pprint(json_transaction)
     return json_transaction
@@ -141,7 +142,7 @@ def load_account(resp):
     account = Account(account=resp["account_id"], sequence=sequence, raw_data=resp)
     return account
 
-def test_polaris_deposit_with_existing_account_and_trustline(asset, time_results, account):
+def test_polaris_deposit_with_existing_account_and_trustline(asset, time_results, account, use_same_account):
     verbose = False
     start = time.time()
 
@@ -156,9 +157,9 @@ def test_polaris_deposit_with_existing_account_and_trustline(asset, time_results
     token = get_polaris_token(user_public_key, user_secret_key)
 
     headers = {"Authorization": f"Bearer {token}"}
-
-    # create user
-    create_polaris_user(user_public_key, headers)
+    if not use_same_account:
+        # create user
+        create_polaris_user(user_public_key, headers)
 
     # create deposit transaction in polaris
     transaction_id = create_polaris_deposit_transaction(user_public_key, asset.code, headers)["id"]
@@ -199,14 +200,18 @@ def test_polaris_deposit_with_existing_account_and_trustline(asset, time_results
         print(f"test_polaris_deposit_with_account_creation: {time_elapsed} seconds")
 
 
-def test_polaris_deposit_with_account_creation(asset, time_results):
+def test_polaris_deposit_with_account_creation(asset, time_results, account):
     verbose = False
     start = time.time()
 
-    # generate keypair to use for new account
-    kp = Keypair.random()
-    user_public_key = kp.public_key
-    user_secret_key = kp.secret
+    if account:
+        user_public_key = account[0]
+        user_secret_key = account[1]
+    else:
+        # generate keypair to use for new account
+        kp = Keypair.random()
+        user_public_key = kp.public_key
+        user_secret_key = kp.secret
 
     if verbose:
         print(f"public key: {user_public_key}")
@@ -218,7 +223,8 @@ def test_polaris_deposit_with_account_creation(asset, time_results):
     headers = {"Authorization": f"Bearer {token}"}
 
     # create user
-    create_polaris_user(user_public_key, headers)
+    if not account:
+        create_polaris_user(user_public_key, headers)
 
     # create deposit transaction in polaris
     transaction_id = create_polaris_deposit_transaction(user_public_key, asset.code, headers)["id"]
@@ -313,7 +319,6 @@ def create_stellar_accounts_with_trustline(server, count, asset, multithread=Fal
     return accounts
 
 
-
 def get_existing_stellar_accounts(count):
     accounts = []
     with open("./cached_accounts.txt") as f:
@@ -322,103 +327,6 @@ def get_existing_stellar_accounts(count):
         l = line.strip().split(",")
         accounts.append((l[0], l[1]))
     return accounts
-    # 30 accounts
-    accounts = [
-        ('GATD7CMWUTKWX3NKCN4BXE4L6TNXG2NYRCCAHXYAQ4U2QVTWYMRGYWBP',
-         'SDIETGJBBLUSUPK7UVMNTIPGDFKL6OVN24X3F4E7IUACWSS35T2HVGEM'),
-        ('GDY2JT4HQKNYX4N7QTVWIXFAA3BZVBM2XQOVFGCRLZGTBVUS22BCNDV3',
-         'SCSHZLCQDVHSPTGVULTNFJCZVP5Q4KKXJVAELRSYZNAQWGYG7FQT4QHV'),
-        ('GAMOHNMEI2MVVPN467MCKMU7I25Z6CS7TONQHYG5YORDJPHSK6DH5TE3',
-         'SCCPZ7E56METMZJILCRXVIV4ZYOR3PA5EQXGSWKZADMK3A4ZPRPZ3FZZ'),
-        ('GD6KQ7UUATLA7L4BSFQPZS4CYWPIPQSB25VDJPLKXMV5RLZ2JT7CV3G7',
-         'SDRKRMDG7VVDY2IA72S5FFSIJ5K6TT5J6HDD22G6WM3UUQPMPOWUQWID'),
-        ('GDM667EQX4T4EBYRQTCTEQ3L2GPGATSL6AZAJG2PJPZ7G4DP5DRABLX7',
-         'SAPVMC4J6WF7U5MUPHKRX6QJFZ2GGJBKZCRUFPKW2ZWRPXO32PHD7GZC'),
-        ('GBZR4DJ2GFIEVXX4BCNYW2O4UA724J5T6ZC4W7QRY4AK5WR22W26ZZ6C',
-         'SDAHY4OKTYWL54PAROT2NFH4AA6BFJAWGCTTJG2SKAVSL2NPUE4PWZFL'),
-        ('GAZQKUBD5H7VSUEMI4J4NCID6DJICYYGNBKDCKHGVMMBFGQWH5DCUBLH',
-         'SBAVVBRP2TWPO7ZF4SNCYRQC3FBU5HXEZNSO64NWHWTO2OHLRCNHXI55'),
-        ('GACMD6WXNYH3JZ7NM7MP3ERCSOV4FNR25KNNMEJY7S3HTEZH7EXVKC7Z',
-         'SAWHDXXBE46HFZDOD4YJPJ6G5TUWROC6CMVTWB4J6H7XD7R7CURO5REJ'),
-        ('GBWIC4MV5Z2JSIPDYCETAV6GFPL2SFMKGTRINFTR2S7OFOFSEQ7DMA55',
-         'SCT2F7FYMKUK4DVMCE67FHRAKUFMB7RDXPDKDSSVWY2QMQ7XRWH3AF4Q'),
-        ('GCAO3TPN3QGKJO6RHPF4YGGIG2DJAGEXR73TMEVMIYJINGYNPENVCCY5',
-         'SBRYVS6UD5A4W3YAOMQHC7WGLWQHXQ3EWR2LTK7HVOVUCTUNCZJVJWPF'),
-        ('GAAVDMACMFIPMOJ7CG7AI3Q4VG37BLX7V2ND3HTKGDS3XVBNJLPJYJQ7',
-         'SCVLFYH5I2S4SMKJ56YWWWQK2WQXCZMIC7QDFW4GZDRUP2JNZ7IFJK2E'),
-        ('GDG7JROSB72II3NNWG6UAC3MF2CRQOOAUFITZW3FXANFKF2MAVSO7XNR',
-         'SC4NOKCFS6TKPIXXBQ76ZJSPEMNDVFEBA7J3E3SEVOYPLPG2DU3AGF3N'),
-        ('GALCZN62PAYWIUMCFCEVYXKMJC665OJDKKKIQYHZSMJSFNAMORO7QLFV',
-         'SCNPG34SYDKR5UWMMROP3VGJY4R2AEZ5AASE36FQE37A2SUZ5VRYVEI3'),
-        ('GCN62L4HIDPDWCB7D6YW2UJNIR2RZSW6WSYF4LIYW4MIBH3RHRLSH3EH',
-         'SBCVCBKFZXNHPZ7VHBF6LAVMXEJ3B4XEWOIJDC3PWXFPN77PFHHBTRLJ'),
-        ('GAED7EF4VQ46DTX5AMT6XQ6OI4OTMWTRLYH6PXXPV4BW6JIYAXOHOABM',
-         'SBZDYMCK7F5LPP2UXWXUP3QMERESFIJUCPINAIVYIJSIOXQ65YQ6I7LY'),
-        ('GDFKYJSYAZUJ7Y5IS7W5C5GZBO3WKVKHPHORK3YRG4LBRC6NL4WISEA6',
-         'SAOVSV3H5BQ2CLHUBZRYG4UFQC4ZFN4R2L752F55PG77HOZ5ONW6YTYM'),
-        ('GBUDJXCG2V4V23XMWS37MHP3RXBFNKYCH3OCO63PJQ5JR7YO67Q6MVJT',
-         'SCWDEZM5UMZGXRKWKOGQ7WQTNVVFQSWG2NETDWYKGWERT4UK7WV4JDQN'),
-        ('GBXLFFC3SM34R7WXAF27QYMZXCIVUR4O5W2KHJP352H43VDU2SOYUYMP',
-         'SBXUFC462RJVCU2DWSDTEFGON2OXXH2DW7X3BCC6XHPCLHQ4UHXEDHAF'),
-        ('GAGLCXJ2KYULS2IVVVBNXZUPOB2FQQ5V3TVZTLI3V6V3GHCZGBPNP3BP',
-         'SAVE6MXI4JO2C7EMAEQCZ5KAJDNRO4NS4QO6BRK3JHGXSUWIPV4Y2YWA'),
-        ('GAUKGTZOBBVB2OVBOWJMJPLZVENZ2Q4IX6GYKETMKHDPLATLFJACNBVI',
-         'SBVU4FZRHLM6KTY626U62WJKS2SWAYITJHLXZW2FGCNTMF77SOG4ZRIY'),
-        ('GBDJ5VTCYTYKDYMLYS4RDB46GE6FXARL35KBX2TSLV7G5E7G5OQ2KCID',
-         'SD2FSIE2BXUMX3VXAZGG6EUYIIC6RMMLDP6NSZ4IZ56P7JINXT3LENCT'),
-        ('GDYHJWLH2K34L5MFC73QHYGYHAY3SDJD2EIISHRAGZIDHIOEYEVKMLHQ',
-         'SD7ITSYZTTJHXJEDAJA3FP6KKTKJQSCBQPKGQOAOYFTF53CSQ3YOIR2M'),
-        ('GAAFBYUHY2ZNEDW5PZLOAV5QJSUMUEAWY4L6KCRHQFAEDJTLPRUGFDLH',
-         'SC2ZLO4YRH3Y6D2KUXM6HMOID36IJKH2L7TR5S6URGYA5GYJ2XTDMOF3'),
-        ('GCLUZBV2QKU757F2XDIDLM4T6M2D2TU3LPHBAKMXB5LZ5DICHIEUIXHA',
-         'SBBRHHGWYDEEYJPDICCKESNPYPW4ZSAVSFYLKOELCH64COBAG5LNAYBB'),
-        ('GAWOLDXQ4NN5ZIU4KTMUIKFPKIAFIVQ5NI6MILLJRCTDJMVZ6GEBZBEU',
-         'SAMINFBYEVVSNHWCOFZBA5EDJHRFBWGBDT2GEVAVEXLUIFWOOSYSECWG'),
-        ('GDPXDLMA6XZHBDP2OLTMSKJVHO2OOO73P3LHRHDHCYQKBR64UUAEF7XK',
-         'SDOV25LDW3JZ7FHSEDX6B3SISLVWY3XEUKGBO2RJENGUOXKTM6X55LTR'),
-        ('GAHAAQZ3VLZC4PZ3LQ2IXYTS535NPTG4ITA6HJIHTZ6RCKODIDPCMCHY',
-         'SC643JLZJ4HUE6YHAHACQSUUNGELYGTC43BIR22VGFE37DKZ6VVWS6G3'),
-        ('GCD5K267JHDDASXNXD7RQ46BME53VUHCT5266HECVTFIE47U5YC2R4HP',
-         'SDBMFVB4UJYOGVXG6XYFPJ3IXO43GIAPQT7STZQ7B27YLQC4HWQGNBZ6'),
-        ('GDBPDTROTJORREVJNPTKT6NHLRNU5TRFKLHG7IDP5QHIJVYYMNZCHFTS',
-         'SBKILG5O2YX52JZ7EANR6ZIX7OZBPZMTWCUFZJNNFNAXNO7PDGB4ZYDS'),
-        ('GADZYLZRABA3ZVKEPYFDXD3TUZXFWEKDGZVID553YHV6VTN2TVKSQZZL',
-         'SDCDPLCW4Z3WDI6EMSI4DV65DGZ2FZFXQQKMBWY2557EZ6W5GER2OZCQ'),
-        ('GAU5SG37PHBTXWLXCFIE6B4IH2ND7V4DC4OI5BI3SAKBR5PD3A6PI7CG',
-         'SDMVOEH6G6OQUT4BA43OVJC3IWUIFR6EVC26S4WRBMZLXB7H4FOC2GLQ'),
-        ('GBUDJXCG2V4V23XMWS37MHP3RXBFNKYCH3OCO63PJQ5JR7YO67Q6MVJT',
-         'SCWDEZM5UMZGXRKWKOGQ7WQTNVVFQSWG2NETDWYKGWERT4UK7WV4JDQN'),
-        ('GBXLFFC3SM34R7WXAF27QYMZXCIVUR4O5W2KHJP352H43VDU2SOYUYMP',
-         'SBXUFC462RJVCU2DWSDTEFGON2OXXH2DW7X3BCC6XHPCLHQ4UHXEDHAF'),
-        ('GAGLCXJ2KYULS2IVVVBNXZUPOB2FQQ5V3TVZTLI3V6V3GHCZGBPNP3BP',
-         'SAVE6MXI4JO2C7EMAEQCZ5KAJDNRO4NS4QO6BRK3JHGXSUWIPV4Y2YWA'),
-        ('GAUKGTZOBBVB2OVBOWJMJPLZVENZ2Q4IX6GYKETMKHDPLATLFJACNBVI',
-         'SBVU4FZRHLM6KTY626U62WJKS2SWAYITJHLXZW2FGCNTMF77SOG4ZRIY'),
-        ('GBDJ5VTCYTYKDYMLYS4RDB46GE6FXARL35KBX2TSLV7G5E7G5OQ2KCID',
-         'SD2FSIE2BXUMX3VXAZGG6EUYIIC6RMMLDP6NSZ4IZ56P7JINXT3LENCT'),
-        ('GDYHJWLH2K34L5MFC73QHYGYHAY3SDJD2EIISHRAGZIDHIOEYEVKMLHQ',
-         'SD7ITSYZTTJHXJEDAJA3FP6KKTKJQSCBQPKGQOAOYFTF53CSQ3YOIR2M'),
-        ('GAAFBYUHY2ZNEDW5PZLOAV5QJSUMUEAWY4L6KCRHQFAEDJTLPRUGFDLH',
-         'SC2ZLO4YRH3Y6D2KUXM6HMOID36IJKH2L7TR5S6URGYA5GYJ2XTDMOF3'),
-        ('GCLUZBV2QKU757F2XDIDLM4T6M2D2TU3LPHBAKMXB5LZ5DICHIEUIXHA',
-         'SBBRHHGWYDEEYJPDICCKESNPYPW4ZSAVSFYLKOELCH64COBAG5LNAYBB'),
-        ('GAWOLDXQ4NN5ZIU4KTMUIKFPKIAFIVQ5NI6MILLJRCTDJMVZ6GEBZBEU',
-         'SAMINFBYEVVSNHWCOFZBA5EDJHRFBWGBDT2GEVAVEXLUIFWOOSYSECWG'),
-        ('GDPXDLMA6XZHBDP2OLTMSKJVHO2OOO73P3LHRHDHCYQKBR64UUAEF7XK',
-         'SDOV25LDW3JZ7FHSEDX6B3SISLVWY3XEUKGBO2RJENGUOXKTM6X55LTR'),
-        ('GAHAAQZ3VLZC4PZ3LQ2IXYTS535NPTG4ITA6HJIHTZ6RCKODIDPCMCHY',
-         'SC643JLZJ4HUE6YHAHACQSUUNGELYGTC43BIR22VGFE37DKZ6VVWS6G3'),
-        ('GCD5K267JHDDASXNXD7RQ46BME53VUHCT5266HECVTFIE47U5YC2R4HP',
-         'SDBMFVB4UJYOGVXG6XYFPJ3IXO43GIAPQT7STZQ7B27YLQC4HWQGNBZ6'),
-        ('GDBPDTROTJORREVJNPTKT6NHLRNU5TRFKLHG7IDP5QHIJVYYMNZCHFTS',
-         'SBKILG5O2YX52JZ7EANR6ZIX7OZBPZMTWCUFZJNNFNAXNO7PDGB4ZYDS'),
-        ('GADZYLZRABA3ZVKEPYFDXD3TUZXFWEKDGZVID553YHV6VTN2TVKSQZZL',
-         'SDCDPLCW4Z3WDI6EMSI4DV65DGZ2FZFXQQKMBWY2557EZ6W5GER2OZCQ'),
-        ('GAU5SG37PHBTXWLXCFIE6B4IH2ND7V4DC4OI5BI3SAKBR5PD3A6PI7CG',
-         'SDMVOEH6G6OQUT4BA43OVJC3IWUIFR6EVC26S4WRBMZLXB7H4FOC2GLQ'),
-    ]
-
-    return accounts[:count]
 
 
 if __name__ == "__main__":
@@ -441,6 +349,7 @@ if __name__ == "__main__":
     parser.add_argument('--load-size', "-ls", help="number of tests to execute (multithreaded)", type=int, default=1)
     parser.add_argument('--tests', "-t", nargs="*", help=f"names of tests to execute: {TESTS}", default=TESTS)
     parser.add_argument('--use-cached-accounts', "-ca", help=f"use pre-created accounts in cached-accounts.txt", default=False)
+    parser.add_argument('--use-same-account', "-usa", help=f"use the same Stellar account for all tests", default=False)
 
     
     args=parser.parse_args()
@@ -451,9 +360,10 @@ if __name__ == "__main__":
     load_size = args.load_size
     tests_to_run = args.tests
     use_cached_accounts = args.use_cached_accounts
+    use_same_account = args.use_same_account
     accounts_to_generate = args.generate_accounts
     asset = Asset(args.asset_name, args.asset_issuer)
-    
+
     server = Server(horizon_url=HORIZON_URI)
 
     if accounts_to_generate:
@@ -478,9 +388,16 @@ if __name__ == "__main__":
         results = Queue()
         threads = []
         if test == "deposit_with_account_creation":
+            account = None
+            if use_same_account:
+                kp = Keypair.random()
+                account = (kp.public_key, kp.secret)   
+                token = get_polaris_token(kp.public_key, kp.secret)
+                headers = {"Authorization": f"Bearer {token}"}
+                create_polaris_user(kp.public_key, headers)
             for _ in range(load_size):
                 t = Thread(target=test_polaris_deposit_with_account_creation,
-                            args=(asset, results))
+                            args=(asset, results, account))
                 threads.append(t)
                 t.start()
 
@@ -492,11 +409,18 @@ if __name__ == "__main__":
                     f" - need: {load_size}, have: {len(accounts)}")
                     exit(1)
             else:
-                accounts = create_stellar_accounts_with_trustline(server, load_size, asset, multithread=True)
+                accounts_to_generate = 1 if use_same_account else load_size
+                accounts = create_stellar_accounts_with_trustline(
+                    server, accounts_to_generate, asset, multithread=True)
+            if use_same_account:
+                token = get_polaris_token(accounts[0][0], accounts[0][1])
+                headers = {"Authorization": f"Bearer {token}"}
+                create_polaris_user(accounts[0][0], headers)
             start = time.time()  # start the timer after stellar accounts have been created
             for i in range(args.load_size):
+                account = accounts[0] if use_same_account else accounts[i]
                 t = Thread(target=test_polaris_deposit_with_existing_account_and_trustline,
-                            args=(asset, results, accounts[i]))
+                            args=(asset, results, account, use_same_account))
                 threads.append(t)
                 t.start()
 
