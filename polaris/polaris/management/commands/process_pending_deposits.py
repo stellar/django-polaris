@@ -17,6 +17,7 @@ from stellar_sdk.exceptions import (
     NotFoundError,
 )
 from stellar_sdk.xdr import TransactionResult, OperationType
+from stellar_sdk.helpers import parse_transaction_envelope_from_xdr
 from asgiref.sync import sync_to_async
 
 from polaris import settings
@@ -71,18 +72,22 @@ class PolarisQueueAdapter:
         populate_queues gets called to read from the database and populate the in-memory queues
         """
         logger.debug("initializing queues from database...")
-        ready_transactions = Transaction.objects.filter(
-            queue=SUBMIT_TRANSACTION_QUEUE,
-            submission_status__in=[
-                Transaction.SUBMISSION_STATUS.ready,
-                Transaction.SUBMISSION_STATUS.processing,
-            ],
-            kind__in=[
-                Transaction.KIND.deposit,
-                getattr(Transaction.KIND, "deposit-exchange"),
-            ],
-            queued_at__isnull=False,
-        ).order_by("queued_at")
+        ready_transactions = (
+            Transaction.objects.filter(
+                queue=SUBMIT_TRANSACTION_QUEUE,
+                submission_status__in=[
+                    Transaction.SUBMISSION_STATUS.ready,
+                    Transaction.SUBMISSION_STATUS.processing,
+                ],
+                kind__in=[
+                    Transaction.KIND.deposit,
+                    getattr(Transaction.KIND, "deposit-exchange"),
+                ],
+                queued_at__isnull=False,
+            )
+            .order_by("queued_at")
+            .select_related("asset")
+        )
 
         logger.debug(
             f"found {len(ready_transactions)} transactions to queue for submit_transaction_task"
@@ -449,6 +454,7 @@ class ProcessPendingDeposits:
             Transaction.objects.filter(
                 kind__in=[Transaction.KIND.deposit, "deposit-exchange"],
                 status=Transaction.STATUS.pending_trust,
+                submission_status=Transaction.SUBMISSION_STATUS.pending_trust,
             ).select_related("asset", "quote")
         )
 
@@ -508,7 +514,9 @@ class ProcessPendingDeposits:
         await maybe_make_callback_async(transaction)
 
         try:
-            distribution_account = rci.get_distribution_account(asset=transaction.asset)
+            distribution_account = await sync_to_async(rci.get_distribution_account)(
+                asset=transaction.asset
+            )
         except NotImplementedError:
             # Polaris has to assume that the custody service provider can handle concurrent
             # requests to send funds to destination accounts since it does not have a dedicated
@@ -532,7 +540,7 @@ class ProcessPendingDeposits:
                 )
             except RuntimeError:
                 logger.info(
-                    f"destination account: {transaction.to_address} not found, creating account"
+                    f"destination account: {transaction.to_address} not found, creating account..."
                 )
                 transaction_type = TransactionType.CREATE_ACCOUNT
                 transaction_hash = await sync_to_async(rci.create_destination_account)(
@@ -543,7 +551,19 @@ class ProcessPendingDeposits:
                     transaction, destination_account_json
                 )
                 if not has_trustline and not transaction.claimable_balance_supported:
+                    transaction.queue = None
+                    transaction.queued_at = None
                     await sync_to_async(cls.save_as_pending_trust)(transaction)
+                    if (
+                        distribution_account in locks["source_accounts"]
+                        and locks["source_accounts"][distribution_account].locked()
+                    ):
+                        logger.debug(
+                            "unlocking after attempting submission for "
+                            f"transaction {transaction.id}"
+                        )
+                        locks["source_accounts"][distribution_account].release()
+                    return
 
                 if transaction.envelope_xdr:
                     # If this is a multisig distribution account and there are two or more deposit
@@ -552,9 +572,7 @@ class ProcessPendingDeposits:
                     # if the account exists so if we get to this part of the code and we see another
                     # create account operation, we clear the envelope_xdr and allow
                     # submit_deposit_transaction to generate a new transaction envelope.
-                    import stellar_sdk
-
-                    signed_transaction = stellar_sdk.helpers.parse_transaction_envelope_from_xdr(
+                    signed_transaction = parse_transaction_envelope_from_xdr(
                         transaction.envelope_xdr,
                         network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
                     ).transaction
@@ -711,7 +729,7 @@ class ProcessPendingDeposits:
         transaction.status_message = message
         transaction.status = Transaction.STATUS.error
         transaction.save()
-        logger.error(f"transaction: {transaction.id} encountered as error: {message}")
+        logger.error(f"transaction: {transaction.id} encountered an error: {message}")
 
     @classmethod
     def handle_submission_exception(cls, transaction, exception):
