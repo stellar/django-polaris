@@ -10,7 +10,7 @@ from collections import defaultdict
 import django.db.transaction
 from django.core.management import BaseCommand
 from django.db.models import Q
-from stellar_sdk import Keypair, ServerAsync, MuxedAccount, TransactionEnvelope
+from stellar_sdk import Keypair, ServerAsync, MuxedAccount
 from stellar_sdk.client.aiohttp_client import AiohttpClient
 from stellar_sdk.exceptions import (
     ConnectionError,
