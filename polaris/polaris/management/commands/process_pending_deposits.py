@@ -10,14 +10,16 @@ from collections import defaultdict
 import django.db.transaction
 from django.core.management import BaseCommand
 from django.db.models import Q
-from stellar_sdk import Keypair, ServerAsync, MuxedAccount
-from stellar_sdk.client.aiohttp_client import AiohttpClient
-from stellar_sdk.exceptions import (
-    ConnectionError,
-    NotFoundError,
+from stellar_sdk import (
+    Keypair,
+    ServerAsync,
+    MuxedAccount,
+    TransactionEnvelope,
+    CreateAccount,
 )
+from stellar_sdk.client.aiohttp_client import AiohttpClient
+from stellar_sdk.exceptions import ConnectionError
 from stellar_sdk.xdr import TransactionResult, OperationType
-from stellar_sdk.helpers import parse_transaction_envelope_from_xdr
 from asgiref.sync import sync_to_async
 
 from polaris import settings
@@ -572,12 +574,12 @@ class ProcessPendingDeposits:
                     # if the account exists so if we get to this part of the code and we see another
                     # create account operation, we clear the envelope_xdr and allow
                     # submit_deposit_transaction to generate a new transaction envelope.
-                    signed_transaction = parse_transaction_envelope_from_xdr(
+                    signed_transaction = TransactionEnvelope.from_xdr(
                         transaction.envelope_xdr,
                         network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
                     ).transaction
                     for op in signed_transaction.operations:
-                        if op._XDR_OPERATION_TYPE == OperationType.CREATE_ACCOUNT:
+                        if isinstance(op, CreateAccount):
                             transaction.envelope_xdr = None
                             await sync_to_async(transaction.save)()
 
