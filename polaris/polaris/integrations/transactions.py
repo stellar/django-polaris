@@ -596,8 +596,7 @@ class DepositIntegration:
     ):
         """
         Create a temporary, per-deposit-transaction-object Stellar account using a different
-        Stellar account `that does not require multiple signatures`, and save the secret key
-        of the created account to ``transaction.channel_seed``.
+        Stellar account and save the secret key of the created account to ``transaction.channel_seed``.
 
         This channel account must only be used as the source account for transactions related to the
         ``Transaction`` object passed. It also must not be used to submit transactions by any service

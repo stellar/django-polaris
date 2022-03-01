@@ -1,7 +1,6 @@
 """This module defines the models used by Polaris."""
 import datetime
 import decimal
-import enum
 import secrets
 import uuid
 from base64 import urlsafe_b64encode as b64e, urlsafe_b64decode as b64d
@@ -55,6 +54,8 @@ class PolarisHeartbeat(models.Model):
 
     key = models.CharField(max_length=80, unique=True)
     last_heartbeat = models.DateTimeField(null=True, blank=True)
+
+    objects = models.Manager()
 
 
 class PolarisChoices(Choices):
@@ -281,7 +282,7 @@ class Asset(TimeStampedModel):
         else:
             return ASSET_DISTRIBUTION_ACCOUNT_MAP[self.distribution_account]
 
-    def get_distributiion_account_signers(self, refresh=False):
+    def get_distribution_account_signers(self, refresh=False):
         if refresh or self.distribution_account not in ASSET_DISTRIBUTION_ACCOUNT_MAP:
             account_json = self.get_distribution_account_data(refresh=refresh)
         else:
@@ -408,6 +409,7 @@ class Transaction(models.Model):
         "ready",
         "processing",
         "pending",
+        "pending_funding",
         "pending_trust",
         "blocked",
         "unblocked",
@@ -651,7 +653,7 @@ class Transaction(models.Model):
     queue = models.TextField(null=True, blank=True)
     """The queue that this transaction is currently in"""
 
-    queued_at = models.DateTimeField(default=utc_now)
+    queued_at = models.DateTimeField(null=True, blank=True)
     """The time when this transaction was queued"""
 
     started_at = models.DateTimeField(default=utc_now)

@@ -8,15 +8,17 @@ from stellar_sdk.exceptions import (
     BadResponseError,
 )
 from rest_framework.request import Request
+from stellar_sdk.sep.ed25519_public_key_signer import Ed25519PublicKeySigner
+from stellar_sdk.sep.stellar_web_authentication import _verify_transaction_signatures
 
 from polaris.exceptions import (
     TransactionSubmissionPending,
     TransactionSubmissionBlocked,
+    TransactionSubmissionFailed,
 )
 from polaris.models import Transaction, Asset
 from polaris.utils import (
     getLogger,
-    load_account,
     memo_hex_to_base64,
     create_deposit_envelope,
     get_account_obj,
@@ -239,14 +241,27 @@ class SelfCustodyIntegration(CustodyIntegration):
         self, transaction, type: TransactionType, has_trustline: Optional[bool] = None
     ):
         try:
-            requires_tp_sigs = self._requires_third_party_signatures(
-                transaction=transaction
-            )
-        except ConnectionError:
-            raise TransactionSubmissionPending
-        if requires_tp_sigs:
-            raise TransactionSubmissionBlocked
+            requires_add_sigs = self._requires_additional_signatures(transaction)
+        except ConnectionError as e:
+            # Unable to fetch the information necessary to determine whether
+            # the transaction requires additional signatures. We're going to
+            # assume this issue is temporary and instruct Polaris retry
+            # submitting this transaction.
+            raise TransactionSubmissionPending(f"ConnectionError: {str(e)}")
         with Server(horizon_url=settings.HORIZON_URI) as server:
+            if requires_add_sigs:
+                # The transaction requires signatures in addition to the
+                # signatures Polaris can add directly, namely the signatures
+                # from the asset's distribution account and the channel account
+                # provided by the anchor. So, we indicate to Polaris that it
+                # should wait until the anchor signals that this transaction is
+                # ready for submission.
+                self._save_as_pending_signatures(
+                    transaction, type, server, has_trustline
+                )
+                raise TransactionSubmissionBlocked(
+                    "non-master distribution account signatures need to be " "collected"
+                )
             transaction_hash = None
             while not transaction_hash:
                 if transaction.envelope_xdr:
@@ -258,55 +273,73 @@ class SelfCustodyIntegration(CustodyIntegration):
                         )
                     else:
                         envelope_obj = self._generate_create_account_transaction_envelope(
-                            transaction.asset.distribution_account,
-                            transaction.to_address,
-                            server,
+                            transaction, server,
                         )
                     envelope = self._sign_and_save_transaction_envelope(
                         transaction, envelope_obj, [transaction.asset.distribution_seed]
                     )
                 try:
                     response = server.submit_transaction(envelope)
-                except (BadResponseError, ConnectionError):
-                    # TODO: ensure we got a 504 timeout
-                    raise TransactionSubmissionPending
-                except BadRequestError:
-                    # TODO: ensure we got a 400 tx_too_late
-                    transaction.envelope_xdr = None
-                    continue
+                except (BadResponseError, ConnectionError) as e:
+                    if isinstance(e, BadResponseError):
+                        exception_msg = f"BadResponseError ({e.status}): {e.message}"
+                    else:
+                        exception_msg = str(e)
+                    raise TransactionSubmissionPending(exception_msg)
+                except BadRequestError as e:
+                    if e.status != 400:
+                        raise TransactionSubmissionFailed(
+                            f"unexpected status code: {e.status}"
+                        )
+                    # We assume we constructed the transaction properly. This rules
+                    # out several possible transaction error codes.
+                    #
+                    # The only transaction error code we will attempt to recover from
+                    # is tx_insufficient_fee, which indicates the network is in surge
+                    # pricing mode, therefore we need to retry submitting.
+                    #
+                    # All other transaction error codes are considered the fault of
+                    # anchor (ex. insufficient balances, not adding required signers)
+                    tx_error_code = e.extras.get("result_codes", {}).get("transaction")
+                    exception_msg = f"BadRequestError ({e.status}): {e.message}"
+                    if tx_error_code == "tx_insufficient_fee":
+                        raise TransactionSubmissionPending(exception_msg)
+                    else:
+                        # unexpected transaction error code.
+                        raise TransactionSubmissionFailed(exception_msg)
                 return response["hash"]
 
     @staticmethod
     def _generate_deposit_transaction_envelope(
         transaction: Transaction, has_trustline: bool, server: Server
-    ):
-        distribution_acc, _ = get_account_obj(
-            Keypair.from_public_key(transaction.asset.distribution_account)
-        )
+    ) -> TransactionEnvelope:
+        if transaction.channel_account:
+            source_account, _ = get_account_obj(
+                Keypair.from_public_key(transaction.channel_account)
+            )
+        else:
+            source_account, _ = get_account_obj(
+                Keypair.from_public_key(transaction.asset.distribution_account)
+            )
         return create_deposit_envelope(
             transaction=transaction,
-            source_account=distribution_acc,
+            source_account=source_account,
             use_claimable_balance=not has_trustline,
             base_fee=(settings.MAX_TRANSACTION_FEE_STROOPS or server.fetch_base_fee()),
         )
 
     @staticmethod
-    def _sign_and_save_transaction_envelope(
-        transaction: Transaction,
-        envelope: TransactionEnvelope,
-        signers: List[Union[Keypair, str]],
-    ):
-        for signer in signers:
-            envelope.sign(signer)
-        transaction.envelope_xdr = envelope.to_xdr()
-        transaction.save()
-        return transaction.envelope_xdr
-
-    @staticmethod
     def _generate_create_account_transaction_envelope(
-        from_account: str, to_account: str, server: Server
-    ):
-        source_account = load_account(server.accounts().account_id(from_account).call())
+        transaction: Transaction, server: Server
+    ) -> TransactionEnvelope:
+        if transaction.channel_account:
+            source_account, _ = get_account_obj(
+                Keypair.from_public_key(transaction.channel_account)
+            )
+        else:
+            source_account, _ = get_account_obj(
+                Keypair.from_public_key(transaction.asset.distribution_account)
+            )
         builder = TransactionBuilder(
             source_account=source_account,
             network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
@@ -314,23 +347,110 @@ class SelfCustodyIntegration(CustodyIntegration):
             base_fee=(settings.MAX_TRANSACTION_FEE_STROOPS or server.fetch_base_fee()),
         )
         return builder.append_create_account_op(
-            destination=to_account, starting_balance=settings.ACCOUNT_STARTING_BALANCE,
+            source=transaction.asset.distribution_account,
+            destination=transaction.to_address,
+            starting_balance=settings.ACCOUNT_STARTING_BALANCE,
         ).build()
 
     @staticmethod
-    def _requires_third_party_signatures(transaction: Transaction) -> bool:
+    def _requires_additional_signatures(transaction: Transaction) -> bool:
         """
-        Returns ``True`` if the distribution account for the asset being transacted
-        requires signatures from other signers in addition to the distribution account's
-        signature.
+        Checks if the transaction is using a distribution account that requires
+        non-master signers and if so, checks if the transaction envelope has the
+        signatures from enough non-master signers.
+
+        Note that this function does not check for the presence of a signature
+        from the transaction's channel account. It is assumed Polaris adds the
+        signature from a channel account when the transaction envelope is crafted.
         """
         master_signer = transaction.asset.get_distribution_account_master_signer()
         thresholds = transaction.asset.get_distribution_account_thresholds()
-        return (
+        is_multisig_account = (
             not master_signer
             or master_signer["weight"] == 0
             or master_signer["weight"] < thresholds["med_threshold"]
         )
+        if not is_multisig_account:
+            return False
+        if not transaction.envelope_xdr:
+            return True
+        possible_signers = []
+        for signer_json in transaction.asset.get_distribution_account_signers():
+            possible_signers.append(
+                Ed25519PublicKeySigner(
+                    account_id=signer_json["key"], weight=signer_json["weight"]
+                )
+            )
+        envelope = TransactionEnvelope.from_xdr(
+            transaction.envelope_xdr, settings.STELLAR_NETWORK_PASSPHRASE
+        )
+        signers = _verify_transaction_signatures(envelope, possible_signers)
+        return sum(s.weight for s in signers) < thresholds["med_threshold"]
+
+    def _save_as_pending_signatures(
+        self,
+        transaction: Transaction,
+        type: TransactionType,
+        server: Server,
+        has_trustline: Optional[bool] = None,
+    ):
+        """
+        Saves the transaction in a state such that the anchor can query the transaction
+        from the database and sign the transaction envelope with an abitrary number of
+        additional signers required to submit the transaction.
+
+        Currently, Polaris assumes the anchor has a pool of channel accounts that can be
+        used as the source account on this transaction so that it can be submitted at a
+        later point in time without failing with a bad sequence number error.
+
+        NOTE: Polaris will drop support for multisig transactions in v3.0.
+        """
+        from polaris.integrations import registered_deposit_integration as rdi
+
+        if not transaction.channel_account:
+            # we haven't called this yet
+            rdi.create_channel_account(transaction)
+        if not transaction.channel_account:
+            # maybe the anchor used a Transaction.objects.update() query and
+            # channel_account isn't saved to the object.
+            # refresh but don't remove foriegn key objects previously queried
+            asset = transaction.asset
+            quote = transaction.quote
+            transaction.refresh_from_db()
+            transaction.asset = asset
+            transaction.quote = quote
+        if not transaction.channel_account:
+            # the anchor didn't properly implement create_channel_account
+            raise TransactionSubmissionFailed(
+                "DepositIntegration.create_channel_account() did not save a "
+                "secret key to Transaction.channel_seed"
+            )
+        if type == self.TransactionType.SEND_DEPOSIT_AMOUNT:
+            envelope = self._generate_deposit_transaction_envelope(
+                transaction=transaction, has_trustline=has_trustline, server=server
+            )
+        else:
+            envelope = self._generate_create_account_transaction_envelope(
+                transaction=transaction, server=server
+            )
+        transaction.pending_signatures = True
+        self._sign_and_save_transaction_envelope(
+            transaction=transaction,
+            envelope=envelope,
+            signers=[transaction.asset.distribution_seed, transaction.channel_seed],
+        )
+
+    @staticmethod
+    def _sign_and_save_transaction_envelope(
+        transaction: Transaction,
+        envelope: TransactionEnvelope,
+        signers: List[Union[Keypair, str]],
+    ) -> str:
+        for signer in signers:
+            envelope.sign(signer)
+        transaction.envelope_xdr = envelope.to_xdr()
+        transaction.save()
+        return transaction.envelope_xdr
 
 
 registered_custody_integration = SelfCustodyIntegration()

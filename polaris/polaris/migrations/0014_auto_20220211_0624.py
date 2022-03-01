@@ -35,7 +35,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="transaction",
             name="queued_at",
-            field=models.DateTimeField(default=polaris.models.utc_now),
+            field=models.DateTimeField(blank=True, null=True),
         ),
         migrations.AddField(
             model_name="transaction",
@@ -46,6 +46,7 @@ class Migration(migrations.Migration):
                     ("ready", "ready"),
                     ("processing", "processing"),
                     ("pending", "pending"),
+                    ("pending_funding", "pending_funding"),
                     ("pending_trust", "pending_trust"),
                     ("blocked", "blocked"),
                     ("unblocked", "unblocked"),
