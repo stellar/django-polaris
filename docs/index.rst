@@ -49,6 +49,7 @@ User Guide
     sep-12
     sep-31
     sep-38
+    custody
 
 API Reference
 =============
