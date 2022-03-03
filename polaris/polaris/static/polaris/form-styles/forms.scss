@@ -3,6 +3,7 @@
 @import "./file-picker.scss";
 @import "./select-list.scss";
 @import "./toggle.scss";
+@import "../colors.scss";
 
 .field {
   margin: 1rem 0;
@@ -85,7 +86,7 @@
     line-height: 1.125rem;
     font-weight: $bold-weight;
     border-radius: 0.75rem 0 0 0.75rem;
-    background-color: #484848;
+    background-color: $light-gray;
   }
 
   input[type="text"],
