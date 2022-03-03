@@ -2,8 +2,6 @@ from typing import Dict, Optional
 from decimal import Decimal, InvalidOperation
 from collections import defaultdict
 
-from polaris.utils import getLogger, get_quote_and_offchain_destination_asset
-
 from django.utils.translation import gettext as _
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from rest_framework.views import APIView
@@ -15,14 +13,19 @@ from rest_framework.parsers import JSONParser
 from polaris.locale.utils import _is_supported_language, activate_lang_for_request
 from polaris.sep10.utils import validate_sep10_token
 from polaris.sep10.token import SEP10Token
+from polaris.integrations import (
+    registered_sep31_receiver_integration,
+    registered_custody_integration as rci,
+)
 from polaris.models import Transaction, Asset, Quote
-from polaris.integrations import registered_sep31_receiver_integration
 from polaris.sep31.serializers import SEP31TransactionSerializer
 from polaris.utils import (
+    getLogger,
+    get_quote_and_offchain_destination_asset,
     render_error_response,
     create_transaction_id,
-    memo_hex_to_base64,
     validate_patch_request_fields,
+    validate_account_and_memo,
 )
 
 
@@ -133,14 +136,9 @@ class TransactionsAPIView(APIView):
                 status=400,
             )
 
-        transaction_id = create_transaction_id()
-        # create memo
-        transaction_id_hex = transaction_id.hex
-        padded_hex_memo = "0" * (64 - len(transaction_id_hex)) + transaction_id_hex
-        transaction_memo = memo_hex_to_base64(padded_hex_memo)
         # create transaction object without saving to the DB
         transaction = Transaction(
-            id=transaction_id,
+            id=create_transaction_id(),
             protocol=Transaction.PROTOCOL.sep31,
             kind=Transaction.KIND.send,
             status=Transaction.STATUS.pending_sender,
@@ -148,9 +146,6 @@ class TransactionsAPIView(APIView):
             asset=params["asset"],
             amount_in=params["amount"],
             amount_expected=params["amount"],
-            memo=transaction_memo,
-            memo_type=Transaction.MEMO_TYPES.hash,
-            receiving_anchor_account=params["asset"].distribution_account,
             client_domain=token.client_domain,
             quote=params["quote"],
         )
@@ -159,19 +154,43 @@ class TransactionsAPIView(APIView):
             token=token, request=request, params=params, transaction=transaction
         )
         try:
-            response_data = process_post_response(error_data, transaction)
+            validate_error_response(error_data, transaction)
         except ValueError as e:
             logger.error(str(e))
             return render_error_response(
                 _("unable to process the request"), status_code=500
             )
-        if "error" in response_data:
-            return Response(response_data, status=400)
-        else:
-            if transaction.quote and transaction.quote.type == Quote.TYPE.indicative:
-                transaction.quote.save()
-            transaction.save()
-            return Response(response_data, status=201)
+        if error_data:
+            return Response(error_data, status=400)
+
+        if transaction.quote and transaction.quote.type == Quote.TYPE.indicative:
+            transaction.quote.save()
+        try:
+            receiving_account, memo, memo_type = validate_account_and_memo(
+                *rci.get_receiving_account_and_memo(
+                    request=request, transaction=transaction
+                )
+            )
+        except ValueError:
+            logger.exception(
+                "CustodyIntegration.get_receiving_account_and_memo() returned invalid values"
+            )
+            return render_error_response(
+                _("unable to process the request"), status_code=500
+            )
+        transaction.receiving_anchor_account = receiving_account
+        transaction.memo = memo
+        transaction.memo_type = memo_type
+        transaction.save()
+        return Response(
+            {
+                "id": transaction.id,
+                "stellar_account_id": transaction.receiving_anchor_account,
+                "stellar_memo": transaction.memo,
+                "stellar_memo_type": transaction.memo_type,
+            },
+            status=201,
+        )
 
 
 def validate_post_request(token: SEP10Token, request: Request) -> Dict:
@@ -248,39 +267,28 @@ def validate_post_fields(
     return dict(missing_fields)
 
 
-def process_post_response(error_data: Dict, transaction: Transaction) -> Dict:
+def validate_error_response(error_data: Dict, transaction: Transaction):
     if not error_data:
-        response_data = {
-            "id": transaction.id,
-            "stellar_account_id": transaction.asset.distribution_account,
-            "stellar_memo": transaction.memo,
-            "stellar_memo_type": transaction.memo_type,
-        }
-    else:
-        if Transaction.objects.filter(id=transaction.id).exists():
-            raise ValueError(f"transactions should not be created on bad requests")
-        elif error_data["error"] == "transaction_info_needed":
-            if not isinstance(error_data.get("fields"), dict):
-                raise ValueError("'fields' must serialize to a JSON object")
-            validate_post_fields_needed(error_data.get("fields"), transaction.asset)
-            if len(error_data) > 2:
-                raise ValueError(
-                    "extra fields returned in customer_info_needed response"
-                )
-        elif error_data["error"] == "customer_info_needed":
-            if ("type" in error_data and len(error_data) > 2) or (
-                "type" not in error_data and len(error_data) > 1
-            ):
-                raise ValueError(
-                    "extra fields returned in transaction_info_needed response"
-                )
-            elif type(error_data.get("type")) not in [None, str]:
-                raise ValueError("invalid value for 'type' key")
-        elif not isinstance(error_data["error"], str):
-            raise ValueError("'error' must be a string")
-        response_data = error_data
-
-    return response_data
+        return
+    if Transaction.objects.filter(id=transaction.id).exists():
+        raise ValueError(f"transactions should not be created on bad requests")
+    elif error_data["error"] == "transaction_info_needed":
+        if not isinstance(error_data.get("fields"), dict):
+            raise ValueError("'fields' must serialize to a JSON object")
+        validate_post_fields_needed(error_data.get("fields"), transaction.asset)
+        if len(error_data) > 2:
+            raise ValueError("extra fields returned in customer_info_needed response")
+    elif error_data["error"] == "customer_info_needed":
+        if ("type" in error_data and len(error_data) > 2) or (
+            "type" not in error_data and len(error_data) > 1
+        ):
+            raise ValueError(
+                "extra fields returned in transaction_info_needed response"
+            )
+        elif type(error_data.get("type")) not in [None, str]:
+            raise ValueError("invalid value for 'type' key")
+    elif not isinstance(error_data["error"], str):
+        raise ValueError("'error' must be a string")
 
 
 def validate_post_fields_needed(response_fields: Dict, asset: Asset):

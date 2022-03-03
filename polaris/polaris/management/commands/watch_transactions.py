@@ -29,6 +29,7 @@ from stellar_sdk.client.aiohttp_client import AiohttpClient
 from polaris import settings
 from polaris.models import Asset, Transaction
 from polaris.utils import getLogger, maybe_make_callback_async
+from polaris.integrations import registered_custody_integration as rci
 
 logger = getLogger(__name__)
 PaymentOpResult = Union[
@@ -41,6 +42,11 @@ class Command(BaseCommand):
     """
     Streams transactions to the :attr:`~polaris.models.Asset.distribution_account`
     of each :class:`~polaris.models.Asset` in the DB.
+
+    Note that this command assumes Stellar payments are made to one distribution
+    account address per asset. Some third party custody service providers may not
+    use this scheme, in which case the custody integration class should provide
+    an alternative command for detecting incoming Stellar payments.
 
     For every response from the server, attempts to find a matching transaction in
     the database and updates the transaction's status to ``pending_anchor`` or
@@ -66,11 +72,12 @@ class Command(BaseCommand):
             raise e
 
     async def watch_transactions(self):  # pragma: no cover
-        assets = await sync_to_async(list)(
-            Asset.objects.exclude(distribution_seed__isnull=True)
-        )
+        assets = await sync_to_async(list)(Asset.objects.all())
         await asyncio.gather(
-            *[self._for_account(asset.distribution_account) for asset in assets]
+            *[
+                self._for_account(rci.get_distribution_account(asset=asset))
+                for asset in assets
+            ]
         )
 
     async def _for_account(self, account: str):
@@ -87,6 +94,7 @@ class Command(BaseCommand):
                 raise RuntimeError(
                     "Stellar distribution account does not exist in horizon"
                 )
+
             last_completed_transaction = await sync_to_async(
                 Transaction.objects.filter(
                     Q(kind=Transaction.KIND.withdrawal) | Q(kind=Transaction.KIND.send),
@@ -210,7 +218,7 @@ class Command(BaseCommand):
             if not op_result:  # not a payment op
                 continue
             maybe_payment_data = cls._check_for_payment_match(
-                op, op_result, transaction.asset
+                op, op_result, transaction.asset, transaction
             )
             if maybe_payment_data:
                 if ops[idx].source:
@@ -238,11 +246,15 @@ class Command(BaseCommand):
 
     @classmethod
     def _check_for_payment_match(
-        cls, operation: PaymentOp, op_result: PaymentOpResult, want_asset: Asset
+        cls,
+        operation: PaymentOp,
+        op_result: PaymentOpResult,
+        want_asset: Asset,
+        transaction: Transaction,
     ) -> Optional[Dict]:
         payment_data = cls._get_payment_values(operation, op_result)
         if (
-            payment_data["destination"] == want_asset.distribution_account
+            payment_data["destination"] == transaction.receiving_anchor_account
             and payment_data["code"] == want_asset.code
             and payment_data["issuer"] == want_asset.issuer
         ):

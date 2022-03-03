@@ -36,6 +36,28 @@ def utc_now():
     return datetime.datetime.now(datetime.timezone.utc)
 
 
+class PolarisHeartbeat(models.Model):
+    """
+    Used as a locking mechanism to ensure that certain processes such as
+    process_pending_deposits.py don't have more than 1 instance running
+    at any given time. The last_heatbeat is a timestamp that is periodically
+    updated by the process. If a process unexpectedly dies, another instance
+    can check this value at startup and if its been too long since the last
+    update, the lock is considered 'expired' and the new process can acquire
+    it. This mechanism is an advisory lock and the locking logic is implemented
+    at the application level.
+    This value can also be used to create a 'health check' endpoint for the
+    application
+    Note: The application is expected to delete this key during a gracefully
+    shutdown - see process_pending_deposits.py for an example
+    """
+
+    key = models.CharField(max_length=80, unique=True)
+    last_heartbeat = models.DateTimeField(null=True, blank=True)
+
+    objects = models.Manager()
+
+
 class PolarisChoices(Choices):
     """A subclass to change the verbose default string representation"""
 
@@ -260,7 +282,7 @@ class Asset(TimeStampedModel):
         else:
             return ASSET_DISTRIBUTION_ACCOUNT_MAP[self.distribution_account]
 
-    def get_distributiion_account_signers(self, refresh=False):
+    def get_distribution_account_signers(self, refresh=False):
         if refresh or self.distribution_account not in ASSET_DISTRIBUTION_ACCOUNT_MAP:
             account_json = self.get_distribution_account_data(refresh=refresh)
         else:
@@ -382,6 +404,63 @@ class Transaction(models.Model):
         "pending_stellar": _("stellar is executing the transaction"),
     }
 
+    SUBMISSION_STATUS = PolarisChoices(
+        "not_ready",
+        "ready",
+        "processing",
+        "pending",
+        "pending_funding",
+        "pending_trust",
+        "blocked",
+        "unblocked",
+        "completed",
+        "failed",
+    )
+    """ 
+        Submission Statuses
+
+    * **not_ready**
+        used until a transaction is returned from RailsIntegration.poll_pending_deposits()
+        and determined by check_account to be ready for submission to the Stellar Network
+    
+    * **ready**
+        used when the transaction has been processed by the check_account task and verified
+        that the transaction is ready to be submitted to the Stellar Network
+
+    * **processing**
+        used when Polaris is submitting the transaction to Stellar. Note that up to two 
+        transactions could be submitted for this Transaction object, one for creating the 
+        account if it doesn't exist, and the other for sending the deposit payment.
+
+    * **pending**
+        used when the transaction has been passed to 
+        CustodyIntegration.create_destination_account() or 
+        CustodyIntegration.submit_deposit_transaction() but a `TransactionSubmissionPending` 
+        exception was raised in the most-recent invocation, and a SIGINT or SIGTERM was 
+        sent, preventing Polaris from submitting again.
+    
+    * **pending_trust**
+        used when the transaction destination account does not yet have a trustline
+    
+    * **blocked**
+        used when the transaction has been passed to 
+        CustodyIntegration.create_destination_account()
+        or CustodyIntegration.submit_deposit_transaction() but a `TransactionSubmissionBlocked` 
+        exception was raised in the most-recent invocation. Polaris will simply move to the 
+        next transaction.
+    
+    * **unblocked**
+        Similar to READY, but indicates that the transaction was previously blocked.
+    
+    * **completed**
+        used when a transaction has been successfully submitted to the Stellar network
+
+    * **failed**
+        used when a transaction has been passed to 
+        CustodyIntegration.submit_deposit_transaction() but a `TransactionSubmissionFailed`
+        exception was raised
+    """
+
     STATUS = PolarisChoices(*list(status_to_message.keys()))
 
     MEMO_TYPES = PolarisChoices("text", "id", "hash")
@@ -425,6 +504,10 @@ class Transaction(models.Model):
     # These fields can be shown through an API:
     kind = models.CharField(choices=KIND, default=KIND.deposit, max_length=20)
     """The character field for the available ``KIND`` choices."""
+
+    submission_status = models.CharField(
+        choices=SUBMISSION_STATUS, default=SUBMISSION_STATUS.not_ready, max_length=31
+    )
 
     status = models.CharField(
         choices=STATUS, default=STATUS.pending_external, max_length=31
@@ -566,6 +649,12 @@ class Transaction(models.Model):
     must be formatted using SEP-38's Asset Identification Format, and is only
     necessary for transactions using different on and off-chain assets.
     """
+
+    queue = models.TextField(null=True, blank=True)
+    """The queue that this transaction is currently in"""
+
+    queued_at = models.DateTimeField(null=True, blank=True)
+    """The time when this transaction was queued"""
 
     started_at = models.DateTimeField(default=utc_now)
     """Start date and time of transaction."""

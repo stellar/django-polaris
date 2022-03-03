@@ -35,7 +35,7 @@ def get_stellar_toml(request: Request, *args: List, **kwargs: Dict):
     return {
         "CURRENCIES": [
             {"code": asset.code, "issuer": asset.issuer}
-            for asset in Asset.objects.all().iterator()
+            for asset in Asset.objects.all()
         ]
     }
 

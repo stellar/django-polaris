@@ -330,7 +330,7 @@ def test_get_prices_failure_sell_offchain_with_buy_delivery_method(mock_rqi, cli
 def test_get_prices_failure_bad_stellar_format(mock_rqi, client):
     default_data()
     response = client.get(
-        PRICES_ENDPOINT, {"sell_asset": f"stellar:USDC", "sell_amount": 100,}
+        PRICES_ENDPOINT, {"sell_asset": f"stellar:USDC", "sell_amount": 100,},
     )
     assert response.status_code == 400, response.content
     assert response.json() == {"error": "invalid 'sell_asset' format"}
@@ -342,7 +342,7 @@ def test_get_prices_failure_bad_stellar_format(mock_rqi, client):
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 def test_get_prices_failure_bad_offchain_format(mock_rqi, client):
     default_data()
-    response = client.get(PRICES_ENDPOINT, {"sell_asset": f"USD", "sell_amount": 100,})
+    response = client.get(PRICES_ENDPOINT, {"sell_asset": f"USD", "sell_amount": 100,},)
     assert response.status_code == 400, response.content
     assert response.json() == {"error": "invalid 'sell_asset' format"}
     mock_rqi.get_prices.assert_not_called()

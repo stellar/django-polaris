@@ -28,6 +28,7 @@ from polaris.utils import (
     create_transaction_id,
     extract_sep9_fields,
     make_memo,
+    get_account_obj,
     get_quote_and_offchain_source_asset,
 )
 from polaris.shared.endpoints import SEP6_MORE_INFO_PATH
@@ -36,6 +37,7 @@ from polaris.sep10.utils import validate_sep10_token
 from polaris.sep10.token import SEP10Token
 from polaris.integrations import (
     registered_deposit_integration as rdi,
+    registered_custody_integration as rci,
     registered_fee_func,
     calculate_fee,
 )
@@ -326,6 +328,20 @@ def parse_request_args(
                 _("quote has already been used in a transaction")
             )
         }
+
+    if not rci.account_creation_supported:
+        if account.startswith("M"):
+            stellar_account = StrKey.decode_muxed_account(account).ed25519
+        else:
+            stellar_account = account
+        try:
+            get_account_obj(Keypair.from_public_key(stellar_account))
+        except RuntimeError:
+            return {
+                "error": render_error_response(
+                    _("public key 'account' must be a funded Stellar account")
+                )
+            }
 
     args = {
         "account": request.GET.get("account"),
