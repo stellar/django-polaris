@@ -13,7 +13,7 @@ run:
   process_pending_deposits:
     image: reference-server
     command:
-      - python manage.py process_pending_deposits --loop
+      - python manage.py process_pending_deposits
   execute_outgoing_transactions:
     image: reference-server
     command:
