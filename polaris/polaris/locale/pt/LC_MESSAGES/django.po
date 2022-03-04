@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gettext-tools 0.18.3\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-03-03 21:42+0000\n"
+"POT-Creation-Date: 2022-03-04 19:17+0000\n"
 "PO-Revision-Date: 2014-01-07 15:19+0900\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -388,11 +388,15 @@ msgstr "faltam alguns parâmetros obrigatórios Parâmetros faltando:"
 
 #: sep38/prices.py:122 sep38/prices.py:183
 msgid "'buy_delivery_method' or 'sell_delivery_method' is valid, but not both"
-msgstr "Um dos parâmetros 'buy_delivery_method' ou 'sell_delivery_method' é válido, mas não ambos."
+msgstr ""
+"Um dos parâmetros 'buy_delivery_method' ou 'sell_delivery_method' é válido, "
+"mas não ambos."
 
 #: sep38/prices.py:139
 msgid "no 'buy_assets' for 'delivery_method' and 'country_code' specificed"
-msgstr "não existem 'buy_assets' para 'delivery_method' ou 'country_code' especificados"
+msgstr ""
+"não existem 'buy_assets' para 'delivery_method' ou 'country_code' "
+"especificados"
 
 #: sep38/prices.py:148
 msgid "invalid 'sell_amount'; Expected decimal string."
@@ -400,7 +404,8 @@ msgstr "'sell_amount' inválido; Decimal string esperada."
 
 #: sep38/prices.py:176 sep38/quote.py:98
 msgid "'sell_amount' or 'buy_amount' is required, but both is invalid"
-msgstr "'sell_amount' ou 'buy_amount' necessários, mas não ambos ao mesmo tempo."
+msgstr ""
+"'sell_amount' ou 'buy_amount' necessários, mas não ambos ao mesmo tempo."
 
 #: sep38/prices.py:211 sep38/quote.py:152
 msgid "invalid 'buy_amount' or 'sell_amount'; Expected decimal strings."
@@ -416,12 +421,15 @@ msgstr "URL de callback inválida"
 msgid ""
 "'buy_delivery_method' or 'sell_delivery_method' is required, but both is "
 "invalid"
-msgstr "'buy_delivery_method' ou 'sell_delivery_method' necessários, mas ambos ao mesmo tempo é uma transação inválida."
+msgstr ""
+"'buy_delivery_method' ou 'sell_delivery_method' necessários, mas ambos ao "
+"mesmo tempo é uma transação inválida."
 
 #: sep38/quote.py:118
 msgid ""
 "invalid 'expire_after' string format. Expected UTC ISO 8601 datetime string."
-msgstr "Formato de 'expire_after' inválido. UTC ISO 8601 datetime string esperada."
+msgstr ""
+"Formato de 'expire_after' inválido. UTC ISO 8601 datetime string esperada."
 
 #: sep38/quote.py:124
 msgid "invalid 'expire_after' datetime. Expected future datetime."
@@ -429,7 +437,8 @@ msgstr "'expire_after' inválida. Esperada uma data no futuro."
 
 #: sep38/utils.py:52 sep38/utils.py:94
 msgid "unexpected 'buy_delivery_method', client intends to buy a Stellar asset"
-msgstr "'buy_delivery_method' inesperado, cliente pretende comprar um ativo Stellar"
+msgstr ""
+"'buy_delivery_method' inesperado, cliente pretende comprar um ativo Stellar"
 
 #: sep38/utils.py:71 sep38/utils.py:101
 msgid "invalid 'buy_asset' format"
@@ -439,7 +448,9 @@ msgstr "formato de 'buy_asset' inválido"
 msgid ""
 "unable to find 'buy_asset' using the following filters: 'country_code', "
 "'buy_delivery_method'"
-msgstr "'buy_asset'não encontrado utilizando os seguintes filtros:'country_code','buy_delivery_method' "
+msgstr ""
+"'buy_asset'não encontrado utilizando os seguintes "
+"filtros:'country_code','buy_delivery_method' "
 
 #: sep38/utils.py:114
 msgid "unsupported asset pair"
@@ -448,7 +459,8 @@ msgstr "par de ativos não suportado"
 #: sep38/utils.py:128
 msgid ""
 "unexpected 'sell_delivery_method', client intends to sell a Stellar asset"
-msgstr "'sell_delivery_method' inesperado, cliente pretende vender um ativo Stellar"
+msgstr ""
+"'sell_delivery_method' inesperado, cliente pretende vender um ativo Stellar"
 
 #: sep38/utils.py:135 sep38/utils.py:141
 msgid "invalid 'sell_asset' format"
@@ -456,7 +468,8 @@ msgstr "formato do 'sell_asset' inválido"
 
 #: sep38/utils.py:154
 msgid "no 'sell_asset' for 'delivery_method' and 'country_code' specificed"
-msgstr "nenhum 'sell_asset' para o 'delivery_method' e 'country_code' especificados "
+msgstr ""
+"nenhum 'sell_asset' para o 'delivery_method' e 'country_code' especificados "
 
 #: sep6/deposit.py:228 sep6/withdraw.py:162
 #, fuzzy
@@ -480,16 +493,15 @@ msgid "'amount' is required"
 msgstr "'amount' é necessário"
 
 #: sep6/deposit.py:306 sep6/withdraw.py:227
+#, python-format
 msgid "'amount' must be within [%s, %s]"
 msgstr "O montante do ativo deve estar entre [%s, %s]"
 
 #: sep6/withdraw.py:166 utils.py:557 utils.py:572
-#| msgid "invalid 'asset_code'"
 msgid "invalid 'source_asset'"
 msgstr "'source_asset' inválido"
 
 #: sep6/withdraw.py:176
-#| msgid "invalid 'asset_code' and 'asset_issuer'"
 msgid "invalid 'asset_code' or 'source_asset'"
 msgstr "'asset_code' e 'source_asset' inválidos"
 
@@ -638,6 +650,8 @@ msgid "invalid type for %s, must be an object"
 msgstr "tipo inválido para %s, precisa ser um objeto"
 
 #: utils.py:391
+#, fuzzy, python-format
+#| msgid "missing %(field)s in %(category)s"
 msgid "missing %(field)s in %(category)s"
 msgstr "%{field}s faltando em %{category}s"
 
@@ -660,15 +674,17 @@ msgstr "cotação expirou"
 #: utils.py:468
 msgid ""
 "quote 'sell_asset' does not match 'asset_code' and 'asset_issuer' parameters"
-msgstr "cotação 'sell_asset' não corresponde com os parâmetros 'asset_code' e 'asset_issuer'"
+msgstr ""
+"cotação 'sell_asset' não corresponde com os parâmetros 'asset_code' e "
+"'asset_issuer'"
 
 #: utils.py:473
 msgid "quote 'buy_asset' does not match 'destination_asset' parameter"
 msgstr "cotação 'buy_asset' não corresponde com 'destination_asset' parameter"
 
-#: utils.py:476
-msgid "quote amount does not patch 'amount' parameter"
-msgstr ""
+#: utils.py:476 utils.py:551
+msgid "quote amount does not match 'amount' parameter"
+msgstr "o valor da cotação não corresponde ao parâmetro 'amount'"
 
 #: utils.py:491
 #, fuzzy
@@ -683,15 +699,13 @@ msgstr "'source_asset' é necessário se 'quote_id' for informado"
 #: utils.py:543
 msgid ""
 "quote 'buy_asset' does not match 'asset_code' and 'asset_issuer' parameters"
-msgstr "cotação 'buy_asset' não corresponde aos parâmetros 'asset_code' e 'asset_issuer'"
+msgstr ""
+"cotação 'buy_asset' não corresponde aos parâmetros 'asset_code' e "
+"'asset_issuer'"
 
 #: utils.py:548
 msgid "quote 'sell_asset' does not match 'source_asset' parameter"
 msgstr "cotação 'sell_asset' não corresponde ao parâmetro 'source_asset'"
-
-#: utils.py:551
-msgid "quote amount does not match 'amount' parameter"
-msgstr "o valor da cotação não corresponde ao parâmetro 'amount'"
 
 #: utils.py:565
 #, fuzzy
