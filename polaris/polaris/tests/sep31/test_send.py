@@ -742,7 +742,7 @@ def test_send_firm_quote_amount_no_match(mock_sep31_ri, client, usd_asset_factor
     )
     body = response.json()
     assert response.status_code == 400, response.content
-    assert body == {"error": "quote amount does not patch 'amount' parameter"}
+    assert body == {"error": "quote amount does not match 'amount' parameter"}
     mock_sep31_ri.process_post_request.assert_not_called()
 
 
