@@ -22,6 +22,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "settings")
 
 # Setup Django
 import django
+from polaris import __version__
 
 django.setup()
 
@@ -33,9 +34,9 @@ copyright = "2019, Stellar Development Foundation"
 author = "Stellar Development Foundation"
 
 # The short X.Y version
-version = "2.2.0"
+version = __version__
 # The full version, including alpha/beta/rc tags
-release = "2.2.0"
+release = __version__
 
 
 # -- General configuration ---------------------------------------------------
