@@ -5,5 +5,4 @@ graft polaris/polaris/templates
 graft polaris/polaris/locale
 graft polaris/polaris/static
 global-exclude *.scss
-global-exclude __pycache__
 global-exclude *.py[co]
