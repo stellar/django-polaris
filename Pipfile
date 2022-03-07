@@ -20,6 +20,7 @@ libsass = "*"
 django-compressor = "*"
 django-sass-processor = "*"
 sphinx-autodoc-typehints = "*"
+build = "*"
 
 [packages]
 django = ">=3.2, <4.0"

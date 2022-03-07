@@ -1,9 +1,8 @@
 include LICENSE
-include README.md
-include .env.example
-include polaris/polaris/static/polaris/base.css
-include polaris/polaris/static/polaris/company-icon.svg
-include polaris/polaris/static/polaris/chevron-down.svg
-recursive-include polaris/polaris/static/polaris/scripts *
-recursive-include polaris/polaris/templates *
-recursive-include polaris/polaris/locale *
+include README.rst
+graft polaris/polaris/static/polaris/scripts
+graft polaris/polaris/templates
+graft polaris/polaris/locale
+graft polaris/polaris/static
+global-exclude *.scss
+global-exclude *.py[co]
