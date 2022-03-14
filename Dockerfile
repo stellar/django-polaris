@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y build-essential libssl-dev libffi-dev p
 
 # Copy files to working directory
 RUN mkdir /code /code/polaris /code/data
-COPY ./example ./setup.py ./README.rst ./MANIFEST.in /code/
+COPY ./example ./setup.py ./setup.cfg ./README.rst ./MANIFEST.in /code/
 COPY ./polaris /code/polaris/
 
 # Set fake environment variables so manage.py commands can run.

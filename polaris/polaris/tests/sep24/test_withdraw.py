@@ -52,7 +52,8 @@ def test_withdraw_success(client):
     assert t.protocol == Transaction.PROTOCOL.sep24
     assert t.kind == Transaction.KIND.withdrawal
     assert t.status == Transaction.STATUS.incomplete
-    assert t.receiving_anchor_account == usd.distribution_account
+    assert t.receiving_anchor_account is None
+    assert t.memo is None
     assert t.memo_type == Transaction.MEMO_TYPES.hash
     assert t.from_address is None
 
@@ -87,7 +88,6 @@ def test_withdraw_muxed_account_success(client):
     assert t.protocol == Transaction.PROTOCOL.sep24
     assert t.kind == Transaction.KIND.withdrawal
     assert t.status == Transaction.STATUS.incomplete
-    assert t.receiving_anchor_account == usd.distribution_account
     assert t.memo_type == Transaction.MEMO_TYPES.hash
     assert t.from_address == TEST_MUXED_ACCOUNT
 
@@ -120,7 +120,6 @@ def test_withdraw_success_with_memo(client):
     assert t.protocol == Transaction.PROTOCOL.sep24
     assert t.kind == Transaction.KIND.withdrawal
     assert t.status == Transaction.STATUS.incomplete
-    assert t.receiving_anchor_account == usd.distribution_account
     assert t.memo_type == Transaction.MEMO_TYPES.hash
     assert t.from_address is None
 
@@ -182,8 +181,7 @@ def test_withdraw_no_distribution_account(client):
     response = client.post(
         WITHDRAW_PATH, {"asset_code": usd.code, "amount": 10000}, follow=True
     )
-    assert response.status_code == 400
-    assert response.json()["error"] == f"invalid operation for asset {usd.code}"
+    assert response.status_code == 200
 
 
 @pytest.mark.django_db

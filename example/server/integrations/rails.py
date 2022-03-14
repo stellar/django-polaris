@@ -72,13 +72,16 @@ class MyRailsIntegration(RailsIntegration):
                         * deposit.quote.sell_amount
                     )
                 else:
-                    deposit.amount_fee = calculate_fee(
-                        {
-                            "amount": deposit.amount_in,
-                            "operation": settings.OPERATION_DEPOSIT,
-                            "asset_code": deposit.asset.code,
-                        }
-                    )
+                    try:
+                        deposit.amount_fee = calculate_fee(
+                            {
+                                "amount": deposit.amount_in,
+                                "operation": settings.OPERATION_DEPOSIT,
+                                "asset_code": deposit.asset.code,
+                            }
+                        )
+                    except ValueError:
+                        deposit.amount_fee = 0
             if deposit.quote and deposit.quote.type == Quote.TYPE.indicative:
                 deposit.quote.price = round(
                     get_mock_firm_exchange_price(), offchain_asset.significant_decimals,

@@ -534,15 +534,21 @@ template {
   padding: 0.25rem 0.5rem;
   font-size: 0.875rem; }
 
+.help-text {
+  color: grey;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem; }
+
 .control {
   position: relative;
   cursor: pointer; }
   .control .icon {
     position: absolute;
-    padding: 1rem 0;
+    padding: 1rem;
     line-height: 1.125rem;
-    padding-left: 1rem;
-    font-weight: 700; }
+    font-weight: 700;
+    border-radius: 0.75rem 0 0 0.75rem;
+    background-color: #727b84; }
   .control input[type="text"],
   .control input[type="number"],
   .control input[type="date"],

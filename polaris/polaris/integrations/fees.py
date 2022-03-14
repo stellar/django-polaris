@@ -20,7 +20,7 @@ def calculate_fee(
     raise a ``ValueError`` for Polaris to return a 400 Bad Request to the client.
 
     Replace this function with another by passing it to ``register_integrations()``
-    as described in :doc:`Registering Integrations</register_integrations/index>`
+    as described in :ref:`api:Register Integrations`
     if the fees charged for transactions is not calculated using the asset's
     ``fee_fixed`` and ``fee_percent`` attributes.
 

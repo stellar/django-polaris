@@ -8,7 +8,7 @@ from rest_framework.request import Request
 
 from polaris.tests.helpers import mock_check_auth_success
 from polaris.models import Transaction, OffChainAsset, ExchangePair, Quote
-from polaris.sep31.transactions import process_post_response
+from polaris.sep31.transactions import validate_error_response
 
 
 transaction_endpoint = "/sep31/transactions"
@@ -742,7 +742,7 @@ def test_send_firm_quote_amount_no_match(mock_sep31_ri, client, usd_asset_factor
     )
     body = response.json()
     assert response.status_code == 400, response.content
-    assert body == {"error": "quote amount does not patch 'amount' parameter"}
+    assert body == {"error": "quote amount does not match 'amount' parameter"}
     mock_sep31_ri.process_post_request.assert_not_called()
 
 
@@ -1109,7 +1109,7 @@ def test_unsupported_lang(client, usd_asset_factory):
 )
 def test_bad_customer_info_needed():
     with pytest.raises(ValueError) as e:
-        process_post_response(
+        validate_error_response(
             {
                 "error": "customer_info_needed",
                 "fields": {"not in expected format": True},
@@ -1126,7 +1126,7 @@ def test_bad_customer_info_needed():
 )
 def test_bad_value_for_category_in_response():
     with pytest.raises(ValueError):
-        process_post_response(
+        validate_error_response(
             {"error": "customer_info_needed", "fields": {"sender": True}},
             Mock(id=uuid.uuid4()),
         )
@@ -1139,7 +1139,7 @@ def test_bad_value_for_category_in_response():
 )
 def test_bad_field_in_response():
     with pytest.raises(ValueError):
-        process_post_response(
+        validate_error_response(
             {
                 "error": "customer_info_needed",
                 "fields": {
@@ -1157,7 +1157,7 @@ def test_bad_field_in_response():
 )
 def test_bad_field_value_in_response():
     with pytest.raises(ValueError):
-        process_post_response(
+        validate_error_response(
             {
                 "error": "customer_info_needed",
                 "fields": {

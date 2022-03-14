@@ -3,9 +3,9 @@ import json
 import codecs
 import uuid
 from datetime import datetime, timezone
-from decimal import Decimal
 from typing import Optional, Union, Tuple, Dict
 from logging import getLogger as get_logger, LoggerAdapter
+from decimal import Decimal
 
 import aiohttp
 from django.utils.translation import gettext as _
@@ -13,9 +13,22 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.utils.translation import gettext
 from rest_framework import status
 from rest_framework.response import Response
-from stellar_sdk import TextMemo, IdMemo, HashMemo
-from stellar_sdk.exceptions import NotFoundError
-from stellar_sdk.account import Account, Thresholds
+from stellar_sdk import (
+    TransactionBuilder,
+    TransactionEnvelope,
+    Asset as StellarAsset,
+    Claimant,
+    TextMemo,
+    IdMemo,
+    HashMemo,
+    Keypair,
+)
+from stellar_sdk.exceptions import (
+    NotFoundError,
+    Ed25519PublicKeyInvalidError,
+    MemoInvalidException,
+)
+from stellar_sdk.account import Account
 from stellar_sdk import Memo
 from requests import Response as RequestsResponse, RequestException, post
 from aiohttp import ClientResponse
@@ -55,7 +68,7 @@ def render_error_response(
         "content_type": content_type,
     }
     if content_type == "text/html":
-        resp_data["data"]["status_code"] = status_code
+        resp_data["data"]["status_code"] = str(status_code)
         resp_data["template_name"] = "polaris/error.html"
     return Response(**resp_data)
 
@@ -175,6 +188,34 @@ def make_memo(
         return TextMemo(memo)
     else:
         raise ValueError()
+
+
+def validate_account_and_memo(account: str, memo: str):
+    if not (isinstance(account, str) and isinstance(memo, str)):
+        print(account, memo)
+        raise ValueError("invalid public key or memo type, expected strings")
+    try:
+        Keypair.from_public_key(account)
+    except Ed25519PublicKeyInvalidError:
+        raise ValueError("invalid public key")
+    try:
+        IdMemo(int(memo))
+    except (ValueError, MemoInvalidException):
+        pass
+    else:
+        return account, memo, Transaction.MEMO_TYPES.id
+    try:
+        HashMemo(memo_base64_to_hex(memo))
+    except (ValueError, MemoInvalidException):
+        pass
+    else:
+        return account, memo, Transaction.MEMO_TYPES.hash
+    try:
+        TextMemo(memo)
+    except MemoInvalidException:
+        raise ValueError("invalid memo")
+    else:
+        return account, memo, Transaction.MEMO_TYPES.text
 
 
 SEP_9_FIELDS = {
@@ -352,6 +393,47 @@ def validate_patch_request_fields(fields: Dict, transaction: Transaction):
                 )
 
 
+def create_deposit_envelope(
+    transaction, source_account, use_claimable_balance, base_fee
+) -> TransactionEnvelope:
+    if transaction.amount_out:
+        payment_amount = transaction.amount_out
+    elif transaction.quote:
+        raise RuntimeError(
+            f"transaction {transaction.id} uses a quote but does not have "
+            "amount_out assigned"
+        )
+    else:
+        payment_amount = round(
+            Decimal(transaction.amount_in) - Decimal(transaction.amount_fee),
+            transaction.asset.significant_decimals,
+        )
+    builder = TransactionBuilder(
+        source_account=source_account,
+        network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
+        base_fee=base_fee,
+    )
+    asset = StellarAsset(code=transaction.asset.code, issuer=transaction.asset.issuer)
+    if use_claimable_balance:
+        claimant = Claimant(destination=transaction.to_address)
+        builder.append_create_claimable_balance_op(
+            claimants=[claimant],
+            asset=asset,
+            amount=str(payment_amount),
+            source=transaction.asset.distribution_account,
+        )
+    else:
+        builder.append_payment_op(
+            destination=transaction.to_address,
+            asset=asset,
+            amount=str(payment_amount),
+            source=transaction.asset.distribution_account,
+        )
+    if transaction.memo:
+        builder.add_memo(make_memo(transaction.memo, transaction.memo_type))
+    return builder.build()
+
+
 def get_quote_and_offchain_destination_asset(
     token: SEP10Token,
     quote_id: str,
@@ -391,7 +473,7 @@ def get_quote_and_offchain_destination_asset(
                 _("quote 'buy_asset' does not match 'destination_asset' parameter")
             )
         if quote.sell_amount != amount:
-            raise ValueError(_("quote amount does not patch 'amount' parameter"))
+            raise ValueError(_("quote amount does not match 'amount' parameter"))
         try:
             destination_asset = OffChainAsset.objects.get(
                 **asset_id_to_kwargs(destination_asset_str)

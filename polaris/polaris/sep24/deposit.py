@@ -1,5 +1,3 @@
-import pytz
-from datetime import datetime
 from decimal import Decimal, DecimalException
 from urllib.parse import urlencode
 
@@ -35,6 +33,7 @@ from polaris.utils import (
     extract_sep9_fields,
     create_transaction_id,
     make_memo,
+    get_account_obj,
 )
 from polaris.sep10.utils import validate_sep10_token
 from polaris.sep10.token import SEP10Token
@@ -54,6 +53,7 @@ from polaris.integrations import (
     registered_fee_func,
     calculate_fee,
     registered_toml_func,
+    registered_custody_integration as rci,
 )
 
 logger = getLogger(__name__)
@@ -441,9 +441,10 @@ def deposit(token: SEP10Token, request: Request) -> Response:
         if not (asset.deposit_min_amount <= amount <= asset.deposit_max_amount):
             return render_error_response(_("invalid 'amount'"))
 
+    stellar_account = destination_account
     if destination_account.startswith("M"):
         try:
-            StrKey.decode_muxed_account(destination_account)
+            stellar_account = StrKey.decode_muxed_account(destination_account).ed25519
         except (MuxedEd25519AccountInvalidError, StellarSdkValueError):
             return render_error_response(_("invalid 'account'"))
     else:
@@ -451,6 +452,14 @@ def deposit(token: SEP10Token, request: Request) -> Response:
             Keypair.from_public_key(destination_account)
         except Ed25519PublicKeyInvalidError:
             return render_error_response(_("invalid 'account'"))
+
+    if not rci.account_creation_supported:
+        try:
+            get_account_obj(Keypair.from_public_key(stellar_account))
+        except RuntimeError:
+            return render_error_response(
+                _("public key 'account' must be a funded Stellar account")
+            )
 
     if sep9_fields:
         try:
