@@ -64,7 +64,7 @@ def test_put_success_auth_memo(mock_rci, client):
     assert kwargs["token"].muxed_account is None
     assert kwargs["token"].memo == TEST_ACCOUNT_MEMO
     assert kwargs["params"]["account"] == kwargs["token"].account
-    assert kwargs["params"]["memo"] == kwargs["token"].memo
+    assert kwargs["params"]["memo"] == str(kwargs["token"].memo)
     assert kwargs["params"]["memo_type"] == "id"
     assert response.status_code == 202, content
     assert content == {"id": "123"}
@@ -92,7 +92,7 @@ def test_put_success_auth_memo_and_body(mock_rci, client):
     assert kwargs["token"].muxed_account is None
     assert kwargs["token"].memo == TEST_ACCOUNT_MEMO
     assert kwargs["params"]["account"] == kwargs["token"].account
-    assert kwargs["params"]["memo"] == kwargs["token"].memo
+    assert kwargs["params"]["memo"] == str(kwargs["token"].memo)
     assert kwargs["params"]["memo_type"] == "id"
     assert response.status_code == 202, content
     assert content == {"id": "123"}
@@ -120,7 +120,7 @@ def test_put_success_memo_in_body_no_auth(mock_rci, client):
     assert kwargs["token"].muxed_account is None
     assert kwargs["token"].memo is None
     assert kwargs["params"]["account"] == kwargs["token"].account
-    assert kwargs["params"]["memo"] == TEST_ACCOUNT_MEMO
+    assert kwargs["params"]["memo"] == str(TEST_ACCOUNT_MEMO)
     assert kwargs["params"]["memo_type"] == "id"
     assert response.status_code == 202, content
     assert content == {"id": "123"}
@@ -827,7 +827,7 @@ def test_delete_success_with_memo_auth(mock_delete, client):
     assert kwargs["token"].muxed_account is None
     assert kwargs["token"].memo is TEST_ACCOUNT_MEMO
     assert kwargs["account"] == kwargs["token"].account
-    assert kwargs["memo"] == kwargs["token"].memo
+    assert kwargs["memo"] == str(kwargs["token"].memo)
     assert kwargs["memo_type"] == "id"
 
 
@@ -846,7 +846,7 @@ def test_delete_success_with_memo_auth_and_body(mock_delete, client):
     assert kwargs["token"].muxed_account is None
     assert kwargs["token"].memo is TEST_ACCOUNT_MEMO
     assert kwargs["account"] == kwargs["token"].account
-    assert kwargs["memo"] == kwargs["token"].memo
+    assert kwargs["memo"] == str(kwargs["token"].memo)
     assert kwargs["memo_type"] == "id"
 
 
@@ -865,7 +865,7 @@ def test_delete_success_with_memo_in_body_no_auth(mock_delete, client):
     assert kwargs["token"].muxed_account is None
     assert kwargs["token"].memo is None
     assert kwargs["account"] == kwargs["token"].account
-    assert kwargs["memo"] == TEST_ACCOUNT_MEMO
+    assert kwargs["memo"] == str(TEST_ACCOUNT_MEMO)
     assert kwargs["memo_type"] == "id"
 
 
