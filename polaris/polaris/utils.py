@@ -3,8 +3,8 @@ import json
 import codecs
 import uuid
 from datetime import datetime, timezone
+from logging import getLogger
 from typing import Optional, Union, Tuple, Dict
-from logging import getLogger as get_logger, LoggerAdapter
 from decimal import Decimal
 
 import aiohttp
@@ -38,15 +38,6 @@ from polaris.models import Transaction, Asset, Quote, OffChainAsset, ExchangePai
 from polaris.sep10.token import SEP10Token
 from polaris.sep38.utils import asset_id_to_kwargs
 from polaris.shared.serializers import TransactionSerializer
-
-
-class PolarisLoggerAdapter(LoggerAdapter):
-    def process(self, msg, kwargs):
-        return f"{self.extra['python_path']}: {msg}", kwargs
-
-
-def getLogger(name):
-    return PolarisLoggerAdapter(get_logger(name), extra={"python_path": name})
 
 
 logger = getLogger(__name__)

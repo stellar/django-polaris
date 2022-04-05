@@ -54,12 +54,16 @@ POLARIS_ACTIVE_SEPS = [
 
 # Modules to add to parent project's MIDDLEWARE
 MIDDLEWARE = [
+    "django.middleware.security.SecurityMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
-    "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.middleware.locale.LocaleMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
+    "polaris.middleware.TimezoneMiddleware",
 ]
 
 SESSION_COOKIE_SECURE = True
@@ -132,7 +136,11 @@ LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
     "formatters": {
-        "verbose": {"format": "{asctime} - {levelname} - {message}", "style": "{",},
+        "verbose": {
+            "format": "{asctime} - {levelname} - {name}:{lineno} - {message}",
+            "style": "{",
+            "datefmt": "%Y-%m-%dT%H:%M:%SZ",
+        },
     },
     "handlers": {
         "console": {
