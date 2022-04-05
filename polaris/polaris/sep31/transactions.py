@@ -41,6 +41,7 @@ class TransactionsAPIView(APIView):
     def get(
         token: SEP10Token, request: Request, transaction_id: str = None,
     ) -> Response:
+        logger.info("in GET /transactions/:id")
         if not transaction_id:
             return render_error_response(
                 _("GET requests must include a transaction ID in the URI"),

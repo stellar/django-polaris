@@ -76,10 +76,10 @@ class MySEP31ReceiverIntegration(SEP31ReceiverIntegration):
 
         transaction.amount_fee = round(
             transaction.asset.send_fee_fixed
+            or 0
             + (
                 transaction.asset.send_fee_percent
-                / Decimal(100)
-                * transaction.amount_in
+                or 0 / Decimal(100) * transaction.amount_in
             ),
             transaction.asset.significant_decimals,
         )

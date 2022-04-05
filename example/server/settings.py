@@ -66,7 +66,6 @@ SECURE_SSL_REDIRECT = not local_mode
 if SECURE_SSL_REDIRECT:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
-
 APPEND_SLASH = False
 
 ROOT_URLCONF = "server.urls"

@@ -1,11 +1,11 @@
-from django.urls import path
+from django.urls import path, re_path
 
 from polaris.sep38 import info, prices, quote
 
 urlpatterns = [
-    path("info", info.info),
-    path("prices", prices.get_prices),
-    path("price", prices.get_price),
-    path("quote", quote.post_quote),
-    path("quote/<quote_id>", quote.get_quote),
+    re_path(r"^info/?$", info.info),
+    re_path(r"^prices/?$", prices.get_prices),
+    re_path(r"^price/?$", prices.get_price),
+    re_path(r"^quote/?$", quote.post_quote),
+    re_path(r"^quote/<quote_id>/?$", quote.get_quote),
 ]
