@@ -5,30 +5,24 @@ import os
 import environ
 from django.utils.translation import gettext_lazy as _
 
-# Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# Load environment variables from .env
 env = environ.Env()
 env_file = os.path.join(BASE_DIR, ".env")
 if os.path.exists(env_file):
     environ.Env.read_env(env_file)
 
-# SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = env("DJANGO_SECRET_KEY")
 
 MULT_ASSET_ADDITIONAL_SIGNING_SEED = env(
     "MULT_ASSET_ADDITIONAL_SIGNING_SEED", default=None
 )
 
-# SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env.bool("DJANGO_DEBUG", False)
 
 ALLOWED_HOSTS = env.list(
     "DJANGO_ALLOWED_HOSTS", default=["localhost", "127.0.0.1", "[::1]", "0.0.0.0"]
 )
-
-# Application definition
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -58,10 +52,8 @@ MIDDLEWARE = [
 
 local_mode = env.bool("LOCAL_MODE", default=False)
 
-# Ensure SEP-24 session cookies have the secure flag
 SESSION_COOKIE_SECURE = not local_mode
 
-# Redirect HTTP to HTTPS if not in local mode
 SECURE_SSL_REDIRECT = not local_mode
 if SECURE_SSL_REDIRECT:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
@@ -88,9 +80,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "server.wsgi.application"
 
-# Database
-# https://docs.djangoproject.com/en/2.2/ref/settings/#databases
-
 DATABASES = {
     "default": env.db(
         "DATABASE_URL",
@@ -98,9 +87,6 @@ DATABASES = {
     )
 }
 DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
-
-# Internationalization
-# https://docs.djangoproject.com/en/2.2/topics/i18n/
 
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "America/Los_Angeles"
@@ -114,16 +100,11 @@ LANGUAGES = [
     ("id", _("Bahasa Indonesia")),
 ]
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/2.2/howto/static-files/
-
 FORM_RENDERER = "django.forms.renderers.TemplatesSetting"
 
 STATIC_ROOT = os.path.join(BASE_DIR, "server/collectstatic")
 STATIC_URL = "/static/"
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
-
-# Django Rest Framework Settings:
 
 REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
@@ -135,40 +116,56 @@ REST_FRAMEWORK = {
     "PAGE_SIZE": 10,
 }
 
-# Email Settings
-
 EMAIL_HOST = "smtp.gmail.com"
 EMAIL_HOST_USER = env("EMAIL_HOST_USER", default=None)
 EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default=None)
 EMAIL_USE_TLS = True
 EMAIL_PORT = 587
 
-# CORS configuration
-
 CORS_ORIGIN_ALLOW_ALL = True
-
-# Logging
 
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": True,
     "formatters": {
-        "verbose": {
+        "polaris": {
             "format": "{asctime} - {levelname} - {name}:{lineno} - {message}",
+            "style": "{",
+            "datefmt": "%Y-%m-%dT%H:%M:%SZ",
+        },
+        "default": {
+            "format": "{asctime} - {levelname} - {name} - {message}",
             "style": "{",
             "datefmt": "%Y-%m-%dT%H:%M:%SZ",
         },
     },
     "handlers": {
-        "console": {
+        "polaris-console": {
             "class": "logging.StreamHandler",
             "level": "DEBUG",
-            "formatter": "verbose",
+            "formatter": "polaris",
+        },
+        "default-console": {
+            "class": "logging.StreamHandler",
+            "level": "DEBUG",
+            "formatter": "default",
         },
     },
     "loggers": {
-        "server": {"handlers": ["console"], "propogate": False, "level": "INFO"},
-        "polaris": {"handlers": ["console"], "propogate": False, "level": "DEBUG"},
-        "django": {"handlers": ["console"], "propogate": False, "level": "INFO"},
+        "server": {
+            "handlers": ["polaris-console"],
+            "propogate": False,
+            "level": "INFO",
+        },
+        "polaris": {
+            "handlers": ["polaris-console"],
+            "propogate": False,
+            "level": "DEBUG",
+        },
+        "django": {
+            "handlers": ["default-console"],
+            "propogate": False,
+            "level": "INFO",
+        },
     },
 }
