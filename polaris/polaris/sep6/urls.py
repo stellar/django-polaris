@@ -1,4 +1,4 @@
-from django.urls import path, re_path
+from django.urls import re_path
 
 from polaris import settings
 from polaris.sep6 import info, deposit, withdraw, fee, transaction
@@ -9,7 +9,9 @@ urlpatterns = [
     re_path(r"^info/?$", info.info),
     re_path(r"^fee/?$", fee.fee),
     re_path(r"^transaction/?$", transaction.transaction),
-    re_path(r"^transactions/(?P<transaction_id>.*)/?$", transaction.patch_transaction),
+    re_path(
+        r"^transactions/(?P<transaction_id>[^/]+)/?$", transaction.patch_transaction
+    ),
     re_path(r"^transactions/?$", transaction.transactions),
 ]
 if settings.SEP6_USE_MORE_INFO_URL:
