@@ -1,8 +1,11 @@
-from django.urls import path
+from django.urls import re_path
 from polaris.sep31 import info, transactions
 
 urlpatterns = [
-    path("info", info.info),
-    path("transactions/<transaction_id>", transactions.TransactionsAPIView.as_view()),
-    path("transactions", transactions.TransactionsAPIView.as_view()),
+    re_path(r"^info/?$", info.info),
+    re_path(
+        r"^transactions/(?P<transaction_id>[^/]+)/?$",
+        transactions.TransactionsAPIView.as_view(),
+    ),
+    re_path(r"^transactions/?$", transactions.TransactionsAPIView.as_view()),
 ]

@@ -110,4 +110,4 @@ def test_bad_id(client):
 @patch("polaris.sep31.transactions.registered_sep31_receiver_integration", Mock())
 def test_no_id(client):
     response = client.get(endpoint)
-    assert response.status_code == 404
+    assert response.status_code == 400

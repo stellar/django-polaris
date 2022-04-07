@@ -13,7 +13,7 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog', include('blog.urls'))
 """
-from django.urls import path, include
+from django.urls import path, include, re_path
 
 from polaris import settings
 
@@ -26,7 +26,7 @@ if "sep-6" in settings.ACTIVE_SEPS:
     urlpatterns.append(path("sep6/", include("polaris.sep6.urls")))
 
 if "sep-10" in settings.ACTIVE_SEPS:
-    urlpatterns.append(path("auth", include("polaris.sep10.urls")))
+    urlpatterns.append(re_path(r"^auth/?", include("polaris.sep10.urls")))
 
 if "sep-12" in settings.ACTIVE_SEPS:
     urlpatterns.append(path("kyc/", include("polaris.sep12.urls")))

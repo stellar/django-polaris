@@ -75,9 +75,9 @@ class MySEP31ReceiverIntegration(SEP31ReceiverIntegration):
             receiving_user.save()
 
         transaction.amount_fee = round(
-            transaction.asset.send_fee_fixed
+            (transaction.asset.send_fee_fixed or 0)
             + (
-                transaction.asset.send_fee_percent
+                (transaction.asset.send_fee_percent or 0)
                 / Decimal(100)
                 * transaction.amount_in
             ),
