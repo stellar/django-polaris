@@ -85,7 +85,7 @@ def test_missing_id(client):
         {"transaction": {"bank_account": "foo"}},
         content_type="application/json",
     )
-    assert response.status_code == 404
+    assert response.status_code == 405
 
 
 def test_no_auth(client):
