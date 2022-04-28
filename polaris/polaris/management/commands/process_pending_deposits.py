@@ -830,8 +830,18 @@ class ProcessPendingDeposits:
         cls, task_interval: int, heartbeat_interval: int
     ):
         current_task = asyncio.current_task()
-        signal.signal(signal.SIGINT, lambda signum, frame: asyncio.create_task(cls.exit_gracefully(signum, frame, current_task)))
-        signal.signal(signal.SIGTERM, lambda signum, frame: asyncio.create_task(cls.exit_gracefully(signum, frame, current_task)))
+        signal.signal(
+            signal.SIGINT,
+            lambda signum, frame: asyncio.create_task(
+                cls.exit_gracefully(signum, frame, current_task)
+            ),
+        )
+        signal.signal(
+            signal.SIGTERM,
+            lambda signum, frame: asyncio.create_task(
+                cls.exit_gracefully(signum, frame, current_task)
+            ),
+        )
 
         queues = PolarisQueueAdapter([SUBMIT_TRANSACTION_QUEUE])
         await sync_to_async(queues.populate_queues)()
