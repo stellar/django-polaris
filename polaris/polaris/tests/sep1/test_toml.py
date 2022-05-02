@@ -39,6 +39,7 @@ def test_toml_generated(mock_toml_func, client):
     assert "SIGNING_KEY" in toml_data
     assert "KYC_SERVER" in toml_data
     assert "DIRECT_PAYMENT_SERVER" in toml_data
+    assert "ANCHOR_QUOTE_SERVER" in toml_data
     assert toml_data["TRANSFER_SERVER"] != toml_data["TRANSFER_SERVER_SEP0024"]
     assert toml_data["ACCOUNTS"] == [usd.distribution_account]
     assert toml_data["NETWORK_PASSPHRASE"] == settings.STELLAR_NETWORK_PASSPHRASE
