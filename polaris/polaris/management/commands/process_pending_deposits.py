@@ -16,10 +16,10 @@ from stellar_sdk import (
     MuxedAccount,
     TransactionEnvelope,
     CreateAccount,
+    CreateClaimableBalance,
 )
 from stellar_sdk.client.aiohttp_client import AiohttpClient
 from stellar_sdk.exceptions import ConnectionError
-from stellar_sdk.xdr import TransactionResult, OperationType
 from asgiref.sync import sync_to_async
 
 from polaris import settings
@@ -698,30 +698,22 @@ class ProcessPendingDeposits:
         """
         Pulls claimable balance ID from horizon responses if present
 
-        When called we decode and read the result_xdr from the horizon response.
-        If any of the operations is a createClaimableBalanceResult we
-        decode the Base64 representation of the balanceID xdr.
-        After the fact we encode the result to hex.
-
-        The hex representation of the balanceID is important because its the
-        representation required to query and claim claimableBalances.
+        The hex representation of the balanceID is important because it
+        is the representation required to query and claim claimableBalances.
 
         :param
             response: the response from horizon
 
         :return
-            hex representation of the balanceID
-            or
-            None (if no createClaimableBalanceResult operation is found)
+            hex representation of the balanceID or None
         """
-        result_xdr = response["result_xdr"]
-        balance_id_hex = None
-        for op_result in TransactionResult.from_xdr(result_xdr).result.results:
-            if op_result.tr.type == OperationType.CREATE_CLAIMABLE_BALANCE:
-                balance_id_hex = (
-                    op_result.tr.create_claimable_balance_result.balance_id.to_xdr_bytes().hex()
-                )
-        return balance_id_hex
+        envelope = TransactionEnvelope.from_xdr(response["envelope_xdr"])
+        balance_id = None
+        for idx, op in enumerate(envelope.transaction.operations):
+            if isinstance(op, CreateClaimableBalance):
+                balance_id = envelope.transaction.get_claimable_balance_id(idx)
+                break
+        return balance_id
 
     @classmethod
     def handle_error(cls, transaction, message):

@@ -9,6 +9,7 @@ from django.db.models import Q
 from stellar_sdk.exceptions import NotFoundError
 from stellar_sdk.transaction import Transaction as HorizonTransaction
 from stellar_sdk.transaction_envelope import TransactionEnvelope
+from stellar_sdk.utils import from_xdr_amount
 from stellar_sdk.xdr import (
     PaymentResult,
     PathPaymentStrictSendResult,
@@ -16,7 +17,6 @@ from stellar_sdk.xdr import (
     OperationResult,
     TransactionResult,
 )
-from stellar_sdk.xdr.utils import from_xdr_amount
 from stellar_sdk.operation import (
     Operation,
     Payment,
@@ -201,7 +201,7 @@ class Command(BaseCommand):
             transaction.status = Transaction.STATUS.pending_anchor
             await sync_to_async(transaction.save)()
         await maybe_make_callback_async(transaction)
-        return
+        return None
 
     @classmethod
     async def _find_matching_payment_data(

@@ -298,7 +298,7 @@ class SEP10Auth(APIView):
         # set iat value to minimum timebound of the challenge so that the JWT returned
         # for a given challenge is always the same.
         # https://github.com/stellar/stellar-protocol/pull/982
-        issued_at = challenge.transaction.transaction.time_bounds.min_time
+        issued_at = challenge.transaction.transaction.preconditions.time_bounds.min_time
 
         # format sub value based on muxed account or memo
         if challenge.client_account_id.startswith("M") or not challenge.memo:

@@ -46,7 +46,7 @@ from polaris.models import PolarisHeartbeat
 test_module = "polaris.management.commands.process_pending_deposits"
 
 # marks all async functions to be run in event loops and use the database
-pytestmark = [pytest.mark.django_db, pytest.mark.asyncio]
+pytestmark = [pytest.mark.django_db]
 
 
 SUBMIT_TRANSACTION_QUEUE = "SUBMIT_TRANSACTION_QUEUE"
@@ -936,9 +936,8 @@ async def test_process_unblocked_transactions():
     assert transaction.queue == SUBMIT_TRANSACTION_QUEUE
 
 
-@patch(f"{test_module}.rdi")
 @pytest.mark.django_db(transaction=True)
-async def test_handle_successful_deposit(mock_rdi):
+async def test_handle_successful_deposit():
     usd = await sync_to_async(Asset.objects.create)(
         code="USD", issuer=Keypair.random().public_key, significant_decimals=2
     )
@@ -955,8 +954,6 @@ async def test_handle_successful_deposit(mock_rdi):
     )
 
     transaction_json = {"paging_token": "123", "id": "456"}
-
-    mock_rdi.after_deposit = None
 
     await ProcessPendingDeposits.handle_successful_deposit(
         transaction_json=transaction_json, transaction=transaction
