@@ -206,7 +206,8 @@ def validate_url(url) -> Optional[Dict]:
     except ValidationError:
         return dict(
             error=render_error_response(
-                _("invalid callback URL provided"), content_type="text/html",
+                _("invalid callback URL provided"),
+                content_type="text/html",
             )
         )
 

@@ -71,7 +71,10 @@ def test_reset_success(mock_issue):
 @patch(f"{test_module}.Command.issue")
 def test_reset_invalid_issuer_seed(mock_issue):
     issuer_kp = Keypair.random()
-    usd = Asset.objects.create(code="USD", issuer=issuer_kp.public_key,)
+    usd = Asset.objects.create(
+        code="USD",
+        issuer=issuer_kp.public_key,
+    )
 
     def mock_input(message):
         if message == f"Seed for {usd.code} issuer (enter to skip): ":
@@ -90,7 +93,10 @@ def test_reset_invalid_issuer_seed(mock_issue):
 @patch(f"{test_module}.Command.issue")
 def test_reset_invalid_distribution_seed(mock_issue):
     issuer_kp = Keypair.random()
-    usd = Asset.objects.create(code="USD", issuer=issuer_kp.public_key,)
+    usd = Asset.objects.create(
+        code="USD",
+        issuer=issuer_kp.public_key,
+    )
 
     def mock_input(message):
         if message == f"Seed for {usd.code} issuer (enter to skip): ":

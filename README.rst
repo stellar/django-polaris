@@ -24,4 +24,4 @@ Polaris is an extendable `django app`_ for Stellar Ecosystem Proposal (SEP) impl
 
 See the complete `documentation`_ for information on how to get started with Polaris. The SDF also runs a `reference server`_ using Polaris that can be tested using our `demo wallet`_.
 
-For important updates on Polaris's development and releases please join the `email list`_.
+For important updates on Polaris's development and releases, please join the `email list`_.

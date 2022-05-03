@@ -44,7 +44,9 @@ def test_missing_parameters(client):
 
     response = client.post(
         reverse("tzinfo"),
-        {"sessionId": session.session_key,},
+        {
+            "sessionId": session.session_key,
+        },
         content_type="application/json",
     )
 

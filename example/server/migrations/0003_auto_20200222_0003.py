@@ -11,8 +11,14 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RemoveField(model_name="polarisuser", name="confirmation_token",),
-        migrations.RemoveField(model_name="polarisuser", name="confirmed",),
+        migrations.RemoveField(
+            model_name="polarisuser",
+            name="confirmation_token",
+        ),
+        migrations.RemoveField(
+            model_name="polarisuser",
+            name="confirmed",
+        ),
         migrations.AddField(
             model_name="polarisstellaraccount",
             name="confirmation_token",

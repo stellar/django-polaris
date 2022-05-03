@@ -169,7 +169,11 @@ def callback(token: SEP10Token, request: Request) -> Response:
 @renderer_classes([JSONRenderer, BrowsableAPIRenderer])
 @parser_classes([MultiPartParser, FormParser, JSONParser])
 @validate_sep10_token()
-def delete(token: SEP10Token, request: Request, account: str,) -> Response:
+def delete(
+    token: SEP10Token,
+    request: Request,
+    account: str,
+) -> Response:
     if (token.muxed_account or token.account) != account:
         return render_error_response(_("account not found"), status_code=404)
     elif (

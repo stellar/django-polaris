@@ -627,7 +627,8 @@ class ProcessPendingDeposits:
     ):
         if transaction_type == TransactionType.DEPOSIT:
             await cls.handle_successful_deposit(
-                transaction_json=transaction_json, transaction=transaction,
+                transaction_json=transaction_json,
+                transaction=transaction,
             )
         else:
             await cls.handle_successful_account_creation(

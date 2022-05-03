@@ -335,7 +335,8 @@ def test_invalid_limit(
     withdrawal = acc2_eth_withdrawal_transaction_factory()  # newest
 
     response = client.get(
-        f"{endpoint}?asset_code={withdrawal.asset.code}&limit=string", follow=True,
+        f"{endpoint}?asset_code={withdrawal.asset.code}&limit=string",
+        follow=True,
     )
     content = json.loads(response.content)
 
@@ -357,7 +358,8 @@ def test_negative_limit(
     withdrawal = acc2_eth_withdrawal_transaction_factory()  # newest
 
     response = client.get(
-        f"{endpoint}?asset_code={withdrawal.asset.code}&limit=-1", follow=True,
+        f"{endpoint}?asset_code={withdrawal.asset.code}&limit=-1",
+        follow=True,
     )
     content = json.loads(response.content)
 
@@ -419,7 +421,9 @@ def test_transactions_authenticated_success(
     header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
 
     response = client.get(
-        f"{endpoint}?asset_code={withdrawal.asset.code}", follow=True, **header,
+        f"{endpoint}?asset_code={withdrawal.asset.code}",
+        follow=True,
+        **header,
     )
     content = json.loads(response.content)
 
@@ -432,7 +436,8 @@ def test_transactions_no_jwt(client, acc2_eth_withdrawal_transaction_factory):
     """`GET /transactions` fails if a required JWT is not provided."""
     withdrawal = acc2_eth_withdrawal_transaction_factory()
     response = client.get(
-        f"{endpoint}?asset_code={withdrawal.asset.code}", follow=True,
+        f"{endpoint}?asset_code={withdrawal.asset.code}",
+        follow=True,
     )
     content = json.loads(response.content)
     assert response.status_code == 403
