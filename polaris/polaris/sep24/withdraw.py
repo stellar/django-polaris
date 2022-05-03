@@ -399,7 +399,10 @@ def get_interactive_withdraw(request: Request) -> Response:
 @validate_sep10_token()
 @renderer_classes([JSONRenderer, BrowsableAPIRenderer])
 @parser_classes([MultiPartParser, FormParser, JSONParser])
-def withdraw(token: SEP10Token, request: Request,) -> Response:
+def withdraw(
+    token: SEP10Token,
+    request: Request,
+) -> Response:
     """
     POST /transactions/withdraw/interactive
 

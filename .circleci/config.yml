@@ -4,14 +4,14 @@ orbs:
 executors:
   my-executor:
     docker:
-      - image: circleci/python:3.7.3
+      - image: circleci/python:3.10
 jobs:
   test:
     executor: my-executor
     steps:
       - checkout
       - run: sudo chown -R circleci:circleci /usr/local/bin
-      - run: sudo chown -R circleci:circleci /usr/local/lib/python3.7/site-packages
+      - run: sudo chown -R circleci:circleci /usr/local/lib/python3.10/site-packages
       - restore_cache:
           # Read about caching dependencies: https://circleci.com/docs/2.0/caching/
           key: deps9-{{ .Branch }}-{{ checksum "Pipfile.lock" }}
@@ -25,7 +25,7 @@ jobs:
           paths:
             - ".venv"
             - "/usr/local/bin"
-            - "/usr/local/lib/python3.7/site-packages"
+            - "/usr/local/lib/python3.10/site-packages"
       - run:
           command: |
             cp polaris/.env.example polaris/.env

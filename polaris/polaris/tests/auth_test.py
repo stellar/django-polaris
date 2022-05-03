@@ -290,7 +290,10 @@ def test_auth_post_success_client_attribution_required(client):
 
 @patch("polaris.sep10.views.settings.SEP10_CLIENT_ATTRIBUTION_REQUIRED", True)
 def test_auth_attribution_required_no_domain(client):
-    response = client.get(f"{endpoint}?account={CLIENT_ADDRESS}", follow=True,)
+    response = client.get(
+        f"{endpoint}?account={CLIENT_ADDRESS}",
+        follow=True,
+    )
     assert response.status_code == 400
 
 

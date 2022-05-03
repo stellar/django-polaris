@@ -84,7 +84,8 @@ class MyRailsIntegration(RailsIntegration):
                         deposit.amount_fee = 0
             if deposit.quote and deposit.quote.type == Quote.TYPE.indicative:
                 deposit.quote.price = round(
-                    get_mock_firm_exchange_price(), offchain_asset.significant_decimals,
+                    get_mock_firm_exchange_price(),
+                    offchain_asset.significant_decimals,
                 )
                 deposit.quote.buy_amount = round(
                     deposit.amount_in / deposit.quote.price,

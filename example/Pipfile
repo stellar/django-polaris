@@ -4,7 +4,7 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [dev-packages]
-watchdog = "<0.10"
+watchdog = ">=2, <3"
 
 [packages]
 gunicorn = "*"
@@ -18,4 +18,4 @@ psycopg2-binary = ">=2.9, <3.0"
 django-polaris = {path = "/code", editable = true}
 
 [requires]
-python_version = "3.7"
+python_version = "3.10"

@@ -819,7 +819,9 @@ def test_delete_success(mock_delete, client):
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success_with_memo)
 @patch("polaris.sep12.customer.rci.delete")
 def test_delete_success_with_memo_auth(mock_delete, client):
-    response = client.delete("/".join([endpoint, "test source address"]),)
+    response = client.delete(
+        "/".join([endpoint, "test source address"]),
+    )
     assert response.status_code == 200
     mock_delete.asset_called_once()
     kwargs = mock_delete.call_args[1]

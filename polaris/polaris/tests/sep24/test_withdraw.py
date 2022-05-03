@@ -822,7 +822,8 @@ def test_withdraw_client_domain_saved(client):
         distribution_seed=Keypair.random().secret,
     )
     response = client.post(
-        WITHDRAW_PATH, {"asset_code": usd.code, "account": kp.public_key},
+        WITHDRAW_PATH,
+        {"asset_code": usd.code, "account": kp.public_key},
     )
     content = response.json()
     assert response.status_code == 200, json.dumps(content, indent=2)

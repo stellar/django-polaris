@@ -329,7 +329,8 @@ class MissingHowDepositIntegration(WithdrawalIntegration):
 def test_withdraw_empty_integration_response(client, usd_asset_factory):
     asset = usd_asset_factory(protocols=[Transaction.PROTOCOL.sep6])
     response = client.get(
-        WITHDRAW_PATH, {"asset_code": asset.code, "type": "good type", "dest": "test"},
+        WITHDRAW_PATH,
+        {"asset_code": asset.code, "type": "good type", "dest": "test"},
     )
     content = json.loads(response.content)
     assert response.status_code == 200

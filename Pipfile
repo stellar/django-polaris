@@ -38,4 +38,4 @@ cryptography = ">=3.4, <4.0"
 sqlparse = ">=0.4.2"
 
 [requires]
-python_version = "3.7"
+python_version = "3.10"

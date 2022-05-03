@@ -75,7 +75,12 @@ class MyQuoteIntegration(QuoteIntegration):
         return True
 
     def post_quote(
-        self, token: SEP10Token, request: Request, quote: Quote, *args, **kwargs,
+        self,
+        token: SEP10Token,
+        request: Request,
+        quote: Quote,
+        *args,
+        **kwargs,
     ) -> Quote:
         if quote.requested_expire_after and not self.approve_expiration(
             quote.requested_expire_after

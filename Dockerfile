@@ -1,12 +1,20 @@
 # Python version
-FROM python:3.7
+FROM python:3.10
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 
 # Install system dependencies
-RUN apt-get update && apt-get install -y build-essential libssl-dev libffi-dev python3-dev cargo postgresql postgresql-client gettext curl
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    libssl-dev \
+    libffi-dev \
+    python3-dev \
+    cargo \
+    postgresql \
+    postgresql-client  \
+    gettext
 
 # Copy files to working directory
 RUN mkdir /code /code/polaris /code/data
@@ -28,7 +36,7 @@ ACTIVE_SEPS=\
 
 # Install dependencies
 WORKDIR /code
-RUN pip install pipenv; pipenv install --dev --system
+RUN pip install pipenv; pipenv lock --clear; pipenv install --dev --system
 
 # collect static assets
 RUN python manage.py collectstatic --no-input --ignore=*.scss

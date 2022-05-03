@@ -224,7 +224,8 @@ def test_transaction_filtering_no_result(
 
 @pytest.mark.django_db
 def test_transaction_claimable_balance_id_result(
-    client, acc2_eth_CB_deposit_transaction_factory,
+    client,
+    acc2_eth_CB_deposit_transaction_factory,
 ):
     """Succeeds with expected response if claimable_balance_id provided."""
     deposit = acc2_eth_CB_deposit_transaction_factory(client_address)
@@ -234,7 +235,11 @@ def test_transaction_claimable_balance_id_result(
     # we expect due to the middleware.
     header = {"HTTP_AUTHORIZATION": f"Bearer {encoded_jwt}"}
 
-    response = client.get((f"{sep24_endpoint}?id={deposit.id}"), follow=True, **header,)
+    response = client.get(
+        (f"{sep24_endpoint}?id={deposit.id}"),
+        follow=True,
+        **header,
+    )
     content = json.loads(response.content)
 
     assert response.status_code == 200

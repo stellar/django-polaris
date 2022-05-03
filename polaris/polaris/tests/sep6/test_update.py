@@ -227,7 +227,8 @@ raise_error_integration = Mock(patch_transaction=Mock(side_effect=ValueError("te
 @pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 @patch(
-    "polaris.sep6.transaction.rdi", raise_error_integration,
+    "polaris.sep6.transaction.rdi",
+    raise_error_integration,
 )
 def test_user_defined_exception(client):
     asset = Asset.objects.create(code="USD")

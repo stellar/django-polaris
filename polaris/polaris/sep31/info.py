@@ -34,7 +34,8 @@ def info(request: Request) -> Response:
         except ValueError as e:
             logger.error(f"info integration error: {str(e)}")
             return render_error_response(
-                _("unable to process the request"), status_code=500,
+                _("unable to process the request"),
+                status_code=500,
             )
         info_data["receive"][asset.code] = get_asset_info(asset, fields_and_types)
 
