@@ -34,7 +34,8 @@ class Migration(migrations.Migration):
             "UPDATE server_polarisusertransaction SET transaction_id = temp_transaction_id"
         ),
         migrations.RemoveField(
-            model_name="polarisusertransaction", name="temp_transaction",
+            model_name="polarisusertransaction",
+            name="temp_transaction",
         ),
         migrations.AddField(
             model_name="polarisusertransaction",

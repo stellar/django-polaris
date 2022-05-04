@@ -120,7 +120,8 @@ def test_deposit_success_with_auth_memo(client):
     )
     to_address = Keypair.random().public_key
     response = client.post(
-        DEPOSIT_PATH, {"asset_code": "USD", "account": to_address, "amount": 100},
+        DEPOSIT_PATH,
+        {"asset_code": "USD", "account": to_address, "amount": 100},
     )
     content = json.loads(response.content)
     t = Transaction.objects.first()
@@ -465,7 +466,9 @@ def test_interactive_deposit_bad_post_data(client):
         deposit_max_amount=10000,
     )
     deposit = Transaction.objects.create(
-        asset=usd, kind=Transaction.KIND.deposit, protocol=Transaction.PROTOCOL.sep24,
+        asset=usd,
+        kind=Transaction.KIND.deposit,
+        protocol=Transaction.PROTOCOL.sep24,
     )
 
     payload = interactive_jwt_payload(deposit, "deposit")
@@ -816,7 +819,8 @@ def test_deposit_client_domain_saved(client):
         deposit_enabled=True,
     )
     response = client.post(
-        DEPOSIT_PATH, {"asset_code": usd.code, "account": kp.public_key},
+        DEPOSIT_PATH,
+        {"asset_code": usd.code, "account": kp.public_key},
     )
     content = response.json()
     assert response.status_code == 200, json.dumps(content, indent=2)

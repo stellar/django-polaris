@@ -91,7 +91,8 @@ def test_deposit_success_muxed_account(mock_process_sep6_request, client):
         "extra_info": {"test": "test"},
     }
     response = client.get(
-        DEPOSIT_PATH, {"asset_code": asset.code, "account": TEST_MUXED_ACCOUNT},
+        DEPOSIT_PATH,
+        {"asset_code": asset.code, "account": TEST_MUXED_ACCOUNT},
     )
     content = response.json()
     assert response.status_code == 200, json.dumps(content, indent=2)
@@ -166,7 +167,10 @@ def test_deposit_bad_muxed_account(client):
         sep6_enabled=True,
         deposit_enabled=True,
     )
-    response = client.get(DEPOSIT_PATH, {"asset_code": asset.code, "account": "M"},)
+    response = client.get(
+        DEPOSIT_PATH,
+        {"asset_code": asset.code, "account": "M"},
+    )
     content = json.loads(response.content)
     assert response.status_code == 400
     assert content == {"error": "invalid 'account'"}
@@ -744,7 +748,8 @@ def test_deposit_client_domain_saved(mock_deposit, client):
     )
     mock_deposit.process_sep6_request = Mock(return_value={"how": "test"})
     response = client.get(
-        DEPOSIT_PATH, {"asset_code": usd.code, "account": kp.public_key},
+        DEPOSIT_PATH,
+        {"asset_code": usd.code, "account": kp.public_key},
     )
     content = response.json()
     assert response.status_code == 200, json.dumps(content, indent=2)

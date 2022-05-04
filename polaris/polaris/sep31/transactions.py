@@ -39,7 +39,9 @@ class TransactionsAPIView(APIView):
     @staticmethod
     @validate_sep10_token()
     def get(
-        token: SEP10Token, request: Request, transaction_id: str = None,
+        token: SEP10Token,
+        request: Request,
+        transaction_id: str = None,
     ) -> Response:
         if not transaction_id:
             return render_error_response(
@@ -70,7 +72,9 @@ class TransactionsAPIView(APIView):
     @staticmethod
     @validate_sep10_token()
     def patch(
-        token: SEP10Token, request: Request, transaction_id: str = None,
+        token: SEP10Token,
+        request: Request,
+        transaction_id: str = None,
     ) -> Response:
         if not registered_sep31_receiver_integration.valid_sending_anchor(
             token=token, request=request, public_key=token.account
@@ -110,7 +114,9 @@ class TransactionsAPIView(APIView):
     @staticmethod
     @validate_sep10_token()
     def post(
-        token: SEP10Token, request: Request, **kwargs: Dict,
+        token: SEP10Token,
+        request: Request,
+        **kwargs: Dict,
     ):
         if kwargs:
             return render_error_response(

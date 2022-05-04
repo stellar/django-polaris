@@ -292,6 +292,8 @@ class Migration(migrations.Migration):
                     ),
                 ),
             ],
-            options={"ordering": ("-started_at",),},
+            options={
+                "ordering": ("-started_at",),
+            },
         ),
     ]

@@ -65,8 +65,8 @@ def test_get_account_obj(mock_load_account, mock_accounts_endpoint):
 @patch(f"{test_module}.settings.HORIZON_SERVER.accounts")
 @patch(f"{test_module}.load_account")
 def test_get_account_obj_not_found(mock_load_account, mock_accounts_endpoint):
-    mock_accounts_endpoint.return_value.account_id.return_value.call.side_effect = NotFoundError(
-        Mock()
+    mock_accounts_endpoint.return_value.account_id.return_value.call.side_effect = (
+        NotFoundError(Mock())
     )
     kp = Keypair.random()
     with pytest.raises(RuntimeError, match=f"account {kp.public_key} does not exist"):

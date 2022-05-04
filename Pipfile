@@ -21,6 +21,7 @@ django-compressor = "*"
 django-sass-processor = "*"
 sphinx-autodoc-typehints = "*"
 build = "*"
+black = ">=22.3, <23"
 
 [packages]
 django = ">=3.2, <4.0"

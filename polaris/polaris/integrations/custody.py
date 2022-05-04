@@ -272,8 +272,11 @@ class SelfCustodyIntegration(CustodyIntegration):
                             transaction, has_trustline, server
                         )
                     else:
-                        envelope_obj = self._generate_create_account_transaction_envelope(
-                            transaction, server,
+                        envelope_obj = (
+                            self._generate_create_account_transaction_envelope(
+                                transaction,
+                                server,
+                            )
                         )
                     envelope = self._sign_and_save_transaction_envelope(
                         transaction, envelope_obj, [transaction.asset.distribution_seed]
