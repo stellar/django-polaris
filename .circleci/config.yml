@@ -28,6 +28,7 @@ jobs:
             - "/usr/local/lib/python3.7/site-packages"
       - run:
           command: |
+            cp .env.example .env
             pytest --cov
             codecov
       - store_test_results:
