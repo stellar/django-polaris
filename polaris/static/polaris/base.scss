@@ -31,6 +31,7 @@ body {
 img.logo {
   width: 150px;
   height: 100px;
+  margin-bottom: 10px;
   object-fit: contain;
 }
 
@@ -39,7 +40,8 @@ img.logo {
 }
 
 .navbar {
-  padding: 2rem 0;
+  padding-top: 3rem;
+  padding-bottom: 1rem;
   display: flex;
   justify-content: center;
   margin: auto;

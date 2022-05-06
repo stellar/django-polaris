@@ -52,7 +52,7 @@ def calculate_fee(
         fee_fixed = asset.send_fee_fixed
 
     if fee_fixed is None and fee_percent is None:
-        raise ValueError("unable to calculate fees")
+        return Decimal(0)
 
     if fee_fixed is None:
         fee_fixed = Decimal(0)
