@@ -37,6 +37,9 @@ toml = "*"
 pyjwt = ">=2.1, <3.0"
 cryptography = ">=3.4, <4.0"
 sqlparse = ">=0.4.2"
+gunicorn = "*"
+psycopg2-binary = ">=2.9, <3.0"
+watchdog = ">=2, <3"
 
 [requires]
 python_version = "3.7"

@@ -4,20 +4,16 @@ services:
   db:
     build: .
     volumes:
-      - ./polaris/polaris:/code/polaris/polaris
-      - ./example/server:/code/server
-      - ./example/data:/code/data
-    command: ./db-init.sh
+      - .:/code
+    command: pipenv run python manage.py migrate
   server:
     container_name: server
     build: .
     volumes:
-      - ./polaris/polaris:/code/polaris/polaris
-      - ./example/server:/code/server
-      - ./example/data:/code/data
+      - .:/code
     ports:
       - "8000:8000"
-    command: watchmedo auto-restart --recursive --pattern="*.py;*.env;*.html" --directory="." python manage.py runserver -- --nostatic 0.0.0.0:8000
+    command: pipenv run watchmedo auto-restart --recursive --pattern="*.py;*.env;*.html" --directory="." python manage.py runserver -- --nostatic 0.0.0.0:8000
     depends_on:
       - db
   watch_transactions:
@@ -25,53 +21,43 @@ services:
     network_mode: host
     build: .
     volumes:
-      - ./polaris/polaris:/code/polaris/polaris
-      - ./example/server:/code/server
-      - ./example/data:/code/data
+      - .:/code
     depends_on:
       - server
-    command: watchmedo auto-restart --recursive --pattern="*.py;*.env" --directory="." python manage.py watch_transactions
+    command: pipenv run watchmedo auto-restart --recursive --pattern="*.py;*.env" --directory="." python manage.py watch_transactions
   process_pending_deposits:
     container_name: process_pending_deposits
     network_mode: host
     build: .
     volumes:
-      - ./polaris/polaris:/code/polaris/polaris
-      - ./example/server:/code/server
-      - ./example/data:/code/data
+      - .:/code
     depends_on:
       - server
-    command: watchmedo auto-restart --recursive --pattern="*.py;*.env" --directory="." python manage.py process_pending_deposits
+    command: pienv run watchmedo auto-restart --recursive --pattern="*.py;*.env" --directory="." python manage.py process_pending_deposits
   poll_outgoing_transactions:
     container_name: poll_outgoing_transactions
     network_mode: host
     build: .
     volumes:
-      - ./polaris/polaris:/code/polaris/polaris
-      - ./example/server:/code/server
-      - ./example/data:/code/data
+      - .:/code
     depends_on:
       - server
-    command: watchmedo auto-restart --recursive --pattern="*.py;*.env" --directory="." python manage.py poll_outgoing_transactions -- --loop
+    command: pipenv run watchmedo auto-restart --recursive --pattern="*.py;*.env" --directory="." python manage.py poll_outgoing_transactions -- --loop
   execute_outgoing_transactions:
     container_name: execute_outgoing_transactions
     network_mode: host
     build: .
     volumes:
-      - ./polaris/polaris:/code/polaris/polaris
-      - ./example/server:/code/server
-      - ./example/data:/code/data
+      - .:/code
     depends_on:
       - server
-    command: watchmedo auto-restart --recursive --pattern="*.py;*.env" --directory="." python manage.py execute_outgoing_transactions -- --loop
+    command: pipenv run watchmedo auto-restart --recursive --pattern="*.py;*.env" --directory="." python manage.py execute_outgoing_transactions -- --loop
   sign_multisig_transactions:
     container_name: sign_multisig_transactions
     network_mode: host
     build: .
     volumes:
-      - ./polaris/polaris:/code/polaris/polaris
-      - ./example/server:/code/server
-      - ./example/data:/code/data
+      - .:/code
     depends_on:
       - server
-    command: watchmedo auto-restart --recursive --pattern="*.py;*.env" --directory="." python manage.py sign_multisig_transactions -- --loop
+    command: pipenv run watchmedo auto-restart --recursive --pattern="*.py;*.env" --directory="." python manage.py sign_multisig_transactions -- --loop
