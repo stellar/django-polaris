@@ -532,7 +532,7 @@ msgid "Select a file"
 msgstr "Selecione um arquivo"
 
 #: templates/polaris/base.html:10
-msgid "SEP24 reference example"
+msgid "SEP24 reference server"
 msgstr "Servidor de Referência da SEP24"
 
 #: templates/polaris/deposit.html:4

@@ -6,7 +6,7 @@ import settings
 
 
 def info_integration(request: Request, asset: Asset, lang: str, *args, **kwargs):
-    # Not using `asset` since this reference example only supports SRT
+    # Not using `asset` since this reference server only supports SRT
     languages = [l[0] for l in settings.LANGUAGES]
     if lang and lang not in languages:
         raise ValueError()

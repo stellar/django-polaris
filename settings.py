@@ -1,5 +1,5 @@
 """
-Django settings for reference example.
+Django settings for reference server.
 """
 import os
 import environ

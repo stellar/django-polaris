@@ -27,7 +27,7 @@ def send_confirmation_email(user: PolarisUser, account: PolarisStellarAccount):
 
     In a real production deployment, you would never want to send emails
     as part of the request/response cycle. Instead, use a job queue service
-    like Celery. This reference example is not intended to handle heavy
+    like Celery. This reference server is not intended to handle heavy
     traffic so we are making an exception here.
     """
     args = urlencode({"token": account.confirmation_token, "email": user.email})

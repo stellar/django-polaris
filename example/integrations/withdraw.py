@@ -250,7 +250,7 @@ class MyWithdrawalIntegration(WithdrawalIntegration):
             #     "status": "pending"
             # }
             # However, we're not going to block the client from completing
-            # the flow since this is a reference example.
+            # the flow since this is a reference server.
             pass
 
         if params.get("amount"):

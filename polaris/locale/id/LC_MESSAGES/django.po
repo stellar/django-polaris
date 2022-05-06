@@ -418,7 +418,7 @@ msgid "Select a file"
 msgstr "Pilih berkas"
 
 #: templates/polaris/base.html:10
-msgid "SEP24 reference example"
+msgid "SEP24 reference server"
 msgstr "Server referensi SEP24"
 
 #: templates/polaris/deposit.html:4

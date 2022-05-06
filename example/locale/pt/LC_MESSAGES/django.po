@@ -238,7 +238,7 @@ msgstr ""
 "Foundation, Clique no botão abaixo para confirmar o seu email."
 
 #: templates/confirmation_email.html:132
-msgid "The reference example is powered by "
+msgid "The reference server is powered by "
 msgstr "O servidor de referência funciona utilizando o "
 
 #: templates/email_confirmed.html:4
