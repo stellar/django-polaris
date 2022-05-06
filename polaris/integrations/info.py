@@ -21,7 +21,7 @@ def default_info_func(
 
     Return a dictionary containing the `fields` and `types` key-value pairs
     described in the SEP-6 /info response for the asset passed. Raise a
-    ``ValueError()`` if `lang` is not supported. For example,
+    ``ValueError()`` if `lang` is not supported. For server,
     ::
 
         if asset.code == "USD":

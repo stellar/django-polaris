@@ -161,7 +161,7 @@ def authenticate_session_helper(r: Request):
     # persists the session, generating r.session.session_key
     #
     # this session key is passed to the rendered views and
-    # used in client-side JavaScript in requests to the example
+    # used in client-side JavaScript in requests to the server
     if not r.session.session_key:
         r.session.create()
 

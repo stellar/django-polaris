@@ -379,7 +379,7 @@ msgid "quote has already been used in a transaction"
 msgstr "cotação já foi utilizada em uma transação"
 
 #: sep38/prices.py:46 sep38/prices.py:52 sep38/prices.py:91
-msgid "internal example error"
+msgid "internal server error"
 msgstr ""
 
 #: sep38/prices.py:114 sep38/prices.py:171 sep38/quote.py:91

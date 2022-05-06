@@ -1,6 +1,6 @@
 """
 This module implements the logic for the `/.well-known` endpoint.
-In particular, this generates the `.toml` file for the anchor example.
+In particular, this generates the `.toml` file for the anchor server.
 
 The importance of the Stellar TOML file is explained in SEP-0001:
 https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0001.md

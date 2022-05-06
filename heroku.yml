@@ -2,31 +2,31 @@ build:
   docker:
     reference-server: Dockerfile
 release:
-  image: reference-example
+  image: reference-server
   command:
     - pipenv run python manage.py migrate
 run:
   watch_transactions:
-    image: reference-example
+    image: reference-server
     command:
       - pipenv run python manage.py watch_transactions
   process_pending_deposits:
-    image: reference-example
+    image: reference-server
     command:
       - pipenv run python manage.py process_pending_deposits
   execute_outgoing_transactions:
-    image: reference-example
+    image: reference-server
     command:
       - pipenv run python manage.py execute_outgoing_transactions --loop
   poll_outgoing_transactions:
-    image: reference-example
+    image: reference-server
     command:
       - pipenv run python manage.py poll_outgoing_transactions --loop
   sign_multisig_transactions:
-    image: reference-example
+    image: reference-server
     command:
       - pipenv run python manage.py sign_multisig_transactions --loop
   web:
-    image: reference-example
+    image: reference-server
     command:
-      - pipenv run gunicorn example.wsgi
+      - pipenv run gunicorn server.wsgi

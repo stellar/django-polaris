@@ -8,7 +8,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ("polaris", "0013_auto_20211011_1956"),
-        ("example", "0007_auto_20210921_2005"),
+        ("server", "0007_auto_20210921_2005"),
     ]
 
     operations = [

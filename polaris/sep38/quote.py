@@ -66,7 +66,7 @@ def post_quote(token: SEP10Token, request: Request) -> Response:
         )
     except ValueError as e:
         logger.error(gettext("invalid quote provided: ") + str(e))
-        return render_error_response("internal example error", status_code=500)
+        return render_error_response("internal server error", status_code=500)
 
     if quote.sell_amount:
         quote.buy_amount = round(

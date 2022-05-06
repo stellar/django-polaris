@@ -432,7 +432,7 @@ def test_get_price_error_bad_price(mock_rqi, client):
         },
     )
     assert response.status_code == 500, response.content
-    assert response.json() == {"error": "internal example error"}
+    assert response.json() == {"error": "internal server error"}
     mock_rqi.get_price.assert_called_once()
 
 
@@ -668,7 +668,7 @@ def test_get_price_failure_bad_return_type(mock_rqi, client):
         },
     )
     assert response.status_code == 500, response.content
-    assert response.json() == {"error": "internal example error"}
+    assert response.json() == {"error": "internal server error"}
     mock_rqi.get_price.assert_called_once()
     kwargs = mock_rqi.get_price.call_args[1]
     del kwargs["token"]

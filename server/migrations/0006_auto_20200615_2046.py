@@ -15,7 +15,7 @@ class Migration(migrations.Migration):
     """
 
     dependencies = [
-        ("example", "0005_auto_20200702_1908"),
+        ("server", "0005_auto_20200702_1908"),
     ]
 
     operations = [
@@ -43,7 +43,7 @@ class Migration(migrations.Migration):
             field=models.ForeignKey(
                 null=True,
                 on_delete=django.db.models.deletion.CASCADE,
-                to="example.PolarisUser",
+                to="server.PolarisUser",
             ),
         ),
         migrations.AlterField(
@@ -52,7 +52,7 @@ class Migration(migrations.Migration):
             field=models.ForeignKey(
                 null=True,
                 on_delete=django.db.models.deletion.CASCADE,
-                to="example.PolarisStellarAccount",
+                to="server.PolarisStellarAccount",
             ),
         ),
     ]

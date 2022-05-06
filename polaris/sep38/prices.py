@@ -43,13 +43,13 @@ def get_price(token: SEP10Token, request: Request) -> Response:
         logger.error(
             "a non-Decimal price was returned from QuoteIntegration.get_price()"
         )
-        return render_error_response(gettext("internal example error"), status_code=500)
+        return render_error_response(gettext("internal server error"), status_code=500)
     elif round(price, request_data["sell_asset"].significant_decimals) != price:
         logger.error(
             "the price returned from QuoteIntegration.get_price() did not have the correct "
             "number of significant decimals"
         )
-        return render_error_response(gettext("internal example error"), status_code=500)
+        return render_error_response(gettext("internal server error"), status_code=500)
 
     if request_data.get("sell_amount"):
         sell_amount = request_data["sell_amount"]
@@ -88,7 +88,7 @@ def get_prices(token: SEP10Token, request: Request) -> Response:
         return render_error_response(str(e), status_code=503)
 
     if len(prices) != len(request_data["buy_assets"]):
-        return render_error_response(gettext("internal example error"), status_code=500)
+        return render_error_response(gettext("internal server error"), status_code=500)
 
     buy_assets = []
     for idx, buy_asset in enumerate(request_data["buy_assets"]):

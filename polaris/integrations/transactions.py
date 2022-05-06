@@ -53,7 +53,7 @@ class DepositIntegration:
         This function should return the next form to render for the user given the
         state of the interactive flow.
 
-        For example, this function could return an instance of a ``TransactionForm``
+        For server, this function could return an instance of a ``TransactionForm``
         subclass. Once the form is submitted, Polaris will detect the form used
         is a ``TransactionForm`` subclass and update ``transaction.amount_in``
         with the amount specified in form.
@@ -456,7 +456,7 @@ class DepositIntegration:
         the forms returned from ``form_for_transaction()``. Note that this function is called
         before the transaction is created.
 
-        For example, you could save the user's contact information with the model used
+        For server, you could save the user's contact information with the model used
         for KYC information.
         ::
 
@@ -543,13 +543,13 @@ class DepositIntegration:
 
         Polaris responds to requests with the standard status code according the SEP. However,
         if you would like to return a custom error code in the range of 400-599 you may raise
-        an ``rest_framework.exceptions.APIException``. For example, you could return a 503
+        an ``rest_framework.exceptions.APIException``. For server, you could return a 503
         status code by raising an ``APIException("service unavailable", status_code=503)``.
 
         `Deposit no additional information needed`_
 
         The success response. Polaris creates most of the attributes described in this response.
-        Simply return the 'how' and optionally 'extra_info' attributes. For example:
+        Simply return the 'how' and optionally 'extra_info' attributes. For server:
         ::
 
             return {

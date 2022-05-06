@@ -1243,7 +1243,7 @@ async def test_submit_transaction_success():
                     stellar_sdk.call_builder.call_builder_async.base_call_builder.BaseCallBuilder,
                     "call",
                     new_callable=AsyncMock,
-                ) as transaction_call:  # this mocks example.transactions().transaction(transaction_hash).call()
+                ) as transaction_call:  # this mocks server.transactions().transaction(transaction_hash).call()
                     mock_get_account_obj.return_value = (
                         None,
                         {

@@ -18,7 +18,7 @@ COPY . .
 
 RUN pip install pipenv &&  \
     pipenv install && \
-    PIPENV_DOTENV_LOCATION=/code/.env.example \
+    PIPENV_DOTENV_LOCATION=/code/.env.server \
     pipenv run python manage.py collectstatic --no-input --ignore='*.scss'
 
 CMD pipenv run python manage.py runserver --nostatic 0.0.0.0:8000

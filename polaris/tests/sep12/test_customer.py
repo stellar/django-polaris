@@ -27,7 +27,7 @@ def test_put_success(mock_rci, client):
         data={
             "account": "test source address",
             "first_name": "Test",
-            "email_address": "test@example.com",
+            "email_address": "test@server.com",
         },
         content_type="application/json",
     )
@@ -53,7 +53,7 @@ def test_put_success_auth_memo(mock_rci, client):
         data={
             "account": "test source address",
             "first_name": "Test",
-            "email_address": "test@example.com",
+            "email_address": "test@server.com",
         },
         content_type="application/json",
     )
@@ -81,7 +81,7 @@ def test_put_success_auth_memo_and_body(mock_rci, client):
             "memo": TEST_ACCOUNT_MEMO,
             "memo_type": "id",
             "first_name": "Test",
-            "email_address": "test@example.com",
+            "email_address": "test@server.com",
         },
         content_type="application/json",
     )
@@ -109,7 +109,7 @@ def test_put_success_memo_in_body_no_auth(mock_rci, client):
             "memo": TEST_ACCOUNT_MEMO,
             "memo_type": "id",
             "first_name": "Test",
-            "email_address": "test@example.com",
+            "email_address": "test@server.com",
         },
         content_type="application/json",
     )
@@ -137,7 +137,7 @@ def test_put_auth_memo_and_body_doesnt_match(mock_rci, client):
             "memo": 345,
             "memo_type": "id",
             "first_name": "Test",
-            "email_address": "test@example.com",
+            "email_address": "test@server.com",
         },
         content_type="application/json",
     )
@@ -155,7 +155,7 @@ def test_put_success_muxed_account(mock_rci, client):
         data={
             "account": TEST_MUXED_ACCOUNT,
             "first_name": "Test",
-            "email_address": "test@example.com",
+            "email_address": "test@server.com",
         },
         content_type="application/json",
     )
@@ -184,7 +184,7 @@ def test_put_existing_id(mock_rci, client):
         data={
             "account": "test source address",
             "first_name": "Test",
-            "email_address": "test@example.com",
+            "email_address": "test@server.com",
         },
         content_type="application/json",
     )
@@ -193,7 +193,7 @@ def test_put_existing_id(mock_rci, client):
         data={
             "id": response.json()["id"],
             "first_name": "Test2",
-            "email_address": "test@example.com",
+            "email_address": "test@server.com",
         },
         content_type="application/json",
     )
@@ -213,7 +213,7 @@ def test_bad_existing_id(client):
         data={
             "id": "notanid",
             "first_name": "Test2",
-            "email_address": "test@example.com",
+            "email_address": "test@server.com",
         },
         content_type="application/json",
     )
@@ -232,7 +232,7 @@ def test_put_memo(mock_rci, client):
             "memo": "text memo",
             "memo_type": "text",
             "first_name": "Test",
-            "email_address": "test@example.com",
+            "email_address": "test@server.com",
         },
         content_type="application/json",
     )
@@ -247,7 +247,7 @@ def test_put_bad_account(client):
         data={
             "account": "doesn't match mocked auth",
             "first_name": "Test",
-            "email_address": "test@example.com",
+            "email_address": "test@server.com",
         },
         content_type="application/json",
     )
@@ -261,7 +261,7 @@ def test_put_no_auth(client):
         data={
             "account": "doesn't match mocked auth",
             "first_name": "Test",
-            "email_address": "test@example.com",
+            "email_address": "test@server.com",
         },
         content_type="application/json",
     )
@@ -278,7 +278,7 @@ def test_put_bad_memo_type(client):
             "memo": "text memo",
             "memo_type": "not text",
             "first_name": "Test",
-            "email_address": "test@example.com",
+            "email_address": "test@server.com",
         },
         content_type="application/json",
     )
@@ -295,7 +295,7 @@ def test_put_bad_memo(client):
             "memo": 123,
             "memo_type": "text",
             "first_name": "Test",
-            "email_address": "test@example.com",
+            "email_address": "test@server.com",
         },
         content_type="application/json",
     )
@@ -311,7 +311,7 @@ def test_put_missing_memo(client):
             "account": "test source address",
             "memo_type": "text",
             "first_name": "Test",
-            "email_address": "test@example.com",
+            "email_address": "test@server.com",
         },
         content_type="application/json",
     )
@@ -327,7 +327,7 @@ def test_put_missing_memo_type(client):
             "account": "test source address",
             "memo": 123,
             "first_name": "Test",
-            "email_address": "test@example.com",
+            "email_address": "test@server.com",
         },
         content_type="application/json",
     )
@@ -344,7 +344,7 @@ def test_sep9_params(mock_put, client):
         data={
             "account": "test source address",
             "first_name": "Test",
-            "email_address": "test@example.com",
+            "email_address": "test@server.com",
             "not-a-sep9-param": 1,
         },
         content_type="application/json",
@@ -356,7 +356,7 @@ def test_sep9_params(mock_put, client):
         "memo_type": None,
         "account": "test source address",
         "first_name": "Test",
-        "email_address": "test@example.com",
+        "email_address": "test@server.com",
         "type": None,
     }
     mock_put.reset_mock()

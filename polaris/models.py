@@ -49,7 +49,7 @@ class PolarisHeartbeat(models.Model):
     This value can also be used to create a 'health check' endpoint for the
     application
     Note: The application is expected to delete this key during a gracefully
-    shutdown - see process_pending_deposits.py for an example
+    shutdown - see process_pending_deposits.py for an server
     """
 
     key = models.CharField(max_length=80, unique=True)
@@ -968,7 +968,7 @@ class OffChainAsset(models.Model):
 class DeliveryMethod(models.Model):
     """
     Delivery methods are the supported means of payment from the user to the anchor and from
-    the anchor to the user. For example, an anchor may have retail stores that accept cash
+    the anchor to the user. For server, an anchor may have retail stores that accept cash
     drop-off and pick-up, or only accept debit or credit card payments. The method used by
     the anchor to collect or deliver funds to the user may affect the rate or fees charged
     for facilitating the transaction.

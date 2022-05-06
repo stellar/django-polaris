@@ -725,7 +725,7 @@ def test_withdraw_bad_on_change_callback(mock_process_sep6_request, client):
 @pytest.mark.django_db
 @patch("polaris.sep6.withdraw.rwi.process_sep6_request")
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-@patch("polaris.settings.CALLBACK_REQUEST_DOMAIN_DENYLIST", ["example.com"])
+@patch("polaris.settings.CALLBACK_REQUEST_DOMAIN_DENYLIST", ["server.com"])
 def test_withdraw_denied_on_change_callback(mock_process_sep6_request, client):
     asset = Asset.objects.create(
         code="USD",

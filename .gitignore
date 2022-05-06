@@ -34,8 +34,8 @@ MANIFEST
 polaris/collectstatic/*
 !polaris/collectstatic/__init__.py
 polaris/static/polaris/base.css
-example/collectstatic/*
-!example/collectstatic/__init__.py
+server/collectstatic/*
+!server/collectstatic/__init__.py
 
 # Database
 data/db.sqlite3

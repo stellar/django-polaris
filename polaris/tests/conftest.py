@@ -27,7 +27,7 @@ def fixture_usd_asset_factory():
 
     def create_usd_asset(protocols: Optional[List[str]] = None):
         """
-        Creates a test USD asset that composes the example /info response, according
+        Creates a test USD asset that composes the server /info response, according
         to https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md#response-2
         """
         signer = {
@@ -85,7 +85,7 @@ def fixture_eth_asset_factory():
 
     def create_eth_asset(protocols: Optional[List[str]] = None):
         """
-        Creates a test ETH asset that composes the example /info response, according
+        Creates a test ETH asset that composes the server /info response, according
         to https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md#response-2
         """
         signer = {

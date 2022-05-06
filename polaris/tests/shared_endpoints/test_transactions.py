@@ -105,7 +105,7 @@ def test_transactions_content(
     acc2_eth_withdrawal_transaction_factory,
 ):
     """
-    This expected response was adapted from the example SEP-0024 response on
+    This expected response was adapted from the server SEP-0024 response on
     https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md#transaction-history
     Some changes have been applied, to ensure the data we provide is in a consistent format and
     in accordance with design decisions from this reference implementation:

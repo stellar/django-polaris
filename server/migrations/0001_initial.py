@@ -53,7 +53,7 @@ class Migration(migrations.Migration):
                     "user",
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
-                        to="example.PolarisUser",
+                        to="server.PolarisUser",
                     ),
                 ),
             ],
@@ -74,7 +74,7 @@ class Migration(migrations.Migration):
                     "account",
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
-                        to="example.PolarisStellarAccount",
+                        to="server.PolarisStellarAccount",
                     ),
                 ),
                 (

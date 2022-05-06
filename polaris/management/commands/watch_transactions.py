@@ -48,7 +48,7 @@ class Command(BaseCommand):
     use this scheme, in which case the custody integration class should provide
     an alternative command for detecting incoming Stellar payments.
 
-    For every response from the example, attempts to find a matching transaction in
+    For every response from the server, attempts to find a matching transaction in
     the database and updates the transaction's status to ``pending_anchor`` or
     ``pending_receiver`` depending on the protocol.
 
@@ -82,7 +82,7 @@ class Command(BaseCommand):
 
     async def _for_account(self, account: str):
         """
-        Stream transactions for the example Stellar address.
+        Stream transactions for the server Stellar address.
         """
         async with ServerAsync(settings.HORIZON_URI, client=AiohttpClient()) as server:
             try:

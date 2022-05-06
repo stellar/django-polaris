@@ -1,5 +1,5 @@
 """
-Tests for stellar-anchor-example. Currently just a simple test to keep circleci happy.
+Tests for stellar-anchor-server. Currently just a simple test to keep circleci happy.
 
 Once we introduce django-polaris 1.0 (with integration support) we'll start
 writing more tests.

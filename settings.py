@@ -33,7 +33,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "corsheaders",
-    "example",
+    "server",
     "polaris",
 ]
 
@@ -60,7 +60,7 @@ if SECURE_SSL_REDIRECT:
 
 APPEND_SLASH = False
 
-ROOT_URLCONF = "example.urls"
+ROOT_URLCONF = "server.urls"
 
 TEMPLATES = [
     {
@@ -78,7 +78,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = "example.wsgi.application"
+WSGI_APPLICATION = "server.wsgi.application"
 
 DATABASES = {
     "default": env.db(
@@ -102,7 +102,7 @@ LANGUAGES = [
 
 FORM_RENDERER = "django.forms.renderers.TemplatesSetting"
 
-STATIC_ROOT = os.path.join(BASE_DIR, "example/collectstatic")
+STATIC_ROOT = os.path.join(BASE_DIR, "server/collectstatic")
 STATIC_URL = "/static/"
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
@@ -152,7 +152,7 @@ LOGGING = {
         },
     },
     "loggers": {
-        "example": {
+        "server": {
             "handlers": ["polaris-console"],
             "propogate": False,
             "level": "INFO",

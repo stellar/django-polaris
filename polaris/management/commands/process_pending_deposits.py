@@ -359,7 +359,7 @@ class ProcessPendingDeposits:
     @classmethod
     def get_ready_deposits(cls) -> List[Transaction]:
         """
-        Polaris' API example processes deposit request and places the associated Transaction
+        Polaris' API server processes deposit request and places the associated Transaction
         object in the `pending_user_transfer_start` status when all information necessary to
         submit the payment operation on Stellar has been collected.
 

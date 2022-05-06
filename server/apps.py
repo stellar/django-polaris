@@ -2,7 +2,7 @@ from django.apps import AppConfig
 
 
 class AnchorConfig(AppConfig):
-    name = "example"
+    name = "server"
 
     def ready(self):
         from polaris.integrations import register_integrations

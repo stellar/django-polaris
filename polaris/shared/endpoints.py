@@ -45,7 +45,7 @@ def more_info(request: Request, sep6: bool = False) -> Response:
     # persists the session, generating r.session.session_key
     #
     # this session key is passed to the rendered views and
-    # used in client-side JavaScript in requests to the example
+    # used in client-side JavaScript in requests to the server
     if request.session.is_empty():
         request.session["authenticated"] = False
     else:

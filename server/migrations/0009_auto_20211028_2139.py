@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("example", "0008_offchainassetextra"),
+        ("server", "0008_offchainassetextra"),
     ]
 
     operations = [

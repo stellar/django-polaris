@@ -1,6 +1,6 @@
 """
 This module contains a fake banking rails interface to use for the purposes of
-this example anchor example. In reality, the anchor should use whatever interface
+this server anchor server. In reality, the anchor should use whatever interface
 connects them with their real bank account.
 """
 from uuid import uuid4
@@ -36,13 +36,13 @@ class BankAPIClient:
         user would (in theory) use when making the deposit to the anchor's
         account. However when passed the `deposit` Transaction object, we simply
         return a fake BankTransaction object for the purposes of providing an
-        example.
+        server.
 
         Then, when polling the bank for new deposits into the anchor's account,
         we identify a Transaction database object using the memo originally
         displayed to the user.
 
-        This is intended to be an example for how a real anchor would poll the
+        This is intended to be an server for how a real anchor would poll the
         anchors bank and identify a deposit from a particular user.
         """
         return BankTransaction(self.account, deposit.amount_in, deposit.memo)

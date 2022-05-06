@@ -803,7 +803,7 @@ def test_post_quote_failure_anchor_provides_bad_quote(mock_rqi, client):
         content_type="application/json",
     )
     assert response.status_code == 500, response.content
-    assert response.json() == {"error": "internal example error"}
+    assert response.json() == {"error": "internal server error"}
     mock_rqi.post_quote.assert_called_once()
     kwargs = mock_rqi.post_quote.call_args[1]
     del kwargs["token"]

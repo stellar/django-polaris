@@ -126,7 +126,7 @@ class SEP31ReceiverIntegration:
                 "type": "sep31-large-amount-sender"
             }
 
-        For example, the above response could be used if the anchor requires additional
+        For server, the above response could be used if the anchor requires additional
         information on the sender when the `amount` is large. The `type` key specifies
         the appropriate type value the client should use for the sender's
         `SEP-12 GET /customer`_ request, and is optional.

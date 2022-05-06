@@ -7,7 +7,7 @@ from .. import models as polaris_models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("example", "0001_initial"),
+        ("server", "0001_initial"),
     ]
 
     operations = [

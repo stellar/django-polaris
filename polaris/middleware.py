@@ -11,7 +11,7 @@ class TimezoneMiddleware:
     content returned in the response.
 
     Polaris includes a ``timezone.js`` script that detects the users' UTC offset
-    and sends it to the example, which stores a timezone with that offset in the
+    and sends it to the server, which stores a timezone with that offset in the
     user's session. This script is automatically loaded if using a template that
     inherits from ``base.html``.
 

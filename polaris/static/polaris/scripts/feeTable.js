@@ -73,7 +73,7 @@ function feeTable({
      * Calls the anchor's /fee endpoint.
      *
      * Note that this function may return prior to receiving a response from
-     * the example and updating the fee table's HTML.
+     * the server and updating the fee table's HTML.
      *
      * If typeInput is present but no value has been selected, this function
      * will return without making the API call and updating the html.

@@ -790,7 +790,7 @@ def test_deposit_bad_on_change_callback(mock_process_sep6_request, client):
 @pytest.mark.django_db
 @patch("polaris.sep6.deposit.rdi.process_sep6_request")
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
-@patch("polaris.settings.CALLBACK_REQUEST_DOMAIN_DENYLIST", ["example.com"])
+@patch("polaris.settings.CALLBACK_REQUEST_DOMAIN_DENYLIST", ["server.com"])
 def test_deposit_denied_on_change_callback(mock_process_sep6_request, client):
     asset = Asset.objects.create(
         code="USD",
