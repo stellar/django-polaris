@@ -17,8 +17,8 @@ jobs:
           key: deps9-{{ .Branch }}-{{ checksum "Pipfile.lock" }}
       - run:
           command: |
-            sudo pip install pipenv
-            pipenv install --dev --system
+            pip install poetry
+            poetry install
       - save_cache:
           # cache Python dependencies using checksum of Pipfile as the cache-key
           key: deps9-{{ .Branch }}-{{ checksum "Pipfile.lock" }}
@@ -29,8 +29,8 @@ jobs:
       - run:
           command: |
             cp .env.example .env
-            pytest --cov
-            codecov
+            poetry run pytest --cov
+            poetry run codecov
       - store_test_results:
           # Upload test results for display in Test Summary: https://circleci.com/docs/2.0/collect-test-data/
           path: test-results
