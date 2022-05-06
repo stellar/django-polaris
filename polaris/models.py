@@ -49,7 +49,7 @@ class PolarisHeartbeat(models.Model):
     This value can also be used to create a 'health check' endpoint for the
     application
     Note: The application is expected to delete this key during a gracefully
-    shutdown - see process_pending_deposits.py for an server
+    shutdown - see process_pending_deposits.py for an example
     """
 
     key = models.CharField(max_length=80, unique=True)

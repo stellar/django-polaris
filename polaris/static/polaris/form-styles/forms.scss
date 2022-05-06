@@ -1,9 +1,9 @@
-@import "theme";
+@import "./theme.scss";
 
-@import "file-picker";
-@import "select-list";
-@import "toggle";
-@import "../colors";
+@import "./file-picker.scss";
+@import "./select-list.scss";
+@import "./toggle.scss";
+@import "../colors.scss";
 
 .field {
   margin: 1rem 0;

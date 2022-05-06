@@ -31,7 +31,7 @@ class Migration(migrations.Migration):
             preserve_default=False,
         ),
         migrations.RunSQL(
-            "UPDATE example_polarisusertransaction SET transaction_id = temp_transaction_id"
+            "UPDATE server_polarisusertransaction SET transaction_id = temp_transaction_id"
         ),
         migrations.RemoveField(
             model_name="polarisusertransaction",

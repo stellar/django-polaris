@@ -1164,7 +1164,7 @@ def test_bad_field_value_in_response():
                     "sender": {
                         "first_name": {
                             # missing description
-                            "server": "an server"
+                            "example": "an example"
                         }
                     }
                 },

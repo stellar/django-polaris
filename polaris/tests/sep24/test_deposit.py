@@ -349,7 +349,6 @@ def test_interactive_deposit_success(client, acc1_usd_deposit_transaction_factor
         f"&asset_code={deposit.asset.code}",
         {"amount": 200.0},
     )
-    print(response.content)
     assert response.status_code == 302
     assert client.session["authenticated"] is False
 
