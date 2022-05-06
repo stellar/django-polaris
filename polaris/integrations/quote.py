@@ -40,7 +40,7 @@ class QuoteIntegration:
         for your service. Polaris will return a 400 Bad Request status code in this case.
 
         Raise a ``RuntimeError`` if you cannot return prices for the provided `sell_asset`
-        and `buy_assets` for any reason. For server, the service used by the anchor to
+        and `buy_assets` for any reason. For example, the service used by the anchor to
         source exchange prices could be down. Polaris will return a 503 Server Unavailable
         status code in this case.
 
@@ -88,7 +88,7 @@ class QuoteIntegration:
         code in this case.
 
         Raise a ``RuntimeError`` if you cannot return prices for the provided `sell_asset`
-        and `buy_asset` for any reason. For server, the service used by the anchor to
+        and `buy_asset` for any reason. For example, the service used by the anchor to
         source exchange prices could be down. Polaris will return a 503 Server Unavailable
         status code in this case.
 
@@ -131,7 +131,7 @@ class QuoteIntegration:
         this case.
 
         Raise a ``RuntimeError`` if you cannot return prices for the provided `sell_asset`
-        and `buy_asset` for any reason. For server, the service used by the anchor to
+        and `buy_asset` for any reason. For example, the service used by the anchor to
         source exchange prices could be down. Polaris will return a 503 Server Unavailable
         status code in this case.
 

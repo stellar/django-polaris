@@ -968,7 +968,7 @@ class OffChainAsset(models.Model):
 class DeliveryMethod(models.Model):
     """
     Delivery methods are the supported means of payment from the user to the anchor and from
-    the anchor to the user. For server, an anchor may have retail stores that accept cash
+    the anchor to the user. For example, an anchor may have retail stores that accept cash
     drop-off and pick-up, or only accept debit or credit card payments. The method used by
     the anchor to collect or deliver funds to the user may affect the rate or fees charged
     for facilitating the transaction.
