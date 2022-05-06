@@ -1,8 +1,0 @@
-include LICENSE
-include README.rst
-graft polaris/static/polaris/scripts
-graft polaris/templates
-graft polaris/locale
-graft polaris/static
-global-exclude *.scss
-global-exclude *.py[co]

@@ -8,7 +8,7 @@ from django.utils.translation import gettext_lazy as _
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 env = environ.Env()
-env_file = env("ENV_PATH") if os.environ.get("ENV_PATH") else os.path.join(BASE_DIR, ".env")
+env_file = os.environ["ENV_PATH"] if os.environ.get("ENV_PATH") else os.path.join(BASE_DIR, ".env")
 if os.path.exists(env_file):
     environ.Env.read_env(env_file)
 

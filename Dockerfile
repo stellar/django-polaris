@@ -16,9 +16,9 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /code
 COPY . .
 
-RUN pip install pipenv &&  \
-    pipenv install && \
-    PIPENV_DOTENV_LOCATION=/code/.env.example \
-    pipenv run python manage.py collectstatic --no-input --ignore='*.scss'
+RUN pip install poetry &&  \
+    poetry install -E server --no-dev && \
+    ENV_PATH=/code/.env.example \
+    poetry run python manage.py collectstatic --no-input --ignore='*.scss'
 
-CMD pipenv run python manage.py runserver --nostatic 0.0.0.0:8000
+CMD poetry run python manage.py runserver --nostatic 0.0.0.0:8000
