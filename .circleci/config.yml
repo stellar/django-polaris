@@ -1,6 +1,6 @@
 version: 2.1
 orbs:
-  heroku: circleci/heroku@1.2.5
+  heroku: circleci/heroku@1.2.6
 executors:
   my-executor:
     docker:
