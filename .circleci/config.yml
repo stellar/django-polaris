@@ -10,8 +10,9 @@ workflows:
           pkg-manager: poetry
           test-tool: pytest
           test-tool-args: "--cov"
-          pre-install-steps: |
-            cp .env.example .env
+          pre-install-steps:
+            run:
+              command: cp .env.example .env
   build_deploy_publish:
     jobs:
       - python/test:
