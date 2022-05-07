@@ -1,57 +1,24 @@
 version: 2.1
 orbs:
   heroku: circleci/heroku@1.2.6
-executors:
-  my-executor:
-    docker:
-      - image: cimg/python:3.7
-jobs:
-  test:
-    executor: my-executor
-    steps:
-      - checkout
-      - run: sudo chown -R circleci:circleci /usr/local/bin
-      - run: sudo chown -R circleci:circleci /usr/local/lib/python3.7/site-packages
-      - restore_cache:
-          # Read about caching dependencies: https://circleci.com/docs/2.0/caching/
-          key: deps9-{{ .Branch }}-{{ checksum "poetry.lock" }}
-      - run:
-          command: |
-            curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python
-            poetry install
-      - save_cache:
-          # cache Python dependencies using checksum of Pipfile as the cache-key
-          key: deps9-{{ .Branch }}-{{ checksum "poetry.lock" }}
-          paths:
-            - ".venv"
-            - "/usr/local/bin"
-            - "/usr/local/lib/python3.7/site-packages"
-      - run:
-          command: |
-            cp .env.example .env
-            poetry run pytest --cov
-            poetry run codecov
-      - store_test_results:
-          # Upload test results for display in Test Summary: https://circleci.com/docs/2.0/collect-test-data/
-          path: test-results
-      - store_artifacts:
-          # Upload test summary for display in Artifacts: https://circleci.com/docs/2.0/artifacts/
-          path: test-results
-          destination: tr1
+  python: circleci/python@2.0.3
 workflows:
   version: 2
   test:
     jobs:
-      - test
+      - python/test:
+          pkg-manager: poetry
+          test-tool: pytest
+          test-tool-args: "--cov"
   build_deploy_publish:
     jobs:
-      - test:
+      - pytest/test:
           filters:
             branches:
               only: master
       - heroku/deploy-via-git:
           requires:
-            - test
+            - python/test
           filters:
             branches:
               only: master
