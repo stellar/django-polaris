@@ -4,7 +4,7 @@ orbs:
 executors:
   my-executor:
     docker:
-      - image: circleci/python:3.7.3
+      - image: circleci/python:3.7
 jobs:
   test:
     executor: my-executor
@@ -17,9 +17,8 @@ jobs:
           key: deps9-{{ .Branch }}-{{ checksum "poetry.lock" }}
       - run:
           command: |
-            pip install --upgrade pip
-            pip install poetry
-            poetry install --no-root
+            curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python
+            poetry install
       - save_cache:
           # cache Python dependencies using checksum of Pipfile as the cache-key
           key: deps9-{{ .Branch }}-{{ checksum "poetry.lock" }}
