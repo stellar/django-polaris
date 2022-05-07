@@ -12,7 +12,7 @@ workflows:
           test-tool-args: "--cov"
   build_deploy_publish:
     jobs:
-      - pytest/test:
+      - python/test:
           filters:
             branches:
               only: master
