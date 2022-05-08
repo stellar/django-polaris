@@ -960,7 +960,7 @@ six = "*"
 
 [[package]]
 name = "stellar-sdk"
-version = "8.0.0b4"
+version = "8.0.0"
 description = "The Python Stellar SDK library provides APIs to build transactions and connect to Horizon."
 category = "main"
 optional = false
@@ -1096,7 +1096,7 @@ server = ["gunicorn", "psycopg2-binary", "watchdog"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "93f217647e9b243219976c902e89ba815d0ed1ee254953adca94805a44b6aa3f"
+content-hash = "34607e340871067c280c24adde0e31d956bef52abadfff9c0ea9c82cd2ac6d90"
 
 [metadata.files]
 aiohttp = [
@@ -1865,8 +1865,8 @@ stellar-base-sseclient = [
     {file = "stellar-base-sseclient-0.0.21.tar.gz", hash = "sha256:2a500f3015dede4e9fac0f9d6d9d85f4fdd7fe1c9c10b2b111a6ae190cc5dc00"},
 ]
 stellar-sdk = [
-    {file = "stellar-sdk-8.0.0b4.tar.gz", hash = "sha256:4daf970cddb3eaca524b62881f8dd4cdde69ca544009981ac1ebbde66c35f5ed"},
-    {file = "stellar_sdk-8.0.0b4-py3-none-any.whl", hash = "sha256:fb347aa839edaf4cb46b775457959d59f06b9c41c929c10d40070080bc699c3a"},
+    {file = "stellar-sdk-8.0.0.tar.gz", hash = "sha256:21b2e307427ad1d0714a9518035c75b0fffef9731074614c1c3d2fff027d5252"},
+    {file = "stellar_sdk-8.0.0-py3-none-any.whl", hash = "sha256:911274859930b8a1afa3970c42c38834ac9cbbe5329065f244b65a3405b887da"},
 ]
 toml = [
     {file = "toml-0.10.2-py2.py3-none-any.whl", hash = "sha256:806143ae5bfb6a3c6e736a764057db0e6a0e05e338b5630894a5f779cabb4f9b"},
