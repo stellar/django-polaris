@@ -1,57 +1,27 @@
 version: 2.1
 orbs:
-  heroku: circleci/heroku@1.2.5
-executors:
-  my-executor:
-    docker:
-      - image: circleci/python:3.7.3
-jobs:
-  test:
-    executor: my-executor
-    steps:
-      - checkout
-      - run: sudo chown -R circleci:circleci /usr/local/bin
-      - run: sudo chown -R circleci:circleci /usr/local/lib/python3.7/site-packages
-      - restore_cache:
-          # Read about caching dependencies: https://circleci.com/docs/2.0/caching/
-          key: deps9-{{ .Branch }}-{{ checksum "Pipfile.lock" }}
-      - run:
-          command: |
-            sudo pip install pipenv
-            pipenv install --dev --system
-      - save_cache:
-          # cache Python dependencies using checksum of Pipfile as the cache-key
-          key: deps9-{{ .Branch }}-{{ checksum "Pipfile.lock" }}
-          paths:
-            - ".venv"
-            - "/usr/local/bin"
-            - "/usr/local/lib/python3.7/site-packages"
-      - run:
-          command: |
-            cp polaris/.env.example polaris/.env
-            pytest --cov -c polaris/pytest.ini
-            codecov
-      - store_test_results:
-          # Upload test results for display in Test Summary: https://circleci.com/docs/2.0/collect-test-data/
-          path: test-results
-      - store_artifacts:
-          # Upload test summary for display in Artifacts: https://circleci.com/docs/2.0/artifacts/
-          path: test-results
-          destination: tr1
+  heroku: circleci/heroku@1.2.6
+  python: circleci/python@2.0.3
 workflows:
   version: 2
   test:
     jobs:
-      - test
+      - python/test:
+          pkg-manager: poetry
+          test-tool: pytest
+          test-tool-args: "--cov"
+          pre-install-steps:
+            - run:
+                command: cp .env.example .env
   build_deploy_publish:
     jobs:
-      - test:
+      - python/test:
           filters:
             branches:
               only: master
       - heroku/deploy-via-git:
           requires:
-            - test
+            - python/test
           filters:
             branches:
               only: master

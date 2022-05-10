@@ -8,7 +8,7 @@ Django Polaris
 .. image:: https://codecov.io/gh/stellar/django-polaris/branch/master/graph/badge.svg?token=3DaW3jM6Q8
     :target: https://codecov.io/gh/stellar/django-polaris
 
-.. image:: https://img.shields.io/badge/python-3.7%20%7C%20%7C%203.8%20%7C%203.9-blue?style=shield
+.. image:: https://img.shields.io/badge/python-3.7%20%7C%20%7C%203.8%20%7C%203.9%20%7C%203.10-blue?style=shield
     :alt: Python - Version
     :target: https://pypi.python.org/pypi/django-polaris
 
@@ -24,4 +24,4 @@ Polaris is an extendable `django app`_ for Stellar Ecosystem Proposal (SEP) impl
 
 See the complete `documentation`_ for information on how to get started with Polaris. The SDF also runs a `reference server`_ using Polaris that can be tested using our `demo wallet`_.
 
-For important updates on Polaris's development and releases please join the `email list`_.
+For important updates on Polaris's development and releases, please join the `email list`_.

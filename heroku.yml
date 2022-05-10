@@ -4,29 +4,29 @@ build:
 release:
   image: reference-server
   command:
-    - python manage.py migrate
+    - pipenv run python manage.py migrate
 run:
   watch_transactions:
     image: reference-server
     command:
-      - python manage.py watch_transactions
+      - pipenv run python manage.py watch_transactions
   process_pending_deposits:
     image: reference-server
     command:
-      - python manage.py process_pending_deposits
+      - pipenv run python manage.py process_pending_deposits
   execute_outgoing_transactions:
     image: reference-server
     command:
-      - python manage.py execute_outgoing_transactions --loop
+      - pipenv run python manage.py execute_outgoing_transactions --loop
   poll_outgoing_transactions:
     image: reference-server
     command:
-      - python manage.py poll_outgoing_transactions --loop
+      - pipenv run python manage.py poll_outgoing_transactions --loop
   sign_multisig_transactions:
     image: reference-server
     command:
-      - python manage.py sign_multisig_transactions --loop
+      - pipenv run python manage.py sign_multisig_transactions --loop
   web:
     image: reference-server
     command:
-      - gunicorn server.wsgi
+      - pipenv run gunicorn server.wsgi
