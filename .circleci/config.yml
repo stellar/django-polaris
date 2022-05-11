@@ -16,6 +16,11 @@ workflows:
   build_deploy_publish:
     jobs:
       - python/test:
+          pkg-manager: poetry
+          test-tool: pytest
+          pre-install-steps:
+            - run:
+                command: cp .env.example .env
           filters:
             branches:
               only: master
