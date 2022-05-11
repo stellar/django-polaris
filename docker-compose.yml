@@ -55,13 +55,3 @@ services:
       db:
         condition: service_completed_successfully
     command: poetry run watchmedo auto-restart --recursive --pattern="*.py;*.env" --directory="." python manage.py execute_outgoing_transactions -- --loop
-  sign_multisig_transactions:
-    container_name: sign_multisig_transactions
-    network_mode: host
-    build: .
-    volumes:
-      - .:/code
-    depends_on:
-      db:
-        condition: service_completed_successfully
-    command: poetry run watchmedo auto-restart --recursive --pattern="*.py;*.env" --directory="." python manage.py sign_multisig_transactions -- --loop
