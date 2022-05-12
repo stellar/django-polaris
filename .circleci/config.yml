@@ -25,6 +25,8 @@ workflows:
             branches:
               only: master
       - heroku/deploy-via-git:
+          pre-steps:
+            - run: heroku auth:whoami
           requires:
             - python/test
           filters:
