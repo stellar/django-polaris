@@ -2,6 +2,7 @@ FROM python:3.7-slim
 
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
+ENV POETRY_CACHE_DIR /code/.cache/pypoetry
 
 RUN apt-get update && apt-get install -y \
     build-essential \
