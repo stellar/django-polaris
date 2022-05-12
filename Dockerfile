@@ -18,7 +18,7 @@ WORKDIR /code
 COPY . .
 
 RUN pip install poetry &&  \
-    poetry install --no-dev -E server && \
+    poetry install --no-dev -E dev-server && \
     ENV_PATH=/code/.env.example \
     poetry run python manage.py collectstatic --no-input --ignore='*.scss'
 
