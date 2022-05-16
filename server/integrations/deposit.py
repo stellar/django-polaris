@@ -335,7 +335,11 @@ class MyDepositIntegration(DepositIntegration):
         *args: List,
         **kwargs: Dict,
     ) -> Optional[str]:
-        raise NotImplementedError()
+        return f"http://127.0.0.1:5000?id={transaction.id}&callback={callback}"
+
+    def after_interactive_flow(self, request: Request, transaction: Transaction):
+        transaction.status = Transaction.STATUS.pending_user_transfer_start
+        transaction.save()
 
     def save_sep9_fields(
         self,

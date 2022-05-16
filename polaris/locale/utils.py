@@ -7,16 +7,14 @@ from rest_framework.response import Response
 from polaris.utils import render_error_response
 
 
-def validate_language(
-    lang: str, content_type: str = "application/json"
-) -> Optional[Response]:
+def validate_language(lang: str, as_html: bool = False) -> Optional[Response]:
     if not lang:
         return render_error_response(
-            _("missing language code in request"), content_type=content_type
+            _("missing language code in request"), as_html=as_html
         )
     elif not _is_supported_language(lang):
         return render_error_response(
-            _("unsupported language: %s" % lang), content_type=content_type
+            _("unsupported language: %s" % lang), as_html=as_html
         )
 
 

@@ -105,21 +105,19 @@ def post_interactive_withdraw(request: Request) -> Response:
                     "The anchor did not provide content, is the interactive flow already complete?"
                 ),
                 status_code=422,
-                content_type="text/html",
+                as_html=True,
             )
         return render_error_response(
             _("The anchor did not provide content, unable to serve page."),
             status_code=500,
-            content_type="text/html",
+            as_html=True,
         )
 
     if not form.is_bound:
         # The anchor must initialize the form with request.data
         logger.error("form returned was not initialized with POST data, returning 500")
         return render_error_response(
-            _("Unable to validate form submission."),
-            status_code=500,
-            content_type="text/html",
+            _("Unable to validate form submission."), status_code=500, as_html=True
         )
 
     elif form.is_valid():
@@ -354,12 +352,12 @@ def get_interactive_withdraw(request: Request) -> Response:
                     "The anchor did not provide content, is the interactive flow already complete?"
                 ),
                 status_code=422,
-                content_type="text/html",
+                as_html=True,
             )
         return render_error_response(
             _("The anchor did not provide content, unable to serve page."),
             status_code=500,
-            content_type="text/html",
+            as_html=True,
         )
 
     url_args = {"transaction_id": transaction.id, "asset_code": asset.code}
