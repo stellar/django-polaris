@@ -331,10 +331,9 @@ def get_interactive_deposit(request: Request) -> Response:
             callback=callback,
         )
     except NotImplementedError:
-        logger.info("not implemented")
+        pass
     else:
         # The anchor uses a standalone interactive flow
-        logger.info("redirecting")
         return redirect(url)
 
     form = rdi.form_for_transaction(

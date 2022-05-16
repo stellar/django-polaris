@@ -43,8 +43,8 @@ Add the following to ``INSTALLED_APPS`` in settings.py.
         ...,
         "corsheaders",
         "rest_framework",
-        "polaris",
-        "anchor"
+        "anchor",
+        "polaris"
     ]
 
 Add ``CorsMiddleware`` to your ``settings.MIDDLEWARE``. It should be listed above
@@ -81,7 +81,6 @@ Enter the following variables.
     ACTIVE_SEPS=
     HOST_URL=http://localhost:8000
     LOCAL_MODE=1
-    ENABLE_SEP_0023=1
 
 Add Polaris Endpoints
 =====================

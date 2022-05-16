@@ -430,12 +430,32 @@ class DepositIntegration:
         to begin the interactive flow. If the `amount` or `callback` arguments
         are not ``None``, make sure you include them in the URL returned.
 
+        Note that ``after_interactive_flow()`` should also be implemented if this
+        function is implemented to ensure the status, amounts, fees, and any
+        other relevant information is saved to the ``Transaction`` record once
+        the interactive flow is complete.
+
         :return: a URL to be used as the entry point for the interactive
             deposit flow
         """
         raise NotImplementedError()
 
     def after_interactive_flow(self, request: Request, transaction: Transaction):
+        """
+        Override this function to update the transaction or any related models with
+        information collected during an external interactive flow.
+
+        This function will be called each time the external application makes a
+        request to the ``GET /sep24/transactions/deposit/interactive`` endpoint. This
+        gives anchors the freedom to update the transaction once at the end of the flow
+        or multiple times throughout the flow.
+
+        The last time this function is called, the transaction's ``status`` value must
+        be updated to ``pending_user_transfer_start`` or ``pending_anchor``, and the
+        transaction's amounts and fees must also be updated. This will signal to the
+        wallet application that the interactive flow has complete and that the anchor is
+        ready to proceed.
+        """
         raise NotImplementedError()
 
     def save_sep9_fields(
@@ -768,6 +788,24 @@ class WithdrawalIntegration:
 
         :return: a URL to be used as the entry point for the interactive
             withdraw flow
+        """
+        raise NotImplementedError()
+
+    def after_interactive_flow(self, request: Request, transaction: Transaction):
+        """
+        Override this function to update the transaction or any related models with
+        information collected during an external interactive flow.
+
+        This function will be called each time the external application makes a
+        request to the ``GET /sep24/transactions/withedraw/interactive`` endpoint. This
+        gives anchors the freedom to update the transaction once at the end of the flow
+        or multiple times throughout the flow.
+
+        The last time this function is called, the transaction's ``status`` value must
+        be updated to ``pending_user_transfer_start`` or ``pending_anchor``, and the
+        transaction's amounts and fees must also be updated. This will signal to the
+        wallet application that the interactive flow has complete and that the anchor is
+        ready to proceed.
         """
         raise NotImplementedError()
 
