@@ -335,10 +335,10 @@ class MyDepositIntegration(DepositIntegration):
         *args: List,
         **kwargs: Dict,
     ) -> Optional[str]:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def after_interactive_flow(self, request: Request, transaction: Transaction):
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def save_sep9_fields(
         self,
