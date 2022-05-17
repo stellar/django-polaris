@@ -248,16 +248,17 @@ def complete_interactive_deposit(request: Request) -> Response:
     GET /transactions/deposit/interactive/complete
 
     This endpoint serves as a proxy to the
-    `DepositIntegration.after_interactive_flow()` function, which should be
-    implemented if `DepositIntegration.interactive_url()` is also implemented.
+    ``DepositIntegration.after_interactive_flow()`` function, which should be
+    implemented if ``DepositIntegration.interactive_url()`` is also implemented.
 
     Anchors using external interactive flows should redirect to this endpoint
     from the external application once complete so that the Polaris `Transaction`
     record can be updated with the appropriate information collected within the
     interactive flow.
 
-    Finally, this endpoint will redirect to the transaction's more info page,
-    which will make the SEP-24 callback request if requested by the client.
+    After allowing the anchor to process the information sent, this endpoint will
+    redirect to the transaction's more info page, which will make the SEP-24
+    callback request if requested by the client.
 
     Note that the more info page's template and related CSS should be updated
     if the anchor wants to keep the brand experience consistent with the external
