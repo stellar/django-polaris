@@ -4,6 +4,8 @@ Celery tasks are called synchronously. Horizon calls are mocked for speed and co
 """
 import json
 from unittest.mock import patch
+from urllib.parse import quote_plus
+
 import jwt
 import time
 
@@ -735,7 +737,10 @@ def test_interactive_deposit_post_validation_is_called_before_next_form(
 
 @pytest.mark.django_db()
 @patch("polaris.sep24.deposit.rdi.interactive_url")
-def test_deposit_interactive_complete(mock_interactive_url, client):
+@patch("polaris.sep24.deposit.rdi.after_interactive_flow")
+def test_deposit_interactive_complete(
+    mock_interactive_flow, mock_interactive_url, client
+):
     usd = Asset.objects.create(
         code="USD",
         issuer=Keypair.random().public_key,
@@ -761,15 +766,14 @@ def test_deposit_interactive_complete(mock_interactive_url, client):
 
     response = client.get(
         DEPOSIT_PATH + "/complete",
-        {"transaction_id": deposit.id, "callback": "test.com/callback"},
+        {"transaction_id": deposit.id, "callback": "http://test.com/callback"},
     )
     assert response.status_code == 302
     redirect_to_url = response.get("Location")
     assert "more_info" in redirect_to_url
-    assert "callback=test.com%2Fcallback" in redirect_to_url
+    assert f"callback={quote_plus('http://test.com/callback')}" in redirect_to_url
 
-    deposit.refresh_from_db()
-    assert deposit.status == Transaction.STATUS.pending_user_transfer_start
+    mock_interactive_flow.assert_called_once()
 
 
 @pytest.mark.django_db()
