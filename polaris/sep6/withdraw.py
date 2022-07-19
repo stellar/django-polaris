@@ -115,7 +115,7 @@ def withdraw_logic(token: SEP10Token, request: Request, exchange: bool):
             return render_error_response(
                 _("unable to process the request"), status_code=500
             )
-        return Response(response_attrs, status_code)
+        return Response(response_attrs, status=status_code)
 
     try:
         receiving_account, memo_str, memo_type = validate_account_and_memo(
