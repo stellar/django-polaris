@@ -95,7 +95,7 @@ def withdraw_logic(token: SEP10Token, request: Request, exchange: bool):
     except ValueError as e:
         return render_error_response(str(e))
     try:
-        response, status_code = validate_response(
+        response_attrs, status_code = validate_response(
             token=token,
             request=request,
             args=args,
@@ -109,36 +109,45 @@ def withdraw_logic(token: SEP10Token, request: Request, exchange: bool):
             _("unable to process the request"), status_code=500
         )
 
-    if status_code == 200:
-        try:
-            receiving_account, memo_str, memo_type = validate_account_and_memo(
-                *rci.get_receiving_account_and_memo(
-                    request=request, transaction=transaction
-                )
-            )
-        except ValueError:
-            logger.exception(
-                "CustodyIntegration.get_receiving_account_and_memo() returned invalid values"
-            )
+    if status_code != 200:
+        if Transaction.objects.filter(id=transaction.id).exists():
+            logger.error("Do not save transaction objects for invalid SEP-6 requests")
             return render_error_response(
                 _("unable to process the request"), status_code=500
             )
-        transaction.receiving_anchor_account = receiving_account
-        transaction.memo = memo_str
-        transaction.memo_type = memo_type
-        response["memo"] = transaction.memo
-        response["memo_type"] = transaction.memo_type
-        logger.info(f"Created withdraw transaction {transaction.id}")
-        if exchange:
-            transaction.quote.save()
-        transaction.save()
-    elif Transaction.objects.filter(id=transaction.id).exists():
-        logger.error("Do not save transaction objects for invalid SEP-6 requests")
+        return Response(response_attrs, status=status_code)
+
+    try:
+        receiving_account, memo_str, memo_type = validate_account_and_memo(
+            *rci.get_receiving_account_and_memo(
+                request=request, transaction=transaction
+            )
+        )
+    except ValueError:
+        logger.exception(
+            "CustodyIntegration.get_receiving_account_and_memo() returned invalid values"
+        )
         return render_error_response(
             _("unable to process the request"), status_code=500
         )
+    transaction.receiving_anchor_account = receiving_account
+    transaction.memo = memo_str
+    transaction.memo_type = memo_type
+    response_attrs["memo"] = transaction.memo
+    response_attrs["memo_type"] = transaction.memo_type
+    logger.info(f"Created withdraw transaction {transaction.id}")
+    if exchange:
+        transaction.quote.save()
+    transaction.save()
 
-    return Response(response, status=status_code)
+    return Response(
+        {
+            "id": transaction.id,
+            "account_id": transaction.receiving_anchor_account,
+            **response_attrs,
+        },
+        status=status_code,
+    )
 
 
 def parse_request_args(
@@ -290,12 +299,9 @@ def validate_response(
         )
 
     asset = args["source_asset" if exchange else "asset"]
-    response = {
-        "account_id": asset.distribution_account,
-        "id": transaction.id,
-    }
+    response_attrs = {}
     if "min_amount" in integration_response:
-        response["min_amount"] = integration_response["min_amount"]
+        response_attrs["min_amount"] = integration_response["min_amount"]
         if type(integration_response["min_amount"]) not in [Decimal, int, float]:
             raise ValueError(
                 "Invalid 'min_amount' type returned from process_sep6_request()"
@@ -308,7 +314,7 @@ def validate_response(
         transaction.asset.withdrawal_min_amount
         > getattr(Asset, "_meta").get_field("withdrawal_min_amount").default
     ):
-        response["min_amount"] = round(
+        response_attrs["min_amount"] = round(
             transaction.asset.withdrawal_min_amount,
             transaction.asset.significant_decimals,
         )
@@ -321,37 +327,37 @@ def validate_response(
             raise ValueError(
                 "Invalid 'max_amount' returned from process_sep6_request()"
             )
-        response["max_amount"] = integration_response["max_amount"]
+        response_attrs["max_amount"] = integration_response["max_amount"]
     elif (
         transaction.asset.withdrawal_max_amount
         < getattr(Asset, "_meta").get_field("withdrawal_max_amount").default
     ):
-        response["max_amount"] = round(
+        response_attrs["max_amount"] = round(
             transaction.asset.withdrawal_max_amount,
             transaction.asset.significant_decimals,
         )
 
     if "fee_fixed" in integration_response or "fee_percent" in integration_response:
         if "fee_fixed" in integration_response:
-            response["fee_fixed"] = integration_response["fee_fixed"]
+            response_attrs["fee_fixed"] = integration_response["fee_fixed"]
         if "fee_percent" in integration_response:
-            response["fee_percent"] = integration_response["fee_percent"]
+            response_attrs["fee_percent"] = integration_response["fee_percent"]
     elif calculate_fee == registered_fee_func and not exchange:
         # return the fixed and percentage fee rates if the registered fee function
         # has not been implemented AND the request was not for the `/withdraw-exchange`
         # endpoint.
         if asset.withdrawal_fee_fixed is not None:
-            response["fee_fixed"] = round(
+            response_attrs["fee_fixed"] = round(
                 asset.withdrawal_fee_fixed, asset.significant_decimals
             )
         if asset.withdrawal_fee_percent is not None:
-            response["fee_percent"] = round(
+            response_attrs["fee_percent"] = round(
                 asset.withdrawal_fee_percent, asset.significant_decimals
             )
 
     if "extra_info" in integration_response:
         if not isinstance(integration_response["extra_info"], dict):
             raise ValueError("invalid 'extra_info' returned from integration")
-        response["extra_info"] = integration_response["extra_info"]
+        response_attrs["extra_info"] = integration_response["extra_info"]
 
-    return response, 200
+    return response_attrs, 200
