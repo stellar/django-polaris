@@ -6,6 +6,7 @@ from decimal import Decimal
 
 from django.core.management.base import BaseCommand
 from django.db.models import Q
+from stellar_sdk import FeeBumpTransactionEnvelope
 from stellar_sdk.exceptions import NotFoundError
 from stellar_sdk.transaction import Transaction as HorizonTransaction
 from stellar_sdk.transaction_envelope import TransactionEnvelope
@@ -172,11 +173,21 @@ class Command(BaseCommand):
             f"Matched transaction object {transaction.id} for stellar transaction {response['id']}"
         )
 
-        op_results = TransactionResult.from_xdr(result_xdr).result.results
-        horizon_tx = TransactionEnvelope.from_xdr(
-            envelope_xdr,
-            network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
-        ).transaction
+        try:
+            horizon_tx = TransactionEnvelope.from_xdr(
+                envelope_xdr,
+                network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
+            ).transaction
+            op_results = TransactionResult.from_xdr(result_xdr).result.results
+        except ValueError:
+            horizon_tx = FeeBumpTransactionEnvelope.from_xdr(
+                envelope_xdr, network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE
+            ).transaction.inner_transaction_envelope.transaction
+            op_results = TransactionResult.from_xdr(
+                result_xdr
+            ).result.inner_result_pair.result.result.results
+
+        print(op_results, horizon_tx)
 
         payment_data = await cls._find_matching_payment_data(
             response, horizon_tx, op_results, transaction
