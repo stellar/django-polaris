@@ -187,8 +187,6 @@ class Command(BaseCommand):
                 result_xdr
             ).result.inner_result_pair.result.result.results
 
-        print(op_results, horizon_tx)
-
         payment_data = await cls._find_matching_payment_data(
             response, horizon_tx, op_results, transaction
         )
