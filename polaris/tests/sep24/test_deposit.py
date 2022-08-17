@@ -174,9 +174,7 @@ def test_deposit_no_account(client):
     )
 
     response = client.post(DEPOSIT_PATH, {"asset_code": asset.code}, follow=True)
-    content = json.loads(response.content)
 
-    print(content)
     assert response.status_code == 200
 
 
