@@ -3,7 +3,7 @@ This module tests the `/deposit` endpoint.
 Celery tasks are called synchronously. Horizon calls are mocked for speed and correctness.
 """
 import json
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 from urllib.parse import quote_plus
 
 import jwt
@@ -158,17 +158,26 @@ def test_deposit_no_params(client):
     content = json.loads(response.content)
 
     assert response.status_code == 400
-    assert content == {"error": "`asset_code` and `account` are required parameters"}
+    assert content == {"error": "`asset_code` is required"}
 
 
+@pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch("polaris.sep24.deposit.Keypair", Mock(from_public_key=Mock()))
 def test_deposit_no_account(client):
     """`POST /transactions/deposit/interactive` fails with no `account` parameter."""
-    response = client.post(DEPOSIT_PATH, {"asset_code": "NADA"}, follow=True)
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        sep24_enabled=True,
+        deposit_enabled=True,
+    )
+
+    response = client.post(DEPOSIT_PATH, {"asset_code": asset.code}, follow=True)
     content = json.loads(response.content)
 
-    assert response.status_code == 400
-    assert content == {"error": "`asset_code` and `account` are required parameters"}
+    print(content)
+    assert response.status_code == 200
 
 
 @pytest.mark.django_db
@@ -182,7 +191,7 @@ def test_deposit_no_asset(client, acc1_usd_deposit_transaction_factory):
     content = json.loads(response.content)
 
     assert response.status_code == 400
-    assert content == {"error": "`asset_code` and `account` are required parameters"}
+    assert content == {"error": "`asset_code` is required"}
 
 
 @pytest.mark.django_db
