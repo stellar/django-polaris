@@ -414,7 +414,9 @@ def deposit(token: SEP10Token, request: Request) -> Response:
     returns the URL entry-point for the interactive flow.
     """
     asset_code = request.data.get("asset_code")
-    destination_account = request.data.get("account")
+    destination_account = (
+        request.data.get("account") or token.muxed_account or token.account
+    )
     lang = request.data.get("lang")
     sep9_fields = extract_sep9_fields(request.data)
     claimable_balance_supported = request.data.get("claimable_balance_supported")
@@ -440,10 +442,8 @@ def deposit(token: SEP10Token, request: Request) -> Response:
         activate_lang_for_request(lang)
 
     # Verify that the request is valid.
-    if not all([asset_code, destination_account]):
-        return render_error_response(
-            _("`asset_code` and `account` are required parameters")
-        )
+    if not asset_code:
+        return render_error_response(_("`asset_code` is required"))
 
     # Ensure memo won't cause stellar transaction to fail when submitted
     try:
