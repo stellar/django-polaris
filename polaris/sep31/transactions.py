@@ -4,7 +4,6 @@ from collections import defaultdict
 
 from django.utils.translation import (
     gettext as _,
-    check_for_language,
     get_supported_language_variant,
 )
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
