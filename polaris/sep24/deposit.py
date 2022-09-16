@@ -539,6 +539,7 @@ def deposit(token: SEP10Token, request: Request) -> Response:
         asset_code=asset_code,
         op_type=settings.OPERATION_DEPOSIT,
         amount=amount,
+        lang=lang,
     )
     return Response(
         {"type": "interactive_customer_info_needed", "url": url, "id": transaction_id},
