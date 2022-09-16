@@ -319,6 +319,7 @@ def get_interactive_deposit(request: Request) -> Response:
     asset = args_or_error["asset"]
     callback = args_or_error["callback"]
     amount = args_or_error["amount"]
+    lang = args_or_error["lang"]
     if args_or_error["on_change_callback"]:
         transaction.on_change_callback = args_or_error["on_change_callback"]
         transaction.save()
@@ -330,6 +331,7 @@ def get_interactive_deposit(request: Request) -> Response:
             asset=asset,
             amount=amount,
             callback=callback,
+            lang=lang,
         )
     except NotImplementedError:
         pass
@@ -396,10 +398,13 @@ def get_interactive_deposit(request: Request) -> Response:
         **content_from_anchor,
     }
 
-    return Response(
+    response = Response(
         content,
         template_name=content_from_anchor.get("template_name", "polaris/deposit.html"),
     )
+    if lang:
+        response.set_cookie(django_settings.LANGUAGE_COOKIE_NAME, lang)
+    return response
 
 
 @api_view(["POST"])

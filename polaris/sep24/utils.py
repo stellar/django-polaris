@@ -22,7 +22,7 @@ from django.conf import settings as django_settings
 from django.core.validators import URLValidator
 from stellar_sdk import MuxedAccount
 
-from locale.utils import validate_language
+from polaris.locale.utils import validate_language, activate_lang_for_request
 from polaris import settings
 from polaris.utils import getLogger
 from polaris.models import Asset, Transaction
@@ -244,6 +244,7 @@ def interactive_args_validation(request: Request, kind: str) -> Dict:
         error_response = validate_language(lang, as_html=True)
         if error_response:
             return dict(error=error_response)
+        activate_lang_for_request(lang)
     try:
         transaction = Transaction.objects.get(id=transaction_id, asset=asset, kind=kind)
     except (ObjectDoesNotExist, ValidationError):

@@ -338,6 +338,7 @@ def get_interactive_withdraw(request: Request) -> Response:
     asset = args_or_error["asset"]
     callback = args_or_error["callback"]
     amount = args_or_error["amount"]
+    lang = args_or_error["lang"]
     if args_or_error["on_change_callback"]:
         transaction.on_change_callback = args_or_error["on_change_callback"]
         transaction.save()
@@ -349,6 +350,7 @@ def get_interactive_withdraw(request: Request) -> Response:
             asset=asset,
             amount=amount,
             callback=callback,
+            lang=lang,
         )
     except NotImplementedError:
         pass
@@ -415,10 +417,13 @@ def get_interactive_withdraw(request: Request) -> Response:
         **content_from_anchor,
     }
 
-    return Response(
+    response = Response(
         content,
         template_name=content_from_anchor.get("template_name", "polaris/withdraw.html"),
     )
+    if lang:
+        response.set_cookie(django_settings.LANGUAGE_COOKIE_NAME, lang)
+    return response
 
 
 @api_view(["POST"])
@@ -521,6 +526,7 @@ def withdraw(
         asset_code=asset_code,
         op_type=settings.OPERATION_WITHDRAWAL,
         amount=amount,
+        lang=lang,
     )
     return Response(
         {"type": "interactive_customer_info_needed", "url": url, "id": transaction_id}
