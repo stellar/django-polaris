@@ -141,7 +141,7 @@ msgid "Polaris Transaction Information"
 msgstr "Informações de Transações do Polaris"
 
 #: integrations.py:188
-msgid "Please enter the amount you would like to provide."
+msgid "Please enter the amount you would like to transfer."
 msgstr "Por favor informe o valor que você quer transferir."
 
 #: integrations.py:238 integrations.py:352
