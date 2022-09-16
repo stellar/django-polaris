@@ -11,13 +11,18 @@ from decimal import Decimal, DecimalException
 from rest_framework import status
 from rest_framework.request import Request
 from rest_framework.response import Response
-from django.core.exceptions import ValidationError, ImproperlyConfigured
+from django.core.exceptions import (
+    ValidationError,
+    ImproperlyConfigured,
+    ObjectDoesNotExist,
+)
 from django.utils.translation import gettext as _
 from django.urls import reverse
 from django.conf import settings as django_settings
 from django.core.validators import URLValidator
 from stellar_sdk import MuxedAccount
 
+from polaris.locale.utils import validate_language, activate_lang_for_request
 from polaris import settings
 from polaris.utils import getLogger
 from polaris.models import Asset, Transaction
@@ -220,6 +225,7 @@ def interactive_args_validation(request: Request, kind: str) -> Dict:
     callback = request.GET.get("callback")
     on_change_callback = request.GET.get("on_change_callback")
     amount_str = request.GET.get("amount")
+    lang = request.GET.get("lang")
     asset = Asset.objects.filter(code=asset_code, sep24_enabled=True).first()
     if not transaction_id:
         return dict(
@@ -234,9 +240,14 @@ def interactive_args_validation(request: Request, kind: str) -> Dict:
         for domain in settings.CALLBACK_REQUEST_DOMAIN_DENYLIST
     ):
         on_change_callback = None
+    if lang:
+        error_response = validate_language(lang, as_html=True)
+        if error_response:
+            return dict(error=error_response)
+        activate_lang_for_request(lang)
     try:
         transaction = Transaction.objects.get(id=transaction_id, asset=asset, kind=kind)
-    except (Transaction.DoesNotExist, ValidationError):
+    except (ObjectDoesNotExist, ValidationError):
         return dict(
             error=render_error_response(
                 _("Transaction with ID and asset_code not found"),
@@ -273,6 +284,7 @@ def interactive_args_validation(request: Request, kind: str) -> Dict:
         callback=callback,
         on_change_callback=on_change_callback,
         amount=amount,
+        lang=lang,
     )
 
 
@@ -338,6 +350,7 @@ def interactive_url(
     asset_code: str,
     op_type: str,
     amount: Optional[Decimal],
+    lang: Optional[str],
 ) -> Optional[str]:
     params = {
         "asset_code": asset_code,
@@ -346,6 +359,8 @@ def interactive_url(
     }
     if amount:
         params["amount"] = amount
+    if lang:
+        params["lang"] = lang
     qparams = urlencode(params)
     if op_type == settings.OPERATION_WITHDRAWAL:
         url_params = f"{reverse('get_interactive_withdraw')}?{qparams}"

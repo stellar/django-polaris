@@ -1088,11 +1088,7 @@ def test_unsupported_lang(client, usd_asset_factory):
             "asset_issuer": asset.issuer,
             "lang": "es",
             "amount": 100,
-            "fields": {
-                "receiver": {"first_name": "first", "last_name": "last"},
-                "sender": {"first_name": "first", "last_name": "last"},
-                "transaction": {"bank_account": "fake account"},
-            },
+            "fields": {"transaction": {"bank_account": "fake account"}},
         },
         content_type="application/json",
     )

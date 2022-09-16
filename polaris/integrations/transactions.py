@@ -422,6 +422,7 @@ class DepositIntegration:
         asset: Asset,
         amount: Optional[Decimal],
         callback: Optional[str],
+        lang: Optional[str],
         *args: List,
         **kwargs: Dict
     ) -> Optional[str]:
@@ -780,6 +781,7 @@ class WithdrawalIntegration:
         asset: Asset,
         amount: Optional[Decimal],
         callback: Optional[str],
+        lang: Optional[str],
         *args: List,
         **kwargs: Dict
     ) -> Optional[str]:
