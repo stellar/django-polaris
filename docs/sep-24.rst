@@ -185,7 +185,7 @@ You can optionally specify the amount to be issued. See the :ref:`api:CLI Comman
 Integrations
 ============
 
-There are several pieces of functionality required to run a anchor that are custom to each business. Polaris implements everything but these pieces, and calls functions that have been passed to :func:`~polaris.integrations.regisiter_integrations` in order to invoke custom functionality implemented by the business.
+There are several pieces of functionality required to run a anchor that are custom to each business. Polaris implements everything but these pieces, and calls functions that have been passed to :func:`~polaris.integrations.register_integrations` in order to invoke custom functionality implemented by the business.
 
 Communicating Fee Structure
 ---------------------------
@@ -195,7 +195,7 @@ Communicating Fee Structure
 
 Client applications may want to communicate the fee a user would have to pay before initiating a transaction. By default, Polaris uses the fee values assigned to each :class:`~polaris.models.Asset` object for displaying fee information in `GET /info`_ requests and calculating fees in `GET /fee`_ requests.
 
-However, the values assigned to the :class:`~polaris.models.Asset` are fixed. If the fee you want to charge is variable depending on factors external to Polaris, you must implement your custom fee calculation logic in a function and replace :func:`~polaris.integrations.calculate_fee` by passing your function to :func:`~polaris.integrations.regisiter_integrations`. See the function definitions for more information.
+However, the values assigned to the :class:`~polaris.models.Asset` are fixed. If the fee you want to charge is variable depending on factors external to Polaris, you must implement your custom fee calculation logic in a function and replace :func:`~polaris.integrations.calculate_fee` by passing your function to :func:`~polaris.integrations.register_integrations`. See the function definitions for more information.
 
 Defining Django Forms
 ---------------------
@@ -343,7 +343,7 @@ All of the methods used to process form data are defined on the :class:`~polaris
 Similar logic should be implemented for :class:`~polaris.integrations.WithdrawIntegration`. For more detailed information on any of the classes or functions used about, see the :doc:`api`.
 
 Register Integrations
-^^^^^^^^^^^^^^^^^^^^^
+---------------------
 
 Once you've implemented the integration functions, you need to register them via :func:`~polaris.integration.register_integrations`. Open your ``anchor/anchor/apps.py`` file.
 
@@ -477,6 +477,37 @@ Replacing Static Assets
 Similar to Polaris' templates, Polaris' static assets can also be replaced by creating a file with a matching path relative to it's app's `static` directory. This allows anchors to customize the UI's appearance. For example, you can replace Polaris' `base.css` file to give the interactive flow pages a different look using your own `polaris/base.css` file.
 
 Note that if you would like to add CSS styling in addition to what Polaris provides, you should extend the Polaris template and define an ``extra_head`` block containing the associated ``link`` tags.
+
+Using an External Interactive Flow
+==================================
+
+.. _`SEP-24 callback`: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md#adding-parameters-to-the-url
+
+If you do not want to use Django's built-in forms and template system, as well as Polaris' integration functions such as :meth:`~polaris.integrations.DepositIntegration.form_for_transaction`, Polaris enables anchors to use an external interactive flow served by a completely independent application.
+
+Anchors can return a URL for an external applicaiton from :meth:`~polaris.integrations.DepositIntegration.interactive_url`. When wallets initiate a transaction, Polaris will first provide its own URL, however, when the wallet opens this URL in a webview, Polaris will call :meth:`~polaris.integrations.DepositIntegration.interactive_url` and redirect to the URL returned. This allows the wallet to create a web session with the Polaris web server before being redirected to the external application, which is necessary for the next step used in this approach.
+
+.. code-block:: python
+
+    def interactive_url(...) -> Optional[str]:
+        return f"http://app.anchor.com?id={transaction.id}&callback={callback}&amount={amount}"
+
+Once the user has completed the external application's interactive flow, Polaris' ``Transaction`` record, and maybe other models used by the anchor, will need to be updated with the information collected by the external application, such as the transaction's amounts and fees.
+
+Polaris provides an endpoint, ``GET /sep24/transactions/<deposit or withdraw>/interactive/complete``, that should be used to send this information back to the Polaris web server. Polaris will ensure a web session was created for the wallet and then call :meth:`~polaris.integrations.DepositIntegration.after_interactive_flow` with the request and relevant ``Transaction`` object. See the function for documentation on how it should be implemented.
+
+.. code-block:: python
+
+    def after_interactive_flow(self, request: Request, transaction: Transaction):
+        transaction.amount_in = Decimal(request.query_params.get("amount_in"))
+        transaction.amount_fee = Decimal(request.query_params.get("amount_fee"))
+        transaction.amount_out = Decimal(request.query_params.get("amount_out"))
+        transaction.status = Transaction.STATUS.pending_user_transfer_start
+        transaction.save()
+
+The endpoint requires a ``transaction_id`` parameter, and optionally accepts the ``callback`` parameter, which may have originally been appended to the interactive flow's URL by the wallet.
+
+If the request is valid and successfully processed, the endpoint will return a redirect response for Polaris' ``more_info.html`` page. This page is important because it will automatically make the callback requested by the wallet, if specified. Anchors can choose not to follow this redirect, but must make the requested `SEP-24 callback`_ themselves.
 
 Testing with the Demo Wallet
 ============================

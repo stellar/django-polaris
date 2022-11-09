@@ -2,7 +2,10 @@ from typing import Dict, Optional
 from decimal import Decimal, InvalidOperation
 from collections import defaultdict
 
-from django.utils.translation import gettext as _
+from django.utils.translation import (
+    gettext as _,
+    get_supported_language_variant,
+)
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from rest_framework.views import APIView
 from rest_framework.request import Request
@@ -10,7 +13,7 @@ from rest_framework.response import Response
 from rest_framework.renderers import JSONRenderer, BrowsableAPIRenderer
 from rest_framework.parsers import JSONParser
 
-from polaris.locale.utils import _is_supported_language, activate_lang_for_request
+from polaris.locale.utils import activate_lang_for_request
 from polaris.sep10.utils import validate_sep10_token
 from polaris.sep10.token import SEP10Token
 from polaris.integrations import (
@@ -214,7 +217,9 @@ def validate_post_request(token: SEP10Token, request: Request) -> Dict:
         raise ValueError(_("invalid 'amount'"))
     lang = request.data.get("lang")
     if lang:
-        if not _is_supported_language(lang):
+        try:
+            get_supported_language_variant(lang)
+        except LookupError:
             raise ValueError("unsupported 'lang'")
         activate_lang_for_request(lang)
     if not isinstance(request.data.get("fields"), dict):

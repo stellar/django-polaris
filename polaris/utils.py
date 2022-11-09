@@ -46,7 +46,7 @@ logger = getLogger(__name__)
 def render_error_response(
     description: str,
     status_code: int = status.HTTP_400_BAD_REQUEST,
-    content_type: str = "application/json",
+    as_html: bool = False,
 ) -> Response:
     """
     Renders an error response in Django.
@@ -54,7 +54,7 @@ def render_error_response(
     Currently supports HTML or JSON responses.
     """
     resp_data = {"data": {"error": description}, "status": status_code}
-    if content_type == "text/html":
+    if as_html:
         resp_data["data"]["status_code"] = str(status_code)
         resp_data["template_name"] = "polaris/error.html"
     return Response(**resp_data)
@@ -84,7 +84,7 @@ def create_transaction_id():
 
 
 def verify_valid_asset_operation(
-    asset, amount, op_type, content_type="application/json"
+    asset, amount, op_type, as_html=False
 ) -> Optional[Response]:
     enabled = getattr(asset, f"{op_type}_enabled")
     min_amount = getattr(asset, f"{op_type}_min_amount")
@@ -92,7 +92,7 @@ def verify_valid_asset_operation(
     if not enabled:
         return render_error_response(
             gettext("the specified operation is not available for '%s'") % asset.code,
-            content_type=content_type,
+            as_html=as_html,
         )
     elif not (min_amount <= amount <= max_amount):
         return render_error_response(
@@ -101,7 +101,7 @@ def verify_valid_asset_operation(
                 "min": round(min_amount, asset.significant_decimals),
                 "max": round(max_amount, asset.significant_decimals),
             },
-            content_type=content_type,
+            as_html=as_html,
         )
 
 
@@ -179,7 +179,6 @@ def make_memo(
 
 def validate_account_and_memo(account: str, memo: str):
     if not (isinstance(account, str) and isinstance(memo, str)):
-        print(account, memo)
         raise ValueError("invalid public key or memo type, expected strings")
     try:
         Keypair.from_public_key(account)

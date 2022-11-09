@@ -7,6 +7,7 @@ import json
 from typing import Dict
 from unittest.mock import patch, Mock
 
+from django.utils.translation.trans_real import reset_cache
 from stellar_sdk import Keypair, MuxedAccount
 from rest_framework.request import Request
 
@@ -645,6 +646,7 @@ def test_withdraw_good_lang(mock_process_sep6_request, client):
         "how": "test",
         "extra_info": {"test": "test"},
     }
+    reset_cache(setting="LANGUAGES")
     response = client.get(
         WITHDRAW_PATH,
         {
@@ -664,7 +666,7 @@ def test_withdraw_good_lang(mock_process_sep6_request, client):
 @patch("polaris.sep6.withdraw.rwi.process_sep6_request")
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 @patch("django.conf.settings.LANGUAGES", [("en", "English")])
-def test_deposit_bad_lang(mock_process_sep6_request, client):
+def test_withdraw_bad_lang(mock_process_sep6_request, client):
     asset = Asset.objects.create(
         code="USD",
         issuer=Keypair.random().public_key,
@@ -677,6 +679,7 @@ def test_deposit_bad_lang(mock_process_sep6_request, client):
         "how": "test",
         "extra_info": {"test": "test"},
     }
+    reset_cache(setting="LANGUAGES")
     response = client.get(
         WITHDRAW_PATH,
         {

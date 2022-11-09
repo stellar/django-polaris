@@ -3,7 +3,9 @@ This module tests the `/deposit` endpoint.
 Celery tasks are called synchronously. Horizon calls are mocked for speed and correctness.
 """
 import json
-from unittest.mock import patch
+from unittest.mock import patch, Mock
+from urllib.parse import quote_plus
+
 import jwt
 import time
 
@@ -156,17 +158,24 @@ def test_deposit_no_params(client):
     content = json.loads(response.content)
 
     assert response.status_code == 400
-    assert content == {"error": "`asset_code` and `account` are required parameters"}
+    assert content == {"error": "`asset_code` is required"}
 
 
+@pytest.mark.django_db
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+@patch("polaris.sep24.deposit.Keypair", Mock(from_public_key=Mock()))
 def test_deposit_no_account(client):
     """`POST /transactions/deposit/interactive` fails with no `account` parameter."""
-    response = client.post(DEPOSIT_PATH, {"asset_code": "NADA"}, follow=True)
-    content = json.loads(response.content)
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        sep24_enabled=True,
+        deposit_enabled=True,
+    )
 
-    assert response.status_code == 400
-    assert content == {"error": "`asset_code` and `account` are required parameters"}
+    response = client.post(DEPOSIT_PATH, {"asset_code": asset.code}, follow=True)
+
+    assert response.status_code == 200
 
 
 @pytest.mark.django_db
@@ -180,7 +189,7 @@ def test_deposit_no_asset(client, acc1_usd_deposit_transaction_factory):
     content = json.loads(response.content)
 
     assert response.status_code == 400
-    assert content == {"error": "`asset_code` and `account` are required parameters"}
+    assert content == {"error": "`asset_code` is required"}
 
 
 @pytest.mark.django_db
@@ -735,7 +744,10 @@ def test_interactive_deposit_post_validation_is_called_before_next_form(
 
 @pytest.mark.django_db()
 @patch("polaris.sep24.deposit.rdi.interactive_url")
-def test_deposit_interactive_complete(mock_interactive_url, client):
+@patch("polaris.sep24.deposit.rdi.after_interactive_flow")
+def test_deposit_interactive_complete(
+    mock_interactive_flow, mock_interactive_url, client
+):
     usd = Asset.objects.create(
         code="USD",
         issuer=Keypair.random().public_key,
@@ -761,15 +773,14 @@ def test_deposit_interactive_complete(mock_interactive_url, client):
 
     response = client.get(
         DEPOSIT_PATH + "/complete",
-        {"transaction_id": deposit.id, "callback": "test.com/callback"},
+        {"transaction_id": deposit.id, "callback": "http://test.com/callback"},
     )
     assert response.status_code == 302
     redirect_to_url = response.get("Location")
     assert "more_info" in redirect_to_url
-    assert "callback=test.com%2Fcallback" in redirect_to_url
+    assert f"callback={quote_plus('http://test.com/callback')}" in redirect_to_url
 
-    deposit.refresh_from_db()
-    assert deposit.status == Transaction.STATUS.pending_user_transfer_start
+    mock_interactive_flow.assert_called_once()
 
 
 @pytest.mark.django_db()

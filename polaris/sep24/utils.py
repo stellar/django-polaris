@@ -11,13 +11,18 @@ from decimal import Decimal, DecimalException
 from rest_framework import status
 from rest_framework.request import Request
 from rest_framework.response import Response
-from django.core.exceptions import ValidationError, ImproperlyConfigured
+from django.core.exceptions import (
+    ValidationError,
+    ImproperlyConfigured,
+    ObjectDoesNotExist,
+)
 from django.utils.translation import gettext as _
 from django.urls import reverse
 from django.conf import settings as django_settings
 from django.core.validators import URLValidator
 from stellar_sdk import MuxedAccount
 
+from polaris.locale.utils import validate_language, activate_lang_for_request
 from polaris import settings
 from polaris.utils import getLogger
 from polaris.models import Asset, Transaction
@@ -27,7 +32,7 @@ from polaris.utils import render_error_response, verify_valid_asset_operation
 logger = getLogger(__name__)
 
 
-def check_authentication(content_type: str = "text/html") -> Callable:
+def check_authentication(as_html: bool = True) -> Callable:
     """
     Authentication decorator for POST /interactive endoints
     """
@@ -37,9 +42,7 @@ def check_authentication(content_type: str = "text/html") -> Callable:
             try:
                 check_authentication_helper(request)
             except ValueError as e:
-                return render_error_response(
-                    str(e), content_type=content_type, status_code=403
-                )
+                return render_error_response(str(e), as_html=as_html, status_code=403)
             else:
                 return view(request)
 
@@ -48,7 +51,7 @@ def check_authentication(content_type: str = "text/html") -> Callable:
     return decorator
 
 
-def authenticate_session(content_type: str = "text/html") -> Callable:
+def authenticate_session(as_html: bool = True) -> Callable:
     """
     Authentication decorator for GET /interactive endpoints
     """
@@ -58,9 +61,7 @@ def authenticate_session(content_type: str = "text/html") -> Callable:
             try:
                 authenticate_session_helper(request)
             except ValueError as e:
-                return render_error_response(
-                    str(e), content_type=content_type, status_code=403
-                )
+                return render_error_response(str(e), as_html=as_html, status_code=403)
             else:
                 return view(request)
 
@@ -206,8 +207,7 @@ def validate_url(url) -> Optional[Dict]:
     except ValidationError:
         return dict(
             error=render_error_response(
-                _("invalid callback URL provided"),
-                content_type="text/html",
+                _("invalid callback URL provided"), as_html=True
             )
         )
 
@@ -225,31 +225,33 @@ def interactive_args_validation(request: Request, kind: str) -> Dict:
     callback = request.GET.get("callback")
     on_change_callback = request.GET.get("on_change_callback")
     amount_str = request.GET.get("amount")
+    lang = request.GET.get("lang")
     asset = Asset.objects.filter(code=asset_code, sep24_enabled=True).first()
     if not transaction_id:
         return dict(
-            error=render_error_response(
-                _("no 'transaction_id' provided"), content_type="text/html"
-            )
+            error=render_error_response(_("no 'transaction_id' provided"), as_html=True)
         )
     elif not (asset_code and asset):
         return dict(
-            error=render_error_response(
-                _("invalid 'asset_code'"), content_type="text/html"
-            )
+            error=render_error_response(_("invalid 'asset_code'"), as_html=True)
         )
     elif on_change_callback and any(
         domain in on_change_callback
         for domain in settings.CALLBACK_REQUEST_DOMAIN_DENYLIST
     ):
         on_change_callback = None
+    if lang:
+        error_response = validate_language(lang, as_html=True)
+        if error_response:
+            return dict(error=error_response)
+        activate_lang_for_request(lang)
     try:
         transaction = Transaction.objects.get(id=transaction_id, asset=asset, kind=kind)
-    except (Transaction.DoesNotExist, ValidationError):
+    except (ObjectDoesNotExist, ValidationError):
         return dict(
             error=render_error_response(
                 _("Transaction with ID and asset_code not found"),
-                content_type="text/html",
+                as_html=True,
                 status_code=status.HTTP_404_NOT_FOUND,
             )
         )
@@ -260,10 +262,12 @@ def interactive_args_validation(request: Request, kind: str) -> Dict:
         try:
             amount = Decimal(amount_str)
         except (DecimalException, TypeError):
-            return dict(error=render_error_response(_("invalid 'amount'")))
+            return dict(
+                error=render_error_response(_("invalid 'amount'"), as_html=True)
+            )
 
         err_resp = verify_valid_asset_operation(
-            asset, amount, transaction.kind, content_type="text/html"
+            asset, amount, transaction.kind, as_html=True
         )
         if err_resp:
             return dict(error=err_resp)
@@ -280,6 +284,7 @@ def interactive_args_validation(request: Request, kind: str) -> Dict:
         callback=callback,
         on_change_callback=on_change_callback,
         amount=amount,
+        lang=lang,
     )
 
 
@@ -345,6 +350,7 @@ def interactive_url(
     asset_code: str,
     op_type: str,
     amount: Optional[Decimal],
+    lang: Optional[str],
 ) -> Optional[str]:
     params = {
         "asset_code": asset_code,
@@ -353,6 +359,8 @@ def interactive_url(
     }
     if amount:
         params["amount"] = amount
+    if lang:
+        params["lang"] = lang
     qparams = urlencode(params)
     if op_type == settings.OPERATION_WITHDRAWAL:
         url_params = f"{reverse('get_interactive_withdraw')}?{qparams}"

@@ -708,7 +708,9 @@ class ProcessPendingDeposits:
         :return
             hex representation of the balanceID or None
         """
-        envelope = TransactionEnvelope.from_xdr(response["envelope_xdr"])
+        envelope = TransactionEnvelope.from_xdr(
+            response["envelope_xdr"], settings.STELLAR_NETWORK_PASSPHRASE
+        )
         balance_id = None
         for idx, op in enumerate(envelope.transaction.operations):
             if isinstance(op, CreateClaimableBalance):

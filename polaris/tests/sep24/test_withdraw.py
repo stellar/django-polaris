@@ -1,6 +1,8 @@
 """This module tests the `/withdraw` endpoint."""
 import json
 import time
+from urllib.parse import quote_plus
+
 import jwt
 from unittest.mock import patch, Mock
 
@@ -731,7 +733,10 @@ def test_withdraw_no_jwt(client):
 
 @pytest.mark.django_db()
 @patch("polaris.sep24.withdraw.rwi.interactive_url")
-def test_withdraw_interactive_complete(mock_interactive_url, client):
+@patch("polaris.sep24.withdraw.rwi.after_interactive_flow")
+def test_withdraw_interactive_complete(
+    mock_interactive_flow, mock_interactive_url, client
+):
     usd = Asset.objects.create(
         code="USD",
         issuer=Keypair.random().public_key,
@@ -760,15 +765,14 @@ def test_withdraw_interactive_complete(mock_interactive_url, client):
 
     response = client.get(
         WITHDRAW_PATH + "/complete",
-        {"transaction_id": withdraw.id, "callback": "test.com/callback"},
+        {"transaction_id": withdraw.id, "callback": "http://test.com/callback"},
     )
     assert response.status_code == 302
     redirect_to_url = response.get("Location")
     assert "more_info" in redirect_to_url
-    assert "callback=test.com%2Fcallback" in redirect_to_url
+    assert f"callback={quote_plus('http://test.com/callback')}" in redirect_to_url
 
-    withdraw.refresh_from_db()
-    assert withdraw.status == Transaction.STATUS.pending_user_transfer_start
+    mock_interactive_flow.assert_called_once()
 
 
 @pytest.mark.django_db()

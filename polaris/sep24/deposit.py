@@ -1,6 +1,8 @@
 from decimal import Decimal, DecimalException
 from urllib.parse import urlencode
 
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.core.validators import URLValidator
 from django.urls import reverse
 from django.shortcuts import redirect
 from django.views.decorators.clickjacking import xframe_options_exempt
@@ -109,21 +111,19 @@ def post_interactive_deposit(request: Request) -> Response:
                     "The anchor did not provide content, is the interactive flow already complete?"
                 ),
                 status_code=422,
-                content_type="text/html",
+                as_html=True,
             )
         return render_error_response(
             _("The anchor did not provide form content, unable to serve page."),
             status_code=500,
-            content_type="text/html",
+            as_html=True,
         )
 
     if not form.is_bound:
         # The anchor must initialize the form with the request data
         logger.error("form returned was not initialized with POST data, returning 500")
         return render_error_response(
-            _("Unable to validate form submission."),
-            status_code=500,
-            content_type="text/html",
+            _("Unable to validate form submission."), status_code=500, as_html=True
         )
 
     if form.is_valid():
@@ -247,16 +247,42 @@ def complete_interactive_deposit(request: Request) -> Response:
     """
     GET /transactions/deposit/interactive/complete
 
-    Updates the transaction status to pending_user_transfer_start and
-    redirects to GET /more_info. A `callback` can be passed in the URL
-    to be used by the more_info template javascript.
+    This endpoint serves as a proxy to the
+    ``DepositIntegration.after_interactive_flow()`` function, which should be
+    implemented if ``DepositIntegration.interactive_url()`` is also implemented.
+
+    Anchors using external interactive flows should redirect to this endpoint
+    from the external application once complete so that the Polaris `Transaction`
+    record can be updated with the appropriate information collected within the
+    interactive flow.
+
+    After allowing the anchor to process the information sent, this endpoint will
+    redirect to the transaction's more info page, which will make the SEP-24
+    callback request if requested by the client.
+
+    Note that the more info page's template and related CSS should be updated
+    if the anchor wants to keep the brand experience consistent with the external
+    application seen by the user immediately prior.
     """
-    transaction_id = request.GET.get("transaction_id")
-    callback = request.GET.get("callback")
-    Transaction.objects.filter(id=transaction_id).update(
-        status=Transaction.STATUS.pending_user_transfer_start
-    )
-    logger.info(f"Hands-off interactive flow complete for transaction {transaction_id}")
+    transaction_id = request.query_params.get("transaction_id")
+    callback = request.query_params.get("callback")
+    try:
+        transaction = Transaction.objects.get(id=transaction_id)
+    except ObjectDoesNotExist:
+        return render_error_response(
+            _("transaction not found"), status_code=404, as_html=True
+        )
+    if callback and callback.lower() != "postmessage":
+        try:
+            URLValidator(schemes=["https", "http"])(callback)
+        except ValidationError:
+            return render_error_response(
+                _("invalid 'callback' URL"), status_code=400, as_html=True
+            )
+    try:
+        rdi.after_interactive_flow(request=request, transaction=transaction)
+    except NotImplementedError:
+        return render_error_response(_("internal error"), status_code=500, as_html=True)
     args = {"id": transaction_id, "initialLoad": "true"}
     if callback:
         args["callback"] = callback
@@ -293,6 +319,7 @@ def get_interactive_deposit(request: Request) -> Response:
     asset = args_or_error["asset"]
     callback = args_or_error["callback"]
     amount = args_or_error["amount"]
+    lang = args_or_error["lang"]
     if args_or_error["on_change_callback"]:
         transaction.on_change_callback = args_or_error["on_change_callback"]
         transaction.save()
@@ -304,6 +331,7 @@ def get_interactive_deposit(request: Request) -> Response:
             asset=asset,
             amount=amount,
             callback=callback,
+            lang=lang,
         )
     except NotImplementedError:
         pass
@@ -335,12 +363,12 @@ def get_interactive_deposit(request: Request) -> Response:
                     "The anchor did not provide content, is the interactive flow already complete?"
                 ),
                 status_code=422,
-                content_type="text/html",
+                as_html=True,
             )
         return render_error_response(
             _("The anchor did not provide content, unable to serve page."),
             status_code=500,
-            content_type="text/html",
+            as_html=True,
         )
 
     url_args = {"transaction_id": transaction.id, "asset_code": asset.code}
@@ -370,10 +398,13 @@ def get_interactive_deposit(request: Request) -> Response:
         **content_from_anchor,
     }
 
-    return Response(
+    response = Response(
         content,
         template_name=content_from_anchor.get("template_name", "polaris/deposit.html"),
     )
+    if lang:
+        response.set_cookie(django_settings.LANGUAGE_COOKIE_NAME, lang)
+    return response
 
 
 @api_view(["POST"])
@@ -388,7 +419,9 @@ def deposit(token: SEP10Token, request: Request) -> Response:
     returns the URL entry-point for the interactive flow.
     """
     asset_code = request.data.get("asset_code")
-    destination_account = request.data.get("account")
+    destination_account = (
+        request.data.get("account") or token.muxed_account or token.account
+    )
     lang = request.data.get("lang")
     sep9_fields = extract_sep9_fields(request.data)
     claimable_balance_supported = request.data.get("claimable_balance_supported")
@@ -414,10 +447,8 @@ def deposit(token: SEP10Token, request: Request) -> Response:
         activate_lang_for_request(lang)
 
     # Verify that the request is valid.
-    if not all([asset_code, destination_account]):
-        return render_error_response(
-            _("`asset_code` and `account` are required parameters")
-        )
+    if not asset_code:
+        return render_error_response(_("`asset_code` is required"))
 
     # Ensure memo won't cause stellar transaction to fail when submitted
     try:
@@ -513,6 +544,7 @@ def deposit(token: SEP10Token, request: Request) -> Response:
         asset_code=asset_code,
         op_type=settings.OPERATION_DEPOSIT,
         amount=amount,
+        lang=lang,
     )
     return Response(
         {"type": "interactive_customer_info_needed", "url": url, "id": transaction_id},

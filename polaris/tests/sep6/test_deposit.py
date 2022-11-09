@@ -7,6 +7,7 @@ import json
 from unittest.mock import patch, Mock
 from typing import Dict
 
+from django.utils.translation.trans_real import get_languages, reset_cache
 from stellar_sdk import Keypair, MuxedAccount
 from rest_framework.request import Request
 
@@ -884,6 +885,7 @@ def test_deposit_good_lang(mock_process_sep6_request, client):
         "how": "test",
         "extra_info": {"test": "test"},
     }
+    reset_cache(setting="LANGUAGES")
     response = client.get(
         DEPOSIT_PATH,
         {
@@ -923,6 +925,7 @@ def test_deposit_bad_lang(mock_process_sep6_request, client):
         "how": "test",
         "extra_info": {"test": "test"},
     }
+    reset_cache(setting="LANGUAGES")
     response = client.get(
         DEPOSIT_PATH,
         {

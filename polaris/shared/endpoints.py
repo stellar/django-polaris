@@ -31,12 +31,12 @@ def more_info(request: Request, sep6: bool = False) -> Response:
     try:
         transaction = _get_transaction_from_request(request, sep6=sep6)
     except (AttributeError, ValidationError) as exc:
-        return render_error_response(str(exc), content_type="text/html")
+        return render_error_response(str(exc), as_html=True)
     except ObjectDoesNotExist:
         return render_error_response(
             _("transaction not found"),
             status_code=status.HTTP_404_NOT_FOUND,
-            content_type="text/html",
+            as_html=True,
         )
 
     current_offset = get_timezone_utc_offset(

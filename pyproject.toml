@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "django-polaris"
-version = "2.2.1"
+version = "2.3.4"
 description = "An extendable Django server for Stellar Ecosystem Proposals."
 license = "Apache-2.0"
 authors = ["Stellar Development Foundation <jake@stellar.org>"]
@@ -54,6 +54,9 @@ readthedocs-sphinx-ext = { version = "^2.1", optional = true}
 sphinx = { version = "^4.2", optional = true}
 sphinx-rtd-theme = { version = "^1.0", optional = true}
 sphinx-autodoc-typehints = { version = "*", optional = true}
+gunicorn = { version = "*", optional = true }
+psycopg2-binary = { version = "^2.9", optional = true}
+watchdog = { version = "^2", optional = true}
 
 [tool.poetry.dev-dependencies]
 pylint = "*"
@@ -66,12 +69,9 @@ codecov = "*"
 libsass = "*"
 build = "*"
 black = "*"
-gunicorn = { version = "*", optional = true }
-psycopg2-binary = { version = "^2.9", optional = true}
-watchdog = { version = "^2", optional = true}
 
 [tool.poetry.extras]
-server = ["gunicorn", "psycopg2-binary", "watchdog"]
+dev-server = ["gunicorn", "psycopg2-binary", "watchdog"]
 docs = [
     "readthedocs-sphinx-ext",
     "sphinx",

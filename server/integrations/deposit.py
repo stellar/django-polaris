@@ -92,7 +92,7 @@ class MyDepositIntegration(DepositIntegration):
                         "Please select the asset you would like to "
                         "provide in order to fund your deposit. (This is "
                         "just for demonstration, you don't need to provide "
-                        "any off-chain asset to receive SRT."
+                        "any off-chain asset to receive SRT.)"
                     ),
                     "icon_label": _("Stellar Development Foundation"),
                 }
@@ -335,6 +335,9 @@ class MyDepositIntegration(DepositIntegration):
         *args: List,
         **kwargs: Dict,
     ) -> Optional[str]:
+        raise NotImplementedError()
+
+    def after_interactive_flow(self, request: Request, transaction: Transaction):
         raise NotImplementedError()
 
     def save_sep9_fields(

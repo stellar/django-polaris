@@ -13,15 +13,3 @@ workflows:
           pre-install-steps:
             - run:
                 command: cp .env.example .env
-  build_deploy_publish:
-    jobs:
-      - python/test:
-          filters:
-            branches:
-              only: master
-      - heroku/deploy-via-git:
-          requires:
-            - python/test
-          filters:
-            branches:
-              only: master
