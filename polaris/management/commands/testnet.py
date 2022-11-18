@@ -480,8 +480,6 @@ class Command(BaseCommand):
         """
         asset_code = options.get("asset")
         issuer = options.get("issuer_public")
-        if not (asset_code and issuer):
-            return
         
         asset_to_delete = Asset.objects.filter(code=asset_code, issuer=issuer).first()
         if not asset_to_delete:
