@@ -1,11 +1,15 @@
+from jwt import InvalidIssuerError
 import urllib3
+import requests
+import uuid
+import time
 from decimal import Decimal
 from typing import Optional, Dict
 from logging import getLogger
 
 from django.core.management.base import BaseCommand, CommandError
 from django.db.models import Q
-from stellar_sdk import Keypair, TransactionBuilder, Server
+from stellar_sdk import Keypair, TransactionBuilder, Server, keypair
 from stellar_sdk import Asset as StellarSdkAsset
 from stellar_sdk.account import Account, Thresholds
 from stellar_sdk.exceptions import (
@@ -18,6 +22,10 @@ from polaris import settings
 from polaris.models import Transaction, Asset
 
 logger = getLogger(__name__)
+
+CIRCLE_USDC_ASSET_CODE = "USDC"
+CIRCLE_USDC_TESTNET_ISSUER = "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5"
+
 
 
 class Command(BaseCommand):
@@ -70,6 +78,10 @@ class Command(BaseCommand):
         --client-amount CLIENT_AMOUNT
                             the amount sent to client account. Also the limit for
                             the trustline.
+    add-asset
+
+    delete-asset
+
     """
 
     def __init__(self, *args, **kwargs):
@@ -110,11 +122,63 @@ class Command(BaseCommand):
             help="the amount sent to client account. Also the limit for the trustline.",
         )
 
+        self.add_asset_parser = subparsers.add_parser(
+            "add-asset", help="a sub-command for adding assets to the database"
+        )
+        self.add_asset_parser.add_argument(
+            "--asset", help="asset code to add to the database", required=True
+        )
+        self.add_asset_parser.add_argument(
+            "--issuer-public", help="the asset issuer's public key", required=True
+        )
+        self.add_asset_parser.add_argument(
+            "--distribution-seed", help="the anchors distribution seed for this asset", required=True
+        )
+        self.add_asset_parser.add_argument(
+            "--sep24-disabled", help="disabled sep24 for this asset", action='store_false'
+        )
+        self.add_asset_parser.add_argument(
+            "--deposit-disabled", help="disabled deposits for this asset", action='store_false'
+        )
+        self.add_asset_parser.add_argument(
+            "--withdrawl-disabled", help="disabled withdrawls for this asset", action='store_false'
+        )
+
+        self.delete_asset_parser = subparsers.add_parser(
+            "delete-asset", help="a sub-command for deleting assets to the database"
+        )
+        self.delete_asset_parser.add_argument(
+            "--asset", help="asset code to delete to the database", required=True
+        )
+        self.delete_asset_parser.add_argument(
+            "--issuer-public", help="the asset issuer's public key", required=True
+        )
+
+        self.get_usdc_parser = subparsers.add_parser(
+            "get-usdc", help="a sub-command for adding more USDC to the distribution account"
+        )
+        self.get_usdc_parser.add_argument(
+            "--amount", help="amount of USDC to get from Circle and add to the distribution account", required=True
+        )
+        self.get_usdc_parser.add_argument(
+            "--distribution-seed", help="the anchors distribution seed to send the USDC to", required=True
+        )       
+        self.get_usdc_parser.add_argument(
+            "--api-key", help="Circle API key", required=True
+        )
+
     def handle(self, *_args, **options):  # pragma: no cover
         if options.get("subcommands") == "reset":
             self.reset(**options)
         elif options.get("subcommands") == "issue":
             self.issue(**options)
+        elif options.get("subcommands") == "add-asset":
+            self.add_asset_to_db(**options)
+        elif options.get("subcommands") == "delete-asset":
+            self.delete_asset_from_db(**options)
+        elif options.get("subcommands") == "get-usdc":
+            self.get_circle_usdc(**options)
+        
 
     def reset(self, **options):
         """
@@ -172,6 +236,29 @@ class Command(BaseCommand):
                 }
             )
 
+    def get_or_create_accounts(self, account_keypairs: list) -> dict[str, Account]:
+        """
+        Get account details from horizon for the specified account_keypairs,
+        if the account doesnt exist, create the account
+        """
+        accounts = {}
+        for kp in account_keypairs:
+            if not kp:
+                continue
+            try:
+                accounts[kp.public_key] = (
+                    self.server.accounts().account_id(kp.public_key).call()
+                )
+            except NotFoundError:
+                print(f"Funding {kp.public_key} ...")
+                self.http.request(
+                    "GET", f"https://friendbot.stellar.org?addr={kp.public_key}"
+                )
+                accounts[kp.public_key] = (
+                    self.server.accounts().account_id(kp.public_key).call()
+                )
+        return accounts
+
     def issue(self, **options):
         """
         Issue the asset specified using the `options` passed to the subcommand
@@ -210,22 +297,8 @@ class Command(BaseCommand):
             print(f"secret key: {client.secret}\n")
             print(f"Sending {client_amount} to the client account\n")
 
-        accounts = {}
-        for kp in [issuer, distributor, client]:
-            if not kp:
-                continue
-            try:
-                accounts[kp.public_key] = (
-                    self.server.accounts().account_id(kp.public_key).call()
-                )
-            except NotFoundError:
-                print(f"Funding {kp.public_key} ...")
-                self.http.request(
-                    "GET", f"https://friendbot.stellar.org?addr={kp.public_key}"
-                )
-                accounts[kp.public_key] = (
-                    self.server.accounts().account_id(kp.public_key).call()
-                )
+
+        accounts = self.get_or_create_accounts([issuer, distributor, client])
 
         self.add_balance(code, issue_amount, accounts, distributor, issuer, issuer)
         if client:
@@ -320,3 +393,164 @@ class Command(BaseCommand):
                 and balance_obj.get("asset_issuer") == issuer_public_key
             ):
                 return balance_obj["balance"]
+
+    def create_trustline(self, code :str, asset_issuer_public_key: str, distribution: Keypair):
+        accounts = self.get_or_create_accounts([distribution])
+        balance = self.get_balance(code, asset_issuer_public_key, accounts[distribution.public_key])
+        if balance:
+            print(f"\nTrustline to {code}:{asset_issuer_public_key} already exists")
+            return
+        print(f"\nCreating trustline to {code}:{asset_issuer_public_key}")
+        tb = TransactionBuilder(
+            self.server.load_account(distribution.public_key),
+            base_fee=settings.MAX_TRANSACTION_FEE_STROOPS
+            or self.server.fetch_base_fee(),
+            network_passphrase="Test SDF Network ; September 2015",
+        )
+        tb.append_change_trust_op(
+            asset=StellarSdkAsset(code=code, issuer=asset_issuer_public_key),
+            source=distribution.public_key,
+        )
+        envelope = tb.set_timeout(30).build()
+        envelope.sign(distribution)
+        try:
+            self.server.submit_transaction(envelope)
+        except BaseHorizonError as e:
+            print(
+                f"Failed to create trustline "
+                f"Result codes: {e.extras.get('result_codes')}"
+            )
+        else:
+            print(f"Success! Trustline to {code}:{asset_issuer_public_key} created!")
+
+    def add_asset_to_db(self, **options):
+        """
+        Add an asset to the database
+        """
+        asset_code = options.get("asset")
+        issuer = options.get("issuer_public")
+        distribution_seed = options.get("distribution_seed")
+        if not (issuer and asset_code):
+            print(f"\ninvalid value in options {options}")
+            return
+        for asset in Asset.objects.filter(issuer__isnull=False):
+            if asset.code == asset_code:
+                print(f"\nAsset {asset_code}:{issuer} already exists in the database, skipping...")
+                return
+        
+        print(f"\nAdding asset {asset_code}:{issuer} to database")
+        Asset.objects.create(
+            code=asset_code,
+            issuer=issuer,
+            distribution_seed=distribution_seed,
+            sep24_enabled=options.get("sep24_enabled") or True,
+            deposit_enabled=options.get("deposit_enabled") or True,
+            withdrawal_enabled=options.get("withdrawal_enabled") or True,
+            symbol="$"
+        )
+        print(f"Asset {asset_code}:{issuer} added to database")
+    
+    def delete_asset_from_db(self, **options):
+        """
+        Delete an asset from the database
+        """
+        asset_code = options.get("asset")
+        issuer = options.get("issuer_public")
+        if not (asset_code and issuer):
+            return
+        
+        asset_to_delete = Asset.objects.filter(code=asset_code, issuer=issuer).first()
+        if not asset_to_delete:
+            print("\nNo asset matching {asset_code}:{issuer} found to delete")
+            return
+        
+        asset_to_delete.delete()
+        print(f"\nAsset: {asset_code}:{issuer} deleted from the database")
+        
+    def get_largest_circle_wallet(self, api_key: str) -> dict[str, float]:
+        """
+        Get the Circle testnet wallet with the largest USD balance
+        """
+        url = "https://api-sandbox.circle.com/v1/wallets"
+
+        headers = {
+            "accept": "application/json",
+            "authorization": f"Bearer {api_key}"
+        }
+
+        response = requests.get(url, headers=headers)
+        wallets = response.json().get("data")
+        max_wallet_balance = ("", float(0))  
+        for wallet in wallets:
+            for balance in wallet["balances"]:
+                if balance["currency"] == "USD" and float(balance["amount"]) > max_wallet_balance[1]:
+                    max_wallet_balance = (wallet["walletId"], float(balance["amount"]))
+        print(f"\nLargest circle wallet: {max_wallet_balance}")
+        return max_wallet_balance
+
+    def get_circle_usdc(self, **options):
+        """
+        Add Circle USDC to the distribution account
+        """
+        api_key = options.get("api_key")
+        amount = float(options.get("amount"))
+        distribution_seed = options.get("distribution_seed")
+        distribution = Keypair.from_secret(distribution_seed)
+        wallet_id, balance = self.get_largest_circle_wallet(api_key)
+
+        if balance < amount:
+            print(f"Available Circle balance: {balance} is less than the requested amount: {amount}, skipping...")
+            return
+        print(f"\nUsing circle wallet: {wallet_id} with USD balance: {balance}")
+
+        self.create_trustline(CIRCLE_USDC_ASSET_CODE, CIRCLE_USDC_TESTNET_ISSUER, distribution)
+
+        url = "https://api-sandbox.circle.com/v1/transfers"
+
+        payload = {
+            "source": {
+                "type": "wallet",
+                "id": wallet_id
+            },
+            "destination": {
+                "type": "blockchain",
+                "chain": "XLM",
+                "address": distribution.public_key
+            },
+            "amount": {
+                "amount": str(amount),
+                "currency": "USD"
+            },
+            "idempotencyKey": str(uuid.uuid4())
+        }
+        headers = {
+            "accept": "application/json",
+            "content-type": "application/json",
+            "authorization": f"Bearer {api_key}"
+        }
+
+        response = requests.post(url, json=payload, headers=headers)
+        transfer_id = response.json()["data"]["id"]
+        # poll status of Circle transaction
+        url = f"https://api-sandbox.circle.com/v1/transfers/{transfer_id}?returnIdentities=false"
+
+        headers = {
+            "accept": "application/json",
+            "authorization": f"Bearer {api_key}"
+        }
+        timeout_seconds = 60
+        start = time.time()
+        while (timeout_seconds + start) > time.time():
+            response = requests.get(url, headers=headers)
+            data = response.json()["data"]
+            status = data["status"]
+            if status == "completed":
+                print("transfer complete!")
+                return
+            elif status == "failed":
+                error_code = data["errorCode"]
+                print(f"transfer failed, error code: {error_code}")
+                return
+            time.sleep(1)
+
+        print(f"\nPolling Circle transaction timed out after {timeout_seconds} seconds")

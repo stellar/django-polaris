@@ -81,6 +81,10 @@ class SelectAssetForm(forms.Form):
                 "stellar:SRT:GCDNJUBQSX7AJWLJACMJ7I4BC3Z47BQUTMHEICZLE6MU4KQBRYG5JY6B",
                 "Stellar Reference Token (SRT)",
             ),
+            (
+                "stellar:USDC:GBD6ZRRI4FZW55G7NBRMF2NY2DANKHXY63J4KKIQT5GWNWEUZWZ6MS2A",
+                "Circle USDC Token (USDC)",
+            ),
             ("iso4217:USD", "United States Dollar (USD)"),
         ],
         # this is to remove the '*' character on the template
