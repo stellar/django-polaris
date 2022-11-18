@@ -260,7 +260,7 @@ class Command(BaseCommand):
                 }
             )
 
-    def get_or_create_accounts(self, account_keypairs: list) -> Dict[str, Account]:
+    def get_or_create_accounts(self, account_keypairs: list):
         """
         Get account details from horizon for the specified account_keypairs,
         if the account doesnt exist, create the account
