@@ -489,7 +489,7 @@ class Command(BaseCommand):
         asset_to_delete.delete()
         print(f"\nAsset: {asset_code}:{issuer} deleted from the database")
         
-    def get_largest_circle_wallet(self, api_key: str) -> dict[str, float]:
+    def get_largest_circle_wallet(self, api_key: str):
         """
         Get the Circle testnet wallet with the largest USD balance
         """
