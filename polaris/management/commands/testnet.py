@@ -63,7 +63,7 @@ class Command(BaseCommand):
         -h, --help  show this help message and exit
 
     issue
-        -h, --help            show this help message and exit
+        -h, --help          show this help message and exit
         --asset ASSET, -a ASSET
                             the code of the asset issued
         --issuer-seed ISSUER_SEED, -i ISSUER_SEED
@@ -78,10 +78,34 @@ class Command(BaseCommand):
         --client-amount CLIENT_AMOUNT
                             the amount sent to client account. Also the limit for
                             the trustline.
+    
     add-asset
-
+        -h, --help           show this help message and exit
+        --asset ASSET, -a ASSET
+                             the code of the asset issued
+        --issuer-public ISSUER_PUBLIC, -i ISSUER_PUBLIC
+                             the issuer's public key
+        --distribution-seed  DISTRIBUTION_SEED, -d DISTRIBUTION_SEED
+                             the distribution account's secret key
+        --sep24-disabled     (Optional) flag to disable sep24 for this asset
+        --deposit-disabled   (Optional) flag to disable deposits for this asset
+        --withdrawl-disabled (Optional) flag to disable withdrawls for this asset
+    
     delete-asset
-
+        -h, --help            show this help message and exit
+        --asset ASSET, -a ASSET
+                              the code of the asset to be deleted
+        --issuer-public ISSUER_PUBLIC, -i ISSUER_PUBLIC
+                              the issuer's public key
+    
+    get-usdc
+        -h, --help            show this help message and exit
+        --amount AMOUNT, -a AMOUNT
+                              the amount of USDC to add to the distribution account
+        --distribution-seed DISTRIBUTION_SEED, -d DISTRIBUTION_SEED
+                              the distribution account's secret key
+        --api-key API_KEY, -k API_KEY
+                              the Circle API key
     """
 
     def __init__(self, *args, **kwargs):
