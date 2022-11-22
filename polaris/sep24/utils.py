@@ -229,6 +229,7 @@ def interactive_args_validation(request: Request, kind: str) -> Dict:
     on_change_callback = request.GET.get("on_change_callback")
     amount_str = request.GET.get("amount")
     lang = validate_or_use_default_language(request.GET.get("lang"))
+    activate_lang_for_request(lang)
     asset = Asset.objects.filter(code=asset_code, sep24_enabled=True).first()
     if not transaction_id:
         return dict(
