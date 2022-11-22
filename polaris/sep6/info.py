@@ -1,4 +1,9 @@
 from typing import Dict
+
+from polaris.locale.utils import (
+    activate_lang_for_request,
+    validate_or_use_default_language,
+)
 from polaris.utils import getLogger
 
 from django.utils.translation import gettext as _
@@ -31,9 +36,11 @@ def info(request: Request) -> Response:
         "transaction": {"enabled": True, "authentication_required": True},
         "features": {"account_creation": True, "claimable_balances": True},
     }
+    lang = validate_or_use_default_language(request.GET.get("lang"))
+    activate_lang_for_request(lang)
     error_response = None
     for asset in Asset.objects.filter(sep6_enabled=True):
-        error_response = populate_asset_info(request, asset, info_data, False)
+        error_response = populate_asset_info(request, asset, info_data, lang, False)
         if error_response:
             break
     if error_response:
@@ -45,7 +52,7 @@ def info(request: Request) -> Response:
     info_data["deposit-exchange"] = {}
     info_data["withdraw-exchange"] = {}
     for asset in Asset.objects.filter(sep6_enabled=True, sep38_enabled=True):
-        error_response = populate_asset_info(request, asset, info_data, True)
+        error_response = populate_asset_info(request, asset, info_data, lang, True)
         if error_response:
             break
     if error_response:
@@ -54,16 +61,13 @@ def info(request: Request) -> Response:
     return Response(info_data)
 
 
-def populate_asset_info(request, asset, info_data, exchange=False):
-    try:
-        fields_and_types = registered_info_func(
-            request=request,
-            asset=asset,
-            lang=request.GET.get("lang"),
-            exchange=exchange,
-        )
-    except ValueError:
-        return render_error_response("unsupported 'lang'")
+def populate_asset_info(request, asset, info_data, lang, exchange=False):
+    fields_and_types = registered_info_func(
+        request=request,
+        asset=asset,
+        lang=lang,
+        exchange=exchange,
+    )
     try:
         validate_integration(fields_and_types)
     except ValueError as e:
