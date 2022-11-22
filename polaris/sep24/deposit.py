@@ -426,8 +426,8 @@ def deposit(token: SEP10Token, request: Request) -> Response:
         request.data.get("account") or token.muxed_account or token.account
     )
 
-    lang = request.data.get("lang")
-    activate_lang_for_request(validate_or_use_default_language(lang))
+    lang = validate_or_use_default_language(request.data.get("lang"))
+    activate_lang_for_request(lang)
 
     sep9_fields = extract_sep9_fields(request.data)
     claimable_balance_supported = request.data.get("claimable_balance_supported")

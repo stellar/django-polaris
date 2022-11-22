@@ -443,8 +443,8 @@ def withdraw(
     Creates an `incomplete` withdraw Transaction object in the database and
     returns the URL entry-point for the interactive flow.
     """
-    lang = request.data.get("lang")
-    activate_lang_for_request(validate_or_use_default_language(lang))
+    lang = validate_or_use_default_language(request.data.get("lang"))
+    activate_lang_for_request(lang)
 
     asset_code = request.data.get("asset_code")
     source_account = request.data.get("account")
