@@ -32,7 +32,10 @@ from polaris.sep6.utils import validate_403_response
 from polaris.sep10.token import SEP10Token
 from polaris.sep10.utils import validate_sep10_token
 from polaris.shared.endpoints import SEP6_MORE_INFO_PATH
-from polaris.locale.utils import validate_language, activate_lang_for_request
+from polaris.locale.utils import (
+    activate_lang_for_request,
+    validate_or_use_default_language,
+)
 from polaris.models import Asset, Transaction, Quote
 from polaris.integrations import (
     registered_withdrawal_integration as rwi,
@@ -153,6 +156,9 @@ def withdraw_logic(token: SEP10Token, request: Request, exchange: bool):
 def parse_request_args(
     token: SEP10Token, request: Request, exchange: bool = False
 ) -> Dict:
+    lang = validate_or_use_default_language(request.GET.get("lang"))
+    activate_lang_for_request(lang)
+
     account = request.GET.get("account")
     if account and account.startswith("M"):
         try:
@@ -184,13 +190,6 @@ def parse_request_args(
         return {
             "error": render_error_response(_("invalid 'asset_code' or 'source_asset'"))
         }
-
-    lang = request.GET.get("lang")
-    if lang:
-        err_resp = validate_language(lang)
-        if err_resp:
-            return {"error": err_resp}
-        activate_lang_for_request(lang)
 
     memo_type = request.GET.get("memo_type")
     if memo_type and memo_type not in Transaction.MEMO_TYPES:
@@ -264,7 +263,7 @@ def parse_request_args(
         "source_asset" if exchange else "asset": asset,
         "memo_type": memo_type,
         "memo": request.GET.get("memo"),
-        "lang": request.GET.get("lang"),
+        "lang": lang,
         "type": request.GET.get("type"),
         "dest": request.GET.get("dest"),
         "dest_extra": request.GET.get("dest_extra"),
