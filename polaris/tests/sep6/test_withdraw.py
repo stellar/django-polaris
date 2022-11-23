@@ -670,6 +670,7 @@ def test_withdraw_bad_lang(mock_process_sep6_request, client):
     asset = Asset.objects.create(
         code="USD",
         issuer=Keypair.random().public_key,
+        distribution_seed=Keypair.random().secret,
         withdrawal_min_amount=10,
         withdrawal_max_amount=1000,
         sep6_enabled=True,
@@ -690,8 +691,8 @@ def test_withdraw_bad_lang(mock_process_sep6_request, client):
             "dest": "test bank account number",
         },
     )
-    assert response.status_code == 400, response.content
-    assert response.json() == {"error": "unsupported language: es"}
+    assert response.status_code == 200, response.content
+    assert response.headers.get("Content-Language") == "en"
 
 
 @pytest.mark.django_db

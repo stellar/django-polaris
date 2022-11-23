@@ -49,7 +49,10 @@ from polaris.sep24.utils import (
 )
 from polaris.models import Asset, Transaction
 from polaris.integrations.forms import TransactionForm
-from polaris.locale.utils import validate_language, activate_lang_for_request
+from polaris.locale.utils import (
+    activate_lang_for_request,
+    validate_or_use_default_language,
+)
 from polaris.integrations import (
     registered_deposit_integration as rdi,
     registered_fee_func,
@@ -422,7 +425,10 @@ def deposit(token: SEP10Token, request: Request) -> Response:
     destination_account = (
         request.data.get("account") or token.muxed_account or token.account
     )
-    lang = request.data.get("lang")
+
+    lang = validate_or_use_default_language(request.data.get("lang"))
+    activate_lang_for_request(lang)
+
     sep9_fields = extract_sep9_fields(request.data)
     claimable_balance_supported = request.data.get("claimable_balance_supported")
     if not claimable_balance_supported:
@@ -439,12 +445,6 @@ def deposit(token: SEP10Token, request: Request) -> Response:
                 "unexpected data type for 'claimable_balance_supprted'. Expected string or boolean."
             )
         )
-
-    if lang:
-        err_resp = validate_language(lang)
-        if err_resp:
-            return err_resp
-        activate_lang_for_request(lang)
 
     # Verify that the request is valid.
     if not asset_code:

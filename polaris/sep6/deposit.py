@@ -21,7 +21,10 @@ from stellar_sdk.exceptions import (
 
 from polaris import settings
 from polaris.models import Asset, Transaction, Quote
-from polaris.locale.utils import validate_language, activate_lang_for_request
+from polaris.locale.utils import (
+    activate_lang_for_request,
+    validate_or_use_default_language,
+)
 from polaris.utils import (
     getLogger,
     render_error_response,
@@ -210,6 +213,9 @@ def validate_response(
 def parse_request_args(
     token: SEP10Token, request: Request, exchange: bool = False
 ) -> Dict:
+    lang = validate_or_use_default_language(request.GET.get("lang"))
+    activate_lang_for_request(lang)
+
     account = request.GET.get("account")
     if account.startswith("M"):
         try:
@@ -243,13 +249,6 @@ def parse_request_args(
                 _("asset not found using 'asset_code' or 'destination_asset'")
             )
         }
-
-    lang = request.GET.get("lang")
-    if lang:
-        err_resp = validate_language(lang)
-        if err_resp:
-            return {"error": err_resp}
-        activate_lang_for_request(lang)
 
     memo_type = request.GET.get("memo_type")
     if memo_type and memo_type not in Transaction.MEMO_TYPES:

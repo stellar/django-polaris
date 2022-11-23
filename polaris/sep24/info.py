@@ -5,10 +5,12 @@ from rest_framework.decorators import api_view, renderer_classes
 from rest_framework.response import Response
 from rest_framework.renderers import JSONRenderer, BrowsableAPIRenderer
 
+from polaris.locale.utils import (
+    activate_lang_for_request,
+    validate_or_use_default_language,
+)
 from polaris.models import Asset
 from polaris.integrations import (
-    registered_fee_func,
-    calculate_fee,
     registered_custody_integration as rci,
 )
 
@@ -41,7 +43,7 @@ def info(request):
     Definition of the /info endpoint, in accordance with SEP-0024.
     See: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md#info
     """
-
+    activate_lang_for_request(validate_or_use_default_language(request.GET.get("lang")))
     info_data = {
         "deposit": {},
         "withdraw": {},

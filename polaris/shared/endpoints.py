@@ -9,6 +9,10 @@ from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from django.utils.translation import gettext as _
 from django.conf import settings as django_settings
 
+from polaris.locale.utils import (
+    activate_lang_for_request,
+    validate_or_use_default_language,
+)
 from polaris import settings as polaris_settings
 from polaris.templates import Template
 from polaris.utils import render_error_response, getLogger
@@ -208,6 +212,8 @@ def transactions_request(
     token: SEP10Token,
     sep6: bool = False,
 ) -> Response:
+    activate_lang_for_request(validate_or_use_default_language(request.GET.get("lang")))
+
     try:
         limit = _validate_limit(request.GET.get("limit"))
     except ValueError:
@@ -266,6 +272,7 @@ def transaction_request(
     token: SEP10Token,
     sep6: bool = False,
 ) -> Response:
+    activate_lang_for_request(validate_or_use_default_language(request.GET.get("lang")))
     try:
         request_transaction = _get_transaction_from_request(
             request,
