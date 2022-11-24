@@ -82,7 +82,7 @@ class SelectAssetForm(forms.Form):
                 "Stellar Reference Token (SRT)",
             ),
             (
-                "stellar:USDC:GBD6ZRRI4FZW55G7NBRMF2NY2DANKHXY63J4KKIQT5GWNWEUZWZ6MS2A",
+                "stellar:USDC:GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5",
                 "Circle USDC Token (USDC)",
             ),
             ("iso4217:USD", "United States Dollar (USD)"),
