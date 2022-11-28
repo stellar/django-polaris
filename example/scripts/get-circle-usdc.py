@@ -11,7 +11,6 @@ from stellar_sdk.exceptions import BaseHorizonError, NotFoundError
 
 CIRCLE_USDC_ASSET_CODE = "USDC"
 CIRCLE_USDC_TESTNET_ISSUER = "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5"
-MAX_TRANSACTION_FEE_STROOPS = 1
 
 
 class GetCircleUsd:
@@ -63,7 +62,7 @@ class GetCircleUsd:
         print(f"\nCreating trustline to {code}:{asset_issuer_public_key}")
         tb = TransactionBuilder(
             self.server.load_account(distribution.public_key),
-            base_fee=MAX_TRANSACTION_FEE_STROOPS or self.server.fetch_base_fee(),
+            base_fee=self.server.fetch_base_fee(),
             network_passphrase="Test SDF Network ; September 2015",
         )
         tb.append_change_trust_op(

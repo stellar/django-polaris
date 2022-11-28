@@ -82,13 +82,14 @@ class Command(BaseCommand):
                              the issuer's public key
         --distribution-seed  DISTRIBUTION_SEED, -d DISTRIBUTION_SEED
                              the distribution account's secret key
-        --sep6-enabled      (Optional) flag to enable sep6 for this asset, defaults to false
-        --sep24-enabled     (Optional) flag to enable sep24 for this asset, defaults to false
-        --sep31-enabled     (Optional) flag to enable sep31 for this asset, defaults to false
-        --sep38-enabled     (Optional) flag to enable sep38 for this asset, defaults to false
-        --deposit-enabled   (Optional) flag to enable deposits for this asset, defaults to false
-        --withdrawl-enabled (Optional) flag to enable withdrawls for this asset, defaults to false
-        --symbol            (Optional) symbol for the asset, default to "$"
+        --sep6-enabled       (Optional) flag to enable sep6 for this asset, defaults to false
+        --sep24-enabled      (Optional) flag to enable sep24 for this asset, defaults to false
+        --sep31-enabled      (Optional) flag to enable sep31 for this asset, defaults to false
+        --sep38-enabled      (Optional) flag to enable sep38 for this asset, defaults to false
+        --deposit-enabled    (Optional) flag to enable deposits for this asset, defaults to false
+        --withdrawal-enabled (Optional) flag to enable withdrawals for this asset, defaults to false
+        --symbol             (Optional) symbol for the asset, default to "$"
+    
     ``delete-asset`` allows users to delete assets from the database:
 
     delete-asset
@@ -179,8 +180,8 @@ class Command(BaseCommand):
             action="store_true",
         )
         self.add_asset_parser.add_argument(
-            "--withdrawl-enabled",
-            help="enable withdrawls for this asset",
+            "--withdrawal-enabled",
+            help="enable withdrawals for this asset",
             action="store_true",
         )
         self.add_asset_parser.add_argument(
@@ -207,8 +208,6 @@ class Command(BaseCommand):
             self.add_asset_to_db(**options)
         elif options.get("subcommands") == "delete-asset":
             self.delete_asset_from_db(**options)
-        elif options.get("subcommands") == "get-usdc":
-            self.get_circle_usdc(**options)
 
     def reset(self, **options):
         """
@@ -431,7 +430,7 @@ class Command(BaseCommand):
         for asset in Asset.objects.filter(issuer__isnull=False):
             if asset.code == asset_code:
                 print(
-                    f"\nAsset {asset_code}:{issuer} already exists in the database, skipping..."
+                    f"\nAsset {asset.code}:{asset.issuer} already exists in the database, skipping..."
                 )
                 return
 
@@ -446,9 +445,9 @@ class Command(BaseCommand):
             sep38_enabled=options.get("sep38_enabled") or False,
             deposit_enabled=options.get("deposit_enabled") or False,
             withdrawal_enabled=options.get("withdrawal_enabled") or False,
-            symbol=options.get("symbol", "$"),
+            symbol=options.get("symbol") or "$",
         )
-        print(f"Asset {asset_code}:{issuer} added to database")
+        print(f"\nAsset {asset_code}:{issuer} added to database!")
 
     def delete_asset_from_db(self, **options):
         """
@@ -459,7 +458,7 @@ class Command(BaseCommand):
 
         asset_to_delete = Asset.objects.filter(code=asset_code, issuer=issuer).first()
         if not asset_to_delete:
-            print("\nNo asset matching {asset_code}:{issuer} found to delete")
+            print(f"\nNo asset matching {asset_code}:{issuer} found to delete")
             return
 
         asset_to_delete.delete()
