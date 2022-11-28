@@ -46,7 +46,10 @@ from polaris.sep10.utils import validate_sep10_token
 from polaris.sep10.token import SEP10Token
 from polaris.models import Asset, Transaction
 from polaris.integrations.forms import TransactionForm
-from polaris.locale.utils import validate_language, activate_lang_for_request
+from polaris.locale.utils import (
+    activate_lang_for_request,
+    validate_or_use_default_language,
+)
 from polaris.integrations import (
     registered_withdrawal_integration as rwi,
     registered_custody_integration as rci,
@@ -440,15 +443,12 @@ def withdraw(
     Creates an `incomplete` withdraw Transaction object in the database and
     returns the URL entry-point for the interactive flow.
     """
-    lang = request.data.get("lang")
+    lang = validate_or_use_default_language(request.data.get("lang"))
+    activate_lang_for_request(lang)
+
     asset_code = request.data.get("asset_code")
     source_account = request.data.get("account")
     sep9_fields = extract_sep9_fields(request.data)
-    if lang:
-        err_resp = validate_language(lang)
-        if err_resp:
-            return err_resp
-        activate_lang_for_request(lang)
     if not asset_code:
         return render_error_response(_("'asset_code' is required"))
 

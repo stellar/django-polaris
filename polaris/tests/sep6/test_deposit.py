@@ -934,8 +934,8 @@ def test_deposit_bad_lang(mock_process_sep6_request, client):
             "lang": "es",
         },
     )
-    assert response.status_code == 400, response.content
-    assert response.json() == {"error": "unsupported language: es"}
+    assert response.status_code == 200, response.content
+    assert response.headers.get("Content-Language") == "en"
 
 
 @pytest.mark.django_db

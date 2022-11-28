@@ -233,15 +233,10 @@ def server_error(client, usd_asset_factory):
     assert content == {"error": "unable to process the request"}
 
 
-def unsupported_lang(request, asset, lang, *args, **kwargs):
-    raise ValueError()
-
-
 @pytest.mark.django_db
-@patch("polaris.sep6.info.registered_info_func", unsupported_lang)
+@patch("polaris.sep6.info.registered_info_func", good_info_integration)
 def test_unsupported_lang(client, usd_asset_factory):
     usd_asset_factory(protocols=[Transaction.PROTOCOL.sep6])
     response = client.get(INFO_PATH + "?lang=es")
-    content = json.loads(response.content)
-    assert response.status_code == 400, response.content
-    assert content == {"error": "unsupported 'lang'"}
+    assert response.status_code == 200, response.content
+    assert response.headers.get("Content-Language") == "en"
