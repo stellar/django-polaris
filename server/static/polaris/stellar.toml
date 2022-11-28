@@ -18,7 +18,7 @@ desc = "Stellar Reference Token (SRT) is an asset issued on testnet and is used 
 
 [[CURRENCIES]]
 code = "USDC"
-issuer = "GBD6ZRRI4FZW55G7NBRMF2NY2DANKHXY63J4KKIQT5GWNWEUZWZ6MS2A"
+issuer = "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5"
 status = "test"
 is_asset_anchored = false
 desc = "Circle USDC Token"
