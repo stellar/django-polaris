@@ -16,6 +16,13 @@ status = "test"
 is_asset_anchored = false
 desc = "Stellar Reference Token (SRT) is an asset issued on testnet and is used as an anchored asset for this reference server for demonstration and testing purposes."
 
+[[CURRENCIES]]
+code = "USDC"
+issuer = "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5"
+status = "test"
+is_asset_anchored = false
+desc = "Circle USDC Token"
+
 [DOCUMENTATION]
 ORG_NAME = "Stellar Development Foundation"
 ORG_URL = "https://stellar.org"

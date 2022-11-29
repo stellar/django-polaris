@@ -1,3 +1,4 @@
+from jwt import InvalidIssuerError
 import urllib3
 from decimal import Decimal
 from typing import Optional, Dict
@@ -7,7 +8,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db.models import Q
 from stellar_sdk import Keypair, TransactionBuilder, Server
 from stellar_sdk import Asset as StellarSdkAsset
-from stellar_sdk.account import Account, Thresholds
+from stellar_sdk.account import Account
 from stellar_sdk.exceptions import (
     NotFoundError,
     BaseHorizonError,
@@ -22,7 +23,7 @@ logger = getLogger(__name__)
 
 class Command(BaseCommand):
     """
-    The testnet command comes with two subcommands, ``issue`` and ``reset``.
+    The testnet command comes with the following commands:
 
     ``issue`` allows users to create assets on the Stellar testnet network. When
     the test network resets, you’ll have to reissue your assets.
@@ -55,7 +56,7 @@ class Command(BaseCommand):
         -h, --help  show this help message and exit
 
     issue
-        -h, --help            show this help message and exit
+        -h, --help          show this help message and exit
         --asset ASSET, -a ASSET
                             the code of the asset issued
         --issuer-seed ISSUER_SEED, -i ISSUER_SEED
@@ -70,12 +71,41 @@ class Command(BaseCommand):
         --client-amount CLIENT_AMOUNT
                             the amount sent to client account. Also the limit for
                             the trustline.
+
+    ``add-asset`` allows users to add assets to the database:
+
+    add-asset
+        -h, --help           show this help message and exit
+        --asset ASSET, -a ASSET
+                             the code of the asset issued
+        --issuer-public ISSUER_PUBLIC, -i ISSUER_PUBLIC
+                             the issuer's public key
+        --distribution-seed  DISTRIBUTION_SEED, -d DISTRIBUTION_SEED
+                             the distribution account's secret key
+        --sep6-enabled       (Optional) flag to enable sep6 for this asset, defaults to false
+        --sep24-enabled      (Optional) flag to enable sep24 for this asset, defaults to false
+        --sep31-enabled      (Optional) flag to enable sep31 for this asset, defaults to false
+        --sep38-enabled      (Optional) flag to enable sep38 for this asset, defaults to false
+        --deposit-enabled    (Optional) flag to enable deposits for this asset, defaults to false
+        --withdrawal-enabled (Optional) flag to enable withdrawals for this asset, defaults to false
+        --symbol             (Optional) symbol for the asset, default to "$"
+    
+    ``delete-asset`` allows users to delete assets from the database:
+
+    delete-asset
+        -h, --help            show this help message and exit
+        --asset ASSET, -a ASSET
+                              the code of the asset to be deleted
+        --issuer-public ISSUER_PUBLIC, -i ISSUER_PUBLIC
+                              the issuer's public key
     """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.reset_parser = None
         self.issue_parser = None
+        self.add_asset_parser = None
+        self.delete_asset_parser = None
         self.server = Server("https://horizon-testnet.stellar.org")
         self.http = urllib3.PoolManager()
 
@@ -110,11 +140,74 @@ class Command(BaseCommand):
             help="the amount sent to client account. Also the limit for the trustline.",
         )
 
+        self.add_asset_parser = subparsers.add_parser(
+            "add-asset", help="a sub-command for adding assets to the database"
+        )
+        self.add_asset_parser.add_argument(
+            "--asset", help="asset code to add to the database", required=True
+        )
+        self.add_asset_parser.add_argument(
+            "--issuer-public", help="the asset issuer's public key", required=True
+        )
+        self.add_asset_parser.add_argument(
+            "--distribution-seed",
+            help="the anchors distribution seed for this asset",
+            required=True,
+        )
+        self.add_asset_parser.add_argument(
+            "--sep6-enabled",
+            help="enable sep6 for this asset",
+            action="store_true",
+        )
+        self.add_asset_parser.add_argument(
+            "--sep24-enabled",
+            help="enable sep24 for this asset",
+            action="store_true",
+        )
+        self.add_asset_parser.add_argument(
+            "--sep31-enabled",
+            help="enable sep31 for this asset",
+            action="store_true",
+        )
+        self.add_asset_parser.add_argument(
+            "--sep38-enabled",
+            help="enable sep38 for this asset",
+            action="store_true",
+        )
+        self.add_asset_parser.add_argument(
+            "--deposit-enabled",
+            help="enable deposits for this asset",
+            action="store_true",
+        )
+        self.add_asset_parser.add_argument(
+            "--withdrawal-enabled",
+            help="enable withdrawals for this asset",
+            action="store_true",
+        )
+        self.add_asset_parser.add_argument(
+            "--symbol",
+            help="symbol for the asset",
+        )
+
+        self.delete_asset_parser = subparsers.add_parser(
+            "delete-asset", help="a sub-command for deleting assets to the database"
+        )
+        self.delete_asset_parser.add_argument(
+            "--asset", help="asset code to delete to the database", required=True
+        )
+        self.delete_asset_parser.add_argument(
+            "--issuer-public", help="the asset issuer's public key", required=True
+        )
+
     def handle(self, *_args, **options):  # pragma: no cover
         if options.get("subcommands") == "reset":
             self.reset(**options)
         elif options.get("subcommands") == "issue":
             self.issue(**options)
+        elif options.get("subcommands") == "add-asset":
+            self.add_asset_to_db(**options)
+        elif options.get("subcommands") == "delete-asset":
+            self.delete_asset_from_db(**options)
 
     def reset(self, **options):
         """
@@ -172,6 +265,29 @@ class Command(BaseCommand):
                 }
             )
 
+    def get_or_create_accounts(self, account_keypairs: list):
+        """
+        Get account details from horizon for the specified account_keypairs,
+        if the account doesnt exist, create the account
+        """
+        accounts = {}
+        for kp in account_keypairs:
+            if not kp:
+                continue
+            try:
+                accounts[kp.public_key] = (
+                    self.server.accounts().account_id(kp.public_key).call()
+                )
+            except NotFoundError:
+                print(f"Funding {kp.public_key} ...")
+                self.http.request(
+                    "GET", f"https://friendbot.stellar.org?addr={kp.public_key}"
+                )
+                accounts[kp.public_key] = (
+                    self.server.accounts().account_id(kp.public_key).call()
+                )
+        return accounts
+
     def issue(self, **options):
         """
         Issue the asset specified using the `options` passed to the subcommand
@@ -210,22 +326,7 @@ class Command(BaseCommand):
             print(f"secret key: {client.secret}\n")
             print(f"Sending {client_amount} to the client account\n")
 
-        accounts = {}
-        for kp in [issuer, distributor, client]:
-            if not kp:
-                continue
-            try:
-                accounts[kp.public_key] = (
-                    self.server.accounts().account_id(kp.public_key).call()
-                )
-            except NotFoundError:
-                print(f"Funding {kp.public_key} ...")
-                self.http.request(
-                    "GET", f"https://friendbot.stellar.org?addr={kp.public_key}"
-                )
-                accounts[kp.public_key] = (
-                    self.server.accounts().account_id(kp.public_key).call()
-                )
+        accounts = self.get_or_create_accounts([issuer, distributor, client])
 
         self.add_balance(code, issue_amount, accounts, distributor, issuer, issuer)
         if client:
@@ -308,11 +409,6 @@ class Command(BaseCommand):
         else:
             print("Success!")
 
-    def account_from_json(self, json):
-        sequence = int(json["sequence"])
-        account = Account(account=json["id"], sequence=sequence, raw_data=json)
-        return account
-
     def get_balance(self, code, issuer_public_key, json) -> Optional[str]:
         for balance_obj in json["balances"]:
             if (
@@ -320,3 +416,50 @@ class Command(BaseCommand):
                 and balance_obj.get("asset_issuer") == issuer_public_key
             ):
                 return balance_obj["balance"]
+
+    def add_asset_to_db(self, **options):
+        """
+        Add an asset to the database
+        """
+        asset_code = options.get("asset")
+        issuer = options.get("issuer_public")
+        distribution_seed = options.get("distribution_seed")
+        if not (issuer and asset_code):
+            print(f"\ninvalid value in options {options}")
+            return
+        for asset in Asset.objects.filter(issuer__isnull=False):
+            if asset.code == asset_code:
+                print(
+                    f"\nAsset {asset.code}:{asset.issuer} already exists in the database, skipping..."
+                )
+                return
+
+        print(f"\nAdding asset {asset_code}:{issuer} to database")
+        Asset.objects.create(
+            code=asset_code,
+            issuer=issuer,
+            distribution_seed=distribution_seed,
+            sep6_enabled=options.get("sep6_enabled") or False,
+            sep24_enabled=options.get("sep24_enabled") or False,
+            sep31_enabled=options.get("sep31_enabled") or False,
+            sep38_enabled=options.get("sep38_enabled") or False,
+            deposit_enabled=options.get("deposit_enabled") or False,
+            withdrawal_enabled=options.get("withdrawal_enabled") or False,
+            symbol=options.get("symbol") or "$",
+        )
+        print(f"\nAsset {asset_code}:{issuer} added to database!")
+
+    def delete_asset_from_db(self, **options):
+        """
+        Delete an asset from the database
+        """
+        asset_code = options.get("asset")
+        issuer = options.get("issuer_public")
+
+        asset_to_delete = Asset.objects.filter(code=asset_code, issuer=issuer).first()
+        if not asset_to_delete:
+            print(f"\nNo asset matching {asset_code}:{issuer} found to delete")
+            return
+
+        asset_to_delete.delete()
+        print(f"\nAsset: {asset_code}:{issuer} deleted from the database")
