@@ -89,7 +89,7 @@ class Command(BaseCommand):
         --deposit-enabled    (Optional) flag to enable deposits for this asset, defaults to false
         --withdrawal-enabled (Optional) flag to enable withdrawals for this asset, defaults to false
         --symbol             (Optional) symbol for the asset, default to "$"
-    
+
     ``delete-asset`` allows users to delete assets from the database:
 
     delete-asset
