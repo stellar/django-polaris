@@ -294,8 +294,7 @@ def generate_interactive_jwt(
     Generates a 30-second JWT for the client to use in the GET URL for
     the interactive flow.
     """
-    grace_period = 60 * 5
-    issued_at = int(time.time()) - grace_period
+    issued_at = int(time.time()) - 1
     payload = {
         "iss": request.build_absolute_uri(request.path),
         "iat": issued_at,
