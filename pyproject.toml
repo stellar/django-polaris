@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "django-polaris"
-version = "2.3.5"
+version = "2.3.6"
 description = "An extendable Django server for Stellar Ecosystem Proposals."
 license = "Apache-2.0"
 authors = ["Stellar Development Foundation <jake@stellar.org>"]
@@ -26,9 +26,9 @@ classifiers = [
     "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10"
+    "Programming Language :: Python :: 3.10",
 ]
-packages = [{"include" = "polaris"}]
+packages = [{ "include" = "polaris" }]
 exclude = ["**/*.scss", "**/tests/*"]
 
 [tool.poetry.urls]
@@ -50,13 +50,13 @@ toml = "*"
 pyjwt = "^2.1"
 cryptography = "^3.4"
 sqlparse = "^0.4.2"
-readthedocs-sphinx-ext = { version = "^2.1", optional = true}
-sphinx = { version = "^4.2", optional = true}
-sphinx-rtd-theme = { version = "^1.0", optional = true}
-sphinx-autodoc-typehints = { version = "*", optional = true}
+readthedocs-sphinx-ext = { version = "^2.1", optional = true }
+sphinx = { version = "^4.2", optional = true }
+sphinx-rtd-theme = { version = "^1.0", optional = true }
+sphinx-autodoc-typehints = { version = "*", optional = true }
 gunicorn = { version = "*", optional = true }
-psycopg2-binary = { version = "^2.9", optional = true}
-watchdog = { version = "^2", optional = true}
+psycopg2-binary = { version = "^2.9", optional = true }
+watchdog = { version = "^2", optional = true }
 
 [tool.poetry.dev-dependencies]
 pylint = "*"
@@ -76,7 +76,7 @@ docs = [
     "readthedocs-sphinx-ext",
     "sphinx",
     "sphinx-rtd-theme",
-    "sphinx-autodoc-typehints"
+    "sphinx-autodoc-typehints",
 ]
 
 [tool.coverage.run]
@@ -92,12 +92,8 @@ omit = [
     "**/collectstatic/*",
     "**/manage.py",
     "**/.venv/*",
-    "**/.local/*"
+    "**/.local/*",
 ]
 
 [tool.coverage.report]
-exclude_lines = [
-    "pragma: no cover",
-    "raise NotImplementedError",
-    "def __str__"
-]
+exclude_lines = ["pragma: no cover", "raise NotImplementedError", "def __str__"]
