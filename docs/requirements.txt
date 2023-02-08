@@ -11,7 +11,7 @@ certifi==2021.10.8; python_full_version >= "3.6.2" and python_version < "4.0" an
 cffi==1.15.0; python_full_version >= "3.6.2" and python_version < "4.0" and python_version >= "3.6"
 charset-normalizer==2.0.12; python_full_version >= "3.6.2" and python_version < "4.0" and python_version >= "3.6" and (python_version >= "2.7" and python_full_version < "3.0.0" or python_full_version >= "3.6.0") and (python_version >= "3.6" and python_full_version < "3.0.0" or python_full_version >= "3.6.0" and python_version >= "3.6")
 colorama==0.4.4; python_version >= "3.7" and python_full_version < "3.0.0" and sys_platform == "win32" and (python_version >= "3.6" and python_full_version < "3.0.0" or python_full_version >= "3.4.0" and python_version >= "3.6") or sys_platform == "win32" and python_version >= "3.7" and python_full_version >= "3.5.0" and (python_version >= "3.6" and python_full_version < "3.0.0" or python_full_version >= "3.4.0" and python_version >= "3.6")
-cryptography==3.4.8; python_version >= "3.6"
+cryptography==39.0.1; python_version >= "3.6"
 django-cors-headers==3.11.0; python_version >= "3.7"
 django-environ==0.8.1; python_version >= "3.4" and python_version < "4"
 django-model-utils==4.2.0
