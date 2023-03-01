@@ -47,9 +47,11 @@ def calculate_fee(
     elif fee_params["operation"] == settings.OPERATION_DEPOSIT:
         fee_percent = asset.deposit_fee_percent
         fee_fixed = asset.deposit_fee_fixed
-    else:  # send
+    elif fee_params["operation"] == settings.OPERATION_SEND:
         fee_percent = asset.send_fee_percent
         fee_fixed = asset.send_fee_fixed
+    else:
+        raise ValueError(f"unexpected operation: {fee_params['operation']}")
 
     if fee_fixed is None and fee_percent is None:
         return Decimal(0)
