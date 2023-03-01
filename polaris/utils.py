@@ -221,7 +221,6 @@ SEP_9_FIELDS = {
     "birth_place",
     "birth_country_code",
     "bank_account_number",
-    "bank_name",
     "bank_account_type",
     "bank_number",
     "bank_phone_number",
