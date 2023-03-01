@@ -193,7 +193,7 @@ class Command(BaseCommand):
                         op = {
                             Transaction.KIND.withdrawal: settings.OPERATION_WITHDRAWAL,
                             getattr(
-                                Transaction.KIND, "deposit-exchange"
+                                Transaction.KIND, "withdrawal-exchange"
                             ): settings.OPERATION_WITHDRAWAL,
                             Transaction.KIND.send: settings.OPERATION_SEND,
                         }[transaction.kind]
