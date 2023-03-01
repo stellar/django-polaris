@@ -33,7 +33,6 @@ def noop(*_):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("polaris", "0005_auto_20210226_0053"),
     ]

@@ -13,7 +13,6 @@ def nop(*_):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("polaris", "0010_auto_20210809_1605"),
     ]

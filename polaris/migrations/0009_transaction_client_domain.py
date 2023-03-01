@@ -4,7 +4,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("polaris", "0008_transaction_pending_execution_attempt"),
     ]

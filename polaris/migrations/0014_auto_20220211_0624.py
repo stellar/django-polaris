@@ -5,7 +5,6 @@ import polaris.models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("polaris", "0013_auto_20211011_1956"),
     ]

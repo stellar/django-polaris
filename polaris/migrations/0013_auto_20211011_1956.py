@@ -7,7 +7,6 @@ import uuid
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("polaris", "0012_auto_20210918_2053"),
     ]

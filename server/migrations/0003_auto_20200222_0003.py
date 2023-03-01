@@ -5,7 +5,6 @@ import server.models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("server", "0002_auto_20200207_0002"),
     ]

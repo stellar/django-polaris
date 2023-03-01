@@ -521,7 +521,6 @@ async def test_check_trustlines_single_transaction_success():
     with patch(
         f"{test_module}.get_account_obj_async", new_callable=AsyncMock
     ) as get_account_obj:
-
         async with ServerAsync(client=AiohttpClient()) as server:
             get_account_obj.return_value = None, account_json
 
@@ -560,7 +559,6 @@ async def test_check_trustlines_single_transaction_success_different_destination
     with patch(
         f"{test_module}.get_account_obj_async", new_callable=AsyncMock
     ) as get_account_obj:
-
         async with ServerAsync(client=AiohttpClient()) as server:
             get_account_obj.return_value = None, account_json
 
@@ -660,7 +658,6 @@ async def test_still_pending_trust_transaction():
     with patch(
         f"{test_module}.get_account_obj_async", new_callable=AsyncMock
     ) as get_account_obj:
-
         async with ServerAsync(client=AiohttpClient()) as server:
             get_account_obj.return_value = None, account_json
 

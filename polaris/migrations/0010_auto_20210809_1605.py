@@ -5,7 +5,6 @@ import polaris.models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("polaris", "0009_transaction_client_domain"),
     ]
