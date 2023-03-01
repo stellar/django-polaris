@@ -192,7 +192,10 @@ class Command(BaseCommand):
                     if not transaction.quote and registered_fee_func is calculate_fee:
                         op = {
                             Transaction.KIND.withdrawal: settings.OPERATION_WITHDRAWAL,
-                            Transaction.KIND.send: Transaction.KIND.send,
+                            getattr(
+                                Transaction.KIND, "deposit-exchange"
+                            ): settings.OPERATION_WITHDRAWAL,
+                            Transaction.KIND.send: settings.OPERATION_SEND,
                         }[transaction.kind]
                         try:
                             transaction.amount_fee = calculate_fee(
