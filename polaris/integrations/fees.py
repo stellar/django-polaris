@@ -51,10 +51,7 @@ def calculate_fee(
         fee_percent = asset.send_fee_percent
         fee_fixed = asset.send_fee_fixed
     else:
-        raise ValueError(
-            ("Unexpected operation: %(operation)s")
-            % {"operation": fee_params["operation"]}
-        )
+        raise ValueError(f"unexpected operation: {fee_params['operation']}")
 
     if fee_fixed is None and fee_percent is None:
         return Decimal(0)
