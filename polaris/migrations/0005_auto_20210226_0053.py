@@ -21,7 +21,6 @@ def decrypt_channel_seeds(apps, _):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("polaris", "0004_auto_20201120_1541"),
     ]

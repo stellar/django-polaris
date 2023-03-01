@@ -5,7 +5,6 @@ from .. import models as polaris_models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("server", "0001_initial"),
     ]

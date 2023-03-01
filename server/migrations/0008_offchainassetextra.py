@@ -5,7 +5,6 @@ import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("polaris", "0013_auto_20211011_1956"),
         ("server", "0007_auto_20210921_2005"),

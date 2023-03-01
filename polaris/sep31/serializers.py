@@ -8,7 +8,6 @@ from polaris.settings import DATETIME_FORMAT
 
 
 class SEP31TransactionSerializer(serializers.ModelSerializer):
-
     id = serializers.CharField()
     stellar_account_id = serializers.SerializerMethodField()
     stellar_memo = serializers.SerializerMethodField()
