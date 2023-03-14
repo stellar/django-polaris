@@ -97,8 +97,8 @@ def interactive_jwt_payload(transaction, transaction_type):
     current_time = time.time()
     return {
         "iss": f"http://testserver/sep24/transactions/{transaction_type}/interactive",
-        "exp": current_time + 30,
-        "iat": current_time,
+        "exp": current_time + 35,
+        "iat": current_time - 5,
         "jti": str(transaction.id),
         "sub": transaction.stellar_account,
     }

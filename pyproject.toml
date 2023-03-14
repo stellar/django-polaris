@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "django-polaris"
-version = "2.3.6"
+version = "2.3.7"
 description = "An extendable Django server for Stellar Ecosystem Proposals."
 license = "Apache-2.0"
 authors = ["Stellar Development Foundation <jake@stellar.org>"]
@@ -48,7 +48,7 @@ aiohttp = "^3.7"
 django-cors-headers = "^3.7"
 toml = "*"
 pyjwt = "^2.1"
-cryptography = "^3.4"
+cryptography = "^39.0"
 sqlparse = "^0.4.2"
 readthedocs-sphinx-ext = { version = "^2.1", optional = true }
 sphinx = { version = "^4.2", optional = true }
