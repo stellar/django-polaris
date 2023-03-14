@@ -305,7 +305,6 @@ def test_interactive_deposit_past_exp(client, acc1_usd_deposit_transaction_facto
     token = jwt.encode(payload, settings.SERVER_JWT_KEY, algorithm="HS256")
 
     response = client.get(f"{WEBAPP_PATH}?token={token}")
-    print(response.content)
     assert "Your session has expired. Please restart the transaction" in str(
         response.content
     )
@@ -343,7 +342,6 @@ def test_interactive_deposit_success(client, acc1_usd_deposit_transaction_factor
         f"&transaction_id={deposit.id}"
         f"&asset_code={deposit.asset.code}"
     )
-    print(response.content)
     assert response.status_code == 200
     assert client.session["authenticated"] is True
 
