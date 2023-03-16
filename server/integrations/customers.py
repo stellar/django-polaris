@@ -26,7 +26,6 @@ class MyCustomerIntegration(CustomerIntegration):
             "bank_account_number",
             "bank_number",
         ]
-        self.optional_fields = ["photo_id_front", "photo_id_back"]
         self.accepted = {"status": "ACCEPTED"}
         self.needs_info = {"status": "NEEDS_INFO"}
         self.optional = {"optional": True}
