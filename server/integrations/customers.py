@@ -172,7 +172,6 @@ class MyCustomerIntegration(CustomerIntegration):
     def put(
         self, token: SEP10Token, request: Request, params: Dict, *args, **kwargs
     ) -> str:
-        logger.info(request.data)
         user = self._get_user(
             params.get("id"),
             params.get("account"),
@@ -199,10 +198,10 @@ class MyCustomerIntegration(CustomerIntegration):
                     memo=params["memo"],
                     memo_type=params["memo_type"],
                 )
-                send_confirmation_email(user, account)
+                # send_confirmation_email(user, account)
             else:
                 user, account = self.create_new_user(params)
-                send_confirmation_email(user, account)
+                # send_confirmation_email(user, account)
 
         if (
             user.email != params.get("email_address")
