@@ -16,6 +16,9 @@ class PolarisUser(models.Model):
     email = models.EmailField(unique=True)
     bank_account_number = models.CharField(max_length=254, null=True)
     bank_number = models.CharField(max_length=254, null=True)
+    # we're not going to store images on our reference server
+    photo_id_front_provided = models.BooleanField(default=False)
+    photo_id_back_provided = models.BooleanField(default=False)
 
     objects = models.Manager()
 
