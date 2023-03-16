@@ -281,6 +281,9 @@ def validate_response_data(data: Dict):
 
 
 def validate_id_parameters(token: SEP10Token, request_data: dict) -> Optional[Response]:
+    logger.info(
+        f"{request_data.get('account')}, {token.muxed_account}, {token.account}"
+    )
     if request_data.get("id"):
         if not isinstance(request_data.get("id"), str):
             return render_error_response(_("bad ID value, expected str"))
