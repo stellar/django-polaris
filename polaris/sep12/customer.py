@@ -264,7 +264,12 @@ def validate_response_data(data: Dict):
     if not data.get("status") or data.get("status") not in accepted_statuses:
         raise ValueError("invalid status in SEP-12 GET /customer response")
     elif (
-        any([f.get("optional") is False for f in data.get("fields", {}).values()])
+        any(
+            [
+                f.get("optional") in [False, None]
+                for f in data.get("fields", {}).values()
+            ]
+        )
         and data.get("status") == "ACCEPTED"
     ):
         raise ValueError(

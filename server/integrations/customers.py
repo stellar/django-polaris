@@ -1,3 +1,4 @@
+from copy import deepcopy
 from typing import Dict, Optional, List, Tuple
 from logging import getLogger
 
@@ -9,7 +10,6 @@ from stellar_sdk import MuxedAccount
 from polaris.integrations import CustomerIntegration
 from polaris.sep10.token import SEP10Token
 
-from .sep24_kyc import send_confirmation_email
 from ..models import PolarisUser, PolarisStellarAccount
 
 logger = getLogger(__name__)
@@ -84,8 +84,8 @@ class MyCustomerIntegration(CustomerIntegration):
             params.get("memo_type"),
         )
 
-        response_data = {}
         if not user:
+            response_data = {}
             if params.get("type") in ["sep6-deposit", "sep31-sender"]:
                 response_data.update(self.needs_info)
                 response_data["fields"] = {
@@ -113,13 +113,13 @@ class MyCustomerIntegration(CustomerIntegration):
                     _("invalid 'type'. see /info response for valid values.")
                 )
 
-        first_name_obj = self.first_name.copy()
+        first_name_obj = deepcopy(self.first_name)
         first_name_obj["first_name"].update(**self.accepted)
 
-        last_name_obj = self.last_name.copy()
+        last_name_obj = deepcopy(self.last_name)
         last_name_obj["last_name"].update(**self.accepted)
 
-        email_obj = self.email_address.copy()
+        email_obj = deepcopy(self.email_address)
         email_obj["email_address"].update(**self.accepted)
 
         response_data = {
@@ -129,28 +129,28 @@ class MyCustomerIntegration(CustomerIntegration):
         }
 
         if user.bank_account_number:
-            bank_account_number_obj = self.bank_account_number.copy()
+            bank_account_number_obj = deepcopy(self.bank_account_number)
             bank_account_number_obj["bank_account_number"].update(**self.accepted)
             response_data["provided_fields"].update(**bank_account_number_obj)
         elif params.get("type") in [None, "sep6-withdraw", "sep31-receiver"]:
             response_data["fields"].update(**self.bank_account_number)
 
         if user.bank_number:
-            bank_number_obj = self.bank_number.copy()
-            bank_number_obj["bank_account_number"].update(**self.accepted)
+            bank_number_obj = deepcopy(self.bank_number)
+            bank_number_obj["bank_number"].update(**self.accepted)
             response_data["provided_fields"].update(**bank_number_obj)
         elif params.get("type") in [None, "sep6-withdraw", "sep31-receiver"]:
             response_data["fields"].update(**self.bank_number)
 
         if user.photo_id_front_provided:
-            photo_id_front_obj = self.photo_id_front.copy()
+            photo_id_front_obj = deepcopy(self.photo_id_front)
             photo_id_front_obj["photo_id_front"].update(**self.accepted)
             response_data["provided_fields"].update(**photo_id_front_obj)
         else:
             response_data["fields"].update(**self.photo_id_front)
 
         if user.photo_id_back_provided:
-            photo_id_back_obj = self.photo_id_back.copy()
+            photo_id_back_obj = deepcopy(self.photo_id_back)
             photo_id_back_obj["photo_id_back"].update(**self.accepted)
             response_data["provided_fields"].update(**photo_id_back_obj)
         else:
