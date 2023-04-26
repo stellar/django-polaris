@@ -166,7 +166,7 @@ class MyCustomerIntegration(CustomerIntegration):
             if all(
                 [
                     response_data["provided_fields"].get("bank_number"),
-                    response_data["provided_fields"]["bank_account_number"],
+                    response_data["provided_fields"].get("bank_account_number"),
                 ]
             ):
                 response_data.update(**self.accepted)
