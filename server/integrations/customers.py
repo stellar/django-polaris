@@ -158,6 +158,10 @@ class MyCustomerIntegration(CustomerIntegration):
 
         if params.get("type") in ["sep6-deposit", "sep31-sender"]:
             response_data.update(**self.accepted)
+            if response_data["fields"].get("bank_number"):
+                response_data["fields"]["bank_number"].update(**self.optional)
+            if response_data["fields"].get("bank_account_number"):
+                response_data["fields"]["bank_account_number"].update(**self.optional)
         elif params.get("type") in [None, "sep6-withdraw", "sep31-receiver"]:
             if all([self.bank_account_number, self.bank_number]):
                 response_data.update(**self.accepted)
@@ -184,23 +188,23 @@ class MyCustomerIntegration(CustomerIntegration):
                     "SEP-9 fields were not passed for new customer. "
                     "'first_name', 'last_name', and 'email_address' are required."
                 )
+            elif "account" not in params:
+                raise ValueError("'account' is required if 'id' is not provided")
             # find existing user by previously-specified email
             user = PolarisUser.objects.filter(email=params["email_address"]).first()
             if user:
                 stellar_account, muxed_account = self._get_stellar_and_muxed_account(
-                    params.get("account")
+                    params["account"]
                 )
-                account = PolarisStellarAccount.objects.create(
+                PolarisStellarAccount.objects.create(
                     user=user,
                     account=stellar_account,
                     muxed_account=muxed_account,
                     memo=params["memo"],
                     memo_type=params["memo_type"],
                 )
-                # send_confirmation_email(user, account)
             else:
-                user, account = self.create_new_user(params)
-                # send_confirmation_email(user, account)
+                user, _ = self.create_new_user(params)
 
         if (
             user.email != params.get("email_address")
@@ -242,12 +246,12 @@ class MyCustomerIntegration(CustomerIntegration):
             "memo": memo,
             "memo_type": memo_type,
         }
-        account = PolarisStellarAccount.objects.filter(**qparams).first()
-        if not account:
+        paccount = PolarisStellarAccount.objects.filter(**qparams).first()
+        if not paccount:
             raise ObjectDoesNotExist()
-        account.user.delete()
+        paccount.user.delete()
 
-    def create_new_user(self, params):
+    def create_new_user(self, params) -> Tuple[PolarisUser, PolarisStellarAccount]:
         if not all(f in params for f in ["first_name", "last_name", "email_address"]):
             raise ValueError(
                 "SEP-9 fields were not passed for new customer. "
@@ -305,7 +309,11 @@ class MyCustomerIntegration(CustomerIntegration):
         raise NotImplementedError()
 
     def _get_user(
-        self, pid: str, account: str, memo: str, memo_type: str
+        self,
+        pid: Optional[str],
+        account: Optional[str],
+        memo: Optional[str],
+        memo_type: Optional[str],
     ) -> Optional[PolarisUser]:
         user = None
         if pid:
@@ -325,7 +333,7 @@ class MyCustomerIntegration(CustomerIntegration):
             user = paccount.user if paccount else None
         return user
 
-    def _get_stellar_and_muxed_account(self, account: str) -> Tuple[str, str]:
+    def _get_stellar_and_muxed_account(self, account: str) -> Tuple[str, Optional[str]]:
         if account.startswith("M"):
             stellar_account = MuxedAccount.from_account(account).account_id
             muxed_account = account
