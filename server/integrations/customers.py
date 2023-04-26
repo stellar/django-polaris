@@ -163,7 +163,12 @@ class MyCustomerIntegration(CustomerIntegration):
             if response_data["fields"].get("bank_account_number"):
                 response_data["fields"]["bank_account_number"].update(**self.optional)
         elif params.get("type") in [None, "sep6-withdraw", "sep31-receiver"]:
-            if all([self.bank_account_number, self.bank_number]):
+            if all(
+                [
+                    response_data["provided_fields"].get("bank_number"),
+                    response_data["provided_fields"].get("bank_account_number"),
+                ]
+            ):
                 response_data.update(**self.accepted)
             else:
                 response_data.update(**self.needs_info)
