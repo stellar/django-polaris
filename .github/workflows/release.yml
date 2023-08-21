@@ -16,7 +16,11 @@ jobs:
       - name: Install Python
         run: apt-get update && apt-get install -y python3-dev python3-venv
       - name: Install Poetry
-        run: export POETRY_HOME=/opt/poetry && python3 -m venv $POETRY_HOME && $POETRY_HOME/bin/pip install poetry==1.6 && ln -s $POETRY_HOME/bin/poetry /usr/bin/poetry
+        run: |
+          export POETRY_HOME=/opt/poetry
+          python3 -m venv $POETRY_HOME
+          $POETRY_HOME/bin/pip install poetry==1.6
+          ln -s $POETRY_HOME/bin/poetry /usr/bin/poetry
       - name: Install Package
         run: poetry install
       - name: Test Package
