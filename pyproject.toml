@@ -48,7 +48,7 @@ aiohttp = "^3.7"
 django-cors-headers = "^3.7"
 toml = "*"
 pyjwt = "^2.1"
-cryptography = "^39.0"
+cryptography = "^41.0"
 sqlparse = "^0.4.2"
 readthedocs-sphinx-ext = { version = "^2.1", optional = true }
 sphinx = { version = "^4.2", optional = true }
