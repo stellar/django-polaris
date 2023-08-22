@@ -1,0 +1,27 @@
+name: Test
+
+on:
+  pull_request:
+    branches:
+        - master
+  workflow_dispatch: {}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Install Python
+        run: sudo apt-get update && sudo apt-get install -y python3.10-dev python3.10-venv
+      - name: Install Poetry
+        run: |
+          sudo mkdir -p /usr/local/poetry
+          sudo python3.10 -m venv /usr/local/poetry
+          sudo /usr/local/poetry/bin/pip install poetry==1.6
+          sudo ln -s /usr/local/poetry/bin/poetry /bin/poetry
+          export PATH=/bin:$PATH
+      - name: Install Package
+        run: poetry install
+      - name: Test Package
+        run: cp .env.example .env && poetry run pytest
