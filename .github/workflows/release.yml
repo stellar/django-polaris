@@ -25,7 +25,7 @@ jobs:
       - name: Install Package
         run: poetry install
       - name: Test Package
-        run: poetry run pytest
+        run: cp .env.example .env && poetry run pytest
       - name: Build Package Distributions
         run: poetry build
       - name: Publish Package Distributions to PyPI
