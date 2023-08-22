@@ -15,8 +15,7 @@ TEST_MODULE = "polaris.sep1.views"
 @pytest.mark.django_db
 @patch(f"{TEST_MODULE}.registered_toml_func")
 def test_toml_generated(mock_toml_func, client):
-    raise Exception()
-    """usd = Asset.objects.create(
+    usd = Asset.objects.create(
         code="USD",
         issuer=Keypair.random().public_key,
         distribution_seed=Keypair.random().secret,
@@ -44,7 +43,7 @@ def test_toml_generated(mock_toml_func, client):
     assert toml_data["TRANSFER_SERVER"] != toml_data["TRANSFER_SERVER_SEP0024"]
     assert toml_data["ACCOUNTS"] == [usd.distribution_account]
     assert toml_data["NETWORK_PASSPHRASE"] == settings.STELLAR_NETWORK_PASSPHRASE
-    assert toml_data["SIGNING_KEY"] == settings.SIGNING_KEY"""
+    assert toml_data["SIGNING_KEY"] == settings.SIGNING_KEY
 
 
 @patch(f"{TEST_MODULE}.finders.find")
