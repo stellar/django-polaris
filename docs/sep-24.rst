@@ -406,7 +406,9 @@ Create a file for the template you'd like to extend or replace. In this guide we
 
 Polaris provides two ``block`` tags that are intentionally left empty for anchors to extend: ``extra_head`` and ``extra_body``. These blocks should be used if you'll looking to add additional CSS or JavaScript files to any of your templates.
 
-You are also allowed to extend any of the blocks actually implemented by Polaris, such as ``header``, ``content``, and ``footer``. Note that ``header`` contains ``extra_header`` and ``body`` contains ``extra_body``.
+In case you want to override Polaris's JavaScript `<script>` tags, there's also a ``body_scripts`` block.
+
+You are also allowed to extend any of the blocks actually implemented by Polaris, such as ``header``, ``content``, and ``footer``. Note that ``header`` contains ``extra_header``, and ``body`` contains ``extra_body`` and ``body_scripts``.
 
 Lets add Google Analytics to our base template.
 

@@ -59,6 +59,7 @@
       {% endblock %}
     </div>
 
+    {% block "body_scripts" %}
     <script type="text/javascript" src="{% static 'polaris/scripts/number.js' %}"></script>
     <script type="text/javascript" src="{% static 'polaris/scripts/styleHelpers.js' %}"></script>
     <script type="text/javascript" src="{% static 'polaris/scripts/disableSubmitOnClick.js' %}"></script>
@@ -91,5 +92,6 @@
         sessionOffset: {{ current_offset|default:0 }}
       });
     </script>
+    {% endblock "body_scripts" %}
   </body>
 </html>
