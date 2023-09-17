@@ -21,8 +21,7 @@ from stellar_sdk.keypair import Keypair
 from stellar_sdk.strkey import StrKey
 from stellar_sdk.exceptions import (
     Ed25519PublicKeyInvalidError,
-    MuxedEd25519AccountInvalidError,
-    ValueError as StellarSdkValueError,
+    MuxedEd25519AccountInvalidError
 )
 
 from polaris import settings
@@ -469,7 +468,7 @@ def withdraw(
     if source_account and source_account.startswith("M"):
         try:
             StrKey.decode_muxed_account(source_account)
-        except (MuxedEd25519AccountInvalidError, StellarSdkValueError):
+        except (MuxedEd25519AccountInvalidError, ValueError):
             return render_error_response(_("invalid 'account'"))
     elif source_account:
         try:

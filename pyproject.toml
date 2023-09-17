@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "django-polaris"
-version = "2.3.8"
+version = "2.4.0-rc1"
 description = "An extendable Django server for Stellar Ecosystem Proposals."
 license = "Apache-2.0"
 authors = ["Stellar Development Foundation <jake@stellar.org>"]
@@ -43,7 +43,7 @@ django-environ = "*"
 django-model-utils = "^4.1"
 djangorestframework = "^3.12"
 whitenoise = "^5.3"
-stellar-sdk = "^8.0"
+stellar-sdk = { version = "9.0.0-a2", extras=["aiohttp"] }
 aiohttp = "^3.7"
 django-cors-headers = "^3.7"
 toml = "*"
