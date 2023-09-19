@@ -15,8 +15,7 @@ from stellar_sdk import Keypair
 from stellar_sdk.exceptions import (
     MemoInvalidException,
     Ed25519PublicKeyInvalidError,
-    MuxedEd25519AccountInvalidError,
-    ValueError as StellarSdkValueError,
+    MuxedEd25519AccountInvalidError
 )
 
 from polaris import settings
@@ -220,7 +219,7 @@ def parse_request_args(
     if account.startswith("M"):
         try:
             StrKey.decode_muxed_account(account)
-        except (MuxedEd25519AccountInvalidError, StellarSdkValueError):
+        except (MuxedEd25519AccountInvalidError, ValueError):
             return {"error": render_error_response(_("invalid 'account'"))}
     else:
         try:

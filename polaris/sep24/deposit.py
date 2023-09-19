@@ -23,8 +23,7 @@ from stellar_sdk.keypair import Keypair
 from stellar_sdk.strkey import StrKey
 from stellar_sdk.exceptions import (
     Ed25519PublicKeyInvalidError,
-    MuxedEd25519AccountInvalidError,
-    ValueError as StellarSdkValueError,
+    MuxedEd25519AccountInvalidError
 )
 
 from polaris import settings
@@ -476,7 +475,7 @@ def deposit(token: SEP10Token, request: Request) -> Response:
     if destination_account.startswith("M"):
         try:
             stellar_account = StrKey.decode_muxed_account(destination_account).ed25519
-        except (MuxedEd25519AccountInvalidError, StellarSdkValueError):
+        except (MuxedEd25519AccountInvalidError, ValueError):
             return render_error_response(_("invalid 'account'"))
     else:
         try:
