@@ -114,7 +114,7 @@ def test_compute_callback_signature():
     s_key, s_val = s.split("=", 1)
     assert s_key == "s"
     signature_payload = f"{timestamp}.testanchor.stellar.org.{callback_body}"
-    Keypair.from_secret(settings.SIGNING_SEED).verify(signature_payload.encode(), base64.b64decode(s_val))
+    Keypair.from_public_key(settings.SIGNING_KEY).verify(signature_payload.encode(), base64.b64decode(s_val))
 
 @patch(f"{test_module}.post")
 @patch(f"{test_module}.TransactionSerializer")
