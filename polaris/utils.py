@@ -1,6 +1,9 @@
 """This module defines helpers for various endpoints."""
+import base64
 import json
 import codecs
+import time
+from urllib.parse import urlparse
 import uuid
 from datetime import datetime, timezone
 from logging import getLogger
@@ -270,10 +273,15 @@ def extract_sep9_fields(args):
             sep9_args[field] = args.get(field)
     return sep9_args
 
+def compute_callback_signature(callback_url: str, callback_body: str) -> str:
+    callback_time = int(time.time())
+    sig_payload = f"{callback_time}.{urlparse(callback_url).netloc}.{callback_body}"
+    signature = base64.b64encode(Keypair.from_secret(settings.SIGNING_SEED).sign(sig_payload.encode())).decode()
+    return f"t={callback_time}, s={signature}"
 
 def make_on_change_callback(
     transaction: Transaction, timeout: Optional[int] = None
-) -> RequestsResponse:
+) -> Optional[RequestsResponse]:
     """
     Makes a POST request to `transaction.on_change_callback`, a URL
     provided by the client. The request will time out in
@@ -293,12 +301,19 @@ def make_on_change_callback(
         raise ValueError("invalid or missing on_change_callback")
     if not timeout:
         timeout = settings.CALLBACK_REQUEST_TIMEOUT
+    callback_body = {"transaction": TransactionSerializer(transaction).data}
+    try:
+        signature_header_value = compute_callback_signature(transaction.on_change_callback, callback_body)
+    except ValueError:  # 
+        logger.error(f"unable to parse host of transaction.on_change_callback for transaction {transaction.id}")
+        return None
+    headers = {"Signature": signature_header_value}
     return post(
         url=transaction.on_change_callback,
-        json=TransactionSerializer(transaction).data,
+        json=callback_body,
         timeout=timeout,
+        headers=headers
     )
-
 
 def maybe_make_callback(transaction: Transaction, timeout: Optional[int] = None):
     """
@@ -315,7 +330,7 @@ def maybe_make_callback(transaction: Transaction, timeout: Optional[int] = None)
         except RequestException as e:
             logger.error(f"Callback request raised {e.__class__.__name__}: {str(e)}")
         else:
-            if not callback_resp.ok:
+            if callback_resp and not callback_resp.ok:
                 logger.error(f"Callback request returned {callback_resp.status_code}")
 
 
@@ -330,11 +345,19 @@ async def make_on_change_callback_async(
     if not timeout:
         timeout = settings.CALLBACK_REQUEST_TIMEOUT
     timeout_obj = aiohttp.ClientTimeout(total=timeout)
+    callback_body = {"transaction": TransactionSerializer(transaction).data}
+    try:
+        signature_header_value = compute_callback_signature(transaction.on_change_callback, callback_body)
+    except ValueError:  # 
+        logger.error(f"unable to parse host of transaction.on_change_callback for transaction {transaction.id}")
+        return None
+    headers = {"Signature": signature_header_value}
     async with aiohttp.ClientSession(timeout=timeout_obj) as session:
         return await session.post(
             url=transaction.on_change_callback,
-            json=TransactionSerializer(transaction).data,
+            json=callback_body,
             timeout=timeout,
+            headers=headers
         )
 
 
@@ -357,7 +380,7 @@ async def maybe_make_callback_async(
         except RequestException as e:
             logger.error(f"Callback request raised {e.__class__.__name__}: {str(e)}")
         else:
-            if not callback_resp.ok:
+            if callback_resp and not callback_resp.ok:
                 logger.error(f"Callback request returned {callback_resp.status}")
 
 
