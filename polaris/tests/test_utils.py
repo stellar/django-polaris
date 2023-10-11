@@ -1,3 +1,5 @@
+import base64
+import json
 import pytest
 from unittest.mock import patch, Mock
 from secrets import token_bytes
@@ -99,32 +101,55 @@ def test_memo_str_hash_memo():
         Transaction.MEMO_TYPES.hash,
     )
 
+def test_compute_callback_signature():
+    callback_url = "https://testanchor.stellar.org/sep24/callbacks"
+    callback_body = json.dumps({"a": "b"})
+    signature_header = utils.compute_callback_signature(callback_url, callback_body)
+    t, s = signature_header.split(", ")
+    assert t
+    assert s
+    t_key, t_val = t.split("=")
+    assert t_key == "t"
+    timestamp = int(t_val)
+    s_key, s_val = s.split("=", 1)
+    assert s_key == "s"
+    signature_payload = f"{timestamp}.testanchor.stellar.org.{callback_body}"
+    Keypair.from_public_key(settings.SIGNING_KEY).verify(signature_payload.encode(), base64.b64decode(s_val))
 
 @patch(f"{test_module}.post")
 @patch(f"{test_module}.TransactionSerializer")
+@patch(f"{test_module}.json", Mock(dumps=Mock(return_value="{}")))
+@patch(f"{test_module}.compute_callback_signature", Mock(return_value="test"))
 def test_make_on_change_callback_success(mock_serializer, mock_post):
     mock_transaction = Mock(on_change_callback="test")
     utils.make_on_change_callback(mock_transaction)
     mock_serializer.assert_called_once_with(mock_transaction)
     mock_post.assert_called_once_with(
         url=mock_transaction.on_change_callback,
-        json=mock_serializer(mock_transaction).data,
+        json={"transaction": mock_serializer(mock_transaction).data},
         timeout=settings.CALLBACK_REQUEST_TIMEOUT,
+        headers={
+            "Signature": "test"
+        }
     )
 
 
 @patch(f"{test_module}.post")
 @patch(f"{test_module}.TransactionSerializer")
+@patch(f"{test_module}.json", Mock(dumps=Mock(return_value="{}")))
+@patch(f"{test_module}.compute_callback_signature", Mock(return_value="test"))
 def test_make_on_change_callback_success_with_timeout(mock_serializer, mock_post):
     mock_transaction = Mock(on_change_callback="test")
     utils.make_on_change_callback(mock_transaction, timeout=5)
     mock_serializer.assert_called_once_with(mock_transaction)
     mock_post.assert_called_once_with(
         url=mock_transaction.on_change_callback,
-        json=mock_serializer(mock_transaction).data,
+        json={"transaction": mock_serializer(mock_transaction).data},
         timeout=5,
+        headers={
+            "Signature": "test"
+        }
     )
-
 
 @patch(f"{test_module}.post")
 @patch(f"{test_module}.TransactionSerializer")
