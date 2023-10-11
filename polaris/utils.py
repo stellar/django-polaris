@@ -336,7 +336,7 @@ def maybe_make_callback(transaction: Transaction, timeout: Optional[int] = None)
 
 async def make_on_change_callback_async(
     transaction: Transaction, timeout: Optional[int] = None
-) -> ClientResponse:
+) -> Optional[ClientResponse]:
     if (
         not transaction.on_change_callback
         or transaction.on_change_callback.lower() == "postmessage"
