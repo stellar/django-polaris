@@ -126,10 +126,11 @@ def test_make_on_change_callback_success(mock_serializer, mock_post):
     mock_serializer.assert_called_once_with(mock_transaction)
     mock_post.assert_called_once_with(
         url=mock_transaction.on_change_callback,
-        json={"transaction": mock_serializer(mock_transaction).data},
+        data=json.dumps({}).encode(),
         timeout=settings.CALLBACK_REQUEST_TIMEOUT,
         headers={
-            "Signature": "test"
+            "Signature": "test",
+            "Content-Type": "application/json"
         }
     )
 
@@ -144,10 +145,11 @@ def test_make_on_change_callback_success_with_timeout(mock_serializer, mock_post
     mock_serializer.assert_called_once_with(mock_transaction)
     mock_post.assert_called_once_with(
         url=mock_transaction.on_change_callback,
-        json={"transaction": mock_serializer(mock_transaction).data},
+        data=json.dumps({}).encode(),
         timeout=5,
         headers={
-            "Signature": "test"
+            "Signature": "test",
+            "Content-Type": "application/json"
         }
     )
 
