@@ -301,16 +301,19 @@ def make_on_change_callback(
         raise ValueError("invalid or missing on_change_callback")
     if not timeout:
         timeout = settings.CALLBACK_REQUEST_TIMEOUT
-    callback_body = {"transaction": TransactionSerializer(transaction).data}
+    callback_body = json.dumps({"transaction": TransactionSerializer(transaction).data})
     try:
         signature_header_value = compute_callback_signature(transaction.on_change_callback, callback_body)
     except ValueError:  # 
         logger.error(f"unable to parse host of transaction.on_change_callback for transaction {transaction.id}")
         return None
-    headers = {"Signature": signature_header_value}
+    headers = {
+        "Signature": signature_header_value,
+        "Content-Type": "application/json"
+    }
     return post(
         url=transaction.on_change_callback,
-        json=callback_body,
+        data=callback_body.encode(),
         timeout=timeout,
         headers=headers
     )
@@ -345,17 +348,20 @@ async def make_on_change_callback_async(
     if not timeout:
         timeout = settings.CALLBACK_REQUEST_TIMEOUT
     timeout_obj = aiohttp.ClientTimeout(total=timeout)
-    callback_body = {"transaction": TransactionSerializer(transaction).data}
+    callback_body = json.dumps({"transaction": TransactionSerializer(transaction).data})
     try:
         signature_header_value = compute_callback_signature(transaction.on_change_callback, callback_body)
     except ValueError:  # 
         logger.error(f"unable to parse host of transaction.on_change_callback for transaction {transaction.id}")
         return None
-    headers = {"Signature": signature_header_value}
+    headers = {
+        "Signature": signature_header_value,
+        "Content-Type": "application/json"
+    }
     async with aiohttp.ClientSession(timeout=timeout_obj) as session:
         return await session.post(
             url=transaction.on_change_callback,
-            json=callback_body,
+            data=callback_body.encode(),
             timeout=timeout,
             headers=headers
         )
