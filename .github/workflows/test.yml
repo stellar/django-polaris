@@ -21,7 +21,7 @@ jobs:
         run: |
           sudo mkdir -p /usr/local/poetry
           sudo python3.10 -m venv /usr/local/poetry
-          sudo /usr/local/poetry/bin/pip install poetry==1.6
+          sudo /usr/local/poetry/bin/pip install poetry
           sudo ln -s /usr/local/poetry/bin/poetry /bin/poetry
           export PATH=/bin:$PATH
       - name: Install Package
