@@ -106,7 +106,7 @@ class Command(BaseCommand):
         self.issue_parser = None
         self.add_asset_parser = None
         self.delete_asset_parser = None
-        self.server = Server("https://horizon-testnet.stellar.org")
+        self.server = settings.HORIZON_SERVER
         self.http = urllib3.PoolManager()
 
     def add_arguments(self, parser):  # pragma: no cover
