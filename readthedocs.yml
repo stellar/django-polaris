@@ -9,7 +9,12 @@ version: 2
 sphinx:
   configuration: docs/conf.py
 
+build:
+  os: ubuntu-lts-latest
+  tools:
+    python: "3.8"
+
+
 python:
-  version: 3.8
   install:
     - requirements: docs/requirements.txt
