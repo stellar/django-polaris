@@ -307,7 +307,7 @@ Currently, multisignature asset support is only relevant in the context of SEP-6
 Rate Limiting
 =============
 
-.. _`custom middleware`: https://docs.djangoproject.com/en/3.2/topics/http/middleware/#writing-your-own-middleware
+.. _`custom middleware`: https://docs.djangoproject.com/en/5.1/topics/http/middleware/#writing-your-own-middleware
 
 It is highly encouraged to employ a rate limiting strategy when running Polaris to ensure the service
 remains available for all client applications. Many endpoints retrieve and create database records on

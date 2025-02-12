@@ -85,7 +85,7 @@ def sep10(client, address, seed):
     response = client.post(
         "/auth",
         data={"transaction": client_signed_envelope_xdr},
-        headers={"Content-Type": "application/json"},
+        content_type="application/json",
     )
     content = json.loads(response.content)
     encoded_jwt = content["token"]
