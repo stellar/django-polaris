@@ -12,16 +12,11 @@ jobs:
       id-token: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
-      - name: Install Python
-        run: sudo apt-get update && sudo apt-get install -y python3.10-dev python3.10-venv
-      - name: Install Poetry
-        run: |
-          sudo mkdir -p /usr/local/poetry
-          sudo python3.10 -m venv /usr/local/poetry
-          sudo /usr/local/poetry/bin/pip install poetry==1.6
-          sudo ln -s /usr/local/poetry/bin/poetry /bin/poetry
-          export PATH=/bin:$PATH
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+      - name: Install poetry
+        run: pip install poetry
       - name: Install Package
         run: poetry install
       - name: Test Package
