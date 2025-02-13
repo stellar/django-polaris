@@ -16,17 +16,17 @@ keywords = ["stellar", "anchor", "polaris", "sep", "server"]
 classifiers = [
     "Environment :: Web Environment",
     "Framework :: Django",
-    "Framework :: Django :: 3.2",
+    "Framework :: Django :: 4.2",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.7",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 packages = [{ "include" = "polaris" }]
 exclude = ["**/*.scss", "**/tests/*"]
@@ -36,27 +36,28 @@ exclude = ["**/*.scss", "**/tests/*"]
 "Bug Tracker" = "https://github.com/stellar/django-polaris/issues"
 
 [tool.poetry.dependencies]
-python = "^3.8"
-django = "^3.2"
-asgiref = "^3.2"
+python = "^3.10"
+django = ">=4.2"
+asgiref = ">=3.2"
+django-model-utils = ">=4.1"
+djangorestframework = ">=3.12"
+whitenoise = ">=5.3"
+stellar-sdk = { version = ">=10", extras=["aiohttp"] }
+aiohttp = ">=3.7"
+django-cors-headers = ">=3.7"
+pyjwt = ">=2.1"
+cryptography = ">=41.0"
+sqlparse = ">=0.4.2"
 django-environ = "*"
-django-model-utils = "^4.1"
-djangorestframework = "^3.12"
-whitenoise = "^5.3"
-stellar-sdk = { version = "^10.0.0", extras=["aiohttp"] }
-aiohttp = "^3.7"
-django-cors-headers = "^3.7"
 toml = "*"
-pyjwt = "^2.1"
-cryptography = "^41.0"
-sqlparse = "^0.4.2"
+pytz = "*"
 readthedocs-sphinx-ext = { version = "^2.1", optional = true }
 sphinx = { version = "^4.2", optional = true }
 sphinx-rtd-theme = { version = "^1.0", optional = true }
 sphinx-autodoc-typehints = { version = "*", optional = true }
 gunicorn = { version = "*", optional = true }
-psycopg2-binary = { version = "^2.9", optional = true }
-watchdog = { version = "^2", optional = true }
+psycopg2-binary = { version = ">=2.9", optional = true }
+watchdog = { version = "*", optional = true }
 
 [tool.poetry.dev-dependencies]
 pylint = "*"

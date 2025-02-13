@@ -91,7 +91,6 @@ DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "America/Los_Angeles"
 USE_I18N = True
-USE_L10N = True
 USE_TZ = True
 USE_THOUSAND_SEPARATOR = True
 LANGUAGES = [
@@ -104,7 +103,11 @@ FORM_RENDERER = "django.forms.renderers.TemplatesSetting"
 
 STATIC_ROOT = os.path.join(BASE_DIR, "server/collectstatic")
 STATIC_URL = "/static/"
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+STORAGES = {
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",

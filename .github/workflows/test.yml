@@ -11,19 +11,20 @@ on:
 
 jobs:
   test:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.13"]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
-      - name: Install Python
-        run: sudo apt-get update && sudo apt-get install -y python3.10-dev python3.10-venv
-      - name: Install Poetry
-        run: |
-          sudo mkdir -p /usr/local/poetry
-          sudo python3.10 -m venv /usr/local/poetry
-          sudo /usr/local/poetry/bin/pip install poetry
-          sudo ln -s /usr/local/poetry/bin/poetry /bin/poetry
-          export PATH=/bin:$PATH
+        uses: actions/checkout@v4
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install poetry
+        run: pip install poetry
       - name: Install Package
         run: poetry install
       - name: Test Package

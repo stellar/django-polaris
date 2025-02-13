@@ -12,7 +12,7 @@ SEP-24 is the `hosted` version of this solution, meaning the user's application 
 Configure Settings
 ==================
 
-.. _`SessionMiddleware`: https://docs.djangoproject.com/en/3.2/ref/middleware/#module-django.contrib.sessions.middleware
+.. _`SessionMiddleware`: https://docs.djangoproject.com/en/5.1/ref/middleware/#module-django.contrib.sessions.middleware
 
 Activate SEP-24
 ---------------
@@ -69,7 +69,7 @@ Polaris requires this setting to be ``True`` for SEP-24 deployments if not in ``
 Configure Static Assets
 -----------------------
 
-.. _serving static files: https://docs.djangoproject.com/en/3.0/howto/static-files/
+.. _serving static files: https://docs.djangoproject.com/en/5.1/howto/static-files/
 
 Polaris comes with a UI for displaying forms and transaction information. This UI will be rendered in a webview by the user's application when they initiate a deposit or withdrawal.
 
@@ -200,7 +200,7 @@ However, the values assigned to the :class:`~polaris.models.Asset` are fixed. If
 Defining Django Forms
 ---------------------
 
-.. _`Django form objects`: https://docs.djangoproject.com/en/3.2/topics/forms/#building-a-form-in-django
+.. _`Django form objects`: https://docs.djangoproject.com/en/5.1/topics/forms/#building-a-form-in-django
 
 SEP-24 anchors must implement a user web-based interface that collects KYC and transaction information from the user of the client application. Because the information necessary to complete transactions differs for each business, Polaris expects the anchor to provide `Django form objects`_ that can be rendered as HTML to the user.
 
@@ -369,9 +369,9 @@ Once you've implemented the integration functions, you need to register them via
 Working with Templates
 ----------------------
 
-.. _`Django's template system`: https://docs.djangoproject.com/en/3.1/ref/templates/
-.. _`template syntax documentation`: https://docs.djangoproject.com/en/3.1/ref/templates/language/#
-.. _`block documentation`: https://docs.djangoproject.com/en/3.1/ref/templates/language/#template-inheritance
+.. _`Django's template system`: https://docs.djangoproject.com/en/5.1/ref/templates/
+.. _`template syntax documentation`: https://docs.djangoproject.com/en/5.1/ref/templates/language/#the-django-template-language
+.. _`block documentation`: https://docs.djangoproject.com/en/5.1/ref/templates/language/#template-inheritance
 
 Polaris uses `Django's template system`_ for defining the UI content rendered to users. If you're interested in customizing Polaris' UI, read Django's template documentation before continuing.
 
@@ -463,7 +463,7 @@ Simply include a `template_name` key in the dictionary returned by :meth:`~polar
 Providing Context to Templates
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. _`context`: https://docs.djangoproject.com/en/3.1/ref/templates/api/#rendering-a-context
+.. _`context`: https://docs.djangoproject.com/en/5.1/ref/templates/api/#rendering-a-context
 
 Whenever a template is rendered and displayed to the user, its rendered using a `context`_, which is a Python dictionary containing key-value pairs that can be used to alter the content rendered.
 
