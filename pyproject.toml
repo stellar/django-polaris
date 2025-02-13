@@ -52,14 +52,14 @@ django-environ = "*"
 toml = "*"
 pytz = "*"
 readthedocs-sphinx-ext = { version = "^2.1", optional = true }
-sphinx = { version = "^4.2", optional = true }
-sphinx-rtd-theme = { version = "^1.0", optional = true }
+sphinx = { version = "^8.1", optional = true }
+sphinx-rtd-theme = { version = "^3.0", optional = true }
 sphinx-autodoc-typehints = { version = "*", optional = true }
 gunicorn = { version = "*", optional = true }
 psycopg2-binary = { version = ">=2.9", optional = true }
 watchdog = { version = "*", optional = true }
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 pylint = "*"
 pylint-django = "*"
 pytest = "*"
